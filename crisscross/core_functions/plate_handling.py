@@ -146,28 +146,35 @@ def generate_new_plate_from_slat_handle_df(sequence_df, folder, filename, names_
 # TODO: need to figure out mapping of each specific slatcore/seed plate to see how to combine things together...
 # just for testing
 if __name__ == '__main__':
-    seed_plate_corner = read_dna_plate_mapping('/Users/matt/Desktop/Book2.xlsx', data_type='IDT_order')
 
-    plate = plate_maps.plate384
-    max_row = 24
-    letters = [a for a in ascii_uppercase[:16]]
+    in_name = ['3247.xls', '3248.xls', '3249.xls', '3250.xls', '3251.xls', '3252.xls']
+    out_name = ['P3247_SW_xslat_handles.xlsx', 'P3248_SW_xslat_handles.xlsx', 'P3249_SW_xslat_handles.xlsx',
+                'P3250_SW_yslat_handles.xlsx', 'P3251_CW_yslat_handles.xlsx', 'P3252_SW_yslat_handles.xlsx']
+    sheet_name = ['P3247_SW', 'P3248_SW', 'P3249_SW', 'P3250_SW', 'P3251_CW', 'P3252_SW']
 
-    name_dict = defaultdict(dict)
-    seq_dict = defaultdict(dict)
-    desc_dict = defaultdict(dict)
-    row_num = 0
-    for index, row in seed_plate_corner.iterrows():
-        letter_id = row['well'][0]
-        num_id = row['well'][1:]
-        seq_dict[letter_id][num_id] = row['sequence']
-        name_dict[letter_id][num_id] = row['name']
-        desc_dict[letter_id][num_id] = row['description']
+    for inn, outn, sheetn in zip(in_name, out_name, sheet_name):
+        seed_plate_corner = read_dna_plate_mapping('/Users/matt/Desktop/%s' % inn, data_type='IDT_order')
 
-    seq_dict = add_data_to_plate_df(letters, max_row, seq_dict)
-    name_dict = add_data_to_plate_df(letters, max_row, name_dict)
-    desc_dict = add_data_to_plate_df(letters, max_row, desc_dict)
+        plate = plate_maps.plate384
+        max_row = 24
+        letters = [a for a in ascii_uppercase[:16]]
 
-    with pd.ExcelWriter('/Users/matt/Desktop/P2854_CW_seed_plug_center.xlsx') as writer:
-        seq_dict.to_excel(writer, sheet_name='Sequences', index_label='P3339_JL')
-        name_dict.to_excel(writer, sheet_name='Names', index_label='P3339_JL')
-        desc_dict.to_excel(writer, sheet_name='Descriptions', index_label='P3339_JL')
+        name_dict = defaultdict(dict)
+        seq_dict = defaultdict(dict)
+        desc_dict = defaultdict(dict)
+        row_num = 0
+        for index, row in seed_plate_corner.iterrows():
+            letter_id = row['well'][0]
+            num_id = row['well'][1:]
+            seq_dict[letter_id][num_id] = row['sequence']
+            name_dict[letter_id][num_id] = row['name']
+            desc_dict[letter_id][num_id] = row['description']
+
+        seq_dict = add_data_to_plate_df(letters, max_row, seq_dict)
+        name_dict = add_data_to_plate_df(letters, max_row, name_dict)
+        desc_dict = add_data_to_plate_df(letters, max_row, desc_dict)
+
+        with pd.ExcelWriter('/Users/matt/Desktop/%s' % outn) as writer:
+            seq_dict.to_excel(writer, sheet_name='Sequences', index_label=sheetn)
+            name_dict.to_excel(writer, sheet_name='Names', index_label=sheetn)
+            desc_dict.to_excel(writer, sheet_name='Descriptions', index_label=sheetn)

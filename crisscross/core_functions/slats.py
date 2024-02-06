@@ -180,7 +180,7 @@ def attach_cargo_handles_to_slats(pattern, sequence_map, core_sequence_plate):
             core_name = 'slatcore-%s-h2ctrl' % slat_pos_id
             core_sequence = core_sequence_plate['sequence'][core_sequence_plate['name'].str.contains(core_name)].values[0]
             if pattern[i, j] > 0:
-                seq_dict[slat_pos_id][pattern[i, j]] = core_sequence + sequence_map[pattern[i, j]]
+                seq_dict[slat_pos_id][pattern[i, j]] = core_sequence + 'tt' + sequence_map[pattern[i, j]]
 
     seq_df = pd.DataFrame.from_dict(seq_dict, orient='index')
 

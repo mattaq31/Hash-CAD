@@ -55,16 +55,12 @@ if __name__ == '__main__':
     generate_new_plate_from_slat_handle_df(full_attachment_df, output_folder, 'idt_order_new_cargo_strands.xlsx',
                                            names_df=names_df, data_type='IDT_order', plate_size=384)
 
-# which exact handle sequences were used for stella's square design?
-# are the x's or y's on top? YS ALWAYS ON TOP
-# will we need to add a crossbar? MAYBE
-# can we just add biotins to the bottom crossbars?
-# won't the seed clash with the crossbar?
+
 
 # NEXT STEPS:
 # Implement echo output system
 # prepare seed socket implementation
 # add sequences for 7nt handles
-# Add crossbar
-# add biotins to crossbar
+# Add crossbar - DONE
+# add biotins to crossbar -
 # re-check everything

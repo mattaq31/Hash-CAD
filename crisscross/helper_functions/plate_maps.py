@@ -10,8 +10,8 @@ plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1
 base_directory = os.path.abspath(join(__file__, os.path.pardir, os.path.pardir, os.path.pardir))
 plate_folder = join(base_directory, 'core_plates')
 
-crisscross_handle_plates = ["P3247_SW", "P3248_SW", "P3249_SW", "P3250_SW", "P3251_CW",
-                            "P3252_SW"]  # first 3 are 'handle' plates, last 3 are 'anti-handle' plates
+crisscross_handle_plates = ["P3247_SW_xslat_handles", "P3248_SW_xslat_handles", "P3249_SW_xslat_handles",
+                            "P3250_SW_yslat_handles", "P3251_CW_yslat_handles", "P3252_SW_yslat_handles"]  # first 3 are 'handle' plates, last 3 are 'anti-handle' plates
 
 seed_core = 'sw_src001_seedcore'  # this contains all the seed sequences, including the socket sequences
 slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, including the control sequences (no handle)
