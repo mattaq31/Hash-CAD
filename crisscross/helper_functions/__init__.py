@@ -4,6 +4,11 @@ dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
 
 def revcom(sequence):
+    """
+    Reverse complements a DNA sequence.
+    :param sequence: DNA string, do not add any other characters (TODO: make more robust)
+    :return: processed sequence (string)
+    """
     return "".join(dna_complement[n] for n in reversed(sequence))
 
 

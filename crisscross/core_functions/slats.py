@@ -2,6 +2,8 @@ import numpy as np
 from itertools import product
 import time
 from tqdm import tqdm
+import pandas as pd
+from collections import defaultdict
 
 
 def generate_standard_square_slats(slat_count=32):
@@ -122,12 +124,72 @@ def calculate_slat_hamming(base_array, handle_array, x_slats, y_slats, unique_se
     return combination_matrix_1, combination_matrix_2, results
 
 
+def generate_handle_set_and_optimize(base_array, x_slats, y_slats, unique_sequences=32, min_hamming=25, max_rounds=30):
+    """
+    Generates a handle set and optimizes it for kinetic traps
+    :param base_array: Slat position array (3D)
+    :param x_slats: List of x-slat IDs
+    :param y_slats: List of y-slat IDs
+    :param unique_sequences: Max unique sequences in the handle array
+    :param min_hamming: If this Hamming distance is achieved, stops optimization early
+    :param max_rounds: Maximum number of rounds to run the optimization
+    :return: 2D array with handle IDs
+    """
+    handle_array = generate_random_slat_handles(base_array, unique_sequences)
+    _, _, res = calculate_slat_hamming(base_array, handle_array, x_slats, y_slats, unique_sequences)
+    print('Optimizing kinetic traps...')
+
+    best_array = handle_array
+    best_hamming = 0
+
+    with tqdm(total=max_rounds, desc='Kinetic Trap Check') as pbar:
+        for i in range(max_rounds):
+            update_random_slat_handles(handle_array)
+            _, _, res = calculate_slat_hamming(base_array, handle_array, x_slats, y_slats, unique_sequences)
+            new_hamming = np.min(res)
+            if new_hamming > best_hamming:
+                best_hamming = new_hamming
+                best_array = handle_array
+            pbar.update(1)
+            pbar.set_postfix(**{'Latest Hamming Distance': new_hamming, 'Best Hamming Distance': best_hamming})
+            if best_hamming >= min_hamming:
+                print('Optimization concluding early - target Hamming distance achieved.')
+                break
+
+    print('Optimization complete - final best hamming distance: %s' % best_hamming)
+
+    return best_array
+
+
+def attach_cargo_handles_to_slats(pattern, sequence_map, core_sequence_plate):
+    """
+    TODO: extend for any shape (currently only 2D squares)
+    Concatenates cargo handles to provided sequences according to cargo pattern.
+    :param pattern: 2D array showing where each cargo handle will be attached to a slat
+    :param sequence_map: Sequence to use for each particular cargo handle in pattern
+    :param core_sequence_plate: Pandas dataframe containing the sequences for each handle position
+    :return: Dataframe containing all new sequences to be ordered for cargo attachment
+    """
+    seq_dict = defaultdict(dict)
+    # BEWARE: axis 0 is the y-axis, axis 1 is the x-axis
+    for i in range(pattern.shape[0]):
+        for j in range(pattern.shape[1]):
+            slat_pos_id = j+1  # assumes that the staples will be attached to the y-slats,
+            # so the important ID is the x-position
+            # (a unique sequence is required only if one is not available on another slat)
+            core_name = 'slatcore-%s-h2ctrl' % slat_pos_id
+            core_sequence = core_sequence_plate['sequence'][core_sequence_plate['name'].str.contains(core_name)].values[0]
+            if pattern[i, j] > 0:
+                seq_dict[slat_pos_id][pattern[i, j]] = core_sequence + sequence_map[pattern[i, j]]
+
+    seq_df = pd.DataFrame.from_dict(seq_dict, orient='index')
+
+    return seq_df
+
+
 # TESTING AREA ONLY
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-
-    folder = "/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_training/stella_scripts_and_data/20220927_megaplussign_2handlestagger/20220927_megacc6hb_plussign_2handlestagger_nonperiodic/"
-    sheetnames = ["slats_top.csv", "slats_bottom.csv", "growth_top.csv", "growth_bottom.csv", "seedcontact_h2.csv"]
 
     np.random.seed(8)
     base_array, x_slats, y_slats = generate_standard_square_slats(32)

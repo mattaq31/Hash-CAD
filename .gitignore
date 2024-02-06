@@ -131,3 +131,6 @@ dmypy.json
 
 # temp scripts
 scratch/*
+
+# temporary excel files
+~$*

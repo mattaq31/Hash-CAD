@@ -43,6 +43,7 @@ def visualize_megastructure_handles(pattern, ax, title, alpha=0.2, xsize=32, ysi
     # graph formatting
     ax.set_ylim(-0.5, ysize + 0.5)
     ax.set_xlim(-0.5, xsize + 0.5)
+    ax.invert_yaxis()  # y-axis is inverted to match the way the slats and patterns are numbered
     ax.set_title(title, fontsize=24)
 
 
