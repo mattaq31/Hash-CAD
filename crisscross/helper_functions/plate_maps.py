@@ -18,3 +18,13 @@ slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, includ
 
 seed_plug_plate_center = 'P2854_CW_seed_plug_center'  # this contains the H2 plug sequences to bind to the seed at the center of the x-slats
 seed_plug_plate_corner = 'P3339_JL_seed_plug_corner' # this contains another variation of H2 plug sequences - they go to the corner of a set of x-slats
+
+
+def sanitize_plate_map(name):
+    """
+    Actual plate name for the Echo always just features the person's name and the plate ID.
+    :param name: Long-form plate name
+    :return: Barebones plate name for Echo
+    """
+    return name.split('_')[0] + '_' + name.split('_')[1]
+

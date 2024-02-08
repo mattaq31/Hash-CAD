@@ -15,8 +15,8 @@ def generate_standard_square_slats(slat_count=32):
     base_array = np.zeros((slat_count, slat_count, 2))  # width, height, X/Y slat ID
 
     for i in range(1, slat_count+1):  # slats are 1-indexed and must be connected
-        base_array[:, i-1, 0] = i
-        base_array[i-1, :, 1] = i
+        base_array[:, i-1, 1] = i
+        base_array[i-1, :, 0] = i
 
     x_slat_ids = np.unique(base_array[:, :, 0])
     x_slat_ids = x_slat_ids[x_slat_ids != 0]
@@ -161,28 +161,34 @@ def generate_handle_set_and_optimize(base_array, x_slats, y_slats, unique_sequen
     return best_array
 
 
-def attach_cargo_handles_to_slats(pattern, sequence_map, core_sequence_plate):
+def attach_cargo_handles_to_slats(pattern, sequence_map, core_sequence_plate, slat_type='X'):
     """
     TODO: extend for any shape (currently only 2D squares)
     Concatenates cargo handles to provided sequences according to cargo pattern.
     :param pattern: 2D array showing where each cargo handle will be attached to a slat
     :param sequence_map: Sequence to use for each particular cargo handle in pattern
     :param core_sequence_plate: Pandas dataframe containing the sequences for each handle position
+    :param slat_type: Type of slat to attach to (X or Y)
     :return: Dataframe containing all new sequences to be ordered for cargo attachment
     """
-    seq_dict = defaultdict(dict)
+    seq_dict = defaultdict(list)
+    combinations_seen = set()
     # BEWARE: axis 0 is the y-axis, axis 1 is the x-axis
     for i in range(pattern.shape[0]):
         for j in range(pattern.shape[1]):
-            slat_pos_id = j+1  # assumes that the staples will be attached to the y-slats,
-            # so the important ID is the x-position
-            # (a unique sequence is required only if one is not available on another slat)
-            core_name = 'slatcore-%s-h2ctrl' % slat_pos_id
-            core_sequence = core_sequence_plate['sequence'][core_sequence_plate['name'].str.contains(core_name)].values[0]
-            if pattern[i, j] > 0:
-                seq_dict[slat_pos_id][pattern[i, j]] = core_sequence + 'tt' + sequence_map[pattern[i, j]]
+            if slat_type == 'y':
+                slat_pos_id = j+1
+            else:
+                slat_pos_id = i+1
+            if pattern[i, j] > 0 and (slat_pos_id, pattern[i, j]) not in combinations_seen:
+                core_name = 'slatcore-%s-h2ctrl' % slat_pos_id
+                core_sequence = core_sequence_plate['sequence'][core_sequence_plate['name'].str.contains(core_name)].values[0]
+                seq_dict['Cargo ID'].append(pattern[i, j])
+                seq_dict['Sequence'].append(core_sequence + 'tt' + sequence_map[pattern[i, j]])
+                seq_dict['Slat Pos. ID'].append(slat_pos_id)
+                combinations_seen.add((slat_pos_id, pattern[i, j]))
 
-    seq_df = pd.DataFrame.from_dict(seq_dict, orient='index')
+    seq_df = pd.DataFrame.from_dict(seq_dict)
 
     return seq_df
 

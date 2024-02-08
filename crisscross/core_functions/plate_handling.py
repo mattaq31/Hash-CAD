@@ -9,7 +9,8 @@ from crisscross.helper_functions import plate_maps
 
 def add_data_to_plate_df(letters, column_total, data_dict):
     """
-    Creates an empty plate (i.e. with rows/columns premade) and inserts provided data  dict.
+    Creates an empty plate (i.e. with rows/columns premade) and inserts provided data dict,
+    leaving all empty cells blank.
     :param letters: Letters to use for rows.
     :param column_total: Total amount of columns (numbers)
     :param data_dict: Nested dictionary containing data to input into plate
@@ -38,7 +39,7 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
     else:
         plate = plate_maps.plate384
 
-    # all staples for the standard slat, including control h2/h5 sequences
+    # this format consists of each sequence in a 2D array, with names and descriptions in separate sheets
     if data_type == '2d_excel':
         all_data = pd.ExcelFile(filename)
         names = all_data.parse("Names", index_col=0)
@@ -48,16 +49,19 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
         for entry in plate:
             n, s, d = names[entry[1:]][entry[0]], sequences[entry[1:]][entry[0]], descriptions[entry[1:]][entry[0]]
             valid_vals = [pd.isna(n), pd.isna(s), pd.isna(d)]
-            if sum(valid_vals) == 3:
+            if sum(valid_vals) == 3:  # all 3 cells are empty
                 continue
-            elif sum(valid_vals) > 0:
+            elif sum(valid_vals) > 0:  # not all cells of the same ID are full
                 raise RuntimeError('The sequence file provided has an inconsistency in entry %s' % entry)
+
+            # if all cells are full, add data to dictionary
             combined_dict[entry] = {'well': entry,
                                     'name': n,
                                     'sequence': s,
                                     'description': d}
 
         return pd.DataFrame.from_dict(combined_dict, orient='index')
+
     elif data_type == 'IDT_order':
         all_data = pd.read_excel(filename)
         all_data.columns = ['well', 'name', 'sequence', 'description']
@@ -66,79 +70,74 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
         raise ValueError('Invalid data type for plate input')
 
 
-def generate_new_plate_from_slat_handle_df(sequence_df, folder, filename, names_df=None, notes_df=None,
+def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_row_by_column=None,
                                            data_type='2d_excel', plate_size=384):
-    # TODO: this definitely could be done more elegantly - revise when new functionality needs to be added
-    # TODO: make it easy to also convert IDT-format tables to 2D tables too
     """
     Generates a new plate from a dataframe containing sequences, names and notes, then saves it to file.
-    :param sequence_df: Main sequence data to export.
-    Columns should contain different sequence categories and rows should be indexed properly.
+    TODO: make faster and more elegant.
+    :param data_df: Main sequence data to export containing sequence, slat ID, name and description.
     :param folder: Output folder.
     :param filename: Output filename.
-    :param names_df: Any names to apply to each sequence (optional).
-    :param notes_df: Any notes to link with each sequence (optional).
+    :param restart_row_by_column: Set this to a column name to restart the row number when the value changes.
     :param data_type: Either 2d_excel (2d output array) or IDT_order (for IDT order form).
     :param plate_size: 96 or 384
-    :return: N/A
+    :return: final dataframe that's saved to file
     """
     if plate_size == 96:
         plate = plate_maps.plate96
-        max_row = 12
+        max_col = 12
         letters = [a for a in ascii_uppercase[:8]]
     else:
         plate = plate_maps.plate384
-        max_row = 24
+        max_col = 24
         letters = [a for a in ascii_uppercase[:16]]
 
-    # all staples for the standard slat, including control h2/h5 sequences
-    if data_type == '2d_excel':
+    name_dict = defaultdict(dict)
+    seq_dict = defaultdict(dict)
+    desc_dict = defaultdict(dict)
+    idt_order_dict = defaultdict(list)
+    row_num = 0
+    column_num = 0
+    row_restart_tracker = None
 
-        name_dict = defaultdict(dict)
-        seq_dict = defaultdict(dict)
-        desc_dict = defaultdict(dict)
-        row_num = 0
-        for col in sequence_df.columns:
-            # num_seqs = sequence_df[col].count()
-            sequence_tracker = 0
-            for i in sequence_df[col].index:
-                seq = sequence_df[col][i]
-                if isinstance(seq, float) and math.isnan(seq):
-                    continue
-                letter_id, num_id = plate[row_num * max_row + sequence_tracker][0], plate[row_num * max_row + sequence_tracker][1:]
+    for seq_num, row in data_df.iterrows():
+        if restart_row_by_column is not None:  # allows a new row to restart when a specific column changes
+            if row_restart_tracker and row_restart_tracker != row[restart_row_by_column]:
+                row_num += 1
+                column_num = 0
+            row_restart_tracker = row[restart_row_by_column]
+        plate_id = plate[row_num * max_col + column_num]
+        letter_id, num_id = plate_id[0], plate_id[1:]
 
-                seq_dict[letter_id][num_id] = seq
-                if names_df is not None:
-                    name_dict[letter_id][num_id] = names_df[col][i]
-                if notes_df is not None:
-                    desc_dict[letter_id][num_id] = notes_df[col][i]
-                sequence_tracker += 1
-            row_num += sequence_tracker // max_row + 1
+        seq_dict[letter_id][num_id] = row['Sequence']
+        name_dict[letter_id][num_id] = row['Name']
+        desc_dict[letter_id][num_id] = row['Description']
 
-        seq_dict = add_data_to_plate_df(letters, max_row, seq_dict)
-        name_dict = add_data_to_plate_df(letters, max_row, name_dict)
-        desc_dict = add_data_to_plate_df(letters, max_row, desc_dict)
+        idt_order_dict['WellPosition'].append(plate_id)
+        idt_order_dict['Name'].append(row['Name'])
+        idt_order_dict['Sequence'].append(row['Sequence'])
+        idt_order_dict['Notes'].append(row['Description'])
 
+        column_num += 1
+
+        if column_num == max_col:  # tracking when column number should repeat
+            row_num += 1
+            column_num = 0
+
+    if data_type == '2d_excel': # three different sheets for sequences, names and descriptions
+        seq_dict = add_data_to_plate_df(letters, max_col, seq_dict)
+        name_dict = add_data_to_plate_df(letters, max_col, name_dict)
+        desc_dict = add_data_to_plate_df(letters, max_col, desc_dict)
         with pd.ExcelWriter(os.path.join(folder, filename)) as writer:
             seq_dict.to_excel(writer, sheet_name='Sequences', index_label=filename.split('.')[0])
             name_dict.to_excel(writer, sheet_name='Names', index_label=filename.split('.')[0])
             desc_dict.to_excel(writer, sheet_name='Descriptions', index_label=filename.split('.')[0])
-
-    elif data_type == 'IDT_order':
-        output_dict = defaultdict(list)
-        position = 0
-        for col in sequence_df.columns:
-            for col_index in sequence_df[col].index:
-                if isinstance(sequence_df[col][col_index], float) and math.isnan(sequence_df[col][col_index]):
-                    continue
-                output_dict['WellPosition'].append(plate[position])
-                output_dict['Name'].append(names_df[col][col_index] if names_df is not None else 'seq_%s' % position)
-                output_dict['Sequence'].append(sequence_df[col][col_index])
-                output_dict['Notes'].append(notes_df[col][col_index] if notes_df is not None else None)
-                position += 1
-        output_df = pd.DataFrame.from_dict(output_dict, orient='columns')
+        return seq_dict
+    elif data_type == 'IDT_order':  # all details in one sheet
+        output_df = pd.DataFrame.from_dict(idt_order_dict, orient='columns')
         with pd.ExcelWriter(os.path.join(folder, filename)) as writer:
             output_df.to_excel(writer, sheet_name='IDT Order', index=False)
+        return output_df
     else:
         raise ValueError('Invalid data type for plate input')
 
