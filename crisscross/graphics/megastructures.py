@@ -37,8 +37,8 @@ def visualize_megastructure_handles(pattern, ax, title, alpha=0.2, xsize=32, ysi
 
     # plots seed position as a rectangle (for now)
     if plot_seed:  # TODO: make this repositionable, also what are exact dimensions?
-        ax.add_patch(Rectangle((16 - 2, 16 - 8), 5, 16, facecolor="yellow", edgecolor="black", linewidth=1))
-        ax.text(16, 16, "SEED", ha="center", va="center", rotation=90, fontsize=38)
+        ax.add_patch(Rectangle((-slatPadding, -slatPadding), 5, 16, facecolor="yellow", edgecolor="black", linewidth=1))
+        ax.text(2.5, 8, "SEED", ha="center", va="center", rotation=90, fontsize=38)
 
     # graph formatting
     ax.set_ylim(-0.5, ysize + 0.5)
@@ -148,12 +148,25 @@ def generate_patterned_square_cco(pattern='2_slat_jump'):
 
 # just for testing
 if __name__ == '__main__':
+    # pattern = generate_patterned_square_cco("diagonal_octahedron_top_corner")
+    # two_side_plot(pattern, pattern, 'Uncentred_Octahedrons')
+
+    # pattern = generate_patterned_square_cco("diagonal_octahedron_centred")
+    # two_side_plot(pattern, pattern, 'Centred_Octahedrons')
+
     pattern = generate_patterned_square_cco("diagonal_octahedron_top_corner")
-    two_side_plot(pattern, pattern, 'Uncentred_Octahedrons')
+    pattern2 = np.ones((32, 32)) * 3
+    two_side_plot(pattern, pattern2, 'Octahedrons_With_Biotin_Underside')
 
-    pattern = generate_patterned_square_cco("diagonal_octahedron_centred")
-    two_side_plot(pattern, pattern, 'Centred_Octahedrons')
+    pattern2 = np.zeros((32, 32))
+    two_side_plot(pattern, pattern2, 'Octahedrons_With_Empty_Underside')
 
-    pattern = generate_patterned_square_cco("diagonal_octahedron_centred")
-    pattern2 = generate_patterned_square_cco("biotin_patterning")
-    two_side_plot(pattern, pattern2, 'Centred_Octahedrons_With_Biotin_Underside')
+    pattern2 = np.zeros((32, 32))
+    # prepares crossbar attachment pattern (pre-made in another script)
+    for index, sel_pos in enumerate([[21.0, 2.0], [18.0, 6.0], [15.0, 10.0], [12.0, 14.0], [9.0, 18.0], [6.0, 22.0], [3.0, 26.0]]):
+        pattern2[int(sel_pos[1]), int(sel_pos[0])] = 4
+
+    for index, sel_pos in enumerate([[31.0, 6.0], [28.0, 10.0], [25.0, 14.0], [22.0, 18.0], [19.0, 22.0], [16.0, 26.0], [13.0, 30.0]]):
+        pattern2[int(sel_pos[1]), int(sel_pos[0])] = 4
+
+    two_side_plot(pattern, pattern2, 'Octahedrons_With_Crossbar_Underside')

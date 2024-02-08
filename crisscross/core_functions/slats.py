@@ -161,7 +161,7 @@ def generate_handle_set_and_optimize(base_array, x_slats, y_slats, unique_sequen
     return best_array
 
 
-def attach_cargo_handles_to_slats(pattern, sequence_map, core_sequence_plate, slat_type='X'):
+def attach_cargo_handles_to_slats(pattern, sequence_map, core_sequence_plate, slat_type='X', handle_side='h2'):
     """
     TODO: extend for any shape (currently only 2D squares)
     Concatenates cargo handles to provided sequences according to cargo pattern.
@@ -177,15 +177,22 @@ def attach_cargo_handles_to_slats(pattern, sequence_map, core_sequence_plate, sl
     for i in range(pattern.shape[0]):
         for j in range(pattern.shape[1]):
             if slat_type == 'y':
-                slat_pos_id = j+1
-            else:
                 slat_pos_id = i+1
+            else:
+                slat_pos_id = j+1
+            if handle_side == 'h5':
+                slat_pos_id += 32
             if pattern[i, j] > 0 and (slat_pos_id, pattern[i, j]) not in combinations_seen:
-                core_name = 'slatcore-%s-h2ctrl' % slat_pos_id
+                core_name = 'slatcore-%s-%sctrl' % (slat_pos_id, handle_side)
                 core_sequence = core_sequence_plate['sequence'][core_sequence_plate['name'].str.contains(core_name)].values[0]
                 seq_dict['Cargo ID'].append(pattern[i, j])
                 seq_dict['Sequence'].append(core_sequence + 'tt' + sequence_map[pattern[i, j]])
-                seq_dict['Slat Pos. ID'].append(slat_pos_id)
+
+                if handle_side == 'h2': # TODO: again, super convoluted
+                    seq_dict['Slat Pos. ID'].append(slat_pos_id)
+                else:
+                    seq_dict['Slat Pos. ID'].append(slat_pos_id-32)
+
                 combinations_seen.add((slat_pos_id, pattern[i, j]))
 
     seq_df = pd.DataFrame.from_dict(seq_dict)

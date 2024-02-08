@@ -7,16 +7,19 @@ from crisscross.helper_functions.plate_maps import (slat_core, plate_folder, cri
 from collections import defaultdict
 
 
-def extract_h5_staples(handle_ids, core_slat_plate, crisscross_plates):
+def extract_h5_staples(handle_ids, core_slat_plate, crisscross_plates, cargo_plate=None, cargo_name_dict=None, cargo_bearing=False):
 
     staple_selection = []
     for i, handle in enumerate(handle_ids):
-        if handle == -1:  # TODO: test!
+        if handle == -1:
             sel_plate = core_slat_plate
             core_name = 'slatcore-%s-h5ctrl' % (33 + i)
             sel_location = sel_plate[sel_plate['name'].str.contains(core_name)]
             staple_selection.append(
                 [sanitize_plate_map(slat_core), sel_location['well'].values[0], sel_location['sequence'].values[0]])
+        elif cargo_bearing:
+            sel_location = cargo_plate[cargo_plate['Name'] == f'{cargo_name_dict[handle]}_h5_cargo_handle_{i + 1}']
+            staple_selection.append(['cargo_plate', sel_location['WellPosition'].values[0], sel_location['Sequence'].values[0]])
         else:
             sel_plate = crisscross_plates[i // 12][0]
             sel_location = sel_plate[sel_plate['description'].str.contains('n%s_k%s' % (i, handle))]
@@ -45,7 +48,8 @@ def extract_cargo_staples(cargo_val, slat_pos_id, cargo_name_dict, core_slat_pla
 
 def collate_design_print_echo_commands(base_array, x_slats, y_slats, handle_array,
                                        x_cargo_map, y_cargo_map, cargo_name_dict,
-                                       cargo_plate, destination_plate_name, output_folder, output_filename):
+                                       cargo_plate, destination_plate_name,
+                                       output_folder, output_filename, include_seed=True, cargo_bearing_h5=False):
     # TODO: this is slow, needs speed-up
     core_slat_plate = read_dna_plate_mapping(os.path.join(plate_folder, slat_core + '.xlsx'))
     seed_plug_plate = read_dna_plate_mapping(os.path.join(plate_folder, seed_plug_plate_corner + '.xlsx'))
@@ -63,19 +67,32 @@ def collate_design_print_echo_commands(base_array, x_slats, y_slats, handle_arra
         else:
             y_crisscross_plates.append([plate_df, plate])
 
+    # TODO: this is super convoluted, need to simplify attaching a control, handle or cargo to a specific position, regardless of it being H2 or H5
+    # H5 attachments
     for x in x_slats:
         handle_ids = handle_array[np.where(base_array[..., 0] == x)]
-        staple_selection_x[x].extend(extract_h5_staples(handle_ids, core_slat_plate, x_crisscross_plates))
+        if cargo_bearing_h5:
+            staple_selection_x[x].extend(extract_h5_staples(handle_ids, core_slat_plate, x_crisscross_plates,
+                                                            cargo_plate=cargo_plate, cargo_name_dict=cargo_name_dict,
+                                                            cargo_bearing=True))
+        else:
+            staple_selection_x[x].extend(extract_h5_staples(handle_ids, core_slat_plate, x_crisscross_plates))
 
     for y in y_slats:
         handle_ids = handle_array[np.where(base_array[..., 1] == y)]
         staple_selection_y[y].extend(extract_h5_staples(handle_ids, core_slat_plate, y_crisscross_plates))
 
+    # H2 attachments
     for i in range(x_cargo_map.shape[0]):
         for j in range(x_cargo_map.shape[1]):
-            staple_selection_x[base_array[i, j][0]].append(extract_cargo_staples(x_cargo_map[i, j], j, cargo_name_dict, core_slat_plate, cargo_plate, True, seed_plug_plate, y_position=i+1))
-            staple_selection_y[base_array[i, j][1]].append(extract_cargo_staples(y_cargo_map[i, j], i, cargo_name_dict, core_slat_plate, cargo_plate))
+            x_slat_id = base_array[i, j][0]
+            y_slat_id = base_array[i, j][1]
+            if x_slat_id != 0:
+                staple_selection_x[x_slat_id].append(extract_cargo_staples(x_cargo_map[i, j], j, cargo_name_dict, core_slat_plate, cargo_plate, include_seed, seed_plug_plate, y_position=i+1))
+            if y_slat_id != 0:
+                staple_selection_y[y_slat_id].append(extract_cargo_staples(y_cargo_map[i, j], i, cargo_name_dict, core_slat_plate, cargo_plate))
 
+    # echo command prep
     complete_list = []
     transfer_volume = 75
     source_plate_type = '384PP_AQ_BP'
