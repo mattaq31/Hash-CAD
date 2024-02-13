@@ -32,7 +32,7 @@ def visualize_megastructure_handles(pattern, ax, title, alpha=0.2, xsize=32, ysi
     # plots position of special handles using circles.  Colorway is pre-set.
     posx, posy = np.where(pattern > 0)
     for i, j in zip(posx, posy):
-        ax.add_patch(Circle((i + slatPadding, j + slatPadding), 0.2,
+        ax.add_patch(Circle((j + slatPadding, i + slatPadding), 0.2,
                             facecolor=colorway[int(pattern[i, j]-1)], edgecolor="black", linewidth=1))
 
     # plots seed position as a rectangle (for now)

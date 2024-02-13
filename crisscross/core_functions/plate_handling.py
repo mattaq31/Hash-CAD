@@ -4,7 +4,7 @@ from collections import defaultdict
 from string import ascii_uppercase
 import pandas as pd
 
-from crisscross.helper_functions import plate_maps
+from crisscross.helper_functions import plate_constants
 
 
 def add_data_to_plate_df(letters, column_total, data_dict):
@@ -35,9 +35,9 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
     :return: Dataframe containing all data
     """
     if plate_size == 96:
-        plate = plate_maps.plate96
+        plate = plate_constants.plate96
     else:
-        plate = plate_maps.plate384
+        plate = plate_constants.plate384
 
     # this format consists of each sequence in a 2D array, with names and descriptions in separate sheets
     if data_type == '2d_excel':
@@ -84,11 +84,11 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
     :return: final dataframe that's saved to file
     """
     if plate_size == 96:
-        plate = plate_maps.plate96
+        plate = plate_constants.plate96
         max_col = 12
         letters = [a for a in ascii_uppercase[:8]]
     else:
-        plate = plate_maps.plate384
+        plate = plate_constants.plate384
         max_col = 24
         letters = [a for a in ascii_uppercase[:16]]
 
@@ -124,7 +124,7 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
             row_num += 1
             column_num = 0
 
-    if data_type == '2d_excel': # three different sheets for sequences, names and descriptions
+    if data_type == '2d_excel':  # three different sheets for sequences, names and descriptions
         seq_dict = add_data_to_plate_df(letters, max_col, seq_dict)
         name_dict = add_data_to_plate_df(letters, max_col, name_dict)
         desc_dict = add_data_to_plate_df(letters, max_col, desc_dict)
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     for inn, outn, sheetn in zip(in_name, out_name, sheet_name):
         seed_plate_corner = read_dna_plate_mapping('/Users/matt/Desktop/%s' % inn, data_type='IDT_order')
 
-        plate = plate_maps.plate384
+        plate = plate_constants.plate384
         max_row = 24
         letters = [a for a in ascii_uppercase[:16]]
 
