@@ -20,6 +20,8 @@ slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, includ
 seed_plug_plate_center = 'P2854_CW_seed_plug_center'  # this contains the H2 plug sequences to bind to the seed at the center of the x-slats
 seed_plug_plate_corner = 'P3339_JL_seed_plug_corner' # this contains another variation of H2 plug sequences - they go to the corner of a set of x-slats
 
+nelson_quimby_antihandles = 'sw_src005_antiNelsonQuimby_cc6hb_h2handles' # this contains the full set of h2 handles for antiNelson/Quimby extensions
+h2_biotin_direct = 'P3510_SSW_biotin'  # this contains two core slat sequences with directly biotinylated H2 handles
 octahedron_patterning_v1 = 'P3518_MA_octahedron_patterning_v1'  # this contains the H2 sequences for the octahedron patterning (diagonal) and H2/H5 strands for cross-bar binding
 
 

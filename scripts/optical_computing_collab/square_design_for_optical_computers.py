@@ -1,22 +1,26 @@
 import numpy as np
 import pandas as pd
+import os
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.core_functions.slat_design import (generate_standard_square_slats, generate_handle_set_and_optimize,
-                                                   attach_cargo_handles_to_core_sequences)
+                                                   attach_cargo_handles_to_core_sequences, calculate_slat_hamming)
 from crisscross.core_functions.slats import Slat
 from crisscross.graphics.megastructures import generate_patterned_square_cco
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_handle_plates,
-                                                         seed_plug_plate_corner, octahedron_patterning_v1, cargo_plate_folder)
+                                                         seed_plug_plate_corner, octahedron_patterning_v1,
+                                                         cargo_plate_folder, nelson_quimby_antihandles,
+                                                         h2_biotin_direct)
 from crisscross.plate_mapping import get_plateclass
 
 ########################################
 # script setup
 output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_feb_2024'
+
 np.random.seed(8)
-read_handles_from_file = None  # TODO: run this for a very long time, then save best result to file
+read_handles_from_file = True
 read_cargo_patterns_from_file = True
 ########################################
 
@@ -29,7 +33,8 @@ crossbar_linkages = ['Homer', 'Krusty', 'Lisa', 'Marge', 'Patty', 'Quimby', 'Smi
 
 # mapping sequences to numbers
 crossbar_anti_map = {i + 4: simpsons_anti[crossbar_linkages[i]][:10] for i in range(7)}
-crossbar_map = {i + 11: simpsons[crossbar_linkages[i]][-10:] for i in range(7)}  # due to reverse complement system, need to take sequence from back
+crossbar_map = {i + 11: simpsons[crossbar_linkages[i]][-10:] for i in
+                range(7)}  # due to reverse complement system, need to take sequence from back
 cargo_map = {1: simpsons_anti[cargo_1], 2: simpsons_anti[cargo_2], 3: simpsons_anti[cargo_biotin]}
 
 # mapping names to numbers
@@ -51,8 +56,16 @@ seed_plate = get_plateclass('SeedPlugPlate', seed_plug_plate_corner, core_plate_
 # Shape generation and crisscross handle optimisation
 slat_array, x_slats, y_slats = generate_standard_square_slats(32)
 # optimize handles
-handle_array = generate_handle_set_and_optimize(slat_array, x_slats, y_slats, unique_sequences=32,
-                                                min_hamming=28, max_rounds=1)
+if read_handles_from_file:
+    handle_array = np.loadtxt(os.path.join(output_folder, 'optimized_handle_array.csv'), delimiter=',').astype(
+        np.float32)
+    _, _, res = calculate_slat_hamming(slat_array, handle_array, x_slats, y_slats, unique_sequences=32)
+    print('Hamming distance from file-loaded design: %s' % np.min(res))
+else:
+    handle_array = generate_handle_set_and_optimize(slat_array, x_slats, y_slats, unique_sequences=32,
+                                                    min_hamming=29, max_rounds=300)
+    np.savetxt(os.path.join(output_folder, 'optimized_handle_array.csv'), handle_array.astype(np.int32), delimiter=',',
+               fmt='%i')
 ########################################
 
 ########################################
@@ -94,7 +107,7 @@ for index, pos in enumerate([0, 5, 10, 15, 20, 25, 30]):  # as defined by previo
     single_crossbar_pattern[:, pos] = index + 11
 
 single_crossbar_df = attach_cargo_handles_to_core_sequences(single_crossbar_pattern, crossbar_map, core_plate,
-                                                   slat_type='X', handle_side=5)
+                                                            slat_type='X', handle_side=5)
 single_crossbar_df['Category'] = 5
 single_crossbar_df['Handle Side'] = 'h5'
 ########################################
@@ -134,6 +147,10 @@ else:
                                  output_folder,
                                  pre_read_plate_dfs=[idt_plate])
 
+nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles,
+                              cargo_plate_folder)
+biotin_plate = get_plateclass('DirectBiotinPlate', h2_biotin_direct,
+                              cargo_plate_folder)
 ########################################
 
 ########################################
@@ -175,7 +192,8 @@ for i in range(slat_array.shape[0]):
                                          sel_x_plate.get_plate_name(sj, 5, handle_val))
 
         # H2 assignment
-        if not isinstance(seed_plate.get_sequence(sj, 2, si), str):  # checks to see if the seed is present in this specific X location
+        if not isinstance(seed_plate.get_sequence(sj, 2, si),
+                          str):  # checks to see if the seed is present in this specific X location
             if x_cargo_val > 0:
                 sel_x_plate = cargo_plate
                 x_h2_id = x_cargo_val
@@ -214,7 +232,8 @@ for i in range(32):
     else:
         sel_plate = cargo_plate
         cargo_id = single_crossbar_pattern[0, i]
-    crossbar_slat.set_handle(i + 1, 5, sel_plate.get_sequence(i + 1, 5, cargo_id), sel_plate.get_well(i + 1, 5, cargo_id), sel_plate.get_plate_name(i + 1, 5, cargo_id))
+    crossbar_slat.set_handle(i + 1, 5, sel_plate.get_sequence(i + 1, 5, cargo_id),
+                             sel_plate.get_well(i + 1, 5, cargo_id), sel_plate.get_plate_name(i + 1, 5, cargo_id))
     # crossbar_slat.set_handle(i + 1, 2, core_plate.get_sequence(i + 1, 2, i + 11), core_plate.get_well(i + 1, 2, i + 11), core_plate.get_plate_name(i + 1, 2, i + 11))
     # TODO: add Stella's biotin plate for H2 side here
 ########################################

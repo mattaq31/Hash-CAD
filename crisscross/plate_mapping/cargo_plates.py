@@ -36,3 +36,52 @@ class OctahedronPlate(BasePlate):
 
             self.wells[key] = well
             self.sequences[key] = seq
+
+
+class AntiNelsonQuimbyPlate(BasePlate):
+    """
+    Cargo plate (sw_src005) created by Stella containing Nelson and Quimby antiHandles for all 32 slat positions.
+    """
+    def __init__(self, *args, **kwargs):
+        self.cargo_key = {
+            'Nelson': 3,
+            'Quimby': 4
+        }
+        super().__init__(*args, **kwargs)
+
+    def identify_wells_and_sequences(self):
+        for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
+                                      self.plates[0]['well'].tolist(), self.plates[0]['sequence'].tolist()):
+            if 'Nelson' in pattern:
+                cargo = 'Nelson'
+            elif 'Quimby' in pattern:
+                cargo = 'Quimby'
+            else:  # everything else is unrelated and should be skipped (at least for now)
+                continue
+
+            key = (int(pattern.split('pos')[-1].split('-')[0]), 2, cargo)
+
+            self.wells[key] = well
+            self.sequences[key] = seq
+
+
+class DirectBiotinPlate(BasePlate):
+    """
+    Cargo plate (P3510_SSW) created by Stella containing various DNA paint handles (Fribourg collab)
+    and two additional H2 poly-T handles with biotin directly attached.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, plate_style='IDT_order')
+
+    def identify_wells_and_sequences(self):
+        for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
+                                      self.plates[0]['well'].tolist(), self.plates[0]['sequence'].tolist()):
+            if isinstance(pattern, float) and math.isnan(pattern):
+                continue
+            if 'Biotin' in pattern:
+                key = (int(pattern.split('pos')[-1].split('-')[0]), 2, 'biotin')
+            else:  # everything else is unrelated and should be skipped (at least for now)
+                continue
+
+            self.wells[key] = well
+            self.sequences[key] = seq

@@ -36,8 +36,8 @@ def read_design_from_excel(folder, x_sheet, y_sheet):
     TODO: what to do in case of multi-layer designs?
     """
 
-    YMask = np.loadtxt(folder + x_sheet, delimiter=",", dtype=int)
-    XMask = np.loadtxt(folder + y_sheet, delimiter=",", dtype=int)
+    XMask = np.loadtxt(folder + x_sheet, delimiter=",", dtype=int)
+    YMask = np.loadtxt(folder + y_sheet, delimiter=",", dtype=int)
 
     base_array = np.zeros((XMask.shape[0], XMask.shape[1], 2))
     base_array[..., 0] = XMask
@@ -149,7 +149,7 @@ def generate_handle_set_and_optimize(base_array, x_slats, y_slats, unique_sequen
             new_hamming = np.min(res)
             if new_hamming > best_hamming:
                 best_hamming = new_hamming
-                best_array = handle_array
+                best_array = np.copy(handle_array)
             pbar.update(1)
             pbar.set_postfix(**{'Latest Hamming Distance': new_hamming, 'Best Hamming Distance': best_hamming})
             if best_hamming >= min_hamming:
