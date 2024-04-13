@@ -142,7 +142,6 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
         raise ValueError('Invalid data type for plate input')
 
 
-# TODO: need to figure out mapping of each specific slatcore/seed plate to see how to combine things together...
 # just for testing
 if __name__ == '__main__':
 

@@ -51,7 +51,7 @@ class BasePlate:
 available_plate_loaders = {}
 functions_dir = os.path.join(base_directory, 'crisscross', 'plate_mapping')
 for file in os.listdir(functions_dir):
-    if file == '.DS_Store' or file == '__init__.py':
+    if file == '.DS_Store' or file == '__init__.py' or '.py' not in file:
         continue
     p = ast.parse(open(os.path.join(functions_dir, file), 'r').read())
     classes = [node.name for node in ast.walk(p) if isinstance(node, ast.ClassDef)]

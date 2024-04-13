@@ -3,16 +3,17 @@ import pandas as pd
 import os
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
+from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.core_functions.slat_design import (generate_standard_square_slats, generate_handle_set_and_optimize,
                                                    attach_cargo_handles_to_core_sequences, calculate_slat_hamming)
 from crisscross.core_functions.slats import Slat
 from crisscross.graphics.megastructures import generate_patterned_square_cco
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_handle_plates,
-                                                         seed_plug_plate_corner, octahedron_patterning_v1,
-                                                         cargo_plate_folder, nelson_quimby_antihandles,
-                                                         h2_biotin_direct)
+from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
+                                                         seed_plug_plate_corner, seed_plug_plate_center,
+                                                         octahedron_patterning_v1, cargo_plate_folder,
+                                                         nelson_quimby_antihandles, h2_biotin_direct)
 from crisscross.plate_mapping import get_plateclass
 
 ########################################
@@ -21,7 +22,7 @@ output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optica
 
 np.random.seed(8)
 read_handles_from_file = True
-read_cargo_patterns_from_file = True
+read_cargo_patterns_from_file = False
 ########################################
 
 ########################################
@@ -47,24 +48,25 @@ cargo_names = {**cargo_names, **crossbar_anti_names, **crossbar_names}
 ########################################
 # Plate sequences
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_handle_plates[3:], core_plate_folder)
-crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_handle_plates[0:3], core_plate_folder)
-seed_plate = get_plateclass('SeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
+crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], core_plate_folder, plate_slat_sides=[5, 5, 5])
+crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], core_plate_folder, plate_slat_sides=[5, 5, 5])
+seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
+center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
 ########################################
 
 ########################################
 # Shape generation and crisscross handle optimisation
-slat_array, x_slats, y_slats = generate_standard_square_slats(32)
+slat_array, unique_slats_per_layer = generate_standard_square_slats(32)
 # optimize handles
 if read_handles_from_file:
     handle_array = np.loadtxt(os.path.join(output_folder, 'optimized_handle_array.csv'), delimiter=',').astype(
         np.float32)
-    _, _, res = calculate_slat_hamming(slat_array, handle_array, x_slats, y_slats, unique_sequences=32)
+    handle_array = handle_array[..., np.newaxis]
+    _, _, res = calculate_slat_hamming(slat_array, handle_array, unique_slats_per_layer, unique_sequences=32)
     print('Hamming distance from file-loaded design: %s' % np.min(res))
 else:
-    handle_array = generate_handle_set_and_optimize(slat_array, x_slats, y_slats, unique_sequences=32,
-                                                    min_hamming=29, max_rounds=300)
-    np.savetxt(os.path.join(output_folder, 'optimized_handle_array.csv'), handle_array.astype(np.int32), delimiter=',',
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=150)
+    np.savetxt(os.path.join(output_folder, 'optimized_handle_array.csv'), handle_array.squeeze().astype(np.int32), delimiter=',',
                fmt='%i')
 ########################################
 
@@ -131,7 +133,7 @@ print('Total new sequences required: %s' % len(full_attachment_df))
 ########################################
 
 ########################################
-# generates new cargo plate or reads from file
+# generates new cargo plate or reads from file TODO: can a standard set of core plates be read within a single function?
 if read_cargo_patterns_from_file:
     cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, cargo_plate_folder)
 else:
@@ -152,235 +154,70 @@ nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles
 biotin_plate = get_plateclass('DirectBiotinPlate', h2_biotin_direct,
                               cargo_plate_folder)
 ########################################
+# preparing seed placements
+insertion_seed_array = np.arange(16) + 1
+insertion_seed_array = np.pad(insertion_seed_array[:, np.newaxis], ((0, 0), (4, 0)), mode='edge')
+
+corner_seed_array = np.zeros((32, 32))
+corner_seed_array[0:16, 0:5] = insertion_seed_array
+
+center_seed_array = np.zeros((32, 32))
+center_seed_array[8:24, 13:18] = insertion_seed_array
 
 ########################################
-# Generation of Echo Commands TODO: currently not in a function - how can I combine everything into a function without lots of fumbling around?
+# Preparing first design - cargo on top, crossbar on bottom
+megastructure = Megastructure(slat_array)
+megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
+megastructure.assign_seed_handles(corner_seed_array, seed_plate)
+megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
+megastructure.assign_cargo_handles(crossbar_pattern, cargo_plate, layer='bottom')
 
-all_slats = {}
-for x in x_slats:  # prepares slat classes in advance
-    all_slats['X%s' % int(x)] = Slat('core_x_%s' % int(x), 'X')
-for y in y_slats:
-    all_slats['Y%s' % int(y)] = Slat('core_y_%s' % int(y), 'Y')
-
-# TODO: this cannot be extended to non-square shapes in its current form!  Probably best to add position ID to slat array too
-# basic crisscross and cargo handle assignment
-for i in range(slat_array.shape[0]):
-    for j in range(slat_array.shape[1]):
-
-        x_cargo_val = crossbar_pattern[i, j]
-        y_cargo_val = cargo_pattern[i, j]
-        handle_val = handle_array[i, j]
-        si = i + 1  # slats/handles are 1-indexed
-        sj = j + 1
-
-        # H5 assignment
-        if handle_val == -1:  # no handle, just a blank staple
-            sel_x_plate = core_plate
-            sel_y_plate = core_plate
-            handle_val = 0  # TODO: can this inconsistency be fixed?
-        else:
-            sel_x_plate = crisscross_x_plates
-            sel_y_plate = crisscross_y_plates
-
-        all_slats['Y%s' % sj].set_handle(si, 5,
-                                         sel_y_plate.get_sequence(si, 5, handle_val),
-                                         sel_y_plate.get_well(si, 5, handle_val),
-                                         sel_y_plate.get_plate_name(si, 5, handle_val))
-        all_slats['X%s' % si].set_handle(sj, 5,
-                                         sel_x_plate.get_sequence(sj, 5, handle_val),
-                                         sel_x_plate.get_well(sj, 5, handle_val),
-                                         sel_x_plate.get_plate_name(sj, 5, handle_val))
-
-        # H2 assignment
-        if not isinstance(seed_plate.get_sequence(sj, 2, si), str):  # checks to see if the seed is present in this specific X location
-            if x_cargo_val > 0:
-                sel_x_plate = cargo_plate
-                x_h2_id = x_cargo_val
-            else:
-                sel_x_plate = core_plate
-                x_h2_id = 0
-        else:
-            sel_x_plate = seed_plate
-            x_h2_id = si
-
-        if y_cargo_val > 0:  # no cargo
-            sel_y_plate = cargo_plate
-            y_h2_id = y_cargo_val
-        else:
-            sel_y_plate = core_plate
-            y_h2_id = 0
-
-        all_slats['Y%s' % sj].set_handle(si, 2,
-                                         sel_y_plate.get_sequence(si, 2, y_h2_id),
-                                         sel_y_plate.get_well(si, 2, y_h2_id),
-                                         sel_y_plate.get_plate_name())
-        all_slats['X%s' % si].set_handle(sj, 2,
-                                         sel_x_plate.get_sequence(sj, 2, x_h2_id),
-                                         sel_x_plate.get_well(sj, 2, x_h2_id),
-                                         sel_x_plate.get_plate_name())
-
-# TODO: check transfer volume
-crossbar_slat = Slat('crossbar_slat', 'X')
+# custom slat for crossbar system TODO: is there a way to integrate this into the Megastructure class?
+crossbar_slat = Slat('crossbar_slat', 'Extra', 'N/A')
 for i in range(32):
-    if single_crossbar_pattern[0, i] == -1:
-        sel_plate = core_plate
-        cargo_id = 0
-    else:
+    if single_crossbar_pattern[0, i] != -1:
         sel_plate = cargo_plate
         cargo_id = single_crossbar_pattern[0, i]
-    crossbar_slat.set_handle(i + 1, 5, sel_plate.get_sequence(i + 1, 5, cargo_id),
-                             sel_plate.get_well(i + 1, 5, cargo_id), sel_plate.get_plate_name(i + 1, 5, cargo_id))
-
+        crossbar_slat.set_handle(i + 1, 5, sel_plate.get_sequence(i + 1, 5, cargo_id),
+                                 sel_plate.get_well(i + 1, 5, cargo_id), sel_plate.get_plate_name(i + 1, 5, cargo_id))
     # full biotin layer (anti-Nelson)
     crossbar_slat.set_handle(i + 1, 2,
-                             nelson_plate.get_sequence(i + 1, 2, 'Nelson'),
-                             nelson_plate.get_well(i + 1, 2, 'Nelson'),
-                             nelson_plate.get_plate_name(i + 1, 2, 'Nelson'))
+                             nelson_plate.get_sequence(i + 1, 2, 3),
+                             nelson_plate.get_well(i + 1, 2, 3),
+                             nelson_plate.get_plate_name(i + 1, 2, 3))
+megastructure.slats['crossbar'] = crossbar_slat
+megastructure.patch_control_handles(core_plate)
 
-all_slats['crossbar'] = crossbar_slat
-# final generation of commands
-convert_slats_into_echo_commands(all_slats, 'optical_base_plate', output_folder, 'all_echo_commands_with_crossbars.csv')
+convert_slats_into_echo_commands(megastructure.slats, 'optical_base_plate',
+                                 output_folder, 'all_echo_commands_with_crossbars.csv')
 ########################################
 # alternate design 1: nelson-biotin on the underside, with no crossbars
 biotin_underside_pattern = np.zeros_like(crossbar_pattern)
 biotin_underside_pattern[0, :] = 3
 biotin_underside_pattern[-1, :] = 3
 
-all_slats = {}
-for x in x_slats:  # prepares slat classes in advance
-    all_slats['X%s' % int(x)] = Slat('core_x_%s' % int(x), 'X')
-for y in y_slats:
-    all_slats['Y%s' % int(y)] = Slat('core_y_%s' % int(y), 'Y')
+alt_1_megastructure = Megastructure(slat_array)
+alt_1_megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
+alt_1_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
+alt_1_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
+alt_1_megastructure.assign_cargo_handles(biotin_underside_pattern, nelson_plate, layer='bottom')
+alt_1_megastructure.patch_control_handles(core_plate)
 
-# TODO: this cannot be extended to non-square shapes in its current form!  Probably best to add position ID to slat array too
-# basic crisscross and cargo handle assignment
-for i in range(slat_array.shape[0]):
-    for j in range(slat_array.shape[1]):
+convert_slats_into_echo_commands(alt_1_megastructure.slats, 'optical_base_plate',
+                                 output_folder, 'all_echo_commands_biotin_nelson_no_crossbars.csv')
 
-        x_cargo_val = biotin_underside_pattern[i, j]
-        if x_cargo_val == 3:
-            x_cargo_val = 'Nelson'
-        y_cargo_val = cargo_pattern[i, j]
-        handle_val = handle_array[i, j]
-        si = i + 1  # slats/handles are 1-indexed
-        sj = j + 1
-
-        # H5 assignment
-        if handle_val == -1:  # no handle, just a blank staple
-            sel_x_plate = core_plate
-            sel_y_plate = core_plate
-            handle_val = 0  # TODO: can this inconsistency be fixed?
-        else:
-            sel_x_plate = crisscross_x_plates
-            sel_y_plate = crisscross_y_plates
-
-        all_slats['Y%s' % sj].set_handle(si, 5,
-                                         sel_y_plate.get_sequence(si, 5, handle_val),
-                                         sel_y_plate.get_well(si, 5, handle_val),
-                                         sel_y_plate.get_plate_name(si, 5, handle_val))
-        all_slats['X%s' % si].set_handle(sj, 5,
-                                         sel_x_plate.get_sequence(sj, 5, handle_val),
-                                         sel_x_plate.get_well(sj, 5, handle_val),
-                                         sel_x_plate.get_plate_name(sj, 5, handle_val))
-
-        # H2 assignment
-        if not isinstance(seed_plate.get_sequence(sj, 2, si), str):  # checks to see if the seed is present in this specific X location
-            if x_cargo_val != 0:
-                sel_x_plate = nelson_plate
-                x_h2_id = x_cargo_val
-            else:
-                sel_x_plate = core_plate
-                x_h2_id = 0
-        else:
-            sel_x_plate = seed_plate
-            x_h2_id = si
-
-        if y_cargo_val > 0:  # no cargo
-            sel_y_plate = cargo_plate
-            y_h2_id = y_cargo_val
-        else:
-            sel_y_plate = core_plate
-            y_h2_id = 0
-
-        all_slats['Y%s' % sj].set_handle(si, 2,
-                                         sel_y_plate.get_sequence(si, 2, y_h2_id),
-                                         sel_y_plate.get_well(si, 2, y_h2_id),
-                                         sel_y_plate.get_plate_name())
-        all_slats['X%s' % si].set_handle(sj, 2,
-                                         sel_x_plate.get_sequence(sj, 2, x_h2_id),
-                                         sel_x_plate.get_well(sj, 2, x_h2_id),
-                                         sel_x_plate.get_plate_name())
-
-convert_slats_into_echo_commands(all_slats, 'optical_base_plate', output_folder, 'all_echo_commands_biotin_nelson_no_crossbars.csv')
 ########################################
 # alternate design 2: direct biotins on the underside, no crossbars
 biotin_underside_pattern = np.zeros_like(crossbar_pattern)
 biotin_underside_pattern[:, 0] = 3
 biotin_underside_pattern[:, -1] = 3
 
-all_slats = {}
-for x in x_slats:  # prepares slat classes in advance
-    all_slats['X%s' % int(x)] = Slat('core_x_%s' % int(x), 'X')
-for y in y_slats:
-    all_slats['Y%s' % int(y)] = Slat('core_y_%s' % int(y), 'Y')
+alt_2_megastructure = Megastructure(slat_array)
+alt_2_megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
+alt_2_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
+alt_2_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
+alt_2_megastructure.assign_cargo_handles(biotin_underside_pattern, biotin_plate, layer='bottom')
+alt_2_megastructure.patch_control_handles(core_plate)
 
-# TODO: this cannot be extended to non-square shapes in its current form!  Probably best to add position ID to slat array too
-# basic crisscross and cargo handle assignment
-for i in range(slat_array.shape[0]):
-    for j in range(slat_array.shape[1]):
-
-        x_cargo_val = biotin_underside_pattern[i, j]
-        if x_cargo_val == 3:
-            x_cargo_val = 'biotin'
-        y_cargo_val = cargo_pattern[i, j]
-        handle_val = handle_array[i, j]
-        si = i + 1  # slats/handles are 1-indexed
-        sj = j + 1
-
-        # H5 assignment
-        if handle_val == -1:  # no handle, just a blank staple
-            sel_x_plate = core_plate
-            sel_y_plate = core_plate
-            handle_val = 0  # TODO: can this inconsistency be fixed?
-        else:
-            sel_x_plate = crisscross_x_plates
-            sel_y_plate = crisscross_y_plates
-
-        all_slats['Y%s' % sj].set_handle(si, 5,
-                                         sel_y_plate.get_sequence(si, 5, handle_val),
-                                         sel_y_plate.get_well(si, 5, handle_val),
-                                         sel_y_plate.get_plate_name(si, 5, handle_val))
-        all_slats['X%s' % si].set_handle(sj, 5,
-                                         sel_x_plate.get_sequence(sj, 5, handle_val),
-                                         sel_x_plate.get_well(sj, 5, handle_val),
-                                         sel_x_plate.get_plate_name(sj, 5, handle_val))
-
-        # H2 assignment
-        if not isinstance(seed_plate.get_sequence(sj, 2, si), str):  # checks to see if the seed is present in this specific X location
-            if x_cargo_val != 0:
-                sel_x_plate = biotin_plate
-                x_h2_id = x_cargo_val
-            else:
-                sel_x_plate = core_plate
-                x_h2_id = 0
-        else:
-            sel_x_plate = seed_plate
-            x_h2_id = si
-
-        if y_cargo_val > 0:  # no cargo
-            sel_y_plate = cargo_plate
-            y_h2_id = y_cargo_val
-        else:
-            sel_y_plate = core_plate
-            y_h2_id = 0
-
-        all_slats['Y%s' % sj].set_handle(si, 2,
-                                         sel_y_plate.get_sequence(si, 2, y_h2_id),
-                                         sel_y_plate.get_well(si, 2, y_h2_id),
-                                         sel_y_plate.get_plate_name())
-        all_slats['X%s' % si].set_handle(sj, 2,
-                                         sel_x_plate.get_sequence(sj, 2, x_h2_id),
-                                         sel_x_plate.get_well(sj, 2, x_h2_id),
-                                         sel_x_plate.get_plate_name())
-
-convert_slats_into_echo_commands(all_slats, 'optical_base_plate', output_folder, 'all_echo_commands_direct_biotin_no_crossbars.csv')
+convert_slats_into_echo_commands(alt_2_megastructure.slats, 'optical_base_plate',
+                                 output_folder, 'all_echo_commands_direct_biotin_no_crossbars.csv')

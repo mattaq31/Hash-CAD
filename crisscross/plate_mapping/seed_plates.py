@@ -2,7 +2,7 @@ from crisscross.plate_mapping import BasePlate
 import math
 
 
-class SeedPlugPlate(BasePlate):
+class CornerSeedPlugPlate(BasePlate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -12,5 +12,22 @@ class SeedPlugPlate(BasePlate):
             if isinstance(pattern, float) and math.isnan(pattern):
                 continue
             key = (int(pattern.split('-')[2][1:]) + 1, 2, int(pattern.split('-')[1]))
+            self.wells[key] = well
+            self.sequences[key] = seq
+
+
+class CenterSeedPlugPlate(BasePlate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def identify_wells_and_sequences(self):
+        position_tracker = 1
+        for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
+                                      self.plates[0]['well'].tolist(), self.plates[0]['sequence'].tolist()):
+            if 'Oligo' in pattern:
+                continue
+            key = (int(pattern.split('.')[0][1:]) + 1, 2, position_tracker)
+            if key[0] == 18:
+                position_tracker += 1
             self.wells[key] = well
             self.sequences[key] = seq

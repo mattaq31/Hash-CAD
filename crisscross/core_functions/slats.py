@@ -5,12 +5,33 @@ class Slat:
     """
     Wrapper class to hold all of a slat's handles and related details.
     """
-    def __init__(self, ID, orientation, slat_length=32):
+    def __init__(self, ID, layer, slat_coordinates, slat_length=32):
         self.ID = ID
-        self.orientation = orientation
+        self.layer = layer
         self.max_length = slat_length
+
+        # converts coordinates on a 2d array to the handle number on the slat, and vice-versa
+        self.slat_position_to_coordinate = {}
+        self.slat_coordinate_to_position = {}
+        for index, coord in enumerate(slat_coordinates):
+            self.slat_position_to_coordinate[index+1] = tuple(coord)
+            self.slat_coordinate_to_position[tuple(coord)] = index + 1
+
         self.H2_handles = defaultdict(dict)
         self.H5_handles = defaultdict(dict)
+
+    def get_sorted_handles(self, side='h2'):
+        """
+        Returns a sorted list of all handles on the slat (as they can be jumbled up sometimes, depending on the order they were created).
+        :param side: h2 or h5
+        :return: tuple of handle ID and handle dict contents
+        """
+        if side == 'h2':
+            return sorted(self.H2_handles.items())
+        elif side == 'h5':
+            return sorted(self.H5_handles.items())
+        else:
+            raise RuntimeError('Wrong side specified (only h2 or h5 available)')
 
     def set_handle(self, handle_id, slat_side, sequence, well, plate_name):
         if handle_id < 1 or handle_id > self.max_length:

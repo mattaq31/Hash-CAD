@@ -2,7 +2,6 @@ import os
 
 dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
-
 def revcom(sequence):
     """
     Reverse complements a DNA sequence.

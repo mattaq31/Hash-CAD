@@ -44,8 +44,8 @@ class AntiNelsonQuimbyPlate(BasePlate):
     """
     def __init__(self, *args, **kwargs):
         self.cargo_key = {
-            'Nelson': 3,
-            'Quimby': 4
+            3: 'Nelson',
+            4: 'Quimby'
         }
         super().__init__(*args, **kwargs)
 
@@ -64,6 +64,12 @@ class AntiNelsonQuimbyPlate(BasePlate):
             self.wells[key] = well
             self.sequences[key] = seq
 
+    def get_sequence(self, slat_position, slat_side, cargo_id=0):
+        return self.sequences[(slat_position, slat_side, self.cargo_key[cargo_id])]
+
+    def get_well(self, slat_position, slat_side, cargo_id=0):
+        return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
+
 
 class DirectBiotinPlate(BasePlate):
     """
@@ -71,6 +77,9 @@ class DirectBiotinPlate(BasePlate):
     and two additional H2 poly-T handles with biotin directly attached.
     """
     def __init__(self, *args, **kwargs):
+        self.cargo_key = {
+            3: 'biotin',
+        }
         super().__init__(*args, **kwargs, plate_style='IDT_order')
 
     def identify_wells_and_sequences(self):
@@ -85,3 +94,9 @@ class DirectBiotinPlate(BasePlate):
 
             self.wells[key] = well
             self.sequences[key] = seq
+
+    def get_sequence(self, slat_position, slat_side, cargo_id=0):
+        return self.sequences[(slat_position, slat_side, self.cargo_key[cargo_id])]
+
+    def get_well(self, slat_position, slat_side, cargo_id=0):
+        return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
