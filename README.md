@@ -9,6 +9,7 @@ To install, navigate to the root directory and run:
 Separate packages required:
 - numpy
 - pandas
+- matplotlib
 - tqdm
 
 Best place to start is `scripts/optical_computing_collab/square_design_for_optical_computers.py`
