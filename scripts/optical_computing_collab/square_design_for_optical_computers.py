@@ -10,7 +10,8 @@ from crisscross.core_functions.slat_design import (generate_standard_square_slat
 from crisscross.core_functions.slats import Slat
 from crisscross.graphics.megastructures import generate_patterned_square_cco
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
+from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
+                                                         crisscross_h5_handle_plates,
                                                          seed_plug_plate_corner, seed_plug_plate_center,
                                                          octahedron_patterning_v1, cargo_plate_folder,
                                                          nelson_quimby_antihandles, h2_biotin_direct)
@@ -48,8 +49,8 @@ cargo_names = {**cargo_names, **crossbar_anti_names, **crossbar_names}
 ########################################
 # Plate sequences
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], core_plate_folder, plate_slat_sides=[5, 5, 5])
-crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], core_plate_folder, plate_slat_sides=[5, 5, 5])
+crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
 ########################################

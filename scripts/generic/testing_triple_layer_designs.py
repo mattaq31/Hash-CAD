@@ -6,7 +6,7 @@ from crisscross.core_functions.slat_design import (generate_standard_square_slat
 from crisscross.core_functions.slats import Slat
 from crisscross.plate_mapping import get_plateclass
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates,
+                                                         crisscross_h2_handle_plates, assembly_handle_folder,
                                                          seed_plug_plate_corner, seed_plug_plate_center,
                                                          octahedron_patterning_v1, cargo_plate_folder,
                                                          nelson_quimby_antihandles, h2_biotin_direct)
@@ -36,12 +36,12 @@ handle_array = generate_handle_set_and_optimize(base_array, unique_sequences=32,
 # Step 4 - generate dictionary of slats
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
 
-crisscross_handle_y_plates = get_plateclass('CrisscrossHandlePlates',
+crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
                                             crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates[3:],
-                                            core_plate_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-crisscross_antihandle_x_plates = get_plateclass('CrisscrossHandlePlates',
+                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[0:3] + crisscross_h2_handle_plates[0:3],
-                                                core_plate_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
 
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
@@ -59,7 +59,7 @@ cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, cargo_
 # _, _, res = calculate_slat_hamming(slat_array, handle_array[..., np.newaxis], unique_slats_per_layer, unique_sequences=32)
 # print(res)
 megastructure = Megastructure(base_array, None)
-megastructure.assign_crisscross_handles(handle_array, crisscross_antihandle_x_plates, crisscross_handle_y_plates)
+megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 
 seed_array = np.zeros((66, 66))
 

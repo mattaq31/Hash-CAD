@@ -8,7 +8,6 @@ from collections import defaultdict
 import pandas as pd
 
 # Creates the missing 6 plates for the H2 assembly handles
-
 crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], core_plate_folder)
 crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], core_plate_folder)
 crisscross_x_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_handle_plates[0:3], core_plate_folder, slat_side=2)
@@ -17,6 +16,7 @@ crisscross_y_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
 new_plates = defaultdict(list)
 
+# This convention does not match what we ended up using in the end - handles are x and antihandles are y
 antihandle_names = ['PX1_antihandle_SW_helix_2_assembly_handles', 'PX2_antihandle_SW_helix_2_assembly_handles', 'PX3_antihandle_SW_helix_2_assembly_handles']
 handle_names = ['PY1_handle_SW_helix_2_assembly_handles', 'PY2_handle_SW_helix_2_assembly_handles', 'PY3_handle_SW_helix_2_assembly_handles']
 
