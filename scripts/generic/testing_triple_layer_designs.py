@@ -13,11 +13,9 @@ from crisscross.helper_functions.plate_constants import (slat_core, core_plate_f
 import os
 
 # TODO: Areas that need to be upgraded to allow for non-square designs + multi-layer:
-# need to introduce 60deg slat system!
 # TODO: how to mandate direction of slats?
 
 # Step 1 - generate weird shaped design (maybe just the plus for now)
-
 folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/plus_design'
 
 base_array = read_design_from_excel(folder, sheets=('slats_bottom.csv', 'slats_middle.csv', 'slats_top.csv'))
@@ -37,11 +35,11 @@ handle_array = generate_handle_set_and_optimize(base_array, unique_sequences=32,
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
 
 crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                            crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates[3:],
+                                            crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
                                             assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
 crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[0:3] + crisscross_h2_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+                                                crisscross_h5_handle_plates[0:3],
+                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)

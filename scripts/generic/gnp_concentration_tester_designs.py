@@ -159,7 +159,6 @@ convert_slats_into_echo_commands(nucx_slats_nelson, 'gnp_replacement_plate',
                                  specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10'])
 
-
 combined_slats = {}
 
 for key, val in nucx_slats.items():
@@ -169,7 +168,6 @@ for key, val in nucx_slats.items():
 for key, val in nucx_slats_nelson.items():
     val.ID = 'nelson_no_gnp_MA006_' + val.ID
     combined_slats['nelson_no_gnp_MA006_' + key] = val
-
 
 # combined protocol for both designs
 convert_slats_into_echo_commands(combined_slats, 'gnp_replacement_plate',

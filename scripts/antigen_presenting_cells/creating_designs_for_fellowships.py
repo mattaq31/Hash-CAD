@@ -16,7 +16,7 @@ dim_size = 66
 xsize = 32
 ysize = 32
 alpha = 0.2
-slatPadding = 0.25
+slatPadding = 0.2
 
 pattern_array = np.zeros((dim_size, dim_size))
 total_antigens = 196

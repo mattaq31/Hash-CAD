@@ -98,7 +98,7 @@ def calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, uni
     # TODO: is it worth only computing hamming distances for individual layers rather than the entire set of slats all at once?
     individal_layer_combos = [single_combo * individual_layer_slat_count[i] * individual_layer_slat_count[i+1] for i in range(handle_array.shape[-1])]
 
-    # TODO: these numbers are the same - is there a case where they aren't?
+    # these slat counts assume each layer has the maximum amount of handles, even if some will be replaced by control handles.  This is to simplify the computation logic.
     handle_slat_counts = individual_layer_slat_count[:-1]
     antihandle_slat_counts = individual_layer_slat_count[1:]
 
@@ -120,7 +120,9 @@ def calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, uni
     for i, (handle_slat, antihandle_slat) in enumerate(product(handle_slats_with_layers, anti_handle_slats_with_layers)):
         h_layer, h_slat_id = handle_slat[0], handle_slat[1]
         ah_layer, ah_slat_id = antihandle_slat[0], antihandle_slat[1]
-        cm1_insertion_array = handle_array[base_array[..., h_layer] == h_slat_id, h_layer]  # pre-computes to save time
+        cm1_insertion_array = handle_array[base_array[..., h_layer] == h_slat_id, h_layer] # slat directions are computed top-down, left-right
+
+        # pre-computes to save time
         for j in range(unique_sequences):
             # 4 combinations:
             # 1. X vs Y, rotation to the left

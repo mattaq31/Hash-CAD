@@ -13,24 +13,23 @@ class Megastructure:
         E.g. for a 2 layer design, [2, 5, 2] implies that the bottom layer will have H2 handles sticking out,
         the connecting interface will have H5 handles and the top layer will have H2 handles again.
         TODO: add number of handles per slat (i.e. 32 for now)
+        TODO: how do we consider the additional 12nm/6nm on either end of the slat?
         """
         self.slat_array = slat_array
         self.handle_arrays = None
         self.slats = {}
         self.num_layers = slat_array.shape[2]
-        if not layer_interface_orientations:  # if none supplied, assuming alternating 2->5->2->5...
-            self.layer_interface_orientations = [2, 5] * (self.num_layers - 1)
-            if self.num_layers % 2 == 0:
-                self.layer_interface_orientations.append(2)
+        if not layer_interface_orientations:  # if no custom interface supplied, assuming alternating H2/H5 handles, with H2 at the bottom, H5 at the top, and alternating connections in between
+            self.layer_interface_orientations = [2] + [(5, 2)] * (self.num_layers-1) + [5]
         else:
             self.layer_interface_orientations = layer_interface_orientations
-        # e.g. for a 3-layer structure, layer_interface_orientations = [2, 5, 2, 5]
-        # TODO: assumes 5' will always match 5' - does this need to be enforced?
-        # TODO: will the slat coordinate list match the correct orientation/direction?
+        # e.g. for a 3-layer structure, layer_interface_orientations = [2, (5, 2), (5,2), 5]
+
         for layer in range(self.num_layers):
             for slat_id in np.unique(slat_array[:, :, layer]):
-                if slat_id == 0:
+                if slat_id <= 0:  # removes any non-slat markers
                     continue
+                # slat coordinates are read in top-bottom, left-right
                 slat_coords = np.argwhere(slat_array[:, :, layer] == slat_id).tolist()
                 # generates a set of empty slats matching the design array
                 self.slats[self.get_slat_key(layer + 1, int(slat_id))] = Slat(
@@ -39,7 +38,7 @@ class Megastructure:
     def create_combined_graphical_view(self):
         """
         Creates combined arrays of all handles/cargo for plotting.
-        TODO: make this function air-tight.
+        TODO: This function is only good for the top/bottom layers - needs to be improved for a full all-layer view.
         :return:
         """
         # TODO: can consider adding cargo name to slat H2/H5 handles dict too for easy identication
@@ -80,13 +79,13 @@ class Megastructure:
         """
         return f'layer{layer}-slat{int(slat_id)}'
 
-    def assign_crisscross_handles(self, handle_arrays, crisscross_x_plates, crisscross_y_plates):
+    def assign_crisscross_handles(self, handle_arrays, crisscross_handle_plates, crisscross_antihandle_plates):
         """
         Assigns crisscross handles to the slats based on the handle arrays provided.
         :param handle_arrays: 3D array of handle values (X, Y, layer) where each value corresponds to a handle ID.
-        :param crisscross_x_plates: Crisscross handle plates for the X interface.
-        :param crisscross_y_plates: Crisscross handle plates for the Y interface. TODO: convert to handle/anti-handle when confirmed
-        :return:
+        :param crisscross_handle_plates: Crisscross handle plates.
+        :param crisscross_antihandle_plates: Crisscross anti-handle plates.
+        :return: N/A
         """
 
         if handle_arrays.shape[2] != self.num_layers - 1:
@@ -99,18 +98,18 @@ class Megastructure:
             handle_layers = []
             handle_plates = []
             if slat.layer == 1:  # only one interface since slat is at the bottom of the stack
-                slat_crisscross_interfaces.append(self.layer_interface_orientations[1])
+                slat_crisscross_interfaces.append(self.layer_interface_orientations[1][0])
                 handle_layers.append(0)
-                handle_plates.append(crisscross_x_plates)
+                handle_plates.append(crisscross_handle_plates)
             elif slat.layer == self.num_layers:  # only one interface since slat is at the top of the stack
-                slat_crisscross_interfaces.append(self.layer_interface_orientations[-2])
+                slat_crisscross_interfaces.append(self.layer_interface_orientations[-2][1])
                 handle_layers.append(-1)
-                handle_plates.append(crisscross_y_plates)
+                handle_plates.append(crisscross_antihandle_plates)
             else:  # two interfaces otherwise
-                slat_crisscross_interfaces.extend(self.layer_interface_orientations[slat.layer - 1:slat.layer + 1])
+                slat_crisscross_interfaces.extend([self.layer_interface_orientations[slat.layer - 1][1], self.layer_interface_orientations[slat.layer][0]])
                 handle_layers.extend([slat.layer - 2, slat.layer - 1])
-                handle_plates.extend([crisscross_y_plates,
-                                      crisscross_x_plates])  # handle orientation always assumed to follow same pattern
+                handle_plates.extend([crisscross_antihandle_plates,
+                                      crisscross_handle_plates])  # handle orientation always assumed to follow same pattern TODO: maybe make this customizable?
 
             for slat_position_index in range(slat.max_length):
                 coords = slat.slat_position_to_coordinate[slat_position_index + 1]
@@ -124,7 +123,7 @@ class Megastructure:
                                                sel_plates.get_plate_name(slat_position_index + 1, slat_side,
                                                                          handle_val))
 
-    def assign_seed_handles(self, seed_array, seed_plate):
+    def assign_seed_handles(self, seed_array, seed_plate, layer_id=1):
         """
         Assigns seed handles to the slats based on the seed array provided.
         :param seed_array: 2D array with positioning of seed.  Each row of the seed should have a unique ID.
@@ -133,13 +132,13 @@ class Megastructure:
         seed_coords = np.where(seed_array > 0)
         # TODO: more checks to ensure seed placement fits all parameters?
         for y, x in zip(seed_coords[0], seed_coords[1]):
-            selected_slat = self.slats[self.get_slat_key(1, self.slat_array[y, x, 0])]
+            selected_slat = self.slats[self.get_slat_key(layer_id, self.slat_array[y, x, layer_id-1])]
             slat_position = selected_slat.slat_coordinate_to_position[(y, x)]
             seed_value = seed_array[y, x]
             if not isinstance(seed_plate.get_sequence(slat_position, 2, seed_value), str):
                 raise RuntimeError('Seed plate selected cannot support placement on canvas.')
 
-            selected_slat.set_handle(slat_position, 2,
+            selected_slat.set_handle(slat_position, 2, # TODO: what if we need to attach a seed to the H5 side?
                                      seed_plate.get_sequence(slat_position, 2, seed_value),
                                      seed_plate.get_well(slat_position, 2, seed_value),
                                      seed_plate.get_plate_name())
@@ -152,7 +151,7 @@ class Megastructure:
         :param layer: Either 'top' or 'bottom' layer
         """
         # TODO: what to do if there are multiple cargo plates?
-        # TODO: what to do if there are string  ids instead of float ids?
+        # TODO: what to do if there are string ids instead of float ids?
         cargo_coords = np.where(cargo_array > 0)
         if layer == 'top':
             handle_orientation = self.layer_interface_orientations[-1]

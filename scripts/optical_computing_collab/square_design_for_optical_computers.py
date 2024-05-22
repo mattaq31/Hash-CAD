@@ -10,6 +10,7 @@ from crisscross.core_functions.slat_design import (generate_standard_square_slat
 from crisscross.core_functions.slats import Slat
 from crisscross.graphics.megastructures import generate_patterned_square_cco
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
+from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
                                                          crisscross_h5_handle_plates,
                                                          seed_plug_plate_corner, seed_plug_plate_center,
@@ -20,6 +21,7 @@ from crisscross.plate_mapping import get_plateclass
 ########################################
 # script setup
 output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_feb_2024'
+create_dir_if_empty(output_folder)
 
 np.random.seed(8)
 read_handles_from_file = True
@@ -167,7 +169,7 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 
 ########################################
 # Preparing first design - cargo on top, crossbar on bottom
-megastructure = Megastructure(slat_array)
+megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
 megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
 megastructure.assign_seed_handles(corner_seed_array, seed_plate)
 megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
@@ -197,7 +199,7 @@ biotin_underside_pattern = np.zeros_like(crossbar_pattern)
 biotin_underside_pattern[0, :] = 3
 biotin_underside_pattern[-1, :] = 3
 
-alt_1_megastructure = Megastructure(slat_array)
+alt_1_megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
 alt_1_megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
 alt_1_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
 alt_1_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
@@ -213,7 +215,7 @@ biotin_underside_pattern = np.zeros_like(crossbar_pattern)
 biotin_underside_pattern[:, 0] = 3
 biotin_underside_pattern[:, -1] = 3
 
-alt_2_megastructure = Megastructure(slat_array)
+alt_2_megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
 alt_2_megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
 alt_2_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
 alt_2_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')

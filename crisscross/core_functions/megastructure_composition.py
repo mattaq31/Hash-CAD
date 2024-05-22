@@ -8,18 +8,28 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
     # echo command prep
     complete_list = []
+
+    if len(slat_dict) > len(plate96):
+        print('Too many slats for one plate, splitting into multiple plates.')
+
     for index, (_, slat) in enumerate(slat_dict.items()):
-        if specific_plate_wells:
+        sel_plate_name = destination_plate_name
+        if specific_plate_wells:  # TODO: this probably won't work if there are multiple plates
             well = specific_plate_wells[index]
         else:
-            well = plate96[index]
+            if index // len(plate96) > 0:
+                sel_plate_name = destination_plate_name + '_%s' % ((index // len(plate96)) + 1)
+                well = plate96[index % len(plate96)]
+            else:
+                well = plate96[index]
+
         for h2_num, h2 in slat.get_sorted_handles('h2'):
             complete_list.append([slat.ID + '_h2_staple_%s' % h2_num, h2['plate'], h2['well'],
-                                  well, transfer_volume, destination_plate_name, source_plate_type])
+                                  well, transfer_volume, sel_plate_name, source_plate_type])
 
         for h5_num, h5 in slat.get_sorted_handles('h5'):
             complete_list.append([slat.ID + '_h5_staple_%s' % h5_num, h5['plate'], h5['well'],
-                                  well, transfer_volume, destination_plate_name, source_plate_type])
+                                  well, transfer_volume, sel_plate_name, source_plate_type])
 
     combined_df = pd.DataFrame(complete_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                        'Destination Well', 'Transfer Volume',
