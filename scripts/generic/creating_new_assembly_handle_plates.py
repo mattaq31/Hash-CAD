@@ -8,7 +8,7 @@ from collections import defaultdict
 import pandas as pd
 
 # Creates the missing 6 plates for the H2 assembly handles
-crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], core_plate_folder)
+crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], core_plate_folder) 
 crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], core_plate_folder)
 crisscross_x_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_handle_plates[0:3], core_plate_folder, slat_side=2)
 crisscross_y_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_handle_plates[0:3], core_plate_folder, slat_side=2)
