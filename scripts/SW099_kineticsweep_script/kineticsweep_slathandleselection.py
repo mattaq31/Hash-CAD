@@ -42,7 +42,7 @@ if ReadHandlesFromFile:  # this is to re-load a pre-computed handle array and sa
         try:
             HandleArray[..., i] = np.loadtxt(os.path.join(DesignFolder, OutputFilePrefix + "%s.csv" % (i+1)), delimiter=',').astype(np.float32)
         except FileNotFoundError:
-            print("No handle array file was found. Switch 'HandlesFromFile' flag to False and try again.")
+            raise RuntimeError("No handle array file was found. Switch 'HandlesFromFile' flag to False and try again.")
 
     UniqueSlatsPerLayer = [] # Count the number of slats in the design
     for i in range(SlatArray.shape[2]):
@@ -54,7 +54,7 @@ if ReadHandlesFromFile:  # this is to re-load a pre-computed handle array and sa
     print('Hamming distance from file-loaded design: %s' % np.min(res))
 
 else:
-    HandleArray = generate_handle_set_and_optimize(SlatArray, unique_sequences=32, min_hamming=29, max_rounds=10) ###
+    HandleArray = generate_handle_set_and_optimize(SlatArray, unique_sequences=32, min_hamming=29, max_rounds=1000) 
     for i in range(HandleArray.shape[-1]):
         np.savetxt(os.path.join(DesignFolder, OutputFilePrefix + "%s.csv" % (i+1)),
                    HandleArray[..., i].astype(np.int32), delimiter=',', fmt='%i')
@@ -68,10 +68,10 @@ CrisscrossHandleXPlates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[0:3],
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 CenterSeedPlate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-CargoPlate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder) ### Need to populate plate database with sw_src005!
+CargoPlate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder) 
 
 # Combines handle and slat array into the megastructure
-KineticMegastructure = Megastructure(SlatArray, None)
+KineticMegastructure = Megastructure(SlatArray, [2, (5, 5), 2])
 KineticMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Prepare the seed layer and assign to array
@@ -86,5 +86,6 @@ KineticMegastructure.assign_cargo_handles(CargoArray, CargoPlate, layer='top')
 KineticMegastructure.patch_control_handles(CorePlate)
 
 # Exports design to echo format csv file for production
-convert_slats_into_echo_commands(KineticMegastructure.slats, 'kineticsweep', DesignFolder, 'all_echo_commands.csv')
+convert_slats_into_echo_commands(KineticMegastructure.slats, 'kineticsweep', DesignFolder, 'all_echo_commands.csv',
+                                 transfer_volume=100)
 ...
