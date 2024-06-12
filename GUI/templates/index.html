@@ -30,11 +30,14 @@
                     <li>Cargo</li>
                     <li>Handle</li>
                 </ul>
-                <ul class="utility-list">
-                    <li>Draw</li>
-                    <li>Erase</li>
-                    <li>Move</li>
-                </ul>
+                <form class="edit-mode-selector">
+                    <input type="radio" id="draw" name="editMode" value="DRAW">
+                    <label for="draw">Draw</label><br>
+                    <input type="radio" id="erase" name="editMode" value="ERASE">
+                    <label for="erase">Erase</label><br>
+                    <input type="radio" id="move" name="editMode" value="MOVE">
+                    <label for="move">Move</label>
+                </form> 
             </div>
             <div class="layers">
                 <h2>Layer Manager</h2>
@@ -57,9 +60,9 @@
             </div>
         </div>
         <div class="right-panel" id="right-panel">
-            <!--   <div id="svg-container"></div>   -->
+            <div id="svg-container"></div>   
 
-            <canvas id="main-canvas" width="500" height="800">
+            <!--  <canvas id="main-canvas" width="500" height="800">-->
 
             </canvas>
             
@@ -68,8 +71,8 @@
     </div>
 
     
-    <script type="module" src="{{url_for('static', filename='scripts/fabricscript.js')}}"></script>
-    <!-- <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script> -->
+    <!--<script type="module" src="{{url_for('static', filename='scripts/fabricscript.js')}}"></script> -->
+    <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script>
 </body>
 
 

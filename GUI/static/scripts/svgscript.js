@@ -1,7 +1,7 @@
 
 SVG.on(document, 'DOMContentLoaded', function() {
     
-
+    
 
     //Configure Grid
     var minorGridSize = 10; // size of the grid squares
@@ -108,12 +108,16 @@ SVG.on(document, 'DOMContentLoaded', function() {
         roundedY = Math.round(mouseY/(minorGridSize*scaling))*minorGridSize ;
     });
 
+    //ID counter for slat IDs
+    let slatCounter = 0;
 
     // Event listener to print slat when mouse is pressed
     targetElement.addEventListener('pointerdown', (event) => {
         if(disablePanStatus == true){
             console.log(`Rounded mouse position - X: ${roundedX}, Y: ${roundedY}`);
-            draw.line(roundedX, roundedY, roundedX, roundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
+            let tmpLine = draw.line(roundedX, roundedY, roundedX, roundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
+            tmpLine.attr('id','ID:L'+'#' + slatCounter)
+            slatCounter += 1;
 
         }        
     });
