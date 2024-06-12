@@ -12,6 +12,9 @@
     <!-- Include Panzoom.js -->
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 
+    <!-- Includ Fabric.js -->
+    <script src="https://cdn.jsdelivr.net/npm/fabric"></script>
+
 </head>
 
 <body>
@@ -53,18 +56,20 @@
 
             </div>
         </div>
-        <div class="right-panel">
-            <div id="svg-container">
-            
-            </div>
+        <div class="right-panel" id="right-panel">
+            <!--   <div id="svg-container"></div>   -->
+
+            <canvas id="main-canvas" width="500" height="800">
+
+            </canvas>
             
         </div>
         
     </div>
 
     
-
-    <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script> 
+    <script type="module" src="{{url_for('static', filename='scripts/fabricscript.js')}}"></script>
+    <!-- <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script> -->
 </body>
 
 

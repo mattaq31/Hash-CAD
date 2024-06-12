@@ -52,3 +52,12 @@ body{
 .settings {
     background-color:rgb(255, 252, 226);
 }
+
+.main-canvas {
+    width: 1000px;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+}
