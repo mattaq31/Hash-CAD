@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrisscrossDesigner</title>
+    
+    <!-- We need to include a link to the SVG library!--> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.16/svg.min.js"></script>
+
+    <!-- Include Panzoom.js -->
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+
+</head>
+
+<body>
+    <h1>Welcome to the Crisscross Designer</h1>
+
+    <div class="main-window">
+        <div class="left-panel">
+            <h1>Menu</h1>
+            <div class="palette">
+                <h2>Palette</h2>
+                <ul class="draw-list">
+                    <li>Slat</li>
+                    <li>Cargo</li>
+                    <li>Handle</li>
+                </ul>
+                <ul class="utility-list">
+                    <li>Draw</li>
+                    <li>Erase</li>
+                    <li>Move</li>
+                </ul>
+            </div>
+            <div class="layers">
+                <h2>Layer Manager</h2>
+            </div>
+            <div class="settings">
+                <h2>Settings</h2>
+                <div class="graph-settings">
+                    <ul class="toggle-graph">
+                        <li>Graph On</li>
+                        <li>Dots On</li>
+                        <li>Graph Off</li>
+                    </ul>
+                    <ul class="configure-graph">
+                        <li>Minor Gridsize</li>
+                        <li>Major Gridsize</li>
+                        <li>Weight</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+        <div class="right-panel">
+            <div id="svg-container">
+            
+            </div>
+            
+        </div>
+        
+    </div>
+
+    
+
+    <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script> 
+</body>
+
+
+</html>

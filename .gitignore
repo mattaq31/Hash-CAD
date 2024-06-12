@@ -134,3 +134,6 @@ scratch/*
 
 # temporary excel files
 ~$*
+
+# GUI node modules
+GUI/node_modules
