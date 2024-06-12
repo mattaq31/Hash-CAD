@@ -143,7 +143,7 @@ class Megastructure:
                                      seed_plate.get_well(slat_position, 2, seed_value),
                                      seed_plate.get_plate_name())
 
-    def assign_cargo_handles(self, cargo_array, cargo_plate, layer='top'):
+    def assign_cargo_handles(self, cargo_array, cargo_plate, layer='top', force_handle_orientation=None):
         """
         Assigns cargo handles to the slats based on the cargo array provided.
         :param cargo_array: 2D array containing cargo IDs (must match plate provided).
@@ -159,6 +159,9 @@ class Megastructure:
         elif layer == 'bottom':
             handle_orientation = self.layer_interface_orientations[0]
             sel_layer = 1
+        elif isinstance(layer, int):  # TODO: THIS NEEDS TO BE DOCUMENTED PROPERLY
+            handle_orientation = force_handle_orientation
+            sel_layer = layer
         else:
             raise RuntimeError('Can only specify cargo on the bottom or top layers.')
 
