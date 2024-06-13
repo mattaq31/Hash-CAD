@@ -51,6 +51,20 @@ function drawGrid(gridGroup, width, height, style, majorSize, minorSize) {
 
 
 
+
+
+// Function to check if a point is on any existing line
+function isPointOnLine(drawing, x, y) {
+    const lines = drawing.find('.line');
+    return lines.some(line => {
+      const bbox = line.bbox();
+      return (
+        x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2
+      );
+    });
+  }
+
+
 SVG.on(document, 'DOMContentLoaded', function() {
     
     
@@ -58,73 +72,37 @@ SVG.on(document, 'DOMContentLoaded', function() {
     //Configure Grid
     var minorGridSize = 10; // size of the grid squares
     var majorGridSize = 5*minorGridSize;
-    var gridStyle = 2; //0 for off, 1 for grid, 2 for dots
+    var gridStyle = 1; //0 for off, 1 for grid, 2 for dots
     var width = document.getElementById('svg-container').getBoundingClientRect().width
     var height = document.getElementById('svg-container').getBoundingClientRect().height
     
     var fullDrawing = SVG().addTo('#svg-container').size(width, height)
     
+    //Layers
     var drawGridLayer = fullDrawing.group();
     var draw = fullDrawing.group();
 
+    //Initialize Grid
+    drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
+
     
     //Calibration Figures to Mark Locations
-    draw.rect(100,100).attr({fill: '#f00'}).move(0.25*width,0.25*height)
-    draw.rect(100,100).attr({fill: '#ff0'}).move(0.5*width,0.5*height)
+    draw.rect(100,100).attr({fill: '#f00'}).move(0.25*width,0.25*height).draggable()
+    draw.rect(100,100).attr({fill: '#ff0'}).move(0.5*width,0.5*height).draggable()
 
 
-    var radios = document.querySelectorAll('input[name="graphMode');
+    //Change grid configuration by radio buttons
+        //Get radio buttons
+        var radios = document.querySelectorAll('input[name="graphMode');
 
-    //Add a change event listener to each radio button:
-    radios.forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            gridStyle = this.value;
-            drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
+        //Add a change event listener to each radio button:
+        radios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                gridStyle = this.value;
+                drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
 
+            })
         })
-    })
-
-    //drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
-
-    
-/*
-    //Drawing the grid itself:
-    if(gridStyle != 0){
-        // Draw vertical lines
-        //Minor
-        for (var x = 0; x < width; x += minorGridSize) {
-            let tmpLine = drawGridLayer.line(x, 0, x, height).stroke({ width: 0.5, color:'#000'})
-            if(gridStyle==2){
-                tmpLine.stroke({dasharray:`${minorGridSize*0.1},${minorGridSize*0.9}`, dashoffset:`${minorGridSize*0.05}`})
-            }
-        }
-
-        //Major
-        for (var x = 0; x < width; x += majorGridSize) {
-            let tmpLine = drawGridLayer.line(x, 0, x, height).stroke({ width: 1, color:'#000' })
-            if(gridStyle==2){
-                tmpLine.stroke({dasharray:`${majorGridSize*0.05},${majorGridSize*0.95}`, dashoffset:`${majorGridSize*0.025}`})
-            }
-        }
-
-        // Draw horizontal lines
-        //Minor
-        for (var y = 0; y < height; y += minorGridSize) {
-            let tmpLine = drawGridLayer.line(0, y, width, y).stroke({ width: 0.5, color:'#000'})
-            if(gridStyle==2){
-                tmpLine.stroke({dasharray:`${minorGridSize*0.1},${minorGridSize*0.9}`, dashoffset:`${minorGridSize*0.05}`})
-            }
-        }
-
-        //Major
-        for (var y = 0; y < height; y += majorGridSize) {
-            let tmpLine = drawGridLayer.line(0, y, width, y).stroke({ width: 1, color:'#000' })
-            if(gridStyle==2){
-                tmpLine.stroke({dasharray:`${majorGridSize*0.05},${majorGridSize*0.95}`, dashoffset:`${majorGridSize*0.025}`})
-            }
-        }
-    }
-*/
 
 
     const svgcontainer = document.getElementById('svg-container')
@@ -202,9 +180,16 @@ SVG.on(document, 'DOMContentLoaded', function() {
     targetElement.addEventListener('pointerdown', (event) => {
         if(disablePanStatus == true){
             console.log(`Rounded mouse position - X: ${roundedX}, Y: ${roundedY}`);
-            let tmpLine = draw.line(roundedX, roundedY, roundedX, roundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
-            tmpLine.attr('id','ID-L'+'-N' + slatCounter)
-            slatCounter += 1;
+
+            if(!isPointOnLine(draw, roundedX, roundedY)   && !isPointOnLine(draw, roundedX, roundedY + 32 * minorGridSize)){
+                let tmpLine = draw.line(roundedX, roundedY, roundedX, roundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
+                tmpLine.attr('id','ID-L'+'-N' + slatCounter)
+                tmpLine.attr('class',"line")
+                tmpLine.draggable();
+                slatCounter += 1;
+
+            }
+            
 
         }        
     });
@@ -213,84 +198,3 @@ SVG.on(document, 'DOMContentLoaded', function() {
 })
     
 
-
-
-
-
-
-
-
-
-
-    
-    /*
-    
-
-*/
-
-    
-
-
-
-
-
-    //var rect = draw.rect(300, 300).fill(pattern1).move(100,100);
-    //rect.fill(pattern)
-
-
-    /* 
-
-    // Create a group for the grid and other elements
-    var gridGroup = draw.group();
-
-    // Function to create the grid
-    function createGrid() {
-        var gridSize = 50; // size of the grid squares
-        var width = draw.width();
-        var height = draw.height();
-
-        // Draw vertical lines
-        for (var x = 0; x < width; x += gridSize) {
-            gridGroup.line(x, 0, x, height).stroke({ width: 5, color:'#000000' });
-        }
-
-        // Draw horizontal lines
-        for (var y = 0; y < height; y += gridSize) {
-            gridGroup.line(0, y, width, y).stroke({ width: 5, color: '#000000' });
-        }
-    }
-
-    // Create the grid
-    createGrid();
-
-    // Add other SVG elements if needed
-    var rect = gridGroup.rect(100, 100).move(200, 200).fill('#f06');
-
-    // Initialize Panzoom
-    var panZoom = Panzoom(draw.node, {
-        contain: 'outside',
-        minScale: 0.5,
-        maxScale: 4
-    });
-
-    // Make the SVG container zoomable and pannable
-    draw.on('wheel', function(event) {
-        if (event.ctrlKey) {
-            event.preventDefault();
-            panZoom.zoomWithWheel(event);
-        }
-    });
-
-    // Prevent the default behavior of the mouse down event
-    draw.on('mousedown', function(event) {
-        event.preventDefault();
-    });
-
-    // Enable panning on mouse drag
-    draw.on('mousemove', function(event) {
-        if (event.buttons === 1) { // If left mouse button is held down
-            panZoom.pan(event.movementX, event.movementY);
-        }
-    });
-
-*/

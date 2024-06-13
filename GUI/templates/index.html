@@ -13,7 +13,13 @@
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 
     <!-- Includ Fabric.js -->
-    <script src="https://cdn.jsdelivr.net/npm/fabric"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/fabric"></script> -->
+
+    <!-- Include SVG.draggable.js -->
+    <script src="https://cdn.jsdelivr.net/gh/svgdotjs/svg.draggable.js/dist/svg.draggable.min.js"></script>
+
+    <!-- <script src="node_modules/@svgdotjs/svg.draggable.js/dist/svg.draggable.js"></script> -->
+    
 
 </head>
 
@@ -46,7 +52,7 @@
                 <h2>Settings</h2>
                 <div class="graph-settings">
                     <form class="graph-mode-selector">
-                        <input type="radio" id="gridStyle" name="graphMode" value=1>
+                        <input type="radio" id="gridStyle" name="graphMode" value=1 checked=true>
                         <label for="gridStyle">Grid</label><br>
                         <input type="radio" id="dotStyle" name="graphMode" value=2>
                         <label for="dotsStyle">Dots</label><br>
