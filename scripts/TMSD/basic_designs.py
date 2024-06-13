@@ -6,7 +6,8 @@ from matplotlib.patches import Rectangle
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import (generate_standard_square_slats, generate_handle_set_and_optimize, calculate_slat_hamming)
+from crisscross.core_functions.slat_design import (generate_standard_square_slats, generate_handle_set_and_optimize,
+                                                   calculate_slat_hamming)
 from crisscross.core_functions.slats import Slat
 
 from crisscross.helper_functions import create_dir_if_empty
@@ -27,8 +28,8 @@ read_handles_from_file = True
 # Plate sequences
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
 crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                            crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+                                                crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
+                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
 crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3],
                                             assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
@@ -56,7 +57,8 @@ if read_handles_from_file:
     print('Hamming distance from file-loaded design: %s' % np.min(res))
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=150)
-    np.savetxt(os.path.join(output_folder, 'optimized_handle_array.csv'), handle_array.squeeze().astype(np.int32), delimiter=',',
+    np.savetxt(os.path.join(output_folder, 'optimized_handle_array.csv'), handle_array.squeeze().astype(np.int32),
+               delimiter=',',
                fmt='%i')
 
 # This is a padded handle array to match the invader version of the design
@@ -72,7 +74,7 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 
 # as before, this prepares a padded version of the seed array
 padded_center_seed_array = np.zeros((72, 34))
-padded_center_seed_array[8+20:24+20, 13+1:18+1] = insertion_seed_array
+padded_center_seed_array[8 + 20:24 + 20, 13 + 1:18 + 1] = insertion_seed_array
 
 ########################################
 # Preparing the megastructure
@@ -104,10 +106,12 @@ tmsd_slat_invader_1.slat_coordinates = 'N/A'
 
 # Preparing invader design 2 (knock-out i.e. incumbent strand is completely detached from the megastructure after invasion)
 padded_handle_array_extended = np.copy(padded_handle_array)
-padded_handle_array_extended[4:20, slat_invader_placement, 0] = 17 # the incumbent strand now needs handles to be able to 'hybridise'.  In this case I hard-coded them all to handle 17.  We can also consider hamming-optimizing this slat too.
+padded_handle_array_extended[4:20, slat_invader_placement,
+0] = 17  # the incumbent strand now needs handles to be able to 'hybridise'.  In this case I hard-coded them all to handle 17.  We can also consider hamming-optimizing this slat too.
 
 M_inv_2 = Megastructure(padded_slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M_inv_2.assign_crisscross_handles(padded_handle_array_extended, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M_inv_2.assign_crisscross_handles(padded_handle_array_extended, crisscross_handle_x_plates,
+                                  crisscross_antihandle_y_plates)
 M_inv_2.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 M_inv_2.patch_control_handles(core_plate)
 
@@ -118,43 +122,62 @@ tmsd_slat_invader_2 = Slat('INVADER 2', 'FLOATING', 'N/A')
 for slat_position in range(1, 33):
     if slat_position < 17:  # this is the first half of the invader, which matches the jutting out region of the incumbent
         tmsd_slat_invader_2.set_handle(slat_position, 5,
-                                   crisscross_handle_x_plates.get_sequence(slat_position, 5, 17),
-                                   crisscross_handle_x_plates.get_well(slat_position, 5, 17),
-                                   crisscross_handle_x_plates.get_plate_name(slat_position, 5, 17))
+                                       crisscross_handle_x_plates.get_sequence(slat_position, 5, 17),
+                                       crisscross_handle_x_plates.get_well(slat_position, 5, 17),
+                                       crisscross_handle_x_plates.get_plate_name(slat_position, 5, 17))
     else:  # this is the second half of the invader, matching the specific assembly handles of the megastructure, which I get from the original handle array
         tmsd_slat_invader_2.set_handle(slat_position, 5,
-                                   crisscross_handle_x_plates.get_sequence(slat_position, 5, handle_array[slat_position-17, slat_invader_placement-1, 0]),
-                                   crisscross_handle_x_plates.get_well(slat_position, 5, handle_array[slat_position-17, slat_invader_placement-1, 0]),
-                                   crisscross_handle_x_plates.get_plate_name(slat_position, 5, handle_array[slat_position-17, slat_invader_placement-1, 0]))
+                                       crisscross_handle_x_plates.get_sequence(slat_position, 5, handle_array[
+                                           slat_position - 17, slat_invader_placement - 1, 0]),
+                                       crisscross_handle_x_plates.get_well(slat_position, 5, handle_array[
+                                           slat_position - 17, slat_invader_placement - 1, 0]),
+                                       crisscross_handle_x_plates.get_plate_name(slat_position, 5, handle_array[
+                                           slat_position - 17, slat_invader_placement - 1, 0]))
 
     # full anti-Nelson H2 layer is included to allow for fluorophore handles to be attached
     tmsd_slat_invader_2.set_handle(slat_position, 2,
-                             nelson_plate.get_sequence(slat_position, 2, 3),
-                             nelson_plate.get_well(slat_position, 2, 3),
-                             nelson_plate.get_plate_name(slat_position, 2, 3))
+                                   nelson_plate.get_sequence(slat_position, 2, 3),
+                                   nelson_plate.get_well(slat_position, 2, 3),
+                                   nelson_plate.get_plate_name(slat_position, 2, 3))
 ################################
 # Combining all slats together into the final echo protocol
 
 full_slat_dict = {}
 for key, slat in M1.slats.items():
-    if 'layer1' in key: # X-slats are consistent for all designs
+    if 'layer1' in key:  # X-slats are consistent for all designs
         full_slat_dict[key] = slat
-    elif int(key.split('slat')[-1]) < slat_invader_placement or int(key.split('slat')[-1]) > 24:  # The first 16 Y-slats are also consistent for all designs, as well as the final 8 slats
+    elif int(key.split('slat')[-1]) < slat_invader_placement or int(key.split('slat')[
+                                                                        -1]) > 24:  # The first 16 Y-slats are also consistent for all designs, as well as the final 8 slats
         full_slat_dict[key] = slat
 
 # the next 8 slats in the list include the remaining control y handles, of which the first one actually also doubles as the first invader slat
 full_slat_dict['INVADER 1 + control handle 17'] = tmsd_slat_invader_1
 for i in range(7):
-    full_slat_dict['layer2-slat%s' % (slat_invader_placement + 1 + i)] = M1.slats['layer2-slat%s' % (slat_invader_placement + 1 + i)]
+    full_slat_dict['layer2-slat%s' % (slat_invader_placement + 1 + i)] = M1.slats[
+        'layer2-slat%s' % (slat_invader_placement + 1 + i)]
 
 # finally, the next 3 slats include the 2 incumbent slats as well as the final invader slat
 full_slat_dict['INCUMBENT STRAND 1'] = M_inv.slats['layer2-slat%s' % slat_invader_placement]
 full_slat_dict['INCUMBENT STRAND 1'].ID = 'INCUMBENT STRAND 1'
+
+# extension to knock-in tests that prepares an additional 7 incumbent slats, each one with a slightly shorter toehold region
+for i in range(1, 8):
+    new_slat = copy.deepcopy(full_slat_dict['INCUMBENT STRAND 1'])
+    new_slat.ID = 'INCUMBENT STRAND 1-%s' % (i + 1)
+    for j in range(16 + (i * 2)):
+        handle_val = handle_array[j, slat_invader_placement - 1, 0]
+        new_slat.set_handle(17 - (i*2) + j, 2,
+                            crisscross_antihandle_y_plates.get_sequence(17 - (i*2) + j, 2, handle_val),
+                            crisscross_antihandle_y_plates.get_well(17 - (i*2) + j, 2, handle_val),
+                            crisscross_antihandle_y_plates.get_plate_name(17 - (i*2) + j, 2, handle_val))
+    full_slat_dict[new_slat.ID] = new_slat
+
 full_slat_dict['INCUMBENT STRAND 2'] = M_inv_2.slats['layer2-slat%s' % slat_invader_placement]
 full_slat_dict['INCUMBENT STRAND 2'].ID = 'INCUMBENT STRAND 2'
 full_slat_dict['INVADER 2'] = tmsd_slat_invader_2
 
-specific_plate_wells = plate96[0:32] + plate96[36:36+24] + plate96[60:60+8] + plate96[72:72+3]  # different groups are split into different rows for convenience
+specific_plate_wells = plate96[0:32] + plate96[36:36 + 24] + plate96[60:60 + 8] + plate96[72:72 + 8] + plate96[
+                                                                                                       84:86]  # different groups are split into different rows for convenience
 
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',
