@@ -1,4 +1,56 @@
 
+function drawGrid(gridGroup, width, height, style, majorSize, minorSize) {
+    //Grid style: 
+        //0 corresponds to no grid
+        //1 corresponds to normal grid
+        //2 corresponds to dot grid
+    
+    //First reset grid:
+    gridGroup.clear()
+
+    //Now draw the grid itself:
+    if(style != 0){
+        // Draw vertical lines
+        //Minor
+        for (var x = 0; x < width; x += minorSize) {
+            let tmpLine = gridGroup.line(x, 0, x, height).stroke({ width: 0.5, color:'#000'})
+            if(style==2){
+                tmpLine.stroke({dasharray:`${minorSize*0.1},${minorSize*0.9}`, dashoffset:`${minorSize*0.05}`})
+            }
+        }
+
+        //Major
+        for (var x = 0; x < width; x += majorSize) {
+            let tmpLine = gridGroup.line(x, 0, x, height).stroke({ width: 1, color:'#000' })
+            if(style==2){
+                tmpLine.stroke({dasharray:`${majorSize*0.05},${majorSize*0.95}`, dashoffset:`${majorSize*0.025}`})
+            }
+        }
+
+        // Draw horizontal lines
+        //Minor
+        for (var y = 0; y < height; y += minorSize) {
+            let tmpLine = gridGroup.line(0, y, width, y).stroke({ width: 0.5, color:'#000'})
+            if(style==2){
+                tmpLine.stroke({dasharray:`${minorSize*0.1},${minorSize*0.9}`, dashoffset:`${minorSize*0.05}`})
+            }
+        }
+
+        //Major
+        for (var y = 0; y < height; y += majorSize) {
+            let tmpLine = gridGroup.line(0, y, width, y).stroke({ width: 1, color:'#000' })
+            if(style==2){
+                tmpLine.stroke({dasharray:`${majorSize*0.05},${majorSize*0.95}`, dashoffset:`${majorSize*0.025}`})
+            }
+        }
+    }
+    
+    
+    return gridGroup;
+  }
+
+
+
 SVG.on(document, 'DOMContentLoaded', function() {
     
     
@@ -6,38 +58,73 @@ SVG.on(document, 'DOMContentLoaded', function() {
     //Configure Grid
     var minorGridSize = 10; // size of the grid squares
     var majorGridSize = 5*minorGridSize;
+    var gridStyle = 2; //0 for off, 1 for grid, 2 for dots
     var width = document.getElementById('svg-container').getBoundingClientRect().width
     var height = document.getElementById('svg-container').getBoundingClientRect().height
     
-    var draw = SVG().addTo('#svg-container').size(width, height)
+    var fullDrawing = SVG().addTo('#svg-container').size(width, height)
+    
+    var drawGridLayer = fullDrawing.group();
+    var draw = fullDrawing.group();
+
     
     //Calibration Figures to Mark Locations
     draw.rect(100,100).attr({fill: '#f00'}).move(0.25*width,0.25*height)
     draw.rect(100,100).attr({fill: '#ff0'}).move(0.5*width,0.5*height)
 
 
+    var radios = document.querySelectorAll('input[name="graphMode');
+
+    //Add a change event listener to each radio button:
+    radios.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            gridStyle = this.value;
+            drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
+
+        })
+    })
+
+    //drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
+
+    
+/*
     //Drawing the grid itself:
-    // Draw vertical lines
+    if(gridStyle != 0){
+        // Draw vertical lines
         //Minor
         for (var x = 0; x < width; x += minorGridSize) {
-            draw.line(x, 0, x, height).stroke({ width: 0.5, color:'#000' })
+            let tmpLine = drawGridLayer.line(x, 0, x, height).stroke({ width: 0.5, color:'#000'})
+            if(gridStyle==2){
+                tmpLine.stroke({dasharray:`${minorGridSize*0.1},${minorGridSize*0.9}`, dashoffset:`${minorGridSize*0.05}`})
+            }
         }
 
         //Major
         for (var x = 0; x < width; x += majorGridSize) {
-            draw.line(x, 0, x, height).stroke({ width: 1, color:'#000' })
+            let tmpLine = drawGridLayer.line(x, 0, x, height).stroke({ width: 1, color:'#000' })
+            if(gridStyle==2){
+                tmpLine.stroke({dasharray:`${majorGridSize*0.05},${majorGridSize*0.95}`, dashoffset:`${majorGridSize*0.025}`})
+            }
         }
 
-    // Draw horizontal lines
+        // Draw horizontal lines
         //Minor
         for (var y = 0; y < height; y += minorGridSize) {
-            draw.line(0, y, width, y).stroke({ width: 0.5, color:'#000' })
+            let tmpLine = drawGridLayer.line(0, y, width, y).stroke({ width: 0.5, color:'#000'})
+            if(gridStyle==2){
+                tmpLine.stroke({dasharray:`${minorGridSize*0.1},${minorGridSize*0.9}`, dashoffset:`${minorGridSize*0.05}`})
+            }
         }
 
         //Major
         for (var y = 0; y < height; y += majorGridSize) {
-            draw.line(0, y, width, y).stroke({ width: 1, color:'#000' })
+            let tmpLine = drawGridLayer.line(0, y, width, y).stroke({ width: 1, color:'#000' })
+            if(gridStyle==2){
+                tmpLine.stroke({dasharray:`${majorGridSize*0.05},${majorGridSize*0.95}`, dashoffset:`${majorGridSize*0.025}`})
+            }
         }
+    }
+*/
 
 
     const svgcontainer = document.getElementById('svg-container')
@@ -116,7 +203,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         if(disablePanStatus == true){
             console.log(`Rounded mouse position - X: ${roundedX}, Y: ${roundedY}`);
             let tmpLine = draw.line(roundedX, roundedY, roundedX, roundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
-            tmpLine.attr('id','ID:L'+'#' + slatCounter)
+            tmpLine.attr('id','ID-L'+'-N' + slatCounter)
             slatCounter += 1;
 
         }        

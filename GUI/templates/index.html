@@ -45,11 +45,14 @@
             <div class="settings">
                 <h2>Settings</h2>
                 <div class="graph-settings">
-                    <ul class="toggle-graph">
-                        <li>Graph On</li>
-                        <li>Dots On</li>
-                        <li>Graph Off</li>
-                    </ul>
+                    <form class="graph-mode-selector">
+                        <input type="radio" id="gridStyle" name="graphMode" value=1>
+                        <label for="gridStyle">Grid</label><br>
+                        <input type="radio" id="dotStyle" name="graphMode" value=2>
+                        <label for="dotsStyle">Dots</label><br>
+                        <input type="radio" id="noStyle" name="graphMode" value=0>
+                        <label for="noStyle">None</label>
+                    </form> 
                     <ul class="configure-graph">
                         <li>Minor Gridsize</li>
                         <li>Major Gridsize</li>
