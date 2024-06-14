@@ -18,6 +18,14 @@ let placeRoundedY = 0;                  //Snapped posiiton of mouse (Y)
 //For drag & drop
 var activeLayer = null;
 
+//Layers
+let layerList = new Map();
+let layerArray = null
+
+//Opacity
+let shownOpacity = 0.7
+let hiddenOpacity = 0.2
+
 
 ///////////////////////////////
 //     Helper Functions!     //
@@ -76,8 +84,8 @@ function drawGrid(gridGroup, width, height, style, majorSize, minorSize) {
 
 
 // Check if a point is on any existing line
-function isPointOnLine(activeLayer, x, y, selectedLine = false) {
-    const lines = activeLayer.find('.line');
+function isPointOnLine(Layer, x, y, selectedLine = false) {
+    const lines = Layer.find('.line');
     return lines.some(line => {
       
       //Check if overlapping with any lines in general
@@ -168,8 +176,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
     
     //Layers
     var drawGridLayer = fullDrawing.group();
-    var draw = fullDrawing.group();
-    activeLayer = draw
+    //var draw = fullDrawing.group();
+    //activeLayer = draw
 
     //Initialize Grid
     drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
@@ -260,9 +268,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
         if(disablePanStatus == true){
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
-            if(!isPointOnLine(draw, placeRoundedX, placeRoundedY)   && !isPointOnLine(draw, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
-                let tmpLine = draw.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
-                                  .stroke({ width: 3, color:'#076900', opacity: 0.75 });
+            if(!isPointOnLine(activeLayer, placeRoundedX, placeRoundedY)   && !isPointOnLine(activeLayer, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
+                let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
+                                         .stroke({ width: 3, color:'#076900', opacity: shownOpacity });
                 tmpLine.attr('id','ID-L'+'-N' + slatCounter)
                 tmpLine.attr('class',"line")
                 tmpLine.attr({ 'pointer-events': 'stroke' })
@@ -282,27 +290,34 @@ SVG.on(document, 'DOMContentLoaded', function() {
     //Layers Event Listeners
     document.addEventListener('layerAdded', (event) => {
         console.log(`Layer added: ${event.detail.layerId}`, event.detail.layerElement);
-        // Handle layer added
+        //Layer added
+        layerList.set(event.detail.layerId, fullDrawing.group());
     });
 
     document.addEventListener('layerRemoved', (event) => {
         console.log(`Layer removed: ${event.detail.layerId}`, event.detail.layerElement);
-        // Handle layer removed
+        //Layer removed
+        layerList.get(event.detail.layerId).remove()
+        layerList.delete(event.detail.layerId)
     });
 
     document.addEventListener('layerShown', (event) => {
         console.log(`Layer shown: ${event.detail.layerId}`, event.detail.layerElement);
         // Handle layer shown
+        layerList.get(event.detail.layerId).attr('opacity',shownOpacity)
     });
 
     document.addEventListener('layerHidden', (event) => {
         console.log(`Layer hidden: ${event.detail.layerId}`, event.detail.layerElement);
         // Handle layer hidden
+        layerList.get(event.detail.layerId).attr('opacity',hiddenOpacity)
+        
     });
 
     document.addEventListener('layerMarkedActive', (event) => {
         console.log(`Layer marked active: ${event.detail.layerId}`, event.detail.layerElement);
         // Handle layer marked active
+        activeLayer = layerList.get(event.detail.layerId)
     });
         
 
