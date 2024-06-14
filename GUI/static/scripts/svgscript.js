@@ -15,6 +15,9 @@ let dragOffset = { x: 0, y: 0 };        //Offset between mouse position and item
 let placeRoundedX = 0;                  //Snapped position of mouse (X)
 let placeRoundedY = 0;                  //Snapped posiiton of mouse (Y)
 
+//For drag & drop
+var activeLayer = null;
+
 
 ///////////////////////////////
 //     Helper Functions!     //
@@ -73,12 +76,24 @@ function drawGrid(gridGroup, width, height, style, majorSize, minorSize) {
 
 
 // Check if a point is on any existing line
-function isPointOnLine(drawing, x, y) {
-    const lines = drawing.find('.line');
+function isPointOnLine(activeLayer, x, y, selectedLine = false) {
+    const lines = activeLayer.find('.line');
     return lines.some(line => {
-      const bbox = line.bbox();
+      
+      //Check if overlapping with any lines in general
+        const bbox = line.bbox();
+        let onOther = (x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2)
+      
+      //Check if overlapping with self (but only if a self is given!)
+        let selfBbox = null;
+        let onItself = false
+        if(selectedLine){
+            selfBbox = selectedLine.bbox();
+            onItself = (x >= selfBbox.x && x <= selfBbox.x2 && y >= selfBbox.y && y <= selfBbox.y2)
+        }
+      
       return (
-        x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2
+        onOther && (!onItself)
       );
     });
   }
@@ -114,7 +129,10 @@ function drag(event) {
         let roundedX = Math.round(point.x/(minorGridSize))*minorGridSize ;
         let roundedY = Math.round(point.y/(minorGridSize))*minorGridSize ;   
 
-        dragSelectedElement.move(roundedX, roundedY);
+        if(!isPointOnLine(activeLayer, roundedX, roundedY, dragSelectedElement)   && !isPointOnLine(activeLayer, roundedX, roundedY + 32 * minorGridSize, dragSelectedElement)){
+            dragSelectedElement.move(roundedX, roundedY);
+        }
+
         console.log("Im moving!")
     }
 }
@@ -151,6 +169,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
     //Layers
     var drawGridLayer = fullDrawing.group();
     var draw = fullDrawing.group();
+    activeLayer = draw
 
     //Initialize Grid
     drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
@@ -242,19 +261,15 @@ SVG.on(document, 'DOMContentLoaded', function() {
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
             if(!isPointOnLine(draw, placeRoundedX, placeRoundedY)   && !isPointOnLine(draw, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
-                let tmpLine = draw.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
+                let tmpLine = draw.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
+                                  .stroke({ width: 3, color:'#076900', opacity: 0.75 });
                 tmpLine.attr('id','ID-L'+'-N' + slatCounter)
                 tmpLine.attr('class',"line")
                 tmpLine.attr({ 'pointer-events': 'stroke' })
                 slatCounter += 1;
 
-
-                //Experimental: dragging
-
-                // Attach event listener using SVG.js method
+                //Adding draggability:
                 tmpLine.on('pointerdown', startDrag)
-                
-                
                 
 
             }

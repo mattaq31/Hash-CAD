@@ -24,7 +24,10 @@
 </head>
 
 <body>
-    <h1>Welcome to the Crisscross Designer</h1>
+    <div class="heading">
+        <h1>Crisscross Designer</h1>
+    </div>
+    
 
     <div class="main-window">
         <div class="left-panel">
@@ -47,6 +50,10 @@
             </div>
             <div class="layers">
                 <h2>Layer Manager</h2>
+                <div id="layer-manager">
+                    <div id="layer-list"></div>
+                    <button id="add-layer">Add Layer</button>
+                </div>
             </div>
             <div class="settings">
                 <h2>Settings</h2>
@@ -82,6 +89,7 @@
     
     <!--<script type="module" src="{{url_for('static', filename='scripts/fabricscript.js')}}"></script> -->
     <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='scripts/layermanager.js')}}"></script>
 </body>
 
 
