@@ -94,7 +94,7 @@ M_inv.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 # adds 16 Nelson handles to allow attachment of fluorescent strands (they are attached to the H2 side of the incumbent strand)
 cargo_array = np.zeros(padded_slat_array.shape[0:2])
 cargo_array[4:20, slat_invader_placement] = 3
-M_inv.assign_cargo_handles(cargo_array, nelson_plate, 2, force_handle_orientation=2)
+M_inv.assign_cargo_handles(cargo_array, nelson_plate, 2, requested_handle_orientation=2)
 M_inv.patch_control_handles(core_plate)
 
 # The actual invader for this design is simply the actual control y-slat, so a copy will be made here
@@ -146,8 +146,7 @@ full_slat_dict = {}
 for key, slat in M1.slats.items():
     if 'layer1' in key:  # X-slats are consistent for all designs
         full_slat_dict[key] = slat
-    elif int(key.split('slat')[-1]) < slat_invader_placement or int(key.split('slat')[
-                                                                        -1]) > 24:  # The first 16 Y-slats are also consistent for all designs, as well as the final 8 slats
+    elif int(key.split('slat')[-1]) < slat_invader_placement or int(key.split('slat')[-1]) > 24:  # The first 16 Y-slats are also consistent for all designs, as well as the final 8 slats
         full_slat_dict[key] = slat
 
 # the next 8 slats in the list include the remaining control y handles, of which the first one actually also doubles as the first invader slat
@@ -176,8 +175,7 @@ full_slat_dict['INCUMBENT STRAND 2'] = M_inv_2.slats['layer2-slat%s' % slat_inva
 full_slat_dict['INCUMBENT STRAND 2'].ID = 'INCUMBENT STRAND 2'
 full_slat_dict['INVADER 2'] = tmsd_slat_invader_2
 
-specific_plate_wells = plate96[0:32] + plate96[36:36 + 24] + plate96[60:60 + 8] + plate96[72:72 + 8] + plate96[
-                                                                                                       84:86]  # different groups are split into different rows for convenience
+specific_plate_wells = plate96[0:32] + plate96[36:36 + 24] + plate96[60:60 + 8] + plate96[72:72 + 8] + plate96[84:86]  # different groups are split into different rows for convenience
 
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',

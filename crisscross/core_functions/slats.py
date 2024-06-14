@@ -1,5 +1,5 @@
 from collections import defaultdict
-
+from colorama import Fore
 
 class Slat:
     """
@@ -38,11 +38,11 @@ class Slat:
             raise RuntimeError('Handle ID out of range')
         if slat_side == 2:
             if handle_id in self.H2_handles:
-                print('WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID))
+                print(Fore.RED + 'WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID))
             self.H2_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name}
         elif slat_side == 5:
             if handle_id in self.H5_handles:
-                print('WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID))
+                print(Fore.RED + 'WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID))
             self.H5_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name}
         else:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')

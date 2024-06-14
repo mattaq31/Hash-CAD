@@ -3,6 +3,7 @@ import os
 import copy
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
@@ -94,7 +95,7 @@ M_inv.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 # adds 16 Nelson handles to allow attachment of fluorescent strands (they are attached to the H2 side of the incumbent strand)
 cargo_array = np.zeros(padded_slat_array.shape[0:2])
 cargo_array[4:20, slat_invader_placement] = 3
-M_inv.assign_cargo_handles(cargo_array, nelson_plate, 2, force_handle_orientation=2)
+M_inv.assign_cargo_handles(cargo_array, nelson_plate, 2, requested_handle_orientation=2)
 M_inv.patch_control_handles(core_plate)
 
 # The actual invader for this design is simply the actual control y-slat, so a copy will be made here
@@ -167,6 +168,8 @@ convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',
                                  transfer_volume=all_transfer_volumes,
                                  specific_plate_wells=specific_plate_wells)
+
+print (Fore.GREEN + 'Design complete, no errors found.')
 
 ####### PLOTTING VISUALIZATION
 fig, ax = plt.subplots(figsize=(10, 10))

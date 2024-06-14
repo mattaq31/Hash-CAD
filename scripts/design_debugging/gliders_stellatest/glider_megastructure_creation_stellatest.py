@@ -117,7 +117,7 @@ if read_handles_from_file:  # this is to re-load a pre-computed handle array and
     _, _, res = calculate_slat_hamming(slat_array, handle_array, unique_slats_per_layer, unique_sequences=32)
     print('Hamming distance from file-loaded design: %s' % np.min(res))
 else:
-    np.random.seed(808) # Do this again for each new roll of the dice
+    np.random.seed(808)  # Do this again for each new roll of the dice
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=400)
     for i in range(handle_array.shape[-1]):
         np.savetxt(os.path.join(design_folder, 'optimized_handle_array_layer_%s.csv' % (i+1)),
