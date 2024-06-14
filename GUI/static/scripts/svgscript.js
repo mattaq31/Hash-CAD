@@ -118,14 +118,18 @@ function startDrag(event) {
         
     dragSelectedElement = event.target.instance;
 
-    const point = dragSelectedElement.point(event.clientX, event.clientY);
+    if(activeLayer.children().includes(dragSelectedElement)){
+        const point = dragSelectedElement.point(event.clientX, event.clientY);
     
-    dragOffset.x = point.x - dragSelectedElement.x();
-    dragOffset.y = point.y - dragSelectedElement.y();
+        dragOffset.x = point.x - dragSelectedElement.x();
+        dragOffset.y = point.y - dragSelectedElement.y();
 
-    // Add event listeners for drag and end drag
-    document.addEventListener('pointermove', drag)
-    document.addEventListener('pointerup', endDrag);    
+        // Add event listeners for drag and end drag
+        document.addEventListener('pointermove', drag)
+        document.addEventListener('pointerup', endDrag);
+    }
+
+        
   }
 
 //Actually drag the element
@@ -318,6 +322,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log(`Layer marked active: ${event.detail.layerId}`, event.detail.layerElement);
         // Handle layer marked active
         activeLayer = layerList.get(event.detail.layerId)
+
+
     });
         
 
