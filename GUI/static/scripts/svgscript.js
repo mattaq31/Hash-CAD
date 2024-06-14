@@ -176,8 +176,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     
     //Calibration Figures to Mark Locations
-    draw.rect(100,100).attr({fill: '#f00'}).move(0.25*width,0.25*height).draggable()
-    draw.rect(100,100).attr({fill: '#ff0'}).move(0.5*width,0.5*height).draggable().onClick = function() { console.log("clicked!"); };
+    //draw.rect(100,100).attr({fill: '#f00'}).move(0.25*width,0.25*height).draggable()
+    //draw.rect(100,100).attr({fill: '#ff0'}).move(0.5*width,0.5*height).draggable().onClick = function() { console.log("clicked!"); };
 
 
     //Change grid configuration by radio buttons
@@ -278,6 +278,33 @@ SVG.on(document, 'DOMContentLoaded', function() {
         }        
     });
 
+
+    //Layers Event Listeners
+    document.addEventListener('layerAdded', (event) => {
+        console.log(`Layer added: ${event.detail.layerId}`, event.detail.layerElement);
+        // Handle layer added
+    });
+
+    document.addEventListener('layerRemoved', (event) => {
+        console.log(`Layer removed: ${event.detail.layerId}`, event.detail.layerElement);
+        // Handle layer removed
+    });
+
+    document.addEventListener('layerShown', (event) => {
+        console.log(`Layer shown: ${event.detail.layerId}`, event.detail.layerElement);
+        // Handle layer shown
+    });
+
+    document.addEventListener('layerHidden', (event) => {
+        console.log(`Layer hidden: ${event.detail.layerId}`, event.detail.layerElement);
+        // Handle layer hidden
+    });
+
+    document.addEventListener('layerMarkedActive', (event) => {
+        console.log(`Layer marked active: ${event.detail.layerId}`, event.detail.layerElement);
+        // Handle layer marked active
+    });
+        
 
 
 
