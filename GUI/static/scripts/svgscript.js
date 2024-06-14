@@ -1,3 +1,19 @@
+///////////////////////////////
+//     Global Variables!     //
+///////////////////////////////
+
+//Configure grid
+var minorGridSize = 10;                 //Size of minor grid squares
+var majorGridSize = 5*minorGridSize;    //Size of major grid squares
+var gridStyle = 1;                      //0 for off, 1 for grid, 2 for dots
+
+//For dragging
+let dragSelectedElement = null;         //Item selected to drag
+let dragOffset = { x: 0, y: 0 };        //Offset between mouse position and item position
+
+//For adding elements
+let placeRoundedX = 0;                  //Snapped position of mouse (X)
+let placeRoundedY = 0;                  //Snapped posiiton of mouse (Y)
 
 
 ///////////////////////////////
@@ -73,40 +89,33 @@ function isPointOnLine(drawing, x, y) {
 //       Drag and Drop       //
 ///////////////////////////////
 
-let selectedElement = null;
-let offset = { x: 0, y: 0 };
 
 //Start dragging
-function startDrag(event, minorGridSize, scale) {
+function startDrag(event) {
         
-    selectedElement = event.target.instance;
+    dragSelectedElement = event.target.instance;
 
-    const point = selectedElement.point(event.clientX, event.clientY);
-    offset.x = point.x - selectedElement.x();
-    offset.y = point.y - selectedElement.y();
+    const point = dragSelectedElement.point(event.clientX, event.clientY);
+    
+    dragOffset.x = point.x - dragSelectedElement.x();
+    dragOffset.y = point.y - dragSelectedElement.y();
 
     // Add event listeners for drag and end drag
-    //document.addEventListener('pointermove', drag);
-    document.addEventListener('pointermove', function(event) {    
-        drag(event, point, minorGridSize, scale);
-    });
-    
-
+    document.addEventListener('pointermove', drag)
     document.addEventListener('pointerup', endDrag);    
   }
 
 //Actually drag the element
-function drag(event, oldPoint, minorGridSize, scale) {
-    if (selectedElement) {
-
-        let point = selectedElement.point(event.clientX, event.clientY) 
-        point.x = point.x - offset.x
-        point.y = point.y - offset.y
+function drag(event) {
+    if (dragSelectedElement) {
+        let point = dragSelectedElement.point(event.clientX, event.clientY) 
+        point.x = point.x - dragOffset.x
+        point.y = point.y - dragOffset.y
         let roundedX = Math.round(point.x/(minorGridSize))*minorGridSize ;
         let roundedY = Math.round(point.y/(minorGridSize))*minorGridSize ;   
 
-        //console.log("Moved to "+roundedX +" "+roundedY)
-        selectedElement.move(roundedX, roundedY);
+        dragSelectedElement.move(roundedX, roundedY);
+        console.log("Im moving!")
     }
 }
 
@@ -114,7 +123,10 @@ function drag(event, oldPoint, minorGridSize, scale) {
 // Function to end dragging
 function endDrag() {
     
-    selectedElement = null;
+    console.log("Dragging ended!")
+    dragSelectedElement = null;
+    dragOffset.x = 0
+    dragOffset.y = 0
 
     // Remove event listeners for drag and end drag
     document.removeEventListener('pointermove', drag);
@@ -130,15 +142,10 @@ function endDrag() {
 
 SVG.on(document, 'DOMContentLoaded', function() {
     
-    
-
     //Configure Grid
-    var minorGridSize = 10; // size of the grid squares
-    var majorGridSize = 5*minorGridSize;
-    var gridStyle = 1; //0 for off, 1 for grid, 2 for dots
+    
     var width = document.getElementById('svg-container').getBoundingClientRect().width
     var height = document.getElementById('svg-container').getBoundingClientRect().height
-    
     var fullDrawing = SVG().addTo('#svg-container').size(width, height)
     
     //Layers
@@ -211,24 +218,16 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
 
-
-
     const targetElement = document.getElementById('svg-container');
-    let mouseX = 0;
-    let mouseY = 0;
-
-    let roundedX = 0;
-    let roundedY = 0;
     
-
     // Event listener to track mouse movement over the target element
     targetElement.addEventListener('mousemove', (event) => {
         // Calculate mouse position relative to the element
-        selectedElement = event.target.instance;
+        let selectedElement = event.target.instance;
         let mousePoints = selectedElement.point(event.clientX, event.clientY);
         
-        roundedX = Math.round(mousePoints.x/(minorGridSize))*minorGridSize ;
-        roundedY = Math.round(mousePoints.y/(minorGridSize))*minorGridSize ;
+        placeRoundedX = Math.round(mousePoints.x/(minorGridSize))*minorGridSize ;
+        placeRoundedY = Math.round(mousePoints.y/(minorGridSize))*minorGridSize ;
     });
 
 
@@ -240,10 +239,10 @@ SVG.on(document, 'DOMContentLoaded', function() {
     // Event listener to print slat when mouse is pressed
     targetElement.addEventListener('pointerdown', (event) => {
         if(disablePanStatus == true){
-            console.log(`Rounded mouse position - X: ${roundedX}, Y: ${roundedY}`);
+            console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
-            if(!isPointOnLine(draw, roundedX, roundedY)   && !isPointOnLine(draw, roundedX, roundedY + 32 * minorGridSize)){
-                let tmpLine = draw.line(roundedX, roundedY, roundedX, roundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
+            if(!isPointOnLine(draw, placeRoundedX, placeRoundedY)   && !isPointOnLine(draw, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
+                let tmpLine = draw.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize).stroke({ width: 3, color:'#076900' });
                 tmpLine.attr('id','ID-L'+'-N' + slatCounter)
                 tmpLine.attr('class',"line")
                 tmpLine.attr({ 'pointer-events': 'stroke' })
@@ -253,14 +252,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 //Experimental: dragging
 
                 // Attach event listener using SVG.js method
-                tmpLine.on('pointerdown', function(event) {
-                    // your parameters
-                    let scale = panzoom.getScale();
+                tmpLine.on('pointerdown', startDrag)
                 
-                    startDrag(event, minorGridSize, scale);
-                });
-                
-                tmpLine.on('pointerdown', startDrag);
                 
                 
 
