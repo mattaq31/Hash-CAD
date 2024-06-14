@@ -23,13 +23,17 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             else:
                 well = plate96[index]
 
+        if isinstance(transfer_volume, list):
+            tv = transfer_volume[index]
+        else:
+            tv = transfer_volume
         for h2_num, h2 in slat.get_sorted_handles('h2'):
             complete_list.append([slat.ID + '_h2_staple_%s' % h2_num, h2['plate'], h2['well'],
-                                  well, transfer_volume, sel_plate_name, source_plate_type])
+                                  well, tv, sel_plate_name, source_plate_type])
 
         for h5_num, h5 in slat.get_sorted_handles('h5'):
             complete_list.append([slat.ID + '_h5_staple_%s' % h5_num, h5['plate'], h5['well'],
-                                  well, transfer_volume, sel_plate_name, source_plate_type])
+                                  well, tv, sel_plate_name, source_plate_type])
 
     combined_df = pd.DataFrame(complete_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                        'Destination Well', 'Transfer Volume',

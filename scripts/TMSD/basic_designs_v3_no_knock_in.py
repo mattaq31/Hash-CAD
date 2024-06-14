@@ -3,6 +3,7 @@ import os
 import copy
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
@@ -20,7 +21,7 @@ from crisscross.helper_functions.plate_constants import plate96
 
 ########################################
 # script setup
-output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/tmsd_demos/basic_square_tests_v1'
+output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/tmsd_demos/basic_square_tests_v3'
 create_dir_if_empty(output_folder)
 np.random.seed(8)
 read_handles_from_file = True
@@ -141,12 +142,12 @@ for slat_position in range(1, 33):
                                    nelson_plate.get_plate_name(slat_position, 2, 3))
 ################################
 # Combining all slats together into the final echo protocol
-
 full_slat_dict = {}
 for key, slat in M1.slats.items():
     if 'layer1' in key:  # X-slats are consistent for all designs
         full_slat_dict[key] = slat
-    elif int(key.split('slat')[-1]) < slat_invader_placement or int(key.split('slat')[-1]) > 24:  # The first 16 Y-slats are also consistent for all designs, as well as the final 8 slats
+    elif int(key.split('slat')[-1]) < slat_invader_placement or int(key.split('slat')[
+                                                                        -1]) > 24:  # The first 16 Y-slats are also consistent for all designs, as well as the final 8 slats
         full_slat_dict[key] = slat
 
 # the next 8 slats in the list include the remaining control y handles, of which the first one actually also doubles as the first invader slat
@@ -155,34 +156,22 @@ for i in range(7):
     full_slat_dict['layer2-slat%s' % (slat_invader_placement + 1 + i)] = M1.slats[
         'layer2-slat%s' % (slat_invader_placement + 1 + i)]
 
-# finally, the next 3 slats include the 2 incumbent slats as well as the final invader slat
-full_slat_dict['INCUMBENT STRAND 1'] = M_inv.slats['layer2-slat%s' % slat_invader_placement]
-full_slat_dict['INCUMBENT STRAND 1'].ID = 'INCUMBENT STRAND 1'
-
-# extension to knock-in tests that prepares an additional 7 incumbent slats, each one with a slightly shorter toehold region
-for i in range(1, 8):
-    new_slat = copy.deepcopy(full_slat_dict['INCUMBENT STRAND 1'])
-    new_slat.ID = 'INCUMBENT STRAND 1-%s' % (i + 1)
-    for j in range(16 + (i * 2)):
-        handle_val = handle_array[j, slat_invader_placement - 1, 0]
-        new_slat.set_handle(17 - (i*2) + j, 2,
-                            crisscross_antihandle_y_plates.get_sequence(17 - (i*2) + j, 2, handle_val),
-                            crisscross_antihandle_y_plates.get_well(17 - (i*2) + j, 2, handle_val),
-                            crisscross_antihandle_y_plates.get_plate_name(17 - (i*2) + j, 2, handle_val))
-    full_slat_dict[new_slat.ID] = new_slat
-
+# finally, the next 2 slats include the incumbent knock-out slat as well as the corresponding invader slat
 full_slat_dict['INCUMBENT STRAND 2'] = M_inv_2.slats['layer2-slat%s' % slat_invader_placement]
 full_slat_dict['INCUMBENT STRAND 2'].ID = 'INCUMBENT STRAND 2'
 full_slat_dict['INVADER 2'] = tmsd_slat_invader_2
 
-specific_plate_wells = plate96[0:32] + plate96[36:36 + 24] + plate96[60:60 + 8] + plate96[72:72 + 8] + plate96[84:86]  # different groups are split into different rows for convenience
+specific_plate_wells = plate96[0:32] + plate96[36:36 + 24] + plate96[60:60 + 8] + plate96[72:72+2] # different groups are split into different rows for convenience
+all_transfer_volumes = [75] * (32+24) + [150] * (8 + 2)
 
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',
+                                 transfer_volume=all_transfer_volumes,
                                  specific_plate_wells=specific_plate_wells)
 
-####### PLOTTING VISUALIZATION
+print (Fore.GREEN + 'Design complete, no errors found.')
 
+####### PLOTTING VISUALIZATION
 fig, ax = plt.subplots(figsize=(10, 10))
 slatPadding = 0.25
 rect_length = 32
