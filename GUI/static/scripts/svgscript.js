@@ -26,6 +26,8 @@ let layerArray = null
 let shownOpacity = 0.7
 let hiddenOpacity = 0.2
 
+let placeHorizontal = false;
+
 
 ///////////////////////////////
 //     Helper Functions!     //
@@ -107,6 +109,55 @@ function isPointOnLine(Layer, x, y, selectedLine = false) {
   }
 
 
+function isLineOnLine(startX, startY, layer, GridSize, selectedLine) {
+    const x1 = selectedLine.attr('x1');
+    const y1 = selectedLine.attr('y1');
+    const x2 = selectedLine.attr('x2');
+    const y2 = selectedLine.attr('y2');
+
+    //console.log("selected line is: "+x1 + ","+y1+" to "+x2+","+y2)
+
+    let dX = x2-x1;
+    let dY = y2-y1
+
+    const lineLength = Math.sqrt(dX * dX + dY * dY)
+    const numPoints = Math.floor(lineLength/GridSize)
+
+    let overlap = false
+
+    for (let i = 0; i<= numPoints; i++) {
+        const ratio = i / numPoints;
+        let x = startX + ratio * dX
+        let y = startY + ratio * dY
+        overlap = overlap || isPointOnLine(layer, x, y, selectedLine)
+    }
+
+    return overlap
+
+
+}
+
+
+function willVertBeOnLine(startX, startY, layer, gridSize, length=32){
+    let overlap = false
+    for (let i = 0; i<= length; i++) {
+        let x = startX 
+        let y = startY + i*gridSize
+        overlap = overlap || isPointOnLine(layer, x, y)
+    }
+    return overlap
+}
+
+function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
+    let overlap = false
+    for (let i = 0; i<= length; i++) {
+        let x = startX + i*gridSize
+        let y = startY 
+        overlap = overlap || isPointOnLine(layer, x, y)
+    }
+    return overlap
+}
+
 
 ///////////////////////////////
 //       Drag and Drop       //
@@ -141,7 +192,11 @@ function drag(event) {
         let roundedX = Math.round(point.x/(minorGridSize))*minorGridSize ;
         let roundedY = Math.round(point.y/(minorGridSize))*minorGridSize ;   
 
-        if(!isPointOnLine(activeLayer, roundedX, roundedY, dragSelectedElement)   && !isPointOnLine(activeLayer, roundedX, roundedY + 32 * minorGridSize, dragSelectedElement)){
+        //if(!isPointOnLine(activeLayer, roundedX, roundedY, dragSelectedElement)   && !isPointOnLine(activeLayer, roundedX, roundedY + 32 * minorGridSize, dragSelectedElement)){
+        //    dragSelectedElement.move(roundedX, roundedY);
+        //}
+
+        if(!isLineOnLine(roundedX, roundedY, activeLayer,minorGridSize, dragSelectedElement)) {
             dragSelectedElement.move(roundedX, roundedY);
         }
 
@@ -244,6 +299,20 @@ SVG.on(document, 'DOMContentLoaded', function() {
             panzoom.setOptions({ disablePan: disablePanStatus })
         }
     });
+
+    // Place horiztonal slats instead of vertical when alt is down
+    document.addEventListener('keydown', (event) => {
+        if( event.key === 'Alt') {
+            placeHorizontal = true;
+        }
+    });
+
+    // Place vertical slats instead of horizontal when alt is up
+    document.addEventListener('keyup', (event) => {
+        if( event.key === 'Alt') {
+            placeHorizontal = false;
+        }
+    });
     
 
 
@@ -272,19 +341,35 @@ SVG.on(document, 'DOMContentLoaded', function() {
         if(disablePanStatus == true){
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
-            if(!isPointOnLine(activeLayer, placeRoundedX, placeRoundedY)   && !isPointOnLine(activeLayer, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
-                let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
-                                         .stroke({ width: 3, color:'#076900', opacity: shownOpacity });
-                tmpLine.attr('id','ID-L'+'-N' + slatCounter)
-                tmpLine.attr('class',"line")
-                tmpLine.attr({ 'pointer-events': 'stroke' })
-                slatCounter += 1;
-
-                //Adding draggability:
-                tmpLine.on('pointerdown', startDrag)
-                
-
+            if(!placeHorizontal){
+                if(!willVertBeOnLine(placeRoundedX, placeRoundedY, activeLayer, minorGridSize, 32)) {
+                    //if(!isPointOnLine(activeLayer, placeRoundedX, placeRoundedY)   && !isPointOnLine(activeLayer, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
+                        let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
+                                                 .stroke({ width: 3, color:'#076900', opacity: shownOpacity });
+                        tmpLine.attr('id','ID-L'+'-N' + slatCounter)
+                        tmpLine.attr('class',"line")
+                        tmpLine.attr({ 'pointer-events': 'stroke' })
+                        slatCounter += 1;
+        
+                        //Adding draggability:
+                        tmpLine.on('pointerdown', startDrag)
+                    }
             }
+            else if(placeHorizontal){
+                if(!willHorzBeOnLine(placeRoundedX, placeRoundedY, activeLayer, minorGridSize, 32)) {
+                    //if(!isPointOnLine(activeLayer, placeRoundedX, placeRoundedY)   && !isPointOnLine(activeLayer, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
+                        let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX + 32 * minorGridSize, placeRoundedY )
+                                                 .stroke({ width: 3, color:'#836108', opacity: shownOpacity });
+                        tmpLine.attr('id','ID-L'+'-N' + slatCounter)
+                        tmpLine.attr('class',"line")
+                        tmpLine.attr({ 'pointer-events': 'stroke' })
+                        slatCounter += 1;
+        
+                        //Adding draggability:
+                        tmpLine.on('pointerdown', startDrag)
+                    }
+            }
+            
             
 
         }        
