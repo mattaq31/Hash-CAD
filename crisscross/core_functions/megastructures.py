@@ -1,12 +1,18 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from colorama import Fore
+import os
+import matplotlib as mpl
+
 from crisscross.core_functions.slats import Slat
-from colorama import Fore, Back
+from crisscross.helper_functions import create_dir_if_empty
 
 
 class Megastructure:
     """
     Convenience class that bundles the entire details of a megastructure including slat positions, seed handles and cargo.
     """
+
     def __init__(self, slat_array, layer_interface_orientations=None):
         """
         :param slat_array: Array of slat positions (3D - X,Y, layer ID) containing the positions of all slats in the design.
@@ -18,6 +24,8 @@ class Megastructure:
         """
         self.slat_array = slat_array
         self.handle_arrays = None
+        self.seed_array = None
+        self.cargo_arrays = []
         self.slats = {}
         self.num_layers = slat_array.shape[2]
 
@@ -25,7 +33,7 @@ class Megastructure:
         # with H2 at the bottom, H5 at the top, and alternating connections in between
         # e.g. for a 3-layer structure, layer_interface_orientations = [2, (5, 2), (5,2), 5]
         if not layer_interface_orientations:
-            self.layer_interface_orientations = [2] + [(5, 2)] * (self.num_layers-1) + [5]
+            self.layer_interface_orientations = [2] + [(5, 2)] * (self.num_layers - 1) + [5]
         else:
             self.layer_interface_orientations = layer_interface_orientations
 
@@ -75,7 +83,8 @@ class Megastructure:
                 handle_layers.append(-1)
                 handle_plates.append(crisscross_antihandle_plates)
             else:  # two interfaces otherwise
-                slat_crisscross_interfaces.extend([self.layer_interface_orientations[slat.layer - 1][1], self.layer_interface_orientations[slat.layer][0]])
+                slat_crisscross_interfaces.extend([self.layer_interface_orientations[slat.layer - 1][1],
+                                                   self.layer_interface_orientations[slat.layer][0]])
                 handle_layers.extend([slat.layer - 2, slat.layer - 1])
                 handle_plates.extend([crisscross_antihandle_plates,
                                       crisscross_handle_plates])  # handle orientation always assumed to follow same pattern
@@ -98,11 +107,12 @@ class Megastructure:
         :param seed_array: 2D array with positioning of seed.  Each row of the seed should have a unique ID.
         :param seed_plate: Plate class with sequences to draw from.
         """
+
         seed_coords = np.where(seed_array > 0)
         # TODO: more checks to ensure seed placement fits all parameters?
         for y, x in zip(seed_coords[0], seed_coords[1]):
 
-            slat_ID = self.slat_array[y, x, layer_id-1]
+            slat_ID = self.slat_array[y, x, layer_id - 1]
             if slat_ID == 0:
                 raise RuntimeError('There is a seed coordinate placed on a non-slat position.  '
                                    'Please re-verify your seed pattern array.')
@@ -114,7 +124,7 @@ class Megastructure:
             if layer_id == 1:
                 bottom_slat_side = self.layer_interface_orientations[0]
             else:
-                bottom_slat_side = self.layer_interface_orientations[layer_id-1][1]
+                bottom_slat_side = self.layer_interface_orientations[layer_id - 1][1]
 
             if bottom_slat_side == 5:
                 raise NotImplementedError('Seed placement on H5 side not yet supported.')
@@ -129,6 +139,8 @@ class Megastructure:
 
         if len(seed_coords[0]) == 0:
             print((Fore.RED + 'WARNING: No seed handles were set - is your seed pattern array correct?'))
+
+        self.seed_array = (layer_id, seed_array)
 
     def assign_cargo_handles(self, cargo_array, cargo_plate, layer='top', requested_handle_orientation=None):
         """
@@ -162,7 +174,7 @@ class Megastructure:
             raise RuntimeError('Layer ID must be "top", "bottom" or an integer.')
 
         for y, x in zip(cargo_coords[0], cargo_coords[1]):
-            slat_ID = self.slat_array[y, x, sel_layer-1]
+            slat_ID = self.slat_array[y, x, sel_layer - 1]
             if slat_ID == 0:
                 raise RuntimeError('There is a cargo coordinate placed on a non-slat position.  '
                                    'Please re-verify your cargo pattern array.')
@@ -178,13 +190,15 @@ class Megastructure:
                                      cargo_plate.get_well(slat_position, handle_orientation, cargo_value),
                                      cargo_plate.get_plate_name())
 
+        self.cargo_arrays.append((sel_layer, handle_orientation, cargo_array))
+
     def patch_control_handles(self, control_plate):
         """
         Fills up all remaining holes in slats with no-handle control sequences.
         :param control_plate: Plate class with core sequences to draw from.
         """
         for key, slat in self.slats.items():
-            for i in range(1, slat.max_length+1):
+            for i in range(1, slat.max_length + 1):
                 if i not in slat.H2_handles:
                     slat.set_handle(i, 2,
                                     control_plate.get_sequence(i, 2, 0),
@@ -195,6 +209,117 @@ class Megastructure:
                                     control_plate.get_sequence(i, 5, 0),
                                     control_plate.get_well(i, 5, 0),
                                     control_plate.get_plate_name())
+
+    def create_graphical_slat_view(self, save_to_folder=None, instant_view=True, folder_name='slat_graphics',
+                                   include_cargo=True, include_seed=True,
+                                   slat_width=4, colormap='Set1'):
+        """
+        Creates a graphical view of all slats in the assembled design, including cargo and seed handles.
+        A single figure is created for the global view of the structure, as well as individual figures
+        for each layer in the design.
+        :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
+        :param instant_view: Set to True to plot the figures immediately to your active view.
+        :param folder_name: By default the script will save all figures to a folder called 'slat_graphics'.
+        You can adjust this name here.
+        :param include_cargo: Will print out cargo handle positions by default.  Turn this off here.
+        :param include_seed: Will print out seed handle positions by default.  Turn this off here.
+        :param slat_width: The width to use for the slat lines.
+        :param colormap: The colormap to sample from for each additional layer.
+        :return: N/A
+        """
+
+        def axes_setup(axis):
+            axis.set_ylim(self.slat_array.shape[0] + 0.5, -0.5)
+            axis.set_xlim(-0.5, self.slat_array.shape[1] + 0.5)
+            axis.axis('off')
+
+        global_fig, global_ax = plt.subplots(1, 2, figsize=(20, 12))
+        global_fig.suptitle('Global View', fontsize=35)
+        axes_setup(global_ax[0])
+        axes_setup(global_ax[1])
+        global_ax[0].set_title('Top View', fontsize=35)
+        global_ax[1].set_title('Bottom View', fontsize=35)
+
+        layer_figures = []
+        for l_ind, layer in enumerate(range(self.num_layers)):
+            l_fig, l_ax = plt.subplots(1, 2, figsize=(20, 12))
+            axes_setup(l_ax[0])
+            axes_setup(l_ax[1])
+            l_ax[0].set_title('Top View', fontsize=35)
+            l_ax[1].set_title('Bottom View', fontsize=35)
+            l_fig.suptitle('Layer %s' % (l_ind + 1), fontsize=35)
+            layer_figures.append((l_fig, l_ax))
+
+        for slat_id, slat in self.slats.items():
+
+            if len(slat.slat_coordinate_to_position) == 0:
+                print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
+                                    'view as it does not have a grid position defined.' % slat_id)
+                continue
+            start_pos = slat.slat_position_to_coordinate[1]
+            end_pos = slat.slat_position_to_coordinate[slat.max_length]
+            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+            layer_figures[slat.layer - 1][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
+                                                     color=layer_color, linewidth=slat_width, zorder=1)
+            layer_figures[slat.layer - 1][1][1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
+                                                     color=layer_color, linewidth=slat_width, zorder=1)
+
+            global_ax[0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
+                              color=layer_color, linewidth=slat_width, alpha=0.5, zorder=slat.layer)
+            global_ax[1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
+                              color=layer_color, linewidth=slat_width, alpha=0.5, zorder=self.num_layers - slat.layer)
+
+        if include_seed:
+            # TODO: IF WE ATTACH THE SEED TO THE TOP SIDE OF A LAYER, THEN THE LOGIC HERE NEEDS TO BE ADJUSTED
+            seed_layer = self.seed_array[0]
+            seed_plot_points = np.where(self.seed_array[1] > 0)
+            layer_figures[seed_layer - 1][1][1].scatter(seed_plot_points[1], seed_plot_points[0], color='black', s=100,
+                                                        zorder=10)
+            global_ax[0].scatter(seed_plot_points[1], seed_plot_points[0], color='black', s=100, alpha=0.5,
+                                 zorder=seed_layer)
+            global_ax[1].scatter(seed_plot_points[1], seed_plot_points[0], color='black', s=100, alpha=0.5,
+                                 zorder=self.num_layers - seed_layer)
+
+        if include_cargo:  # TODO: is it worth setting a different colour for each different cargo here?
+            for cargo_layer, cargo_orientation, cargo_array in self.cargo_arrays:
+                cargo_plot_points = np.where(cargo_array > 0)
+                top_layer_side = self.layer_interface_orientations[cargo_layer]
+                if isinstance(top_layer_side, tuple):
+                    top_layer_side = top_layer_side[0]
+                if top_layer_side == cargo_orientation:
+                    top_or_bottom = 0
+                else:
+                    top_or_bottom = 1
+                layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(cargo_plot_points[1], cargo_plot_points[0],
+                                                                         color='black', marker='s', s=100, zorder=10)
+                global_ax[0].scatter(cargo_plot_points[1], cargo_plot_points[0], color='black', s=100,
+                                     marker='s', alpha=0.5, zorder=cargo_layer)
+                global_ax[1].scatter(cargo_plot_points[1], cargo_plot_points[0], color='black',
+                                     s=100, marker='s', alpha=0.5, zorder=self.num_layers - cargo_layer)
+
+        global_fig.tight_layout()
+        if instant_view:
+            global_fig.show()
+        if save_to_folder:
+            slat_graphics_folder = os.path.join(save_to_folder, folder_name)
+            create_dir_if_empty(slat_graphics_folder)
+            global_fig.savefig(os.path.join(slat_graphics_folder, 'global_view.png'), dpi=300)
+
+        for fig_ind, (fig, ax) in enumerate(layer_figures):
+            fig.tight_layout()
+            if instant_view:
+                fig.show()
+            if save_to_folder:
+                fig.savefig(os.path.join(slat_graphics_folder, 'layer_%s.png' % (fig_ind + 1)), dpi=300)
+
+    def create_graphical_assembly_handle_view(self):
+        pass
+
+    def create_graphical_3D_view(self):
+        pass
+
+    def create_graphical_report(self):
+        pass
 
     def create_combined_graphical_view(self):
         """

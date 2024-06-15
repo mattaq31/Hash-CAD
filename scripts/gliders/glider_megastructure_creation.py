@@ -15,6 +15,8 @@ from crisscross.helper_functions.plate_constants import (slat_core, core_plate_f
 
 
 design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
+design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/glider_v2'
+
 design_file = 'layer_arrays.xlsx'
 
 read_handles_from_file = True
@@ -75,9 +77,10 @@ for i in range(16):
 # Assigns seed array to layer 2
 megastructure.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
 megastructure.patch_control_handles(core_plate)
+megastructure.create_graphical_slat_view(save_to_folder=design_folder, folder_name='No Fluoro Graphics')
 
 # Exports design to echo format csv file for production
-# convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_folder, 'all_echo_commands.csv')
+convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_folder, 'all_echo_commands.csv')
 
 # For extended fluorescent microscopy testing, we've also included a cargo array for Nelson handles.  This design is build separately below
 
@@ -90,6 +93,7 @@ nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, 
 nelson_mega.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
 nelson_mega.assign_cargo_handles(cargo_array, nelson_plate, layer=2, requested_handle_orientation=2)
 nelson_mega.patch_control_handles(core_plate)
+nelson_mega.create_graphical_slat_view(save_to_folder=design_folder, folder_name='Fluoro Graphics')
 
 convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', design_folder,
                                  'all_echo_commands_with_nelson_handles.csv', transfer_volume=100)

@@ -1,6 +1,7 @@
 from collections import defaultdict
 from colorama import Fore
 
+
 class Slat:
     """
     Wrapper class to hold all of a slat's handles and related details.
@@ -13,9 +14,10 @@ class Slat:
         # converts coordinates on a 2d array to the handle number on the slat, and vice-versa
         self.slat_position_to_coordinate = {}
         self.slat_coordinate_to_position = {}
-        for index, coord in enumerate(slat_coordinates):
-            self.slat_position_to_coordinate[index+1] = tuple(coord)
-            self.slat_coordinate_to_position[tuple(coord)] = index + 1
+        if slat_coordinates != 'N/A':
+            for index, coord in enumerate(slat_coordinates):
+                self.slat_position_to_coordinate[index+1] = tuple(coord)
+                self.slat_coordinate_to_position[tuple(coord)] = index + 1
 
         self.H2_handles = defaultdict(dict)
         self.H5_handles = defaultdict(dict)

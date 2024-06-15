@@ -21,10 +21,12 @@ from crisscross.plate_mapping import get_plateclass
 ########################################
 # script setup
 output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_feb_2024'
+output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/optical_pattern_testing'
+
 create_dir_if_empty(output_folder)
 
 np.random.seed(8)
-read_handles_from_file = True
+read_handles_from_file = False
 read_cargo_patterns_from_file = False
 ########################################
 
@@ -68,7 +70,7 @@ if read_handles_from_file:
     _, _, res = calculate_slat_hamming(slat_array, handle_array, unique_slats_per_layer, unique_sequences=32)
     print('Hamming distance from file-loaded design: %s' % np.min(res))
 else:
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=150)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=3)
     np.savetxt(os.path.join(output_folder, 'optimized_handle_array.csv'), handle_array.squeeze().astype(np.int32), delimiter=',',
                fmt='%i')
 ########################################
@@ -190,6 +192,7 @@ for i in range(32):
                              nelson_plate.get_plate_name(i + 1, 2, 3))
 megastructure.slats['crossbar'] = crossbar_slat
 megastructure.patch_control_handles(core_plate)
+megastructure.create_graphical_slat_view(save_to_folder=output_folder, folder_name='crossbar_mega_graphics')
 
 convert_slats_into_echo_commands(megastructure.slats, 'optical_base_plate',
                                  output_folder, 'all_echo_commands_with_crossbars.csv')
@@ -205,6 +208,7 @@ alt_1_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
 alt_1_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
 alt_1_megastructure.assign_cargo_handles(biotin_underside_pattern, nelson_plate, layer='bottom')
 alt_1_megastructure.patch_control_handles(core_plate)
+alt_1_megastructure.create_graphical_slat_view(save_to_folder=output_folder, folder_name='alt_1_graphics')
 
 convert_slats_into_echo_commands(alt_1_megastructure.slats, 'optical_base_plate',
                                  output_folder, 'all_echo_commands_biotin_nelson_no_crossbars.csv')
@@ -221,6 +225,7 @@ alt_2_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
 alt_2_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
 alt_2_megastructure.assign_cargo_handles(biotin_underside_pattern, biotin_plate, layer='bottom')
 alt_2_megastructure.patch_control_handles(core_plate)
+alt_2_megastructure.create_graphical_slat_view(save_to_folder=output_folder, folder_name='alt_2_graphics')
 
 convert_slats_into_echo_commands(alt_2_megastructure.slats, 'optical_base_plate',
                                  output_folder, 'all_echo_commands_direct_biotin_no_crossbars.csv')

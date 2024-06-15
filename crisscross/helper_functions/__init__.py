@@ -21,3 +21,16 @@ def create_dir_if_empty(*directories):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
+
+def index_converter(ind, images_per_row, double_indexing=True):
+    """
+    Converts a singe digit index into a double digit system, if required.
+    :param ind: The input single index
+    :param images_per_row: The number of images per row in the output figure
+    :param double_indexing: Whether or not double indexing is required
+    :return: Two split indices or a single index if double indexing not necessary
+    """
+    if double_indexing:
+        return int(ind / images_per_row), ind % images_per_row  # converts indices to double
+    else:
+        return ind
