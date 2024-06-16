@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import matplotlib.pyplot as plt
 from colorama import Fore
@@ -6,6 +8,8 @@ import matplotlib as mpl
 
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
+
+plt.rcParams.update({'font.sans-serif':'Helvetica'})  # consistent figure formatting
 
 
 class Megastructure:
@@ -99,7 +103,8 @@ class Megastructure:
                                                sel_plates.get_sequence(slat_position_index + 1, slat_side, handle_val),
                                                sel_plates.get_well(slat_position_index + 1, slat_side, handle_val),
                                                sel_plates.get_plate_name(slat_position_index + 1, slat_side,
-                                                                         handle_val))
+                                                                         handle_val),
+                                               descriptor='Ass. Handle %s, Plate %s' % (handle_val, sel_plates.get_plate_name(slat_position_index + 1, slat_side, handle_val)))
 
     def assign_seed_handles(self, seed_array, seed_plate, layer_id=1):
         """
@@ -135,7 +140,8 @@ class Megastructure:
             selected_slat.set_handle(slat_position, bottom_slat_side,
                                      seed_plate.get_sequence(slat_position, 2, seed_value),
                                      seed_plate.get_well(slat_position, 2, seed_value),
-                                     seed_plate.get_plate_name())
+                                     seed_plate.get_plate_name(),
+                                     descriptor='Seed Handle, Plate %s' % seed_plate.get_plate_name())
 
         if len(seed_coords[0]) == 0:
             print((Fore.RED + 'WARNING: No seed handles were set - is your seed pattern array correct?'))
@@ -188,7 +194,8 @@ class Megastructure:
             selected_slat.set_handle(slat_position, handle_orientation,
                                      cargo_plate.get_sequence(slat_position, handle_orientation, cargo_value),
                                      cargo_plate.get_well(slat_position, handle_orientation, cargo_value),
-                                     cargo_plate.get_plate_name())
+                                     cargo_plate.get_plate_name(),
+                                     descriptor='Cargo Plate %s, Handle %s' % (cargo_plate.get_plate_name(), cargo_value))
 
         self.cargo_arrays.append((sel_layer, handle_orientation, cargo_array))
 
@@ -203,14 +210,25 @@ class Megastructure:
                     slat.set_handle(i, 2,
                                     control_plate.get_sequence(i, 2, 0),
                                     control_plate.get_well(i, 2, 0),
-                                    control_plate.get_plate_name())
+                                    control_plate.get_plate_name(),
+                                    descriptor='Control Handle')
                 if i not in slat.H5_handles:
                     slat.set_handle(i, 5,
                                     control_plate.get_sequence(i, 5, 0),
                                     control_plate.get_well(i, 5, 0),
-                                    control_plate.get_plate_name())
+                                    control_plate.get_plate_name(),
+                                    descriptor='Control Handle')
 
-    def create_graphical_slat_view(self, save_to_folder=None, instant_view=True, folder_name='slat_graphics',
+    def slat_axes_setup(self, axis, reverse_y=False):
+        if reverse_y:
+            axis.set_ylim(-0.5, self.slat_array.shape[0] + 0.5)
+        else:
+            axis.set_ylim(self.slat_array.shape[0] + 0.5, -0.5)
+        axis.set_xlim(-0.5, self.slat_array.shape[1] + 0.5)
+        axis.axis('off')
+
+    def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
+                                   folder_name='slat_graphics',
                                    include_cargo=True, include_seed=True,
                                    slat_width=4, colormap='Set1'):
         """
@@ -228,23 +246,18 @@ class Megastructure:
         :return: N/A
         """
 
-        def axes_setup(axis):
-            axis.set_ylim(self.slat_array.shape[0] + 0.5, -0.5)
-            axis.set_xlim(-0.5, self.slat_array.shape[1] + 0.5)
-            axis.axis('off')
-
         global_fig, global_ax = plt.subplots(1, 2, figsize=(20, 12))
         global_fig.suptitle('Global View', fontsize=35)
-        axes_setup(global_ax[0])
-        axes_setup(global_ax[1])
+        self.slat_axes_setup(global_ax[0])
+        self.slat_axes_setup(global_ax[1])
         global_ax[0].set_title('Top View', fontsize=35)
         global_ax[1].set_title('Bottom View', fontsize=35)
 
         layer_figures = []
         for l_ind, layer in enumerate(range(self.num_layers)):
             l_fig, l_ax = plt.subplots(1, 2, figsize=(20, 12))
-            axes_setup(l_ax[0])
-            axes_setup(l_ax[1])
+            self.slat_axes_setup(l_ax[0])
+            self.slat_axes_setup(l_ax[1])
             l_ax[0].set_title('Top View', fontsize=35)
             l_ax[1].set_title('Bottom View', fontsize=35)
             l_fig.suptitle('Layer %s' % (l_ind + 1), fontsize=35)
@@ -280,7 +293,10 @@ class Megastructure:
             global_ax[1].scatter(seed_plot_points[1], seed_plot_points[0], color='black', s=100, alpha=0.5,
                                  zorder=self.num_layers - seed_layer)
 
-        if include_cargo:  # TODO: is it worth setting a different colour for each different cargo here?
+        if include_cargo:
+            # TODO: is it worth setting a different colour for each different cargo here?
+            # TODO: Can we add labels for the different cargo types?
+            # TODO: Is there some way to print the slat ID too?
             for cargo_layer, cargo_orientation, cargo_array in self.cargo_arrays:
                 cargo_plot_points = np.where(cargo_array > 0)
                 top_layer_side = self.layer_interface_orientations[cargo_layer]
@@ -311,9 +327,165 @@ class Megastructure:
                 fig.show()
             if save_to_folder:
                 fig.savefig(os.path.join(slat_graphics_folder, 'layer_%s.png' % (fig_ind + 1)), dpi=300)
+            plt.close(fig)
 
-    def create_graphical_assembly_handle_view(self):
-        pass
+    def create_graphical_assembly_handle_view(self, save_to_folder=None, instant_view=True,
+                                              folder_name='slat_graphics',
+                                              slat_width=4, colormap='Set1'):
+        """
+        Creates a graphical view of all handles in the assembled design, along with a side profile.
+        :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
+        :param instant_view: Set to True to plot the figures immediately to your active view.
+        :param folder_name: By default the script will save all figures to a folder called 'slat_graphics'.
+        You can adjust this name here.
+        :param slat_width: The width to use for the slat lines.
+        :param colormap: The colormap to sample from for each additional layer.
+        :return:
+        """
+
+        # Figure Prep
+        interface_figures = []
+        for l_ind, layer in enumerate(range(self.num_layers - 1)):
+            l_fig, l_ax = plt.subplots(1, 2, figsize=(20, 12))
+            self.slat_axes_setup(l_ax[0])
+            self.slat_axes_setup(l_ax[1], reverse_y=True)
+            l_ax[0].set_title('Handle View', fontsize=35)
+            l_ax[1].set_title('Side View', fontsize=35)
+            l_fig.suptitle('Handles Between Layer %s and %s' % (l_ind + 1, l_ind + 2), fontsize=35)
+            interface_figures.append((l_fig, l_ax))
+
+        # Painting in slats
+        for slat_id, slat in self.slats.items():
+            if len(slat.slat_coordinate_to_position) == 0:
+                print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
+                                    'view as it does not have a grid position defined.' % slat_id)
+                continue
+            start_pos = slat.slat_position_to_coordinate[1]
+            end_pos = slat.slat_position_to_coordinate[slat.max_length]
+            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+
+            if slat.layer == 1:
+                plot_positions = [0]
+            elif slat.layer == self.num_layers:
+                plot_positions = [self.num_layers - 2]
+            else:
+                plot_positions = [slat.layer - 1, slat.layer - 2]
+
+            for p in plot_positions:
+                interface_figures[p][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
+                                                color=layer_color, linewidth=slat_width, zorder=1, alpha=0.3)
+
+        # Painting in handles
+        for handle_layer_num in range(self.handle_arrays.shape[2]):
+            for i in range(self.handle_arrays.shape[0]):
+                for j in range(self.handle_arrays.shape[1]):
+                    val = self.handle_arrays[i, j, handle_layer_num]
+                    if val > 0:
+                        interface_figures[handle_layer_num][1][0].text(j, i, int(val), ha='center', va='center',
+                                                                       color='black', zorder=3, fontsize=8)
+
+        # Preparing layer lines for side profile
+        layer_lines = []
+        layer_v_jump = 0.1  # set a 10% full-height jump between layers for aesthetic reasons
+        midway_v_point = (self.slat_array.shape[0] + 1)/2
+        full_v_scale = self.slat_array.shape[0] + 1
+        full_x_scale = self.slat_array.shape[1] + 1
+
+        if self.num_layers % 2 == 0:  # even and odd num of layers should have different spacing to remain centred
+            start_point = midway_v_point - (layer_v_jump/2) - (layer_v_jump * ((self.num_layers/2)-1) * full_v_scale)
+        else:
+            start_point = midway_v_point - (layer_v_jump * (math.floor(self.num_layers/2)) * full_v_scale)
+
+        for layer in range(self.num_layers):  # prepares actual lines here
+            layer_lines.append([[-0.5, self.slat_array.shape[1] + 0.5],
+                                [start_point + (layer_v_jump*layer*full_v_scale), start_point + (layer_v_jump*layer*full_v_scale)]])
+
+        # layer lines are painted here, along with arrows and annotations
+        annotation_vert_offset = 0.02
+        annotation_vert_offset_btm = 0.024  # made a second offset scale here due to the way the font is positioned in the figure
+        annotation_x_position = full_x_scale/2
+        for fig_ind, (fig, ax) in enumerate(interface_figures):
+            for l_ind, line in enumerate(layer_lines):
+                ax[1].plot(line[0], line[1], color=mpl.colormaps[colormap].colors[l_ind], linewidth=slat_width)
+
+                # extracts interface numbers from megastructure data
+                if l_ind == 0:
+                    bottom_interface = self.layer_interface_orientations[0]
+                    top_interface = self.layer_interface_orientations[1][0]
+                elif l_ind == self.num_layers - 1:
+                    bottom_interface = self.layer_interface_orientations[-2][1]
+                    top_interface = self.layer_interface_orientations[-1]
+                else:
+                    bottom_interface = self.layer_interface_orientations[l_ind][1]
+                    top_interface = self.layer_interface_orientations[l_ind + 1][0]
+
+                ax[1].text(annotation_x_position, line[1][1] + (annotation_vert_offset * full_v_scale),
+                           'H%s' % bottom_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
+                ax[1].text(annotation_x_position, line[1][1] - (annotation_vert_offset_btm * full_v_scale),
+                           'H%s' % top_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
+
+            y_arrow_pos = layer_lines[fig_ind+1][1][1] - (layer_lines[fig_ind+1][1][1] - layer_lines[fig_ind][1][1])/2
+            x_arrow_1 = -0.5
+            x_arrow_2 = self.slat_array.shape[1] + 0.5
+            ax[1].arrow(x_arrow_1, y_arrow_pos, 0.1 * full_x_scale, 0, width=(0.8 * full_v_scale/67), fc='k', ec='k') # arrow width was calibrated on a canvas with a vertical size of 67
+            ax[1].arrow(x_arrow_2, y_arrow_pos, -0.1 * full_x_scale, 0, width=(0.8 * full_v_scale/67), fc='k', ec='k')
+
+        # final display and saving
+        if save_to_folder:
+            handle_graphics_folder = os.path.join(save_to_folder, folder_name)
+            create_dir_if_empty(handle_graphics_folder)
+
+        for fig_ind, (fig, ax) in enumerate(interface_figures):
+            fig.tight_layout()
+            if instant_view:
+                fig.show()
+            if save_to_folder:
+                fig.savefig(os.path.join(handle_graphics_folder,
+                                         'handles_layer_%s_%s.png' % (fig_ind + 1, fig_ind + 2)), dpi=300)
+            plt.close(fig)
+
+    def create_graphical_slat_views(self, save_folder, colormap='Set1'):
+        """
+        Creates individual graphical view of each slat in the design.
+        :param save_folder: Folder to save all slat images to.
+        :param colormap: Colormap to extract layer colors from
+        :return: N/A
+        """
+
+        output_folder = os.path.join(save_folder, 'individual_slat_graphics')
+        create_dir_if_empty(output_folder)
+        for slat_id, slat in self.slats.items():
+            l_fig, l_ax = plt.subplots(1, 1, figsize=(20, 9))
+            plt.title('Detailed View of Slat with ID %s' % slat_id, fontsize=35)
+            l_ax.set_ylim(0, 10)
+            l_ax.set_xlim(-1, 32)
+            l_ax.axis('off')
+            if isinstance(slat.layer, int):
+                slat_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+            else:
+                slat_color = 'black'
+
+            plt.plot([0, 31], [2, 2], color=slat_color, linewidth=15, zorder=5)
+            plt.text(-0.7, 2.5, 'H2', color='black',
+                     fontsize=25, weight='bold', ha='center', va='center')
+            plt.text(-0.7, 1.5, 'H5', color='black',
+                     fontsize=25, weight='bold', ha='center', va='center')
+
+            for i in range(32):
+                h2_handle = slat.H2_handles[i+1]
+                h5_handle = slat.H5_handles[i+1]
+
+                plt.text(i, 3.5, h2_handle['descriptor'], color='black', zorder=3, ha='center',
+                         fontsize=15, weight='bold', rotation='vertical')
+                plt.text(i, 0.5, h5_handle['descriptor'], color='black', zorder=3, ha='center',
+                         va='top', fontsize=15, weight='bold', rotation='vertical')
+
+                plt.plot([i, i], [2, 3], color='black', linewidth=12, zorder=1)
+                plt.plot([i, i], [2, 1], color='black', linewidth=12, zorder=1)
+
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_folder, '%s.png' % slat_id), dpi=300)
+            plt.close(l_fig)
 
     def create_graphical_3D_view(self):
         pass
@@ -321,39 +493,3 @@ class Megastructure:
     def create_graphical_report(self):
         pass
 
-    def create_combined_graphical_view(self):
-        """
-        Creates combined arrays of all handles/cargo for plotting.
-        TODO: This function is only good for the top/bottom layers - needs to be improved for a full all-layer view.
-        :return:
-        """
-        # TODO: can consider adding cargo name to slat H2/H5 handles dict too for easy identication
-        # TODO: reduce convolution here...
-        plate_dict = {}
-        bottom_layer = 'layer1'
-        top_layer = f'layer{self.num_layers}'
-        top_array = np.zeros_like(self.slat_array[:, :, 0])
-        bottom_array = np.zeros_like(self.slat_array[:, :, 0])
-
-        top_orientation = self.layer_interface_orientations[-1]
-        bottom_orientation = self.layer_interface_orientations[0]
-
-        for key, slat in self.slats.items():
-            if bottom_layer in key:
-                sel_orientation = bottom_orientation
-                sel_array = bottom_array
-            elif top_layer in key:
-                sel_orientation = top_orientation
-                sel_array = top_array
-            else:
-                continue
-            for position, coord in slat.slat_position_to_coordinate.items():
-                if sel_orientation == 2:
-                    sel_plate = slat.H2_handles[position]['plate']
-                else:
-                    sel_plate = slat.H5_handles[position]['plate']
-                if sel_plate not in plate_dict:
-                    plate_dict[sel_plate] = len(plate_dict) + 1
-                sel_array[coord[0], coord[1]] = plate_dict[sel_plate]
-
-        return bottom_array, top_array

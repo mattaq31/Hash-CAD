@@ -184,15 +184,21 @@ for i in range(32):
         sel_plate = cargo_plate
         cargo_id = single_crossbar_pattern[0, i]
         crossbar_slat.set_handle(i + 1, 5, sel_plate.get_sequence(i + 1, 5, cargo_id),
-                                 sel_plate.get_well(i + 1, 5, cargo_id), sel_plate.get_plate_name(i + 1, 5, cargo_id))
+                                 sel_plate.get_well(i + 1, 5, cargo_id), sel_plate.get_plate_name(i + 1, 5, cargo_id),
+                                 descriptor='Cargo Plate %s, Crossbar Handle %s' % (sel_plate.get_plate_name(), cargo_id))
     # full biotin layer (anti-Nelson)
     crossbar_slat.set_handle(i + 1, 2,
                              nelson_plate.get_sequence(i + 1, 2, 3),
                              nelson_plate.get_well(i + 1, 2, 3),
-                             nelson_plate.get_plate_name(i + 1, 2, 3))
+                             nelson_plate.get_plate_name(i + 1, 2, 3),
+                             descriptor='Cargo Plate %s, Nelson Handle' % nelson_plate.get_plate_name())
 megastructure.slats['crossbar'] = crossbar_slat
 megastructure.patch_control_handles(core_plate)
 megastructure.create_graphical_slat_view(save_to_folder=output_folder, folder_name='crossbar_mega_graphics')
+megastructure.create_graphical_assembly_handle_view(save_to_folder=output_folder, folder_name='crossbar_mega_graphics')
+
+# this command is slow, only run if necessary
+# megastructure.create_graphical_slat_views(os.path.join(output_folder, 'crossbar_mega_graphics'))
 
 convert_slats_into_echo_commands(megastructure.slats, 'optical_base_plate',
                                  output_folder, 'all_echo_commands_with_crossbars.csv')
@@ -209,6 +215,9 @@ alt_1_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top'
 alt_1_megastructure.assign_cargo_handles(biotin_underside_pattern, nelson_plate, layer='bottom')
 alt_1_megastructure.patch_control_handles(core_plate)
 alt_1_megastructure.create_graphical_slat_view(save_to_folder=output_folder, folder_name='alt_1_graphics')
+alt_1_megastructure.create_graphical_assembly_handle_view(save_to_folder=output_folder, folder_name='alt_1_graphics')
+# this command is slow, only run if necessary
+# alt_1_megastructure.create_graphical_slat_views(os.path.join(output_folder, 'alt_1_graphics'))
 
 convert_slats_into_echo_commands(alt_1_megastructure.slats, 'optical_base_plate',
                                  output_folder, 'all_echo_commands_biotin_nelson_no_crossbars.csv')
@@ -226,6 +235,9 @@ alt_2_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top'
 alt_2_megastructure.assign_cargo_handles(biotin_underside_pattern, biotin_plate, layer='bottom')
 alt_2_megastructure.patch_control_handles(core_plate)
 alt_2_megastructure.create_graphical_slat_view(save_to_folder=output_folder, folder_name='alt_2_graphics')
+alt_2_megastructure.create_graphical_assembly_handle_view(save_to_folder=output_folder, folder_name='alt_2_graphics')
+# this command is slow, only run if necessary
+# alt_2_megastructure.create_graphical_slat_views(os.path.join(output_folder, 'alt_2_graphics'))
 
 convert_slats_into_echo_commands(alt_2_megastructure.slats, 'optical_base_plate',
                                  output_folder, 'all_echo_commands_direct_biotin_no_crossbars.csv')

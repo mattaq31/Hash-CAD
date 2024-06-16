@@ -119,18 +119,6 @@ convert_slats_into_echo_commands(nucx_slats, 'gnp_replacement_plate',
                                  specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10'])
 
-bottom, top = megastructure.create_combined_graphical_view()
-
-plt.imshow(bottom)
-plt.axis('off')
-plt.title('Bottom View')
-plt.show()
-plt.imshow(top)
-plt.axis('off')
-plt.title('Top View')
-plt.show()
-# two_side_plot(np.zeros((32, 32)), cargo_pattern, 'gnp_square_tester', alpha=0.2, xsize=32, ysize=32, slatPadding=0.25, seed_pos='corner')
-
 ########################################
 # Preparing second design - no cargo on top, nelsons on the bottom
 

@@ -67,13 +67,7 @@ seed_array[17:33, 1:6] = standard_seed_array
 megastructure.assign_seed_handles(seed_array, seed_plate)
 megastructure.assign_cargo_handles(cargo_array, cargo_plate, layer='bottom')
 megastructure.patch_control_handles(core_plate)
-megastructure.create_graphical_slat_view()
-
-bottom, top = megastructure.create_combined_graphical_view()
-
-plt.imshow(bottom)
-plt.show()
-plt.imshow(top)
-plt.show()
-z = 5
+# megastructure.create_graphical_slat_view()
+# megastructure.create_graphical_assembly_handle_view()
+megastructure.create_graphical_slat_views(folder)
 # Step 5 - export slats to robot format

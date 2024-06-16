@@ -78,6 +78,9 @@ for i in range(16):
 megastructure.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
 megastructure.patch_control_handles(core_plate)
 megastructure.create_graphical_slat_view(save_to_folder=design_folder, folder_name='No Fluoro Graphics')
+megastructure.create_graphical_assembly_handle_view(save_to_folder=design_folder, folder_name='No Fluoro Graphics')
+# this command is slow, only run if necessary
+# megastructure.create_graphical_slat_views(os.path.join(design_folder, 'No Fluoro Graphics'))
 
 # Exports design to echo format csv file for production
 convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_folder, 'all_echo_commands.csv')
@@ -94,6 +97,9 @@ nelson_mega.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
 nelson_mega.assign_cargo_handles(cargo_array, nelson_plate, layer=2, requested_handle_orientation=2)
 nelson_mega.patch_control_handles(core_plate)
 nelson_mega.create_graphical_slat_view(save_to_folder=design_folder, folder_name='Fluoro Graphics')
+nelson_mega.create_graphical_assembly_handle_view(save_to_folder=design_folder, folder_name='Fluoro Graphics')
+# this command is slow, only run if necessary
+# nelson_mega.create_graphical_slat_views(os.path.join(design_folder, 'Fluoro Graphics'))
 
 convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', design_folder,
                                  'all_echo_commands_with_nelson_handles.csv', transfer_volume=100)

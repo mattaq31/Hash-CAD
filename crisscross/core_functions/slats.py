@@ -35,17 +35,19 @@ class Slat:
         else:
             raise RuntimeError('Wrong side specified (only h2 or h5 available)')
 
-    def set_handle(self, handle_id, slat_side, sequence, well, plate_name):
+    def set_handle(self, handle_id, slat_side, sequence, well, plate_name, descriptor='No Desc.'):
         if handle_id < 1 or handle_id > self.max_length:
             raise RuntimeError('Handle ID out of range')
         if slat_side == 2:
             if handle_id in self.H2_handles:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID))
-            self.H2_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name}
+            self.H2_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name,
+                                          'descriptor': descriptor}
         elif slat_side == 5:
             if handle_id in self.H5_handles:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID))
-            self.H5_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name}
+            self.H5_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name,
+                                          'descriptor': descriptor}
         else:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')
 
