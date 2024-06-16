@@ -441,9 +441,9 @@ class Megastructure:
                     bottom_interface = self.layer_interface_orientations[l_ind][1]
                     top_interface = self.layer_interface_orientations[l_ind + 1][0]
 
-                ax[1].text(annotation_x_position, line[1][1] + (annotation_vert_offset * full_v_scale),
-                           'H%s' % bottom_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
                 ax[1].text(annotation_x_position, line[1][1] - (annotation_vert_offset_btm * full_v_scale),
+                           'H%s' % bottom_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
+                ax[1].text(annotation_x_position, line[1][1] + (annotation_vert_offset * full_v_scale),
                            'H%s' % top_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
 
             y_arrow_pos = layer_lines[fig_ind+1][1][1] - (layer_lines[fig_ind+1][1][1] - layer_lines[fig_ind][1][1])/2
