@@ -1,15 +1,19 @@
 import math
-
 import numpy as np
 import matplotlib.pyplot as plt
 from colorama import Fore
 import os
 import matplotlib as mpl
+import importlib
 
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
 
-plt.rcParams.update({'font.sans-serif':'Helvetica'})  # consistent figure formatting
+pyvista_spec = importlib.util.find_spec("pyvista")  # only imports pyvista if this is available
+if pyvista_spec is not None:
+    import pyvista as pv
+
+plt.rcParams.update({'font.sans-serif': 'Helvetica'})  # consistent figure formatting
 
 
 class Megastructure:
@@ -17,10 +21,11 @@ class Megastructure:
     Convenience class that bundles the entire details of a megastructure including slat positions, seed handles and cargo.
     """
 
-    def __init__(self, slat_array, layer_interface_orientations=None):
+    def __init__(self, slat_array, layer_interface_orientations=None, connection_angle='90'):
         """
         :param slat_array: Array of slat positions (3D - X,Y, layer ID) containing the positions of all slats in the design.
         :param layer_interface_orientations: The direction each slat will be facing in the design.
+        :param connection_angle: The angle at which the slats will be connected.  For now, only 90 and 60 grids are supported.
         E.g. for a 2 layer design, [2, 5, 2] implies that the bottom layer will have H2 handles sticking out,
         the connecting interface will have H5 handles and the top layer will have H2 handles again.
         TODO: how to enforce slat length?  Will this need to change in the future?
@@ -32,6 +37,15 @@ class Megastructure:
         self.cargo_arrays = []
         self.slats = {}
         self.num_layers = slat_array.shape[2]
+        self.connection_angle = connection_angle
+        if connection_angle == '90':
+            self.grid_xd = 1
+            self.grid_yd = 1
+        elif connection_angle == '60':
+            self.grid_yd = 1/2
+            self.grid_xd = np.sqrt((1**2) - (self.grid_yd**2))
+        else:
+            raise NotImplementedError('Only 90 and 60 degree connection angles are supported.')
 
         # if no custom interface supplied, assuming alternating H2/H5 handles,
         # with H2 at the bottom, H5 at the top, and alternating connections in between
@@ -221,14 +235,17 @@ class Megastructure:
 
     def slat_axes_setup(self, axis, reverse_y=False):
         if reverse_y:
-            axis.set_ylim(-0.5, self.slat_array.shape[0] + 0.5)
+            axis.set_ylim(-0.5*self.grid_yd, (self.slat_array.shape[0] + 0.5)*self.grid_yd)
         else:
-            axis.set_ylim(self.slat_array.shape[0] + 0.5, -0.5)
-        axis.set_xlim(-0.5, self.slat_array.shape[1] + 0.5)
+            axis.set_ylim((self.slat_array.shape[0] + 0.5)*self.grid_yd, -0.5*self.grid_yd)
+        axis.set_xlim(-0.5*self.grid_xd, (self.slat_array.shape[1] + 0.5)*self.grid_xd)
+        axis.axis('scaled')
         axis.axis('off')
 
+    def point_converter(self, point):
+        return point[0] * self.grid_yd, point[1] * self.grid_xd
+
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
-                                   folder_name='slat_graphics',
                                    include_cargo=True, include_seed=True,
                                    slat_width=4, colormap='Set1'):
         """
@@ -237,8 +254,6 @@ class Megastructure:
         for each layer in the design.
         :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
         :param instant_view: Set to True to plot the figures immediately to your active view.
-        :param folder_name: By default the script will save all figures to a folder called 'slat_graphics'.
-        You can adjust this name here.
         :param include_cargo: Will print out cargo handle positions by default.  Turn this off here.
         :param include_seed: Will print out seed handle positions by default.  Turn this off here.
         :param slat_width: The width to use for the slat lines.
@@ -271,6 +286,10 @@ class Megastructure:
                 continue
             start_pos = slat.slat_position_to_coordinate[1]
             end_pos = slat.slat_position_to_coordinate[slat.max_length]
+
+            start_pos = self.point_converter(start_pos)  # this is necessary to ensure scaling is correct for 60deg angle slats
+            end_pos = self.point_converter(end_pos)
+
             layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
             layer_figures[slat.layer - 1][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
                                                      color=layer_color, linewidth=slat_width, zorder=1)
@@ -286,11 +305,12 @@ class Megastructure:
             # TODO: IF WE ATTACH THE SEED TO THE TOP SIDE OF A LAYER, THEN THE LOGIC HERE NEEDS TO BE ADJUSTED
             seed_layer = self.seed_array[0]
             seed_plot_points = np.where(self.seed_array[1] > 0)
-            layer_figures[seed_layer - 1][1][1].scatter(seed_plot_points[1], seed_plot_points[0], color='black', s=100,
+            transformed_spp = [seed_plot_points[0] * self.grid_yd,  seed_plot_points[1] * self.grid_xd]
+            layer_figures[seed_layer - 1][1][1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100,
                                                         zorder=10)
-            global_ax[0].scatter(seed_plot_points[1], seed_plot_points[0], color='black', s=100, alpha=0.5,
+            global_ax[0].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
                                  zorder=seed_layer)
-            global_ax[1].scatter(seed_plot_points[1], seed_plot_points[0], color='black', s=100, alpha=0.5,
+            global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
                                  zorder=self.num_layers - seed_layer)
 
         if include_cargo:
@@ -299,6 +319,7 @@ class Megastructure:
             # TODO: Is there some way to print the slat ID too?
             for cargo_layer, cargo_orientation, cargo_array in self.cargo_arrays:
                 cargo_plot_points = np.where(cargo_array > 0)
+                transformed_cpp = [cargo_plot_points[0] * self.grid_yd, cargo_plot_points[1] * self.grid_xd]
                 top_layer_side = self.layer_interface_orientations[cargo_layer]
                 if isinstance(top_layer_side, tuple):
                     top_layer_side = top_layer_side[0]
@@ -306,38 +327,33 @@ class Megastructure:
                     top_or_bottom = 0
                 else:
                     top_or_bottom = 1
-                layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(cargo_plot_points[1], cargo_plot_points[0],
+                layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(transformed_cpp[1], transformed_cpp[0],
                                                                          color='black', marker='s', s=100, zorder=10)
-                global_ax[0].scatter(cargo_plot_points[1], cargo_plot_points[0], color='black', s=100,
+                global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color='black', s=100,
                                      marker='s', alpha=0.5, zorder=cargo_layer)
-                global_ax[1].scatter(cargo_plot_points[1], cargo_plot_points[0], color='black',
+                global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color='black',
                                      s=100, marker='s', alpha=0.5, zorder=self.num_layers - cargo_layer)
 
         global_fig.tight_layout()
         if instant_view:
             global_fig.show()
         if save_to_folder:
-            slat_graphics_folder = os.path.join(save_to_folder, folder_name)
-            create_dir_if_empty(slat_graphics_folder)
-            global_fig.savefig(os.path.join(slat_graphics_folder, 'global_view.png'), dpi=300)
+            global_fig.savefig(os.path.join(save_to_folder, 'global_view.png'), dpi=300)
 
         for fig_ind, (fig, ax) in enumerate(layer_figures):
             fig.tight_layout()
             if instant_view:
                 fig.show()
             if save_to_folder:
-                fig.savefig(os.path.join(slat_graphics_folder, 'layer_%s.png' % (fig_ind + 1)), dpi=300)
+                fig.savefig(os.path.join(save_to_folder, 'layer_%s.png' % (fig_ind + 1)), dpi=300)
             plt.close(fig)
 
     def create_graphical_assembly_handle_view(self, save_to_folder=None, instant_view=True,
-                                              folder_name='slat_graphics',
                                               slat_width=4, colormap='Set1'):
         """
         Creates a graphical view of all handles in the assembled design, along with a side profile.
         :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
         :param instant_view: Set to True to plot the figures immediately to your active view.
-        :param folder_name: By default the script will save all figures to a folder called 'slat_graphics'.
-        You can adjust this name here.
         :param slat_width: The width to use for the slat lines.
         :param colormap: The colormap to sample from for each additional layer.
         :return:
@@ -362,6 +378,9 @@ class Megastructure:
                 continue
             start_pos = slat.slat_position_to_coordinate[1]
             end_pos = slat.slat_position_to_coordinate[slat.max_length]
+            start_pos = self.point_converter(start_pos)  # this is necessary to ensure scaling is correct for 60deg angle slats
+            end_pos = self.point_converter(end_pos)
+
             layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
 
             if slat.layer == 1:
@@ -380,16 +399,18 @@ class Megastructure:
             for i in range(self.handle_arrays.shape[0]):
                 for j in range(self.handle_arrays.shape[1]):
                     val = self.handle_arrays[i, j, handle_layer_num]
+                    x_pos = j * self.grid_xd  # this is necessary to ensure scaling is correct for 60deg angle slats
+                    y_pos = i * self.grid_yd
                     if val > 0:
-                        interface_figures[handle_layer_num][1][0].text(j, i, int(val), ha='center', va='center',
+                        interface_figures[handle_layer_num][1][0].text(x_pos, y_pos, int(val), ha='center', va='center',
                                                                        color='black', zorder=3, fontsize=8)
 
         # Preparing layer lines for side profile
         layer_lines = []
         layer_v_jump = 0.1  # set a 10% full-height jump between layers for aesthetic reasons
-        midway_v_point = (self.slat_array.shape[0] + 1)/2
-        full_v_scale = self.slat_array.shape[0] + 1
-        full_x_scale = self.slat_array.shape[1] + 1
+        midway_v_point = ((self.slat_array.shape[0] + 1)/2)*self.grid_yd
+        full_v_scale = (self.slat_array.shape[0] + 1)*self.grid_yd
+        full_x_scale = (self.slat_array.shape[1] + 1)*self.grid_xd
 
         if self.num_layers % 2 == 0:  # even and odd num of layers should have different spacing to remain centred
             start_point = midway_v_point - (layer_v_jump/2) - (layer_v_jump * ((self.num_layers/2)-1) * full_v_scale)
@@ -397,12 +418,13 @@ class Megastructure:
             start_point = midway_v_point - (layer_v_jump * (math.floor(self.num_layers/2)) * full_v_scale)
 
         for layer in range(self.num_layers):  # prepares actual lines here
-            layer_lines.append([[-0.5, self.slat_array.shape[1] + 0.5],
-                                [start_point + (layer_v_jump*layer*full_v_scale), start_point + (layer_v_jump*layer*full_v_scale)]])
+            layer_lines.append([[-0.5*self.grid_xd, (self.slat_array.shape[1] + 0.5)*self.grid_xd],
+                                [start_point + (layer_v_jump*layer*full_v_scale),
+                                 start_point + (layer_v_jump*layer*full_v_scale)]])
 
         # layer lines are painted here, along with arrows and annotations
         annotation_vert_offset = 0.02
-        annotation_vert_offset_btm = 0.024  # made a second offset scale here due to the way the font is positioned in the figure
+        annotation_vert_offset_btm = 0.026  # made a second offset scale here due to the way the font is positioned in the figure
         annotation_x_position = full_x_scale/2
         for fig_ind, (fig, ax) in enumerate(interface_figures):
             for l_ind, line in enumerate(layer_lines):
@@ -425,22 +447,18 @@ class Megastructure:
                            'H%s' % top_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
 
             y_arrow_pos = layer_lines[fig_ind+1][1][1] - (layer_lines[fig_ind+1][1][1] - layer_lines[fig_ind][1][1])/2
-            x_arrow_1 = -0.5
-            x_arrow_2 = self.slat_array.shape[1] + 0.5
+            x_arrow_1 = -0.5*self.grid_xd
+            x_arrow_2 = (self.slat_array.shape[1] + 0.5)*self.grid_xd
             ax[1].arrow(x_arrow_1, y_arrow_pos, 0.1 * full_x_scale, 0, width=(0.8 * full_v_scale/67), fc='k', ec='k') # arrow width was calibrated on a canvas with a vertical size of 67
             ax[1].arrow(x_arrow_2, y_arrow_pos, -0.1 * full_x_scale, 0, width=(0.8 * full_v_scale/67), fc='k', ec='k')
 
         # final display and saving
-        if save_to_folder:
-            handle_graphics_folder = os.path.join(save_to_folder, folder_name)
-            create_dir_if_empty(handle_graphics_folder)
-
         for fig_ind, (fig, ax) in enumerate(interface_figures):
             fig.tight_layout()
             if instant_view:
                 fig.show()
             if save_to_folder:
-                fig.savefig(os.path.join(handle_graphics_folder,
+                fig.savefig(os.path.join(save_to_folder,
                                          'handles_layer_%s_%s.png' % (fig_ind + 1, fig_ind + 2)), dpi=300)
             plt.close(fig)
 
@@ -487,9 +505,65 @@ class Megastructure:
             plt.savefig(os.path.join(output_folder, '%s.png' % slat_id), dpi=300)
             plt.close(l_fig)
 
-    def create_graphical_3D_view(self):
-        pass
+    def create_graphical_3D_view(self, save_folder, window_size=(2048, 2048), colormap='Set1'):
+        """
+        Creates a 3D video of the megastructure slat design. TODO: add cargo and seeds to this view too.
+        :param save_folder: Folder to save all video to.
+        :param window_size: Resolution of video generated.  2048x2048 seems reasonable in most cases.
+        :param colormap: Colormap to extract layer colors from
+        :return: N/A
+        """
 
-    def create_graphical_report(self):
-        pass
+        plotter = pv.Plotter(window_size=window_size, off_screen=True)
+
+        for slat_id, slat in self.slats.items(): # Z-height is set to 1 here, could be interested in changing in some cases
+            if len(slat.slat_position_to_coordinate) == 0:
+                print(Fore.YELLOW + 'WARNING: Slat %s was ignored from 3D graphical '
+                                    'view as it does not have a grid position defined.' % slat_id)
+                continue
+
+            pos1 = slat.slat_position_to_coordinate[1]
+            pos2 = slat.slat_position_to_coordinate[32]
+
+            layer = slat.layer
+            length = slat.max_length
+            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+
+            start_point = (pos1[1] * self.grid_xd, pos1[0] * self.grid_yd, layer - 1)
+            end_point = (pos2[1] * self.grid_xd, pos2[0] * self.grid_yd, layer - 1)
+
+            # Calculate the center and direction from start and end points
+            center = ((start_point[0] + end_point[0]) / 2, (start_point[1] + end_point[1]) / 2, layer - 1)
+            direction = (end_point[0] - start_point[0], end_point[1] - start_point[1], end_point[2] - start_point[2])
+
+            # Create the cylinder
+            cylinder = pv.Cylinder(center=center, direction=direction, radius=0.5, height=length)
+            plotter.add_mesh(cylinder, color=layer_color)
+
+        plotter.add_axes(interactive=True)
+
+        # Open a movie file
+        plotter.open_movie(os.path.join(save_folder, '3D_design_view.mp4'))
+        plotter.show(auto_close=False)
+
+        # Again, it might be of interest to adjust parameters here for different designs
+        path = plotter.generate_orbital_path(n_points=200, shift=0.2, viewup=[0, 1, 0], factor=2.0)
+        plotter.orbit_on_path(path, write_frames=True, viewup=[0, 1, 0], step=0.05)
+        plotter.close()
+
+    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False):
+        """
+        Generates entire set of graphical reports for the megastructure design.
+        :param output_folder: Output folder to save all images to.
+        :param draw_individual_slat_reports: If set, to true, will generate individual slat reports (slow).
+        :return: N/A
+        """
+        print(Fore.CYAN + 'Generating graphical reports for megastructure design, this might take a few seconds...')
+        create_dir_if_empty(output_folder)
+        self.create_graphical_slat_view(save_to_folder=output_folder, instant_view=False)
+        self.create_graphical_assembly_handle_view(save_to_folder=output_folder, instant_view=False)
+        if draw_individual_slat_reports:
+            self.create_graphical_slat_views(output_folder)
+        self.create_graphical_3D_view(output_folder)
+
 
