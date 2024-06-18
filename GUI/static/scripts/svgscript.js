@@ -17,16 +17,27 @@ let placeRoundedY = 0;                  //Snapped posiiton of mouse (Y)
 
 //For drag & drop
 var activeLayer = null;
+var activeLayerId = null;
 
 //Layers
 let layerList = new Map();
 let layerArray = null
 
 //Opacity
-let shownOpacity = 0.7
+let shownOpacity = 0.5
 let hiddenOpacity = 0.2
 
 let placeHorizontal = false;
+
+//ID counter for slat IDs
+let slatCounter = 0;
+
+//Select
+let selectMoveMode = 1; //0 for move, 1 for select
+let selected = false;
+let selectedColor = '#93f5f2';
+let unselectedColor = null;
+
 
 
 ///////////////////////////////
@@ -170,14 +181,34 @@ function startDrag(event) {
     dragSelectedElement = event.target.instance;
 
     if(activeLayer.children().includes(dragSelectedElement)){
-        const point = dragSelectedElement.point(event.clientX, event.clientY);
-    
-        dragOffset.x = point.x - dragSelectedElement.x();
-        dragOffset.y = point.y - dragSelectedElement.y();
+        
+        //selectMoveMode == 1 corresponds to selecting. == 0 corresponds to moving
+        if(selectMoveMode == 1){
+            if(!selected){
+                unselectedColor = dragSelectedElement.attr('stroke')
+                dragSelectedElement.attr({stroke: selectedColor})
+                selected = true;
+            }
+            else if(selected){
+                dragSelectedElement.attr({stroke: unselectedColor})
+                unselectedColor = null
+                selected = false;
+            }
+            
 
-        // Add event listeners for drag and end drag
-        document.addEventListener('pointermove', drag)
-        document.addEventListener('pointerup', endDrag);
+        }
+        else {
+            const point = dragSelectedElement.point(event.clientX, event.clientY);
+    
+            dragOffset.x = point.x - dragSelectedElement.x();
+            dragOffset.y = point.y - dragSelectedElement.y();
+
+            // Add event listeners for drag and end drag
+            document.addEventListener('pointermove', drag)
+            document.addEventListener('pointerup', endDrag);
+
+        }
+        
     }
 
         
@@ -333,8 +364,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
 
-    //ID counter for slat IDs
-    let slatCounter = 0;
+    
 
     // Event listener to print slat when mouse is pressed
     targetElement.addEventListener('pointerdown', (event) => {
@@ -346,7 +376,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                     //if(!isPointOnLine(activeLayer, placeRoundedX, placeRoundedY)   && !isPointOnLine(activeLayer, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
                         let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
                                                  .stroke({ width: 3, color:'#076900', opacity: shownOpacity });
-                        tmpLine.attr('id','ID-L'+'-N' + slatCounter)
+                        tmpLine.attr('id','ID-L'+activeLayerId + '-N' + slatCounter)
                         tmpLine.attr('class',"line")
                         tmpLine.attr({ 'pointer-events': 'stroke' })
                         slatCounter += 1;
@@ -407,6 +437,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log(`Layer marked active: ${event.detail.layerId}`, event.detail.layerElement);
         // Handle layer marked active
         activeLayer = layerList.get(event.detail.layerId)
+        activeLayerId = event.detail.layerId
 
 
     });
