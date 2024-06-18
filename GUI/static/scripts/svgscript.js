@@ -33,8 +33,7 @@ let placeHorizontal = false;
 let slatCounter = 0;
 
 //Select
-let selectMoveMode = 1; //0 for move, 1 for select
-let selected = false;
+let drawEraseSelectMode = 0; //0 for draw, 1 for erase, 2 for select
 let selectedColor = '#93f5f2';
 let unselectedColor = null;
 
@@ -182,22 +181,10 @@ function startDrag(event) {
 
     if(activeLayer.children().includes(dragSelectedElement)){
         
-        //selectMoveMode == 1 corresponds to selecting. == 0 corresponds to moving
-        if(selectMoveMode == 1){
-            if(!selected){
-                unselectedColor = dragSelectedElement.attr('stroke')
-                dragSelectedElement.attr({stroke: selectedColor})
-                selected = true;
-            }
-            else if(selected){
-                dragSelectedElement.attr({stroke: unselectedColor})
-                unselectedColor = null
-                selected = false;
-            }
-            
-
-        }
-        else {
+        //drawEraseSelectMode == 0 corresponds to drawing
+        //drawEraseSelectMode == 1 corresponds to erasing
+        //drawEraseSelectMode == 2 corresponds to selecting
+        if(drawEraseSelectMode == 0){ //Drawing!
             const point = dragSelectedElement.point(event.clientX, event.clientY);
     
             dragOffset.x = point.x - dragSelectedElement.x();
@@ -206,6 +193,26 @@ function startDrag(event) {
             // Add event listeners for drag and end drag
             document.addEventListener('pointermove', drag)
             document.addEventListener('pointerup', endDrag);
+        }
+        else if(drawEraseSelectMode == 1){ //Erasing!
+            dragSelectedElement.remove()
+            console.log("deleted!")
+            event.stopPropagation(); //needed or else delete doesn't work... oh well!
+        }
+        else if(drawEraseSelectMode == 2){ //Selecting!
+            //check if selected already
+            var checkSelected = dragSelectedElement.hasClass("selected")
+            if(!checkSelected){
+                unselectedColor = dragSelectedElement.attr('stroke')
+                dragSelectedElement.attr({stroke: selectedColor})
+                dragSelectedElement.addClass("selected");
+            }
+            else if(checkSelected){
+                dragSelectedElement.attr({stroke: unselectedColor})
+                unselectedColor = null
+                dragSelectedElement.removeClass("selected");
+            }
+            
 
         }
         
@@ -280,14 +287,25 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     //Change grid configuration by radio buttons
         //Get radio buttons
-        var radios = document.querySelectorAll('input[name="graphMode');
+        var graphModeRadios = document.querySelectorAll('input[name="graphMode');
 
         //Add a change event listener to each radio button:
-        radios.forEach(function(radio) {
+        graphModeRadios.forEach(function(radio) {
             radio.addEventListener('change', function() {
                 gridStyle = this.value;
                 drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
 
+            })
+        })
+
+    //Change edit mode by radio buttons
+        //Get radio buttons
+        var editModeRadios = document.querySelectorAll('input[name="editMode');
+
+        //Add a change event listener to each radio button:
+        editModeRadios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                drawEraseSelectMode = this.value;
             })
         })
 
