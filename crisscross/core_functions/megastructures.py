@@ -12,6 +12,8 @@ from crisscross.helper_functions import create_dir_if_empty
 pyvista_spec = importlib.util.find_spec("pyvista")  # only imports pyvista if this is available
 if pyvista_spec is not None:
     import pyvista as pv
+else:
+    print('Pyvista not installed.  3D graphical views cannot be created.')
 
 plt.rcParams.update({'font.sans-serif': 'Helvetica'})  # consistent figure formatting
 
@@ -301,7 +303,7 @@ class Megastructure:
             global_ax[1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
                               color=layer_color, linewidth=slat_width, alpha=0.5, zorder=self.num_layers - slat.layer)
 
-        if include_seed:
+        if include_seed and self.seed_array:
             # TODO: IF WE ATTACH THE SEED TO THE TOP SIDE OF A LAYER, THEN THE LOGIC HERE NEEDS TO BE ADJUSTED
             seed_layer = self.seed_array[0]
             seed_plot_points = np.where(self.seed_array[1] > 0)
@@ -313,12 +315,19 @@ class Megastructure:
             global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
                                  zorder=self.num_layers - seed_layer)
 
-        if include_cargo:
+        if include_cargo and len(self.cargo_arrays) > 0:
             # TODO: is it worth setting a different colour for each different cargo here?
-            # TODO: Can we add labels for the different cargo types?
             # TODO: Is there some way to print the slat ID too?
+            # TODO: will need to improve colour assignment process to include non-integers..
             for cargo_layer, cargo_orientation, cargo_array in self.cargo_arrays:
                 cargo_plot_points = np.where(cargo_array > 0)
+
+                # sets colour of annotation according to the cargo being added
+                cargo_color_values = -cargo_array[cargo_plot_points]
+                cargo_color_values_rgb = []
+                for col_id in cargo_color_values:
+                    cargo_color_values_rgb.append(mpl.colormaps[colormap].colors[int(col_id)])
+
                 transformed_cpp = [cargo_plot_points[0] * self.grid_yd, cargo_plot_points[1] * self.grid_xd]
                 top_layer_side = self.layer_interface_orientations[cargo_layer]
                 if isinstance(top_layer_side, tuple):
@@ -328,10 +337,10 @@ class Megastructure:
                 else:
                     top_or_bottom = 1
                 layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(transformed_cpp[1], transformed_cpp[0],
-                                                                         color='black', marker='s', s=100, zorder=10)
-                global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color='black', s=100,
+                                                                         color=cargo_color_values_rgb, marker='s', s=100, zorder=10)
+                global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb, s=100,
                                      marker='s', alpha=0.5, zorder=cargo_layer)
-                global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color='black',
+                global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb,
                                      s=100, marker='s', alpha=0.5, zorder=self.num_layers - cargo_layer)
 
         global_fig.tight_layout()
@@ -529,6 +538,7 @@ class Megastructure:
             length = slat.max_length
             layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
 
+            # TODO: can we represent the cylinders with the precise dimensions of the real thing i.e. with the 12/6nm extension on either end?
             start_point = (pos1[1] * self.grid_xd, pos1[0] * self.grid_yd, layer - 1)
             end_point = (pos2[1] * self.grid_xd, pos2[0] * self.grid_yd, layer - 1)
 
@@ -551,7 +561,7 @@ class Megastructure:
         plotter.orbit_on_path(path, write_frames=True, viewup=[0, 1, 0], step=0.05)
         plotter.close()
 
-    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False):
+    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False, colormap='Set1'):
         """
         Generates entire set of graphical reports for the megastructure design.
         :param output_folder: Output folder to save all images to.
@@ -560,10 +570,10 @@ class Megastructure:
         """
         print(Fore.CYAN + 'Generating graphical reports for megastructure design, this might take a few seconds...')
         create_dir_if_empty(output_folder)
-        self.create_graphical_slat_view(save_to_folder=output_folder, instant_view=False)
-        self.create_graphical_assembly_handle_view(save_to_folder=output_folder, instant_view=False)
+        self.create_graphical_slat_view(save_to_folder=output_folder, instant_view=False, colormap=colormap)
+        self.create_graphical_assembly_handle_view(save_to_folder=output_folder, instant_view=False, colormap=colormap)
         if draw_individual_slat_reports:
-            self.create_graphical_slat_views(output_folder)
-        self.create_graphical_3D_view(output_folder)
+            self.create_graphical_slat_views(output_folder, colormap=colormap)
+        self.create_graphical_3D_view(output_folder, colormap=colormap)
 
 

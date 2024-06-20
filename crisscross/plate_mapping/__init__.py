@@ -12,7 +12,7 @@ class BasePlate:
     Once all data read in, access can be facilitated via a standard 3-element index of the slat position (1-32),
     the slat side (H2 or H5) and the cargo ID (which can vary according to the specific plate in question).
     """
-    def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_style='2d_excel'):
+    def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_style='2d_excel', plate_size=384):
 
         if isinstance(plate_name, str):
             plate_name = [plate_name]
@@ -27,7 +27,7 @@ class BasePlate:
                 self.plates.append(pre_read_plate_dfs[index])
             else:
                 self.plates.append(read_dna_plate_mapping(os.path.join(self.plate_folder, plate + '.xlsx'),
-                                                          data_type=plate_style))
+                                                          data_type=plate_style, plate_size=plate_size))
 
         self.wells = defaultdict(bool)
         self.sequences = defaultdict(bool)

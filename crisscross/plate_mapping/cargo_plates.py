@@ -71,6 +71,39 @@ class AntiNelsonQuimbyPlate(BasePlate):
         return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
 
 
+class H5AntiBartEdnaPlate(BasePlate):
+    """
+    Cargo plate (FILL IN NAME) containing Bart and Edna antiHandles for all 32 H5 slat positions.
+    """
+    def __init__(self, *args, **kwargs):
+        self.cargo_key = {
+            1: 'Bart',
+            2: 'Edna'
+        }
+        super().__init__(*args, **kwargs)
+
+    def identify_wells_and_sequences(self):
+        for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
+                                      self.plates[0]['well'].tolist(), self.plates[0]['sequence'].tolist()):
+            if 'Bart' in pattern:
+                cargo = 'Bart'
+            elif 'Edna' in pattern:
+                cargo = 'Edna'
+            else:
+                raise RuntimeError('The plate file does not match the expected pattern for this plate.')
+
+            key = (int(pattern.split('position_')[-1]), 5, cargo)
+
+            self.wells[key] = well
+            self.sequences[key] = seq
+
+    def get_sequence(self, slat_position, slat_side, cargo_id=0):
+        return self.sequences[(slat_position, slat_side, self.cargo_key[cargo_id])]
+
+    def get_well(self, slat_position, slat_side, cargo_id=0):
+        return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
+
+
 class DirectBiotinPlate(BasePlate):
     """
     Cargo plate (P3510_SSW) created by Stella containing various DNA paint handles (Fribourg collab)
