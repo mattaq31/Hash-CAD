@@ -257,11 +257,58 @@ function endDrag() {
 
 
 
-// Function to create a nice array
-function groupToSlatArray(layerGroup) {
-    
+///////////////////////////////
+//   Creating Slat Array     //
+///////////////////////////////
+
+
+// Initialize the sparse 3D grid dictionary
+function initializeSparseGridDictionary() {
+    return {};
 }
 
+// Convert grid coordinates to a string key for the dictionary
+function gridKey(x, y, layer) {
+    return `${x},${y},${layer}`;
+}
+
+// Populate the sparse grid dictionary with slat IDs
+function populateSparseGridDictionary(gridDict, layers) {
+    layers.forEach((layer, layerIndex) => {
+        layer.children().forEach(child => {
+            let slatId = child.attr('id');
+            let bbox = child.bbox();
+            let startX = Math.round(bbox.x / minorGridSize);
+            let startY = Math.round(bbox.y / minorGridSize);
+            let endX = Math.round((bbox.x + bbox.width) / minorGridSize);
+            let endY = Math.round((bbox.y + bbox.height) / minorGridSize);
+
+            // Populate the grid dictionary with the slat ID for the occupied positions
+            for (let x = startX; x <= endX; x++) {
+                for (let y = startY; y <= endY; y++) {
+                    let key = gridKey(x, y, layerIndex);
+                    gridDict[key] = slatId;
+                }
+            }
+        });
+    });
+}
+
+
+
+//Create array
+function createGridArray(layerList) {
+    // Initialize the sparse grid dictionary
+    let gridDict = initializeSparseGridDictionary();
+
+    // Populate the sparse grid dictionary with slat IDs
+    populateSparseGridDictionary(gridDict, Array.from(layerList.values()));
+
+    // You can now use the gridDict as needed
+    console.log(gridDict);
+
+    return gridDict
+}
   
 ///////////////////////////////
 //         Main Code!        //
@@ -398,7 +445,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                     let defaultColor = activeLayerColor; //'#076900';
                     let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
                                                 .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
-                    tmpLine.attr('id','ID-L'+activeLayerId + '-N' + slatCounter)
+                    tmpLine.attr('id','ID-'+activeLayerId + '-N' + slatCounter)
                     tmpLine.attr('class',"line")
                     tmpLine.attr({ 'pointer-events': 'stroke' })
                     tmpLine.attr('data-default-color', defaultColor);
@@ -406,6 +453,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
     
                     //Adding draggability:
                     tmpLine.on('pointerdown', startDrag)
+
+                    //Create grid array
+                    createGridArray(layerList)
                     }
             }
             else if(placeHorizontal){
@@ -413,7 +463,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                     let defaultColor = activeLayerColor //'#836108';
                     let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX + 32 * minorGridSize, placeRoundedY )
                                                 .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
-                    tmpLine.attr('id','ID-L'+'-N' + slatCounter)
+                    tmpLine.attr('id','ID-'+activeLayerId+'-N' + slatCounter)
                     tmpLine.attr('class',"line")
                     tmpLine.attr({ 'pointer-events': 'stroke' })
                     tmpLine.attr('data-default-color', defaultColor);
@@ -421,6 +471,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
     
                     //Adding draggability:
                     tmpLine.on('pointerdown', startDrag)
+
+                    //Create grid array
+                    createGridArray(layerList)
                     }
             }
             
@@ -463,7 +516,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
         activeLayer = layerList.get(event.detail.layerId)
         activeLayerId = event.detail.layerId
         activeLayerColor = event.detail.layerColor
-        console.log(activeLayerColor)
+        console.log(activeLayerId)
+
+
+
+        
 
 
     });
@@ -482,6 +539,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
             child.stroke({ color: layerColor });
             child.attr('data-default-color', layerColor); // Update the default color attribute
         });
+
+        if(layerId == activeLayerId){
+            activeLayerColor = layerColor
+        }
+        
     
         // Your code to handle the color change, e.g., updating a UI element, applying the color to a canvas, etc.
     });

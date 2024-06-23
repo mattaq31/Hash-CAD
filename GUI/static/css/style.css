@@ -143,3 +143,12 @@ canvas {
 .footer {
     background-color:rgb(196, 194, 192);
 }
+
+.palette-selector {
+    display: flex;
+    flex-direction: row;
+
+    align-items:center;
+    justify-content:space-around;
+    margin: 15px;
+}
