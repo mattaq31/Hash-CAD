@@ -18,6 +18,7 @@ let placeRoundedY = 0;                  //Snapped posiiton of mouse (Y)
 //For drag & drop
 var activeLayer = null;
 var activeLayerId = null;
+var activeLayerColor = null;
 
 //Layers
 let layerList = new Map();
@@ -394,7 +395,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
             if(!placeHorizontal){
                 if(!willVertBeOnLine(placeRoundedX, placeRoundedY, activeLayer, minorGridSize, 32)) {
-                    let defaultColor = '#076900';
+                    let defaultColor = activeLayerColor; //'#076900';
                     let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
                                                 .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
                     tmpLine.attr('id','ID-L'+activeLayerId + '-N' + slatCounter)
@@ -409,7 +410,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
             }
             else if(placeHorizontal){
                 if(!willHorzBeOnLine(placeRoundedX, placeRoundedY, activeLayer, minorGridSize, 32)) {
-                    let defaultColor = '#836108';
+                    let defaultColor = activeLayerColor //'#836108';
                     let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX + 32 * minorGridSize, placeRoundedY )
                                                 .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
                     tmpLine.attr('id','ID-L'+'-N' + slatCounter)
@@ -446,7 +447,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
     document.addEventListener('layerShown', (event) => {
         console.log(`Layer shown: ${event.detail.layerId}`, event.detail.layerElement);
         // Handle layer shown
-        layerList.get(event.detail.layerId).attr('opacity',shownOpacity)
+        layerList.get(event.detail.layerId).attr('opacity',1)
     });
 
     document.addEventListener('layerHidden', (event) => {
@@ -461,8 +462,28 @@ SVG.on(document, 'DOMContentLoaded', function() {
         // Handle layer marked active
         activeLayer = layerList.get(event.detail.layerId)
         activeLayerId = event.detail.layerId
+        activeLayerColor = event.detail.layerColor
+        console.log(activeLayerColor)
 
 
+    });
+
+
+    document.addEventListener('layerColorChanged', (event) => {
+        console.log(`Layer color changed: ${event.detail.layerId}`, event.detail.layerElement);
+        const layerId = event.detail.layerId;
+        const layerColor = event.detail.layerColor;
+        console.log(`New color for ${layerId}: ${layerColor}`);
+
+
+        const layerToChange = layerList.get(event.detail.layerId)
+
+        layerToChange.children().forEach(child => {
+            child.stroke({ color: layerColor });
+            child.attr('data-default-color', layerColor); // Update the default color attribute
+        });
+    
+        // Your code to handle the color change, e.g., updating a UI element, applying the color to a canvas, etc.
     });
         
 

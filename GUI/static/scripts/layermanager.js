@@ -1,3 +1,5 @@
+var defaultColor = '#ff0000'
+
 document.addEventListener('DOMContentLoaded', () => {
     const layerList = document.getElementById('layer-list');
     const addLayerButton = document.getElementById('add-layer');
@@ -26,6 +28,11 @@ document.addEventListener('DOMContentLoaded', () => {
         layerRadio.name = 'active-layer';
         layerRadio.addEventListener('change', setActiveLayer);
 
+        const colorPicker = document.createElement('input');
+        colorPicker.type = 'color';
+        colorPicker.value = defaultColor; // Set default color value
+        colorPicker.addEventListener('input', setColor);
+
         const removeButton = document.createElement('button');
         removeButton.textContent = 'Remove';
         removeButton.addEventListener('click', () => {
@@ -36,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         layerItem.appendChild(layerCheckbox);
         layerItem.appendChild(layerRadio);
         layerItem.appendChild(layerName);
+        layerItem.appendChild(colorPicker);
         layerItem.appendChild(removeButton);
         layerList.appendChild(layerItem);
 
@@ -68,12 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
         dispatchCustomEvent('layerMarkedActive', activeLayer);
     }
 
+    function setColor(event) {
+        const layerItem = event.target.parentElement;
+        const color = event.target.value;
+        layerItem.dataset.layerColor = color || defaultColor; // Set the color as a data attribute
+        dispatchCustomEvent('layerColorChanged', layerItem);
+    }
+
     // Function to dispatch custom events
     function dispatchCustomEvent(eventName, layerItem) {
         const event = new CustomEvent(eventName, {
             detail: {
                 layerId: layerItem.dataset.layerId,
-                layerElement: layerItem
+                layerElement: layerItem,
+                layerColor: layerItem.dataset.layerColor || defaultColor // Include color in event details
             }
         });
         document.dispatchEvent(event);
