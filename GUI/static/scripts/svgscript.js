@@ -35,7 +35,6 @@ let slatCounter = 0;
 //Select
 let drawEraseSelectMode = 0; //0 for draw, 1 for erase, 2 for select
 let selectedColor = '#93f5f2';
-let unselectedColor = null;
 
 
 
@@ -174,7 +173,7 @@ function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
 ///////////////////////////////
 
 
-//Start dragging
+//Start dragging (OR SELECTING OR ERASING)
 function startDrag(event) {
         
     dragSelectedElement = event.target.instance;
@@ -203,13 +202,12 @@ function startDrag(event) {
             //check if selected already
             var checkSelected = dragSelectedElement.hasClass("selected")
             if(!checkSelected){
-                unselectedColor = dragSelectedElement.attr('stroke')
                 dragSelectedElement.attr({stroke: selectedColor})
                 dragSelectedElement.addClass("selected");
             }
             else if(checkSelected){
+                let unselectedColor = dragSelectedElement.attr('data-default-color'); 
                 dragSelectedElement.attr({stroke: unselectedColor})
-                unselectedColor = null
                 dragSelectedElement.removeClass("selected");
             }
             
@@ -257,6 +255,11 @@ function endDrag() {
   }
 
 
+
+// Function to create a nice array
+function groupToSlatArray(layerGroup) {
+    
+}
 
   
 ///////////////////////////////
@@ -391,30 +394,32 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
             if(!placeHorizontal){
                 if(!willVertBeOnLine(placeRoundedX, placeRoundedY, activeLayer, minorGridSize, 32)) {
-                    //if(!isPointOnLine(activeLayer, placeRoundedX, placeRoundedY)   && !isPointOnLine(activeLayer, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
-                        let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
-                                                 .stroke({ width: 3, color:'#076900', opacity: shownOpacity });
-                        tmpLine.attr('id','ID-L'+activeLayerId + '-N' + slatCounter)
-                        tmpLine.attr('class',"line")
-                        tmpLine.attr({ 'pointer-events': 'stroke' })
-                        slatCounter += 1;
-        
-                        //Adding draggability:
-                        tmpLine.on('pointerdown', startDrag)
+                    let defaultColor = '#076900';
+                    let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX, placeRoundedY + 32 * minorGridSize)
+                                                .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
+                    tmpLine.attr('id','ID-L'+activeLayerId + '-N' + slatCounter)
+                    tmpLine.attr('class',"line")
+                    tmpLine.attr({ 'pointer-events': 'stroke' })
+                    tmpLine.attr('data-default-color', defaultColor);
+                    slatCounter += 1;
+    
+                    //Adding draggability:
+                    tmpLine.on('pointerdown', startDrag)
                     }
             }
             else if(placeHorizontal){
                 if(!willHorzBeOnLine(placeRoundedX, placeRoundedY, activeLayer, minorGridSize, 32)) {
-                    //if(!isPointOnLine(activeLayer, placeRoundedX, placeRoundedY)   && !isPointOnLine(activeLayer, placeRoundedX, placeRoundedY + 32 * minorGridSize)){
-                        let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX + 32 * minorGridSize, placeRoundedY )
-                                                 .stroke({ width: 3, color:'#836108', opacity: shownOpacity });
-                        tmpLine.attr('id','ID-L'+'-N' + slatCounter)
-                        tmpLine.attr('class',"line")
-                        tmpLine.attr({ 'pointer-events': 'stroke' })
-                        slatCounter += 1;
-        
-                        //Adding draggability:
-                        tmpLine.on('pointerdown', startDrag)
+                    let defaultColor = '#836108';
+                    let tmpLine = activeLayer.line(placeRoundedX, placeRoundedY, placeRoundedX + 32 * minorGridSize, placeRoundedY )
+                                                .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
+                    tmpLine.attr('id','ID-L'+'-N' + slatCounter)
+                    tmpLine.attr('class',"line")
+                    tmpLine.attr({ 'pointer-events': 'stroke' })
+                    tmpLine.attr('data-default-color', defaultColor);
+                    slatCounter += 1;
+    
+                    //Adding draggability:
+                    tmpLine.on('pointerdown', startDrag)
                     }
             }
             

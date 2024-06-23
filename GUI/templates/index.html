@@ -2,9 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    
+    <!-- Include bootstrap styles-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <!-- Include my own styles-->
     <link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+    
+
+
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>CrisscrossDesigner</title>
+    
+    
+
+</head>
+
+
+<body>    
+    <nav class="navbar sticky-top navbar-expand-lg navbar-light bg-light" >
+        <a class="navbar-brand" href="#">Crisscross Designer</a>
+        
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="#">Canvas <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Inventory</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">About</a>
+                </li>
+                
+            </ul>
+        </div>
+    </nav>
+
+
+    <div class="main-window">
+        <div class="central-window">
+            
+            <div id="sideMenu" class="left-panel, collapse">
+                
+                <h2 class="centeredText">Configuration</h2>
+                <div class="config">
+                    <div class="mode">
+                        <h4 class="centeredText">Mode</h4>
+                        <form class="edit-mode-selector, centeredText">
+                            <input type="radio" id="draw" name="editMode" value=0 checked >
+                            <label for="draw">Draw</label><br>
+                            <input type="radio" id="erase" name="editMode" value=1>
+                            <label for="erase">Erase</label><br>
+                            <input type="radio" id="select" name="editMode" value=2>
+                            <label for="select">Select</label>
+                        </form> 
+                    </div>
+
+                    <div class="settings">
+                        <h4>Settings</h4>
+                        <div class="graph-settings">
+                            <form class="graph-mode-selector, centeredText">
+                                <input type="radio" id="gridStyle" name="graphMode" value=1 checked=true>
+                                <label for="gridStyle">Grid</label><br>
+                                <input type="radio" id="dotStyle" name="graphMode" value=2>
+                                <label for="dotsStyle">Dots</label><br>
+                                <input type="radio" id="noStyle" name="graphMode" value=0>
+                                <label for="noStyle">None</label>
+                            </form> 
+                        </div>
+                    </div>
+                </div>
+
+                <p>Note: hold down "shift" to pan</p>
+
+                
+                <h2 class="centeredText">Palette</h2>
+                <div class="palette">
+                    <ul class="draw-list">
+                        <li>Slat</li>
+                        <li>Cargo</li>
+                        <li>Handle</li>
+                    </ul>
+                </div>
+
+                <p>Note: press "alt" to rotate slat direction</p>
+
+                <h2 class="centeredText">Layer Manager</h2>
+
+                <div class="layers">
+                    <div id="layer-manager">
+                        <div id="layer-list"></div>
+                        <button id="add-layer">Add Layer</button>
+                    </div>
+                </div>
+                
+    
+            </div>
+
+            <a href="#sideMenu" class="btn btn-info btn-sidebar" data-toggle="collapse">&#8801</a>
+
+            <div class="right-panel" id="right-panel">
+                <div id="svg-container"></div>   
+    
+                <!--  <canvas id="main-canvas" width="500" height="800">-->
+    
+                </canvas>
+                
+            </div>
+            
+        </div>
+    
+        <div class="footer">
+            <p>Corey Becker, Matthew Aquilina, 2024</p>
+        </div>
+
+    </div>
+
+
+
+
+
+    
+
+    <!-- Scripts for Bootstrap! -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
     
     <!-- We need to include a link to the SVG library!--> 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.16/svg.min.js"></script>
@@ -12,84 +143,18 @@
     <!-- Include Panzoom.js -->
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 
-    <!-- Includ Fabric.js -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/fabric"></script> -->
-
     <!-- Include SVG.draggable.js -->
     <script src="https://cdn.jsdelivr.net/gh/svgdotjs/svg.draggable.js/dist/svg.draggable.min.js"></script>
 
     <!-- <script src="node_modules/@svgdotjs/svg.draggable.js/dist/svg.draggable.js"></script> -->
-    
 
-</head>
-
-<body>
-    <div class="heading">
-        <h1>Crisscross Designer</h1>
-    </div>
-    
-
-    <div class="main-window">
-        <div class="left-panel">
-            <h1>Menu</h1>
-            <div class="palette">
-                <h2>Palette</h2>
-                <ul class="draw-list">
-                    <li>Slat</li>
-                    <li>Cargo</li>
-                    <li>Handle</li>
-                </ul>
-                <form class="edit-mode-selector">
-                    <input type="radio" id="draw" name="editMode" value=0>
-                    <label for="draw">Draw Mode</label><br>
-                    <input type="radio" id="erase" name="editMode" value=1>
-                    <label for="erase">Erase Mode</label><br>
-                    <input type="radio" id="select" name="editMode" value=2>
-                    <label for="select">Select Mode</label>
-                </form> 
-            </div>
-            <div class="layers">
-                <h2>Layer Manager</h2>
-                <div id="layer-manager">
-                    <div id="layer-list"></div>
-                    <button id="add-layer">Add Layer</button>
-                </div>
-            </div>
-            <div class="settings">
-                <h2>Settings</h2>
-                <div class="graph-settings">
-                    <form class="graph-mode-selector">
-                        <input type="radio" id="gridStyle" name="graphMode" value=1 checked=true>
-                        <label for="gridStyle">Grid</label><br>
-                        <input type="radio" id="dotStyle" name="graphMode" value=2>
-                        <label for="dotsStyle">Dots</label><br>
-                        <input type="radio" id="noStyle" name="graphMode" value=0>
-                        <label for="noStyle">None</label>
-                    </form> 
-                    <ul class="configure-graph">
-                        <li>Minor Gridsize</li>
-                        <li>Major Gridsize</li>
-                        <li>Weight</li>
-                    </ul>
-                </div>
-
-            </div>
-        </div>
-        <div class="right-panel" id="right-panel">
-            <div id="svg-container"></div>   
-
-            <!--  <canvas id="main-canvas" width="500" height="800">-->
-
-            </canvas>
-            
-        </div>
-        
-    </div>
 
     
     <!--<script type="module" src="{{url_for('static', filename='scripts/fabricscript.js')}}"></script> -->
     <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script>
     <script type="module" src="{{url_for('static', filename='scripts/layermanager.js')}}"></script>
+
+    
 </body>
 
 

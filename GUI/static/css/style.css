@@ -2,40 +2,46 @@
 body{
     width: 100vw;
     height: 100vh;
-
-}
-
-.heading {
-    text-align: center;
 }
 
 .main-window {
+    display: flex;
+    flex-direction: column;
+    justify-content:space-between;
+    align-items: stretch;
+    text-align: center;
+}
+
+.central-window {
     display: flex;
     flex-direction: row;
     justify-content:space-between;
     gap: 20px;
     align-items:stretch;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
 }
 
 .left-panel {
-    background-color: rgb(222, 216, 167);
-    flex-basis: 25%;
+    background-color:rgb(255, 252, 226);
+    flex-basis: auto;
 
     display: flex;
     flex-direction: column;
     
     justify-content:flex-start;
     align-items:stretch;
+    overflow:scroll;
     padding: 15px;
     gap: 15px;
     
 }
 
+
 .right-panel {
     background-color:rgb(0, 67, 67); 
-    flex-basis: 75%;
+    flex-basis: auto;
+    
 
 }
 
@@ -46,12 +52,15 @@ body{
     background-color: white;
 }
 
-.palette {
-    background-color:rgb(255, 252, 226);
+.config {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content:space-around;
 }
 
+
 .layers {
-    background-color:rgb(255, 252, 226);
     display: flex;
     flex-direction: column;
     align-items:stretch;
@@ -59,9 +68,6 @@ body{
     text-align: center;
 }
 
-.settings {
-    background-color:rgb(255, 252, 226);
-}
 
 .main-canvas {
     width: 1000px;
@@ -118,4 +124,22 @@ canvas {
 
 .layer-item span {
     flex-grow: 1;
+}
+
+.btn-sidebar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+
+
+
+.centeredText {
+    text-align: center;
+}
+
+.footer {
+    background-color:rgb(196, 194, 192);
 }
