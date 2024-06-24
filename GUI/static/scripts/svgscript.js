@@ -46,7 +46,8 @@ let selectedColor = '#93f5f2';
 //Draw mode
 let drawSlatCargoHandleMode = 0; //0 for slats, 1 for cargo, 2 for handles
 
-
+//Cargo options
+let selectedCargoId = null;
 
 ///////////////////////////////
 //     Helper Functions!     //
@@ -252,26 +253,65 @@ function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGrid
 }
 
 
-function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, cargoCounter) {
-        
+function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, cargoCounter, selectedCargoId) {
+    
+    const cargoItem = getInventoryItemById(selectedCargoId);
     let defaultColor = activeLayerColor; 
 
-    if(!isCargoOnCargo(roundedX, roundedY, activeCargoLayer)){
-        let tmpCircle = activeCargoLayer.circle(minorGridSize * 0.75) // SVG.js uses diameter, not radius
-                                        .attr({ cx: roundedX, cy: roundedY })
-                                        .fill(activeLayerColor) // You can set the fill color here
-                                        .opacity(1);//shownOpacity * 1.25);
-        tmpCircle.attr('id','CargoID-'+activeLayerId + '-N' + cargoCounter)
-        tmpCircle.attr('class',"cargo")
-        tmpCircle.attr('data-default-color', defaultColor)
+    if(cargoItem){
+        if(!isCargoOnCargo(roundedX, roundedY, activeCargoLayer)){
+            const circleRadius = minorGridSize * 0.375; // Diameter is 75% of minorGridSize
+            let tmpCircle = activeCargoLayer.circle(2 * circleRadius) // SVG.js uses diameter, not radius
+                                            .attr({ cx: roundedX, cy: roundedY })
+                                            .fill(cargoItem.color) // You can set the fill color here
+                                            .stroke(activeLayerColor) // You can set the stroke color here
+                                            .opacity(1);//shownOpacity * 1.25);
+            tmpCircle.attr('id','CargoID-'+activeLayerId + '-N' + cargoCounter)
+            tmpCircle.attr('class',"cargo")
+            tmpCircle.attr('data-default-color', defaultColor)
+            tmpCircle.attr('pointer-events', 'none');
+    
+            // Adding text (acronym) to the cargo
+            let text = activeCargoLayer.text(cargoItem.acronym)
+                .attr({ x: roundedX, y: roundedY - circleRadius, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
+                .attr({'stroke-width': circleRadius/20})
+                .font({ size: minorGridSize * 0.4, family: 'Arial', weight: 'bold' , stroke: '#000000'})
+                .fill('#FFFFFF'); // White text
+            text.attr('pointer-events', 'none');
+            
+    
+            // Function to adjust text size
+            function adjustTextSize() {
+                let fontSize = circleRadius;
+                text.font({ size: fontSize });
+                
+                while (text.length() > circleRadius * 1.8) {
+                    fontSize *= 0.9;
+                    text.font({ size: fontSize });
+                }
+            }
+    
+            adjustTextSize();
+    
+            // Group the circle and text
+            let group = activeCargoLayer.group()
+            group.add(tmpCircle).add(text);
+            group.on('pointerdown', startDrag);
+    
+            // Set pointer-events attribute to the group
+            group.attr('pointer-events', 'bounding-box');
+    
+            //tmpLine.attr({ 'pointer-events': 'stroke' })
+    
+            //Adding draggability:
+            //tmpCircle.on('pointerdown', startDrag)
+    
+            cargoCounter += 1;
+        }
 
-        //tmpLine.attr({ 'pointer-events': 'stroke' })
-
-        //Adding draggability:
-        tmpCircle.on('pointerdown', startDrag)
-
-        cargoCounter += 1;
     }
+
+    
 
     
     return cargoCounter;
@@ -287,6 +327,7 @@ function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGr
 //Start dragging (OR SELECTING OR ERASING)
 function startDrag(event) {
         
+    
     dragSelectedElement = event.target.instance;
 
     let tmpActiveLayer = null;
@@ -297,8 +338,11 @@ function startDrag(event) {
         tmpActiveLayer = activeCargoLayer;
     }
 
+    console.log("Draw-erase-select mode is set to: "+drawEraseSelectMode+"with element: "+dragSelectedElement)
 
     if(tmpActiveLayer.children().includes(dragSelectedElement)){
+
+        
         
         //drawEraseSelectMode == 0 corresponds to drawing
         //drawEraseSelectMode == 1 corresponds to erasing
@@ -315,7 +359,6 @@ function startDrag(event) {
         }
         else if(drawEraseSelectMode == 1){ //Erasing!
             dragSelectedElement.remove()
-            console.log("deleted!")
             event.stopPropagation(); //needed or else delete doesn't work... oh well!
         }
         else if(drawEraseSelectMode == 2){ //Selecting!
@@ -347,8 +390,8 @@ function drag(event) {
         point.x = point.x - dragOffset.x
         point.y = point.y - dragOffset.y
         let roundedX = Math.round(point.x/(minorGridSize))*minorGridSize ;
-        let roundedY = Math.round(point.y/(minorGridSize))*minorGridSize ;   
-
+        let roundedY = Math.round(point.y/(minorGridSize))*minorGridSize ; 
+        
 
         if(drawSlatCargoHandleMode == 0){
             if(!isLineOnLine(roundedX, roundedY, activeSlatLayer,minorGridSize, dragSelectedElement)) {
@@ -357,7 +400,10 @@ function drag(event) {
         }
         else if(drawSlatCargoHandleMode == 1){
             if(!isCargoOnCargo(roundedX, roundedY, activeCargoLayer, dragSelectedElement)) {
-                dragSelectedElement.attr({ cx: roundedX, cy: roundedY })
+                let bbox = dragSelectedElement.bbox();
+                let xOffset = bbox.width / 2
+                let yOffset = bbox.height / 2
+                dragSelectedElement.move(roundedX-xOffset, roundedY-yOffset)
             }
         }
         
@@ -436,8 +482,8 @@ function createGridArray(layerList) {
   
 
 
-
-
+//Import inventory functions
+import { populateCargoPalette, getInventoryItemById } from './inventory.js';
 
 
 ///////////////////////////////
@@ -581,7 +627,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 let oldCargoCounter = cargoCounter;
 
                 //Place cargo
-                cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, cargoCounter)
+                cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, cargoCounter, selectedCargoId)
                 
                 //Create grid array if a cargo has been sucessfully placed!
                 if(oldCargoCounter < cargoCounter){
@@ -685,8 +731,16 @@ SVG.on(document, 'DOMContentLoaded', function() {
         const layerToChangeCargo = fullLayer[2]
 
         layerToChangeCargo.children().forEach(child => {
-            child.fill({ color: layerColor });
-            child.attr('data-default-color', layerColor); // Update the default color attribute
+
+            child.children().forEach(childChild => {
+                console.log(childChild.type)
+                if(childChild.type === 'circle'){
+                    childChild.stroke({ color: layerColor });
+                    childChild.attr('data-default-color', layerColor); // Update the default color attribute
+                }
+            })
+           
+            
         });
 
     
@@ -699,10 +753,38 @@ SVG.on(document, 'DOMContentLoaded', function() {
         //1 for cargo
         //2 for handles
     const drawModeSelector = document.getElementById('palette-type-selector');
+    const cargoPalette = document.getElementById('cargo-palette');
+
     drawModeSelector.addEventListener('change', function () {
         drawSlatCargoHandleMode = drawModeSelector.value;
         console.log("draw mode: "+drawSlatCargoHandleMode)
+
+        // Show/hide cargo palette based on selection
+        if (drawSlatCargoHandleMode == 1) { // Cargo mode
+            cargoPalette.style.display = 'block';
+            populateCargoPalette(); // Populate the cargo palette
+        } 
+        else {
+            cargoPalette.style.display = 'none';
+        }
     });
+
+
+
+    // Add event listener for cargo option selection
+    document.getElementById('cargo-options').addEventListener('click', function(event) {
+        if (event.target.classList.contains('cargo-option')) {
+            selectedCargoId = parseInt(event.target.dataset.id);
+            console.log("Selected cargo ID: " + selectedCargoId);
+        }
+    });
+
+
+
+
+
+});
+
     
 
         
@@ -711,7 +793,5 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
 
-
-})
     
 
