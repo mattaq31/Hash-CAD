@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         colorPicker.addEventListener('input', setColor);
 
         const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remove';
+        removeButton.textContent = "\u2715"; //X symbol for removing layer!
         removeButton.addEventListener('click', () => {
             layerList.removeChild(layerItem);
             dispatchCustomEvent('layerRemoved', layerItem);

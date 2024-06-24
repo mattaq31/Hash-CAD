@@ -187,16 +187,23 @@ function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
 //  Cargo Overlap Checkers   //
 ///////////////////////////////
 
-function isCargoOnCargo(x, y, layer){
+function isCargoOnCargo(x, y, layer, selectedPoint = false){
     const cargos = layer.find('.cargo');
     return cargos.some(cargo => {
       
         //Check if overlapping with any lines in general
         const bbox = cargo.bbox();
         let onOther = (x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2)
+
+        //Check if overlapping with itself
+        let onItself = false
+        if(selectedPoint){
+            const selfBbox = selectedPoint.bbox();
+            onItself = (x >= selfBbox.x && x <= selfBbox.x2 && y >= selfBbox.y && y <= selfBbox.y2)
+        }
       
         return (
-            onOther
+            (onOther && (!onItself))
         );
     });
 }
@@ -253,7 +260,7 @@ function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGr
         let tmpCircle = activeCargoLayer.circle(minorGridSize * 0.75) // SVG.js uses diameter, not radius
                                         .attr({ cx: roundedX, cy: roundedY })
                                         .fill(activeLayerColor) // You can set the fill color here
-                                        .opacity(shownOpacity);
+                                        .opacity(1);//shownOpacity * 1.25);
         tmpCircle.attr('id','CargoID-'+activeLayerId + '-N' + cargoCounter)
         tmpCircle.attr('class',"cargo")
         tmpCircle.attr('data-default-color', defaultColor)
@@ -282,7 +289,16 @@ function startDrag(event) {
         
     dragSelectedElement = event.target.instance;
 
-    if(activeSlatLayer.children().includes(dragSelectedElement)){
+    let tmpActiveLayer = null;
+    if(drawSlatCargoHandleMode == 0){
+        tmpActiveLayer = activeSlatLayer;
+    }
+    else if(drawSlatCargoHandleMode == 1){
+        tmpActiveLayer = activeCargoLayer;
+    }
+
+
+    if(tmpActiveLayer.children().includes(dragSelectedElement)){
         
         //drawEraseSelectMode == 0 corresponds to drawing
         //drawEraseSelectMode == 1 corresponds to erasing
@@ -323,6 +339,7 @@ function startDrag(event) {
         
   }
 
+
 //Actually drag the element
 function drag(event) {
     if (dragSelectedElement) {
@@ -332,11 +349,18 @@ function drag(event) {
         let roundedX = Math.round(point.x/(minorGridSize))*minorGridSize ;
         let roundedY = Math.round(point.y/(minorGridSize))*minorGridSize ;   
 
-        if(!isLineOnLine(roundedX, roundedY, activeSlatLayer,minorGridSize, dragSelectedElement)) {
-            dragSelectedElement.move(roundedX, roundedY);
-        }
 
-        console.log("Im moving!")
+        if(drawSlatCargoHandleMode == 0){
+            if(!isLineOnLine(roundedX, roundedY, activeSlatLayer,minorGridSize, dragSelectedElement)) {
+                dragSelectedElement.move(roundedX, roundedY);
+            }
+        }
+        else if(drawSlatCargoHandleMode == 1){
+            if(!isCargoOnCargo(roundedX, roundedY, activeCargoLayer, dragSelectedElement)) {
+                dragSelectedElement.attr({ cx: roundedX, cy: roundedY })
+            }
+        }
+        
     }
 }
 
@@ -657,6 +681,14 @@ SVG.on(document, 'DOMContentLoaded', function() {
             activeLayerColor = layerColor
         }
         
+        //Also change cargo layer color?
+        const layerToChangeCargo = fullLayer[2]
+
+        layerToChangeCargo.children().forEach(child => {
+            child.fill({ color: layerColor });
+            child.attr('data-default-color', layerColor); // Update the default color attribute
+        });
+
     
         // Your code to handle the color change, e.g., updating a UI element, applying the color to a canvas, etc.
     });
