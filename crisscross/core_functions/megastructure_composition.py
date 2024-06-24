@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+from colorama import Fore
 from crisscross.helper_functions.plate_constants import plate96
 
 
@@ -10,7 +11,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     complete_list = []
 
     if len(slat_dict) > len(plate96):
-        print('Too many slats for one plate, splitting into multiple plates.')
+        print(Fore.BLUE + 'Too many slats for one plate, splitting into multiple plates.')
 
     for index, (_, slat) in enumerate(slat_dict.items()):
         sel_plate_name = destination_plate_name

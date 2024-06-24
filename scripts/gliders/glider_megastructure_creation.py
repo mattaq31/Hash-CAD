@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import numpy as np
+from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
@@ -9,11 +10,15 @@ from crisscross.plate_mapping import get_plateclass
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center)
+                                                         seed_plug_plate_center, cargo_plate_folder,
+                                                         nelson_quimby_antihandles)
 
 
 design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
+design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/glider_v2_2'
+
 design_file = 'layer_arrays.xlsx'
+
 read_handles_from_file = True
 
 # reads in and formats slat design into a 3D array
@@ -57,7 +62,7 @@ crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
 
 # Combines handle and slat array into the megastructure
-megastructure = Megastructure(slat_array, None)
+megastructure = Megastructure(slat_array, None, connection_angle='60')
 megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 
 # Prepares the seed array, assuming the first position will start from the far right of the layer
@@ -72,7 +77,25 @@ for i in range(16):
 # Assigns seed array to layer 2
 megastructure.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
 megastructure.patch_control_handles(core_plate)
+megastructure.create_standard_graphical_report(os.path.join(design_folder, 'No Fluoro Graphics'))
 
 # Exports design to echo format csv file for production
 convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_folder, 'all_echo_commands.csv')
 
+# For extended fluorescent microscopy testing, we've also included a cargo array for Nelson handles.  This design is build separately below
+
+cargo_file = 'cargo_array_v2.xlsx'
+cargo_array = pd.read_excel(os.path.join(design_folder, cargo_file), sheet_name=None, header=None)['Layer_2_cargo'].values
+nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
+
+nelson_mega = Megastructure(slat_array, None, connection_angle='60')
+nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+nelson_mega.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
+nelson_mega.assign_cargo_handles(cargo_array, nelson_plate, layer=2, requested_handle_orientation=2)
+nelson_mega.patch_control_handles(core_plate)
+nelson_mega.create_standard_graphical_report(os.path.join(design_folder, 'Fluoro Graphics'))
+
+convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', design_folder,
+                                 'all_echo_commands_with_nelson_handles.csv', transfer_volume=100)
+
+print(Fore.GREEN + 'Design exported to Echo commands successfully.')

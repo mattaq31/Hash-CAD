@@ -24,7 +24,7 @@ base_array = read_design_from_excel(folder, sheets=('slats_bottom.csv', 'slats_m
 
 cargo_array = np.zeros(base_array.shape[0:2])
 
-cargo_array[30, 30:40] = 2
+cargo_array[30, 30:40] = 3
 cargo_array[20, 10:20] = 3
 
 # Step 3 - prepare assembly array optimization system - problem here - need to rejig for multiple layers and also output handle array will have to have multiple channels too
@@ -43,7 +43,7 @@ crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
 
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, cargo_plate_folder)
+cargo_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
 
 # slat_array, x_slats, y_slats = generate_standard_square_slats(32)
 # unique_slats_per_layer = []
@@ -67,12 +67,7 @@ seed_array[17:33, 1:6] = standard_seed_array
 megastructure.assign_seed_handles(seed_array, seed_plate)
 megastructure.assign_cargo_handles(cargo_array, cargo_plate, layer='bottom')
 megastructure.patch_control_handles(core_plate)
-
-bottom, top = megastructure.create_combined_graphical_view()
-
-plt.imshow(bottom)
-plt.show()
-plt.imshow(top)
-plt.show()
-z = 5
+# megastructure.create_graphical_slat_view()
+# megastructure.create_graphical_assembly_handle_view()
+megastructure.create_graphical_slat_views(folder)
 # Step 5 - export slats to robot format
