@@ -31,6 +31,7 @@ let layerArray = null
 
 //Opacity
 let shownOpacity = 0.5
+let shownCargoOpacity = 0.9
 let hiddenOpacity = 0.2
 
 let placeHorizontal = false;
@@ -219,12 +220,13 @@ function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGrid
     if(!horizontal){
         if(!willVertBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
             let defaultColor = activeLayerColor; 
-            let tmpLine = activeSlatLayer.line(roundedX, roundedY, roundedX, roundedY + 32 * minorGridSize)
+            let tmpLine = activeSlatLayer.line(roundedX, roundedY - 0.5 * minorGridSize, roundedX, roundedY + 31.5 * minorGridSize)
                                         .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
             tmpLine.attr('id','ID-'+activeLayerId + '-N' + slatCounter)
             tmpLine.attr('class',"line")
             tmpLine.attr({ 'pointer-events': 'stroke' })
             tmpLine.attr('data-default-color', defaultColor);
+            tmpLine.attr('data-horizontal',horizontal)
 
             //Adding draggability:
             tmpLine.on('pointerdown', startDrag)
@@ -235,12 +237,13 @@ function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGrid
     else if(horizontal){
         if(!willHorzBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
             let defaultColor = activeLayerColor 
-            let tmpLine = activeSlatLayer.line(roundedX, roundedY, roundedX + 32 * minorGridSize, roundedY )
+            let tmpLine = activeSlatLayer.line(roundedX - 0.5 * minorGridSize, roundedY, roundedX + 31.5 * minorGridSize, roundedY )
                                         .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
             tmpLine.attr('id','ID-'+activeLayerId+'-N' + slatCounter)
             tmpLine.attr('class',"line")
             tmpLine.attr({ 'pointer-events': 'stroke' })
             tmpLine.attr('data-default-color', defaultColor);
+            tmpLine.attr('data-horizontal',horizontal)
 
             //Adding draggability:
             tmpLine.on('pointerdown', startDrag)
@@ -265,7 +268,7 @@ function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGr
                                             .attr({ cx: roundedX, cy: roundedY })
                                             .fill(cargoItem.color) // You can set the fill color here
                                             .stroke(activeLayerColor) // You can set the stroke color here
-                                            .opacity(1);//shownOpacity * 1.25);
+                                            .opacity(shownCargoOpacity);//shownOpacity * 1.25);
             tmpCircle.attr('id','CargoID-'+activeLayerId + '-N' + cargoCounter)
             tmpCircle.attr('class',"cargo")
             tmpCircle.attr('data-default-color', defaultColor)
@@ -395,7 +398,19 @@ function drag(event) {
 
         if(drawSlatCargoHandleMode == 0){
             if(!isLineOnLine(roundedX, roundedY, activeSlatLayer,minorGridSize, dragSelectedElement)) {
-                dragSelectedElement.move(roundedX, roundedY);
+                let moveOffset = 0.5 * minorGridSize
+
+                let isHorizontal = dragSelectedElement.attr('data-horizontal')
+                
+                if(isHorizontal=='true'){
+                    dragSelectedElement.move(roundedX-moveOffset, roundedY);
+                    console.log("moving a horizontal element")
+                }
+                else {
+                    dragSelectedElement.move(roundedX, roundedY-moveOffset);
+                    console.log("moving a vertical element")
+                }
+                
             }
         }
         else if(drawSlatCargoHandleMode == 1){
@@ -708,10 +723,10 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
     document.addEventListener('layerColorChanged', (event) => {
-        console.log(`Layer color changed: ${event.detail.layerId}`, event.detail.layerElement);
+        //console.log(`Layer color changed: ${event.detail.layerId}`, event.detail.layerElement);
         const layerId = event.detail.layerId;
         const layerColor = event.detail.layerColor;
-        console.log(`New color for ${layerId}: ${layerColor}`);
+        //console.log(`New color for ${layerId}: ${layerColor}`);
 
 
         //Only change slat layer colors
@@ -733,7 +748,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
         layerToChangeCargo.children().forEach(child => {
 
             child.children().forEach(childChild => {
-                console.log(childChild.type)
                 if(childChild.type === 'circle'){
                     childChild.stroke({ color: layerColor });
                     childChild.attr('data-default-color', layerColor); // Update the default color attribute

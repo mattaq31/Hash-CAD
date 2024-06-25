@@ -2,8 +2,8 @@
 
 // Sample inventory data
 const inventoryData = [
-    { id: 1, name: "Green Fluorescent Protein", acronym: "GFP", color: "#FF0000" },
-    { id: 2, name: "Red Fluorescent Protein",   acronym: "RFP", color: "#00FF00" },
+    { id: 1, name: "Green Fluorescent Protein", acronym: "GFP", color: "#00FF00" },
+    { id: 2, name: "Red Fluorescent Protein",   acronym: "RFP", color: "#FF0000" },
     { id: 3, name: "Antibody 1",                acronym: "Ab1", color: "#0000FF" },
     { id: 4, name: "Antibody 2",                acronym: "Ab2", color: "#FFFF00" },
     { id: 5, name: "Photonic Crystal 1",        acronym: "PC1", color: "#FF00FF" }
