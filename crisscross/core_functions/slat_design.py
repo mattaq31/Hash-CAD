@@ -77,7 +77,7 @@ def update_random_slat_handles(handle_array, unique_sequences=32):
     handle_array[handle_array > 0] = np.random.randint(1, unique_sequences+1, size=handle_array[handle_array > 0].shape)
 
 
-def calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, unique_sequences=32):
+def calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, unique_sequences=32, same_layer_hamming_only=False):
     """
     Calculates the hamming distance between all possible combinations of slat handles.
     The higher the number, the less kinetic traps there should be.
@@ -87,6 +87,7 @@ def calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, uni
     :param handle_array: Handle ID array (2D)
     :param unique_slats_per_layer: List of unique slat IDs for each layer
     :param unique_sequences: Max unique sequences in the handle array
+    :param same_layer_hamming_only: Set to true to only calculate hamming distance between slats in adjacent layers rather than all slat layers at once.
     :return: combination matrices (TODO: remove), results array with hamming distance for each possible slat combination
     """
     # TODO: this system includes a potentially large amount of useless computation for slats that are entirely 0s (control handles).  A more intelligent system could potentially sort out the non-interacting slats, but is this worth it?
@@ -95,14 +96,15 @@ def calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, uni
 
     individual_layer_slat_count = [len(u) for u in unique_slats_per_layer]
 
-    # TODO: is it worth only computing hamming distances for individual layers rather than the entire set of slats all at once?
-    individal_layer_combos = [single_combo * individual_layer_slat_count[i] * individual_layer_slat_count[i+1] for i in range(handle_array.shape[-1])]
-
     # these slat counts assume each layer has the maximum amount of handles, even if some will be replaced by control handles.  This is to simplify the computation logic.
     handle_slat_counts = individual_layer_slat_count[:-1]
     antihandle_slat_counts = individual_layer_slat_count[1:]
 
-    total_combos = single_combo*sum(handle_slat_counts)*sum(antihandle_slat_counts)
+    if same_layer_hamming_only:  # only considers combinations of Handle-Antihandles in the same layer, not globally (results in less combinations)
+        individual_layer_combos = [single_combo * individual_layer_slat_count[i] * individual_layer_slat_count[i + 1] for i in range(handle_array.shape[-1])]
+        total_combos = sum(individual_layer_combos)
+    else:
+        total_combos = single_combo*sum(handle_slat_counts)*sum(antihandle_slat_counts)
 
     combination_matrix_1 = np.zeros((total_combos, unique_sequences))
     combination_matrix_2 = np.zeros((total_combos, unique_sequences))
@@ -117,61 +119,73 @@ def calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, uni
 
     # to speed things up, loops are only used to pre-populate arrays
     # then, hamming distance computed in one go at the end only (numpy is most efficient with matrix operations)
-    for i, (handle_slat, antihandle_slat) in enumerate(product(handle_slats_with_layers, anti_handle_slats_with_layers)):
-        h_layer, h_slat_id = handle_slat[0], handle_slat[1]
-        ah_layer, ah_slat_id = antihandle_slat[0], antihandle_slat[1]
-        cm1_insertion_array = handle_array[base_array[..., h_layer] == h_slat_id, h_layer] # slat directions are computed top-down, left-right
+    if same_layer_hamming_only:
+        # in this situation, layers are all considered separate - this should allow for the hamming distance to be improved as there are less combinations to consider per layer
+        for focus_layer in range(handle_array.shape[2]):
+            focus_handle_slats_with_layers = [h for h in handle_slats_with_layers if h[0] == focus_layer]
+            focus_antihandle_slats_with_layers = [h for h in anti_handle_slats_with_layers if h[0] == focus_layer+1]
+            if focus_layer > 0:
+                combination_start_position = sum(individual_layer_combos[:focus_layer])
+            else:
+                combination_start_position = 0
 
-        # pre-computes to save time
-        for j in range(unique_sequences):
-            # 4 combinations:
-            # 1. X vs Y, rotation to the left
-            # 2. X vs Y, rotation to the right
-            # 3. X vs Y, rotation to the left, reversed X
-            # 4. X vs Y, rotation to the right, reversed X
-            # All rotations padded with zeros (already in array)
-            # TODO: could this be sped up even further?
-            combination_matrix_1[(i*single_combo) + j, :unique_sequences-j] = cm1_insertion_array[j:]
-            combination_matrix_1[(i*single_combo) + unique_sequences + j, j:] = cm1_insertion_array[:unique_sequences-j]
-            combination_matrix_1[(i*single_combo) + (2*unique_sequences) + j, :unique_sequences-j] = cm1_insertion_array[::-1][j:]
-            combination_matrix_1[(i*single_combo) + (3*unique_sequences) + j, j:] = cm1_insertion_array[::-1][:unique_sequences-j]
+            for i, (handle_slat, antihandle_slat) in enumerate(product(focus_handle_slats_with_layers, focus_antihandle_slats_with_layers)):
+                h_layer, h_slat_id = handle_slat[0], handle_slat[1]
+                ah_layer, ah_slat_id = antihandle_slat[0], antihandle_slat[1]
+                cm1_insertion_array = handle_array[base_array[..., h_layer] == h_slat_id, h_layer]  # slat directions are computed top-down, left-right
+                # pre-computes to save time
+                for j in range(unique_sequences):
+                    # 4 combinations:
+                    # 1. X vs Y, rotation to the left
+                    # 2. X vs Y, rotation to the right
+                    # 3. X vs Y, rotation to the left, reversed X
+                    # 4. X vs Y, rotation to the right, reversed X
+                    # All rotations padded with zeros (already in array)
+                    # TODO: could this be sped up even further?
+                    combination_matrix_1[combination_start_position + (i * single_combo) + j, :unique_sequences - j] = cm1_insertion_array[j:]
+                    combination_matrix_1[combination_start_position + (i * single_combo) + unique_sequences + j, j:] = cm1_insertion_array[:unique_sequences - j]
+                    combination_matrix_1[combination_start_position + (i * single_combo) + (2 * unique_sequences) + j, :unique_sequences - j] = cm1_insertion_array[::-1][j:]
+                    combination_matrix_1[combination_start_position + (i * single_combo) + (3 * unique_sequences) + j, j:] = cm1_insertion_array[::-1][:unique_sequences - j]
 
-        # y-slats can be left as is throughout whole matrix
-        combination_matrix_2[i*single_combo:(i+1)*single_combo, :] = handle_array[base_array[..., ah_layer] == ah_slat_id, ah_layer-1]
+                # y-slats can be left as is throughout whole matrix
+                combination_matrix_2[combination_start_position + (i * single_combo):combination_start_position + ((i + 1) * single_combo), :] = handle_array[base_array[..., ah_layer] == ah_slat_id, ah_layer - 1]
+    else:
+        for i, (handle_slat, antihandle_slat) in enumerate(product(handle_slats_with_layers, anti_handle_slats_with_layers)):
+            h_layer, h_slat_id = handle_slat[0], handle_slat[1]
+            ah_layer, ah_slat_id = antihandle_slat[0], antihandle_slat[1]
+            cm1_insertion_array = handle_array[base_array[..., h_layer] == h_slat_id, h_layer] # slat directions are computed top-down, left-right
+
+            # pre-computes to save time
+            for j in range(unique_sequences):
+                # 4 combinations:
+                # 1. X vs Y, rotation to the left
+                # 2. X vs Y, rotation to the right
+                # 3. X vs Y, rotation to the left, reversed X
+                # 4. X vs Y, rotation to the right, reversed X
+                # All rotations padded with zeros (already in array)
+                # TODO: could this be sped up even further?
+                combination_matrix_1[(i*single_combo) + j, :unique_sequences-j] = cm1_insertion_array[j:]
+                combination_matrix_1[(i*single_combo) + unique_sequences + j, j:] = cm1_insertion_array[:unique_sequences-j]
+                combination_matrix_1[(i*single_combo) + (2*unique_sequences) + j, :unique_sequences-j] = cm1_insertion_array[::-1][j:]
+                combination_matrix_1[(i*single_combo) + (3*unique_sequences) + j, j:] = cm1_insertion_array[::-1][:unique_sequences-j]
+
+            # y-slats can be left as is throughout whole matrix
+            combination_matrix_2[i*single_combo:(i+1)*single_combo, :] = handle_array[base_array[..., ah_layer] == ah_slat_id, ah_layer-1]
 
     # actual hamming distance computation (0s should be ignored as they are non-interacting control handles!)
     results = np.count_nonzero(np.logical_or(combination_matrix_1 != combination_matrix_2, combination_matrix_1 == 0, combination_matrix_2 == 0), axis=1)
 
     return combination_matrix_1, combination_matrix_2, results
 
-    # This piece of code handles the case where only H-AH combos are computed within specific layers.  Is this worth keeping?  Probably not, as each layer can be packaged and computed separately.
-    # for handle_layer in range(handle_array.shape[2]):
-    #     for i, (handle_slat, antihandle_slat) in enumerate(product(unique_slats_per_layer[handle_layer], unique_slats_per_layer[handle_layer+1])):
-    #         cm1_insertion_array = handle_array[base_array[..., handle_layer] == handle_slat, handle_layer]  # pre-computes to save time
-    #         for j in range(unique_sequences):
-    #             # 4 combinations:
-    #             # 1. X vs Y, rotation to the left
-    #             # 2. X vs Y, rotation to the right
-    #             # 3. X vs Y, rotation to the left, reversed X
-    #             # 4. X vs Y, rotation to the right, reversed X
-    #             # All rotations padded with zeros (already in array)
-    #             # TODO: could this be sped up even further?
-    #             combination_matrix_1[((handle_layer)*individal_layer_combos[handle_layer-1]) + (i*single_combo) + j, :unique_sequences-j] = cm1_insertion_array[j:]
-    #             combination_matrix_1[((handle_layer)*individal_layer_combos[handle_layer-1]) + (i*single_combo) + unique_sequences + j, j:] = cm1_insertion_array[:unique_sequences-j]
-    #             combination_matrix_1[((handle_layer)*individal_layer_combos[handle_layer-1]) + (i*single_combo) + (2*unique_sequences) + j, :unique_sequences-j] = cm1_insertion_array[::-1][j:]
-    #             combination_matrix_1[((handle_layer)*individal_layer_combos[handle_layer-1]) + (i*single_combo) + (3*unique_sequences) + j, j:] = cm1_insertion_array[::-1][:unique_sequences-j]
-    #
-    #         # y-slats can be left as is throughout whole matrix
-    #         combination_matrix_2[((handle_layer)*individal_layer_combos[handle_layer-1]) + i*single_combo:(i+1)*single_combo, :] = handle_array[base_array[..., handle_layer+1] == antihandle_slat, handle_layer]
 
-
-def generate_handle_set_and_optimize(base_array, unique_sequences=32, min_hamming=25, max_rounds=30):
+def generate_handle_set_and_optimize(base_array, unique_sequences=32, min_hamming=25, max_rounds=30, same_layer_hamming_only=False):
     """
     Generates a handle set and optimizes it for kinetic traps
     :param base_array: Slat position array (3D)
     :param unique_sequences: Max unique sequences in the handle array
     :param min_hamming: If this Hamming distance is achieved, stops optimization early
     :param max_rounds: Maximum number of rounds to run the optimization
+    :param same_layer_hamming_only: Set to true to only optimize hamming distance between slats in adjacent layers rather than all slat layers at once.
     :return: 2D array with handle IDs
     """
     handle_array = generate_random_slat_handles(base_array, unique_sequences)
@@ -182,7 +196,8 @@ def generate_handle_set_and_optimize(base_array, unique_sequences=32, min_hammin
         slat_ids = slat_ids[slat_ids != 0]
         unique_slats_per_layer.append(slat_ids)
 
-    _, _, res = calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, unique_sequences)
+    _, _, res = calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, unique_sequences,
+                                       same_layer_hamming_only=same_layer_hamming_only)
     print('Optimizing kinetic traps...')
 
     best_array = handle_array
@@ -191,7 +206,8 @@ def generate_handle_set_and_optimize(base_array, unique_sequences=32, min_hammin
     with tqdm(total=max_rounds, desc='Kinetic Trap Check') as pbar:
         for i in range(max_rounds):
             update_random_slat_handles(handle_array)
-            _, _, res = calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, unique_sequences)
+            _, _, res = calculate_slat_hamming(base_array, handle_array, unique_slats_per_layer, unique_sequences,
+                                               same_layer_hamming_only=same_layer_hamming_only)
             new_hamming = np.min(res)
             if new_hamming > best_hamming:
                 best_hamming = new_hamming
