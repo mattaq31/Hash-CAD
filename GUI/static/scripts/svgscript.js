@@ -49,6 +49,9 @@ let drawSlatCargoHandleMode = 0; //0 for slats, 1 for cargo, 2 for handles
 
 //Cargo options
 let selectedCargoId = null;
+let selectedCargoName = null;
+let selectedCargoAcronym = null;
+let selectedCargoColor = null;
 
 ///////////////////////////////
 //     Helper Functions!     //
@@ -271,6 +274,7 @@ function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGr
                                             .opacity(shownCargoOpacity);//shownOpacity * 1.25);
             tmpCircle.attr('id','CargoID-'+activeLayerId + '-N' + cargoCounter)
             tmpCircle.attr('class',"cargo")
+            tmpCircle.attr('data-cargo-component', 'circle')
             tmpCircle.attr('data-default-color', defaultColor)
             tmpCircle.attr('pointer-events', 'none');
     
@@ -281,6 +285,7 @@ function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGr
                 .font({ size: minorGridSize * 0.4, family: 'Arial', weight: 'bold' , stroke: '#000000'})
                 .fill('#FFFFFF'); // White text
             text.attr('pointer-events', 'none');
+            text.attr('data-cargo-component', 'text')
             
     
             // Function to adjust text size
@@ -303,6 +308,7 @@ function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGr
     
             // Set pointer-events attribute to the group
             group.attr('pointer-events', 'bounding-box');
+            group.attr('data-cargo-Id', selectedCargoId)
     
             //tmpLine.attr({ 'pointer-events': 'stroke' })
     
@@ -498,7 +504,7 @@ function createGridArray(layerList) {
 
 
 //Import inventory functions
-import { populateCargoPalette, getInventoryItemById } from './inventory.js';
+import { populateCargoPalette, getInventoryItemById, renderInventoryTable, addInventoryItem } from './inventory.js';
 
 
 ///////////////////////////////
@@ -785,15 +791,68 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
 
-    // Add event listener for cargo option selection
+    //Add event listener for cargo option selection
     document.getElementById('cargo-options').addEventListener('click', function(event) {
         if (event.target.classList.contains('cargo-option')) {
             selectedCargoId = parseInt(event.target.dataset.id);
             console.log("Selected cargo ID: " + selectedCargoId);
         }
+        else if(event.target.id == 'cargo-editor'){
+            let modal = document.getElementById('cargoInventoryModal')
+            modal.style.display = "block";
+            renderInventoryTable();
+        }
     });
 
 
+
+    // When the user clicks on <span> (x), close the modal
+    document.getElementById('inventory-modal-close').addEventListener('click',function(event){
+        let modal = document.getElementById('cargoInventoryModal')
+        modal.style.display = "none";
+    })
+
+    document.getElementById('add-inventory-cargo-element').addEventListener('click',function(event){
+        addInventoryItem('Cargo Name', 'ABC', '#000000')
+        renderInventoryTable();
+    })
+
+
+    /**
+    //Layers Event Listeners
+    document.addEventListener('cargoAdded', (event) => {
+        console.log(`Cargo added: ${event.detail.cargoId}`, event.detail.cargoElement);
+    });
+
+    
+    document.addEventListener('cargoRemoved', (event) => {
+        console.log(`Cargo removed: ${event.detail.cargoId}`, event.detail.cargorElement);
+    });
+
+
+    document.addEventListener('cargoMarkedActive', (event) => {
+        console.log(`Cargo marked active: ${event.detail.cargoId}`, event.detail.cargoElement);
+        // Deal with layer marked active
+        selectedCargoId = event.detail.cargoId
+        selectedCargoColor = event.detail.cargoColor;
+        selectedCargoName = event.detail.cargoName;
+        selectedCargoAcronym = event.detail.cargoAcronym;
+    });
+
+    
+    document.addEventListener('cargoColorChanged', (event) => {
+        const cargoId = event.detail.cargoId;
+        const cargoColor = event.detail.cargoColor;
+    
+        // Your code to handle the color change, e.g., updating a UI element, applying the color to a canvas, etc.
+    });
+
+    document.addEventListener('cargoAcronymChanged', (event) => {
+        //Handle
+    });
+    
+
+ */
 
 
 

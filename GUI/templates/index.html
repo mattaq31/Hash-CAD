@@ -92,8 +92,11 @@
                     </select> 
                 </div>
 
+                
                 <div id="cargo-palette" style="display: none;">
                     <h4 class="centeredText">Cargo Options</h4>
+                    <!--<div id="inventory-list"></div>  -->                 
+                    <!-- <button id="add-inventory-item">Add Item</button> -->
                     <div id="cargo-options"></div>
                 </div>
                 
@@ -133,6 +136,31 @@
     </div>
 
 
+    <!-- The Modal -->
+    <div id="cargoInventoryModal" >
+
+        <!-- Modal content -->
+        <div class="modal-content">
+            <span id="inventory-modal-close">&times;</span>
+            <div id="inventory-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Acronym</th>
+                            <th>Color</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <!-- Table rows will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <button id="add-inventory-cargo-element">Add New Cargo</button>
+        </div>
+    
+    </div>
 
 
 

@@ -24,18 +24,24 @@ body{
 
 .left-panel {
     background-color:rgb(255, 252, 226);
-    flex-basis: auto;
+    /*flex-basis: auto;*/
 
     display: flex;
     flex-direction: column;
     
     justify-content:flex-start;
     align-items:stretch;
-    overflow:scroll;
     padding: 15px;
     gap: 15px;
     
 }
+
+#sideMenu {
+    overflow: scroll;
+    min-width: 250px;
+}
+
+
 
 
 .right-panel {
@@ -152,3 +158,38 @@ canvas {
     justify-content:space-around;
     margin: 15px;
 }
+
+#cargo-options {
+    display: flex;
+    flex-flow:wrap;
+
+    align-items:center;
+    gap: 10px;
+}
+
+
+#cargoInventoryModal {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);    
+    padding: 15px;
+}
+
+.modal-content{
+    padding: 15px;
+
+    
+}
+
+#inventory-table {
+    max-height: 200px;
+    overflow-y: scroll;
+}
+
+
+#inventory-modal-close{
+    font-size: 25px;
+}
+
