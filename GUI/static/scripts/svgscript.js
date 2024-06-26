@@ -53,6 +53,9 @@ let selectedCargoName = null;
 let selectedCargoAcronym = null;
 let selectedCargoColor = null;
 
+
+var socket = io();
+
 ///////////////////////////////
 //     Helper Functions!     //
 ///////////////////////////////
@@ -503,8 +506,22 @@ function createGridArray(layerList) {
   
 
 
-//Import inventory functions
+///////////////////////////////
+//     Cargo Management      //
+///////////////////////////////
 import { populateCargoPalette, getInventoryItemById, renderInventoryTable, addInventoryItem } from './inventory.js';
+
+
+
+
+///////////////////////////////
+//  Custom Events for Server //
+///////////////////////////////
+// Function to dispatch custom events
+function dispatchServerEvent(eventName, eventItem) {
+    const event = new CustomEvent(eventName, {detail: eventItem});
+    document.dispatchEvent(event);
+}
 
 
 ///////////////////////////////
@@ -640,7 +657,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
                 //Create grid array if a slat has been sucessfully placed!
                 if(oldSlatCounter < slatCounter){
-                    createGridArray(layerList)
+                    let slatArray = createGridArray(layerList)
+                    dispatchServerEvent('slatPlaced', slatArray)
                 }
             }
             else if(drawSlatCargoHandleMode == 1){
@@ -688,6 +706,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
         fullLayer[1].remove();
         fullLayer[2].remove();
         layerList.delete(event.detail.layerId)
+
+        
+        socket.emit('my layer removed event', {data: 'Layer removed'});
     });
 
     document.addEventListener('layerShown', (event) => {
@@ -817,6 +838,13 @@ SVG.on(document, 'DOMContentLoaded', function() {
         renderInventoryTable();
     })
 
+
+
+
+    document.addEventListener('slatPlaced', (event) => {
+        console.log('Slat placed:', event.detail);
+        socket.emit('slat placed', event.detail);
+    });
 
     /**
     //Layers Event Listeners

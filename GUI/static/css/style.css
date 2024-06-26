@@ -162,7 +162,7 @@ canvas {
 #cargo-options {
     display: flex;
     flex-flow:wrap;
-
+    padding: 10px;
     align-items:center;
     gap: 10px;
 }
