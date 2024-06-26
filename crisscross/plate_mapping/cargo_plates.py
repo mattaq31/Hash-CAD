@@ -71,14 +71,16 @@ class AntiNelsonQuimbyPlate(BasePlate):
         return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
 
 
-class H5AntiBartEdnaPlate(BasePlate):
+class SimpsonsMixPlate(BasePlate):
     """
     Cargo plate (FILL IN NAME) containing Bart and Edna antiHandles for all 32 H5 slat positions.
     """
     def __init__(self, *args, **kwargs):
         self.cargo_key = {
             1: 'Bart',
-            2: 'Edna'
+            2: 'Edna',
+            3: 'Nelson',
+            4: 'Quimby'
         }
         super().__init__(*args, **kwargs)
 
@@ -89,10 +91,16 @@ class H5AntiBartEdnaPlate(BasePlate):
                 cargo = 'Bart'
             elif 'Edna' in pattern:
                 cargo = 'Edna'
+            elif 'Nelson' in pattern:
+                cargo = 'Nelson'
+            elif 'Quimby' in pattern:
+                cargo = 'Quimby'
+            elif pattern == '':
+                continue  # empty slot for now, will be filled in if we add more Quimby H5 handles
             else:
                 raise RuntimeError('The plate file does not match the expected pattern for this plate.')
 
-            key = (int(pattern.split('position_')[-1]), 5, cargo)
+            key = (int(pattern.split('position_')[-1]), 5 if 'h5' in pattern else 2, cargo)
 
             self.wells[key] = well
             self.sequences[key] = seq

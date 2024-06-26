@@ -1,6 +1,6 @@
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.helper_functions.standard_sequences import simpsons_anti
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, bart_edna_h5_antihandles)
+from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, simpsons_mixplate_antihandles)
 from crisscross.plate_mapping import get_plateclass
 from collections import defaultdict
 import pandas as pd
@@ -32,6 +32,4 @@ idt_plate = generate_new_plate_from_slat_handle_df(seq_df, output_folder,
                                                    plate_size=96)
 
 idt_plate.columns = ['well', 'name', 'sequence', 'description']
-cargo_plate = get_plateclass('H5AntiBartEdnaPlate', bart_edna_h5_antihandles,
-                             output_folder,
-                             pre_read_plate_dfs=[idt_plate])
+# This plate was ordered as a 96-well version, then combined with the Nelson/Quimby plate into sw_src007 by hand

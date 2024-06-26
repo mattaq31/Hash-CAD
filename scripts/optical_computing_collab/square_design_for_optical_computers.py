@@ -26,7 +26,7 @@ output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crissc
 create_dir_if_empty(output_folder)
 
 np.random.seed(8)
-read_handles_from_file = False
+read_handles_from_file = True
 read_cargo_patterns_from_file = False
 ########################################
 

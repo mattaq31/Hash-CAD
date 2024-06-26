@@ -1,3 +1,5 @@
+# TODO: this file is deprecated and requires a full revamp
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle, Circle
@@ -159,7 +161,7 @@ if __name__ == '__main__':
     # two_side_plot(pattern, pattern, 'Centred_Octahedrons')
 
     # design = 'square'
-    design = 'triangular'
+    design = 'square'
 
     if design == 'square':
         pattern = generate_patterned_square_cco("diagonal_octahedron_top_corner")
@@ -180,6 +182,9 @@ if __name__ == '__main__':
             pattern2[int(sel_pos[1]), int(sel_pos[0])] = 4
 
         two_side_plot(pattern, pattern2, 'Octahedrons_With_Crossbar_Underside')
+
+        two_side_plot(pattern, pattern2, 'Octahedrons_With_Crossbar_Underside')
+
     else:
         xtot = 128
         ytot = 32

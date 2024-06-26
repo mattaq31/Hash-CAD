@@ -22,6 +22,18 @@ class Slat:
         self.H2_handles = defaultdict(dict)
         self.H5_handles = defaultdict(dict)
 
+    def reverse_direction(self):
+        """
+        Reverses the handle order on the slat (this should not affect the design placement of the slat).
+        """
+        new_slat_position_to_coordinate = {}
+        new_slat_coordinate_to_position = {}
+        for i in range(self.max_length):
+            new_slat_position_to_coordinate[self.max_length - i] = self.slat_position_to_coordinate[i + 1]
+            new_slat_coordinate_to_position[self.slat_position_to_coordinate[i + 1]] = self.max_length - i
+        self.slat_position_to_coordinate = new_slat_position_to_coordinate
+        self.slat_coordinate_to_position = new_slat_coordinate_to_position
+
     def get_sorted_handles(self, side='h2'):
         """
         Returns a sorted list of all handles on the slat (as they can be jumbled up sometimes, depending on the order they were created).

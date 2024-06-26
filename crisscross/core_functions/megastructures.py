@@ -249,7 +249,7 @@ class Megastructure:
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
                                    include_cargo=True, include_seed=True,
-                                   slat_width=4, colormap='Set1'):
+                                   slat_width=4, colormap='Set1', cargo_colormap='Set1'):
         """
         Creates a graphical view of all slats in the assembled design, including cargo and seed handles.
         A single figure is created for the global view of the structure, as well as individual figures
@@ -260,6 +260,7 @@ class Megastructure:
         :param include_seed: Will print out seed handle positions by default.  Turn this off here.
         :param slat_width: The width to use for the slat lines.
         :param colormap: The colormap to sample from for each additional layer.
+        :param cargo_colormap: The colormap to sample from for each cargo type.
         :return: N/A
         """
 
@@ -321,12 +322,11 @@ class Megastructure:
             # TODO: will need to improve colour assignment process to include non-integers..
             for cargo_layer, cargo_orientation, cargo_array in self.cargo_arrays:
                 cargo_plot_points = np.where(cargo_array > 0)
-
                 # sets colour of annotation according to the cargo being added
-                cargo_color_values = -cargo_array[cargo_plot_points]
+                cargo_color_values = cargo_array[cargo_plot_points]
                 cargo_color_values_rgb = []
                 for col_id in cargo_color_values:
-                    cargo_color_values_rgb.append(mpl.colormaps[colormap].colors[int(col_id)])
+                    cargo_color_values_rgb.append(mpl.colormaps[cargo_colormap].colors[int(col_id)])
 
                 transformed_cpp = [cargo_plot_points[0] * self.grid_yd, cargo_plot_points[1] * self.grid_xd]
                 top_layer_side = self.layer_interface_orientations[cargo_layer]
@@ -337,7 +337,8 @@ class Megastructure:
                 else:
                     top_or_bottom = 1
                 layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(transformed_cpp[1], transformed_cpp[0],
-                                                                         color=cargo_color_values_rgb, marker='s', s=100, zorder=10)
+                                                                         color=cargo_color_values_rgb, marker='s',
+                                                                         s=100, zorder=10)
                 global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb, s=100,
                                      marker='s', alpha=0.5, zorder=cargo_layer)
                 global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb,
@@ -561,16 +562,20 @@ class Megastructure:
         plotter.orbit_on_path(path, write_frames=True, viewup=[0, 1, 0], step=0.05)
         plotter.close()
 
-    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False, colormap='Set1'):
+    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
+                                         colormap='Dark2', cargo_colormap='Set1'):
         """
         Generates entire set of graphical reports for the megastructure design.
         :param output_folder: Output folder to save all images to.
         :param draw_individual_slat_reports: If set, to true, will generate individual slat reports (slow).
+        :param colormap: Colormap to extract layer colors from
+        :param cargo_colormap: Colormap to extract cargo colors from
         :return: N/A
         """
         print(Fore.CYAN + 'Generating graphical reports for megastructure design, this might take a few seconds...')
         create_dir_if_empty(output_folder)
-        self.create_graphical_slat_view(save_to_folder=output_folder, instant_view=False, colormap=colormap)
+        self.create_graphical_slat_view(save_to_folder=output_folder, instant_view=False, colormap=colormap,
+                                        cargo_colormap=cargo_colormap)
         self.create_graphical_assembly_handle_view(save_to_folder=output_folder, instant_view=False, colormap=colormap)
         if draw_individual_slat_reports:
             self.create_graphical_slat_views(output_folder, colormap=colormap)
