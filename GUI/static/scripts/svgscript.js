@@ -8,8 +8,8 @@ var majorGridSize = 5*minorGridSize;    //Size of major grid squares
 var gridStyle = 1;                      //0 for off, 1 for grid, 2 for dots
 
 //For dragging
-let dragSelectedElement = null;         //Item selected to drag
-let dragOffset = { x: 0, y: 0 };        //Offset between mouse position and item position
+//let dragSelectedElement = null;         //Item selected to drag
+
 
 //For adding elements
 let placeRoundedX = 0;                  //Snapped position of mouse (X)
@@ -41,7 +41,7 @@ let slatCounter = 0;
 let cargoCounter = 0;
 
 //Select
-let drawEraseSelectMode = 0; //0 for draw, 1 for erase, 2 for select
+//let drawEraseSelectMode = 0; //0 for draw, 1 for erase, 2 for select
 let selectedColor = '#93f5f2';
 
 //Draw mode
@@ -60,455 +60,10 @@ var socket = io();
 //     Helper Functions!     //
 ///////////////////////////////
 
-//Draw grid:
-function drawGrid(gridGroup, width, height, style, majorSize, minorSize) {
-    //Grid style: 
-        //0 corresponds to no grid
-        //1 corresponds to normal grid
-        //2 corresponds to dot grid
-    
-    //First reset grid:
-    gridGroup.clear()
+import { drawGrid } from './helper_functions.js';
+import { placeSlat, placeCargo } from './helper_functions.js';
+import { createGridArray } from './helper_functions.js';
 
-    //Now draw the grid itself:
-    if(style != 0){
-        // Draw vertical lines
-        //Minor
-        for (var x = 0; x < width; x += minorSize) {
-            let tmpLine = gridGroup.line(x, 0, x, height).stroke({ width: 0.5, color:'#000'})
-            if(style==2){
-                tmpLine.stroke({dasharray:`${minorSize*0.1},${minorSize*0.9}`, dashoffset:`${minorSize*0.05}`})
-            }
-        }
-
-        //Major
-        for (var x = 0; x < width; x += majorSize) {
-            let tmpLine = gridGroup.line(x, 0, x, height).stroke({ width: 1, color:'#000' })
-            if(style==2){
-                tmpLine.stroke({dasharray:`${majorSize*0.05},${majorSize*0.95}`, dashoffset:`${majorSize*0.025}`})
-            }
-        }
-
-        // Draw horizontal lines
-        //Minor
-        for (var y = 0; y < height; y += minorSize) {
-            let tmpLine = gridGroup.line(0, y, width, y).stroke({ width: 0.5, color:'#000'})
-            if(style==2){
-                tmpLine.stroke({dasharray:`${minorSize*0.1},${minorSize*0.9}`, dashoffset:`${minorSize*0.05}`})
-            }
-        }
-
-        //Major
-        for (var y = 0; y < height; y += majorSize) {
-            let tmpLine = gridGroup.line(0, y, width, y).stroke({ width: 1, color:'#000' })
-            if(style==2){
-                tmpLine.stroke({dasharray:`${majorSize*0.05},${majorSize*0.95}`, dashoffset:`${majorSize*0.025}`})
-            }
-        }
-    }
-    
-    
-    return gridGroup;
-  }
-
-
-///////////////////////////////
-//  Slat Overlap Checkers    //
-///////////////////////////////
-
-// Check if a point is on any existing line
-function isPointOnLine(Layer, x, y, selectedLine = false) {
-    const lines = Layer.find('.line');
-    return lines.some(line => {
-      
-      //Check if overlapping with any lines in general
-        const bbox = line.bbox();
-        let onOther = (x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2)
-      
-      //Check if overlapping with self (but only if a self is given!)
-        let selfBbox = null;
-        let onItself = false
-        if(selectedLine){
-            selfBbox = selectedLine.bbox();
-            onItself = (x >= selfBbox.x && x <= selfBbox.x2 && y >= selfBbox.y && y <= selfBbox.y2)
-        }
-      
-      return (
-        onOther && (!onItself)
-      );
-    });
-  }
-
-
-function isLineOnLine(startX, startY, layer, GridSize, selectedLine) {
-    const x1 = selectedLine.attr('x1');
-    const y1 = selectedLine.attr('y1');
-    const x2 = selectedLine.attr('x2');
-    const y2 = selectedLine.attr('y2');
-
-    //console.log("selected line is: "+x1 + ","+y1+" to "+x2+","+y2)
-
-    let dX = x2-x1;
-    let dY = y2-y1
-
-    const lineLength = Math.sqrt(dX * dX + dY * dY)
-    const numPoints = Math.floor(lineLength/GridSize)
-
-    let overlap = false
-
-    for (let i = 0; i<= numPoints; i++) {
-        const ratio = i / numPoints;
-        let x = startX + ratio * dX
-        let y = startY + ratio * dY
-        overlap = overlap || isPointOnLine(layer, x, y, selectedLine)
-    }
-
-    return overlap
-
-
-}
-
-
-function willVertBeOnLine(startX, startY, layer, gridSize, length=32){
-    let overlap = false
-    for (let i = 0; i<= length; i++) {
-        let x = startX 
-        let y = startY + i*gridSize
-        overlap = overlap || isPointOnLine(layer, x, y)
-    }
-    return overlap
-}
-
-function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
-    let overlap = false
-    for (let i = 0; i<= length; i++) {
-        let x = startX + i*gridSize
-        let y = startY 
-        overlap = overlap || isPointOnLine(layer, x, y)
-    }
-    return overlap
-}
-
-
-
-///////////////////////////////
-//  Cargo Overlap Checkers   //
-///////////////////////////////
-
-function isCargoOnCargo(x, y, layer, selectedPoint = false){
-    const cargos = layer.find('.cargo');
-    return cargos.some(cargo => {
-      
-        //Check if overlapping with any lines in general
-        const bbox = cargo.bbox();
-        let onOther = (x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2)
-
-        //Check if overlapping with itself
-        let onItself = false
-        if(selectedPoint){
-            const selfBbox = selectedPoint.bbox();
-            onItself = (x >= selfBbox.x && x <= selfBbox.x2 && y >= selfBbox.y && y <= selfBbox.y2)
-        }
-      
-        return (
-            (onOther && (!onItself))
-        );
-    });
-}
-
-
-
-
-///////////////////////////////
-//     Drawing Functions     //
-///////////////////////////////
-function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, slatCounter, horizontal) {
-    if(!horizontal){
-        if(!willVertBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
-            let defaultColor = activeLayerColor; 
-            let tmpLine = activeSlatLayer.line(roundedX, roundedY - 0.5 * minorGridSize, roundedX, roundedY + 31.5 * minorGridSize)
-                                        .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
-            tmpLine.attr('id','ID-'+activeLayerId + '-N' + slatCounter)
-            tmpLine.attr('class',"line")
-            tmpLine.attr({ 'pointer-events': 'stroke' })
-            tmpLine.attr('data-default-color', defaultColor);
-            tmpLine.attr('data-horizontal',horizontal)
-
-            //Adding draggability:
-            tmpLine.on('pointerdown', startDrag)
-
-            slatCounter += 1;
-        }
-    }
-    else if(horizontal){
-        if(!willHorzBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
-            let defaultColor = activeLayerColor 
-            let tmpLine = activeSlatLayer.line(roundedX - 0.5 * minorGridSize, roundedY, roundedX + 31.5 * minorGridSize, roundedY )
-                                        .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
-            tmpLine.attr('id','ID-'+activeLayerId+'-N' + slatCounter)
-            tmpLine.attr('class',"line")
-            tmpLine.attr({ 'pointer-events': 'stroke' })
-            tmpLine.attr('data-default-color', defaultColor);
-            tmpLine.attr('data-horizontal',horizontal)
-
-            //Adding draggability:
-            tmpLine.on('pointerdown', startDrag)
-
-            slatCounter += 1;
-        }
-    }
-
-    return slatCounter;
-}
-
-
-function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, cargoCounter, selectedCargoId) {
-    
-    const cargoItem = getInventoryItemById(selectedCargoId);
-    let defaultColor = activeLayerColor; 
-
-    if(cargoItem){
-        if(!isCargoOnCargo(roundedX, roundedY, activeCargoLayer)){
-            const circleRadius = minorGridSize * 0.375; // Diameter is 75% of minorGridSize
-            let tmpCircle = activeCargoLayer.circle(2 * circleRadius) // SVG.js uses diameter, not radius
-                                            .attr({ cx: roundedX, cy: roundedY })
-                                            .fill(cargoItem.color) // You can set the fill color here
-                                            .stroke(activeLayerColor) // You can set the stroke color here
-                                            .opacity(shownCargoOpacity);//shownOpacity * 1.25);
-            tmpCircle.attr('id','CargoID-'+activeLayerId + '-N' + cargoCounter)
-            tmpCircle.attr('class',"cargo")
-            tmpCircle.attr('data-cargo-component', 'circle')
-            tmpCircle.attr('data-default-color', defaultColor)
-            tmpCircle.attr('pointer-events', 'none');
-    
-            // Adding text (acronym) to the cargo
-            let text = activeCargoLayer.text(cargoItem.acronym)
-                .attr({ x: roundedX, y: roundedY - circleRadius, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
-                .attr({'stroke-width': circleRadius/20})
-                .font({ size: minorGridSize * 0.4, family: 'Arial', weight: 'bold' , stroke: '#000000'})
-                .fill('#FFFFFF'); // White text
-            text.attr('pointer-events', 'none');
-            text.attr('data-cargo-component', 'text')
-            
-    
-            // Function to adjust text size
-            function adjustTextSize() {
-                let fontSize = circleRadius;
-                text.font({ size: fontSize });
-                
-                while (text.length() > circleRadius * 1.8) {
-                    fontSize *= 0.9;
-                    text.font({ size: fontSize });
-                }
-            }
-    
-            adjustTextSize();
-    
-            // Group the circle and text
-            let group = activeCargoLayer.group()
-            group.add(tmpCircle).add(text);
-            group.on('pointerdown', startDrag);
-    
-            // Set pointer-events attribute to the group
-            group.attr('pointer-events', 'bounding-box');
-            group.attr('data-cargo-Id', selectedCargoId)
-    
-            //tmpLine.attr({ 'pointer-events': 'stroke' })
-    
-            //Adding draggability:
-            //tmpCircle.on('pointerdown', startDrag)
-    
-            cargoCounter += 1;
-        }
-
-    }
-
-    
-
-    
-    return cargoCounter;
-}
-
-
-
-///////////////////////////////
-//       Drag and Drop       //
-///////////////////////////////
-
-
-//Start dragging (OR SELECTING OR ERASING)
-function startDrag(event) {
-        
-    
-    dragSelectedElement = event.target.instance;
-
-    let tmpActiveLayer = null;
-    if(drawSlatCargoHandleMode == 0){
-        tmpActiveLayer = activeSlatLayer;
-    }
-    else if(drawSlatCargoHandleMode == 1){
-        tmpActiveLayer = activeCargoLayer;
-    }
-
-    console.log("Draw-erase-select mode is set to: "+drawEraseSelectMode+"with element: "+dragSelectedElement)
-
-    if(tmpActiveLayer.children().includes(dragSelectedElement)){
-
-        
-        
-        //drawEraseSelectMode == 0 corresponds to drawing
-        //drawEraseSelectMode == 1 corresponds to erasing
-        //drawEraseSelectMode == 2 corresponds to selecting
-        if(drawEraseSelectMode == 0){ //Drawing!
-            const point = dragSelectedElement.point(event.clientX, event.clientY);
-    
-            dragOffset.x = point.x - dragSelectedElement.x();
-            dragOffset.y = point.y - dragSelectedElement.y();
-
-            // Add event listeners for drag and end drag
-            document.addEventListener('pointermove', drag)
-            document.addEventListener('pointerup', endDrag);
-        }
-        else if(drawEraseSelectMode == 1){ //Erasing!
-            dragSelectedElement.remove()
-            event.stopPropagation(); //needed or else delete doesn't work... oh well!
-        }
-        else if(drawEraseSelectMode == 2){ //Selecting!
-            //check if selected already
-            var checkSelected = dragSelectedElement.hasClass("selected")
-            if(!checkSelected){
-                dragSelectedElement.attr({stroke: selectedColor})
-                dragSelectedElement.addClass("selected");
-            }
-            else if(checkSelected){
-                let unselectedColor = dragSelectedElement.attr('data-default-color'); 
-                dragSelectedElement.attr({stroke: unselectedColor})
-                dragSelectedElement.removeClass("selected");
-            }
-            
-
-        }
-        
-    }
-
-        
-  }
-
-
-//Actually drag the element
-function drag(event) {
-    if (dragSelectedElement) {
-        let point = dragSelectedElement.point(event.clientX, event.clientY) 
-        point.x = point.x - dragOffset.x
-        point.y = point.y - dragOffset.y
-        let roundedX = Math.round(point.x/(minorGridSize))*minorGridSize ;
-        let roundedY = Math.round(point.y/(minorGridSize))*minorGridSize ; 
-        
-
-        if(drawSlatCargoHandleMode == 0){
-            if(!isLineOnLine(roundedX, roundedY, activeSlatLayer,minorGridSize, dragSelectedElement)) {
-                let moveOffset = 0.5 * minorGridSize
-
-                let isHorizontal = dragSelectedElement.attr('data-horizontal')
-                
-                if(isHorizontal=='true'){
-                    dragSelectedElement.move(roundedX-moveOffset, roundedY);
-                    console.log("moving a horizontal element")
-                }
-                else {
-                    dragSelectedElement.move(roundedX, roundedY-moveOffset);
-                    console.log("moving a vertical element")
-                }
-                
-            }
-        }
-        else if(drawSlatCargoHandleMode == 1){
-            if(!isCargoOnCargo(roundedX, roundedY, activeCargoLayer, dragSelectedElement)) {
-                let bbox = dragSelectedElement.bbox();
-                let xOffset = bbox.width / 2
-                let yOffset = bbox.height / 2
-                dragSelectedElement.move(roundedX-xOffset, roundedY-yOffset)
-            }
-        }
-        
-    }
-}
-
-
-// Function to end dragging
-function endDrag() {
-    
-    console.log("Dragging ended!")
-    dragSelectedElement = null;
-    dragOffset.x = 0
-    dragOffset.y = 0
-
-    // Remove event listeners for drag and end drag
-    document.removeEventListener('pointermove', drag);
-    document.removeEventListener('pointerup', endDrag);
-  }
-
-
-
-///////////////////////////////
-//   Creating Slat Array     //
-///////////////////////////////
-
-
-// Initialize the sparse 3D grid dictionary
-function initializeSparseGridDictionary() {
-    return {};
-}
-
-
-// Convert grid coordinates to a string key for the dictionary
-function gridKey(x, y, layer) {
-    return `${x},${y},${layer}`;
-}
-
-
-// Populate the sparse grid dictionary with slat IDs
-function populateSparseGridDictionary(gridDict, layers) {
-    layers.forEach((layer, layerIndex) => {
-        layer[1].children().forEach(child => {
-            let slatId = child.attr('id');
-            let bbox = child.bbox();
-            let startX = Math.round(bbox.x / minorGridSize);
-            let startY = Math.round(bbox.y / minorGridSize);
-            let endX = Math.round((bbox.x + bbox.width) / minorGridSize);
-            let endY = Math.round((bbox.y + bbox.height) / minorGridSize);
-
-            // Populate the grid dictionary with the slat ID for the occupied positions
-            for (let x = startX; x <= endX; x++) {
-                for (let y = startY; y <= endY; y++) {
-                    let key = gridKey(x, y, layerIndex);
-                    gridDict[key] = slatId;
-                }
-            }
-        });
-    });
-}
-
-
-//Create array
-function createGridArray(layerList) {
-    // Initialize the sparse grid dictionary
-    let gridDict = initializeSparseGridDictionary();
-
-    // Populate the sparse grid dictionary with slat IDs
-    populateSparseGridDictionary(gridDict, Array.from(layerList.values()));
-
-    // You can now use the gridDict as needed
-    console.log(gridDict);
-
-    return gridDict
-}
-  
-
-
-///////////////////////////////
-//     Cargo Management      //
-///////////////////////////////
 import { populateCargoPalette, getInventoryItemById, renderInventoryTable, addInventoryItem } from './inventory.js';
 
 
@@ -653,11 +208,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 let oldSlatCounter = slatCounter;
 
                 //Place slat
-                slatCounter = placeSlat(placeRoundedX, placeRoundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, slatCounter, placeHorizontal)
+                slatCounter = placeSlat(placeRoundedX, placeRoundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, slatCounter, placeHorizontal, layerList)
 
                 //Create grid array if a slat has been sucessfully placed!
                 if(oldSlatCounter < slatCounter){
-                    let slatArray = createGridArray(layerList)
+                    let slatArray = createGridArray(layerList, minorGridSize)
                     dispatchServerEvent('slatPlaced', slatArray)
                 }
             }
@@ -666,7 +221,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 let oldCargoCounter = cargoCounter;
 
                 //Place cargo
-                cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, cargoCounter, selectedCargoId)
+                cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownCargoOpacity, cargoCounter, selectedCargoId, layerList)
                 
                 //Create grid array if a cargo has been sucessfully placed!
                 if(oldCargoCounter < cargoCounter){
@@ -846,42 +401,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
         socket.emit('slat placed', event.detail);
     });
 
-    /**
-    //Layers Event Listeners
-    document.addEventListener('cargoAdded', (event) => {
-        console.log(`Cargo added: ${event.detail.cargoId}`, event.detail.cargoElement);
-    });
-
+  
     
-    document.addEventListener('cargoRemoved', (event) => {
-        console.log(`Cargo removed: ${event.detail.cargoId}`, event.detail.cargorElement);
-    });
-
-
-    document.addEventListener('cargoMarkedActive', (event) => {
-        console.log(`Cargo marked active: ${event.detail.cargoId}`, event.detail.cargoElement);
-        // Deal with layer marked active
-        selectedCargoId = event.detail.cargoId
-        selectedCargoColor = event.detail.cargoColor;
-        selectedCargoName = event.detail.cargoName;
-        selectedCargoAcronym = event.detail.cargoAcronym;
-    });
-
     
-    document.addEventListener('cargoColorChanged', (event) => {
-        const cargoId = event.detail.cargoId;
-        const cargoColor = event.detail.cargoColor;
-    
-        // Your code to handle the color change, e.g., updating a UI element, applying the color to a canvas, etc.
-    });
-
-    document.addEventListener('cargoAcronymChanged', (event) => {
-        //Handle
-    });
-    
-
- */
-
 
 
 });

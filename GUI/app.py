@@ -21,6 +21,7 @@ def handle_my_custom_event(json):
 @socketio.on('slat placed')
 def handle_my_custom_event(json):
     print('A slat has been placed, and grid generated: ')
+    print(type(json))
     print(json)
 
 @socketio.on('my layer removed event')

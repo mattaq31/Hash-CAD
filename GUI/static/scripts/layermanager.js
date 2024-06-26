@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const layerRadio = document.createElement('input');
         layerRadio.type = 'radio';
         layerRadio.name = 'active-layer';
+        layerRadio.dataset.layerId = layerId;
         layerRadio.addEventListener('change', setActiveLayer);
 
         const colorPicker = document.createElement('input');
