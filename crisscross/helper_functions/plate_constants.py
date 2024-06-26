@@ -29,7 +29,7 @@ seed_plug_plate_corner = 'P3339_JL_seed_plug_corner'  # this contains another va
 nelson_quimby_antihandles = 'sw_src005_antiNelsonQuimby_cc6hb_h2handles'  # this contains the full set of h2 handles for antiNelson/Quimby extensions
 h2_biotin_direct = 'P3510_SSW_biotin'  # this contains two core slat sequences with directly biotinylated H2 handles
 octahedron_patterning_v1 = 'P3518_MA_octahedron_patterning_v1'  # this contains the H2 sequences for the octahedron patterning (diagonal) and H2/H5 strands for cross-bar binding
-bart_edna_h5_antihandles = 'PXYZ_edna_bart_h5'  # this contains Bart and Edna antihandles for all 32 H5 positions
+simpsons_mixplate_antihandles = 'sw_src007_nelson_quimby_bart_edna'  # this contains a variety of Bart, Edna, Nelson and Quimby handles for both H2 and H5
 
 def sanitize_plate_map(name):
     """
