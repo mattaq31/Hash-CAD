@@ -181,7 +181,8 @@ nelson_mega.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
 nelson_mega.assign_cargo_handles(cargo_array_0, nelson_plate, layer=1, requested_handle_orientation=2)
 nelson_mega.assign_cargo_handles(cargo_array_1, nelson_plate, layer=2, requested_handle_orientation=2)
 nelson_mega.patch_control_handles(core_plate)
-nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'))
+nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
+                                             cargo_colormap='Paired')
 
 convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', output_folder,
                                  'all_echo_commands.csv', transfer_volume=100)
