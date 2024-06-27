@@ -1,5 +1,8 @@
 var defaultColor = '#ff0000'
 
+const hexColors = ['#ff0000', '#0000ff', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const layerList = document.getElementById('layer-list');
     const addLayerButton = document.getElementById('add-layer');
@@ -12,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const layerItem = document.createElement('div');
         layerItem.className = 'layer-item';
 
-        const layerId = `layer-${layerList.children.length + 1}`;
+        const layerId = layerList.children.length   // `layer-${layerList.children.length + 1}`;
         layerItem.dataset.layerId = layerId;  // Add a data attribute to identify the layer
 
         const layerCheckbox = document.createElement('input');
@@ -21,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         layerCheckbox.addEventListener('change', toggleLayer);
 
         const layerName = document.createElement('span');
-        layerName.textContent = `Layer ${layerList.children.length + 1}`;
+        layerName.textContent = `Layer ${layerId }`;//`Layer ${layerList.children.length + 1}`;
 
         const layerRadio = document.createElement('input');
         layerRadio.type = 'radio';
@@ -31,11 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const colorPicker = document.createElement('input');
         colorPicker.type = 'color';
-        colorPicker.value = defaultColor; // Set default color value
+        colorPicker.value = hexColors[layerId % 6]//defaultColor; // Set default color value
         colorPicker.addEventListener('input', setColor);
 
         const removeButton = document.createElement('button');
         removeButton.textContent = "\u2715"; //X symbol for removing layer!
+        removeButton.classList.add("layer-remove-button");
         removeButton.addEventListener('click', () => {
             layerList.removeChild(layerItem);
             dispatchCustomEvent('layerRemoved', layerItem);
@@ -80,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setColor(event) {
         const layerItem = event.target.parentElement;
         const color = event.target.value;
-        layerItem.dataset.layerColor = color || defaultColor; // Set the color as a data attribute
+        layerItem.dataset.layerColor = color || hexColors[layerItem.dataset.layerId % 6]//defaultColor; // Set the color as a data attribute
         dispatchCustomEvent('layerColorChanged', layerItem);
     }
 
@@ -90,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: {
                 layerId: layerItem.dataset.layerId,
                 layerElement: layerItem,
-                layerColor: layerItem.dataset.layerColor || defaultColor // Include color in event details
+                layerColor: layerItem.dataset.layerColor || hexColors[layerItem.dataset.layerId % 6]//defaultColor // Include color in event details
             }
         });
         document.dispatchEvent(event);

@@ -37,8 +37,8 @@ let hiddenOpacity = 0.2
 let placeHorizontal = false;
 
 //ID counter for slat IDs
-let slatCounter = 0;
-let cargoCounter = 0;
+let slatCounter = 1;
+let cargoCounter = 1;
 
 //Select
 //let drawEraseSelectMode = 0; //0 for draw, 1 for erase, 2 for select
@@ -63,6 +63,8 @@ var socket = io();
 import { drawGrid } from './helper_functions.js';
 import { placeSlat, placeCargo } from './helper_functions.js';
 import { createGridArray } from './helper_functions.js';
+
+import { importDesign } from './helper_functions.js';
 
 import { populateCargoPalette, getInventoryItemById, renderInventoryTable, addInventoryItem } from './inventory.js';
 
@@ -113,15 +115,15 @@ SVG.on(document, 'DOMContentLoaded', function() {
         })
 
     //Change edit mode by radio buttons
-        //Get radio buttons
-        var editModeRadios = document.querySelectorAll('input[name="editMode');
-
-        //Add a change event listener to each radio button:
-        editModeRadios.forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                drawEraseSelectMode = this.value;
-            })
-        })
+    //    //Get radio buttons
+    //    var editModeRadios = document.querySelectorAll('input[name="editMode');
+    //
+    //    //Add a change event listener to each radio button:
+    //    editModeRadios.forEach(function(radio) {
+    //        radio.addEventListener('change', function() {
+    //            drawEraseSelectMode = this.value;
+    //        })
+    //    })
 
 
     const svgcontainer = document.getElementById('svg-container')
@@ -212,8 +214,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
                 //Create grid array if a slat has been sucessfully placed!
                 if(oldSlatCounter < slatCounter){
-                    let slatArray = createGridArray(layerList, minorGridSize)
-                    dispatchServerEvent('slatPlaced', slatArray)
+                    //let gridArray = createGridArray(layerList, minorGridSize)
+                    //dispatchServerEvent('slatPlaced', gridArray)
                 }
             }
             else if(drawSlatCargoHandleMode == 1){
@@ -225,15 +227,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 
                 //Create grid array if a cargo has been sucessfully placed!
                 if(oldCargoCounter < cargoCounter){
-                //    createGridArray(layerList)
+                    //let gridArray = createGridArray(layerList, minorGridSize)
+                    //dispatchServerEvent('cargoPlaced', gridArray)
                 }
             }
-            
-
-
-
-            
-            
+             
         }        
     });
 
@@ -245,24 +243,20 @@ SVG.on(document, 'DOMContentLoaded', function() {
         let handleGroup = fullDrawing.group();
         let slatGroup = fullDrawing.group();
         let cargoGroup = fullDrawing.group();
-        const tmpFullLayer = [handleGroup, slatGroup, cargoGroup];
+        const tmpFullLayer = [handleGroup, slatGroup, cargoGroup, event.detail.layerColor];
 
         layerList.set(event.detail.layerId, tmpFullLayer)
-
-        //layerList.set(event.detail.layerId, fullDrawing.group());
     });
 
     document.addEventListener('layerRemoved', (event) => {
         console.log(`Layer removed: ${event.detail.layerId}`, event.detail.layerElement);
         //Layer removed
-        //layerList.get(event.detail.layerId).remove()
         const fullLayer = layerList.get(event.detail.layerId);
         fullLayer[0].remove();
         fullLayer[1].remove();
         fullLayer[2].remove();
         layerList.delete(event.detail.layerId)
 
-        
         socket.emit('my layer removed event', {data: 'Layer removed'});
     });
 
@@ -335,12 +329,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                     childChild.attr('data-default-color', layerColor); // Update the default color attribute
                 }
             })
-           
-            
         });
-
-    
-        // Your code to handle the color change, e.g., updating a UI element, applying the color to a canvas, etc.
     });
 
 
@@ -401,9 +390,38 @@ SVG.on(document, 'DOMContentLoaded', function() {
         socket.emit('slat placed', event.detail);
     });
 
+    document.addEventListener('cargoPlaced', (event) => {
+        console.log('Cargo placed:', event.detail);
+        socket.emit('cargo placed', event.detail);
+    });
+
   
+
+    socket.on('slat dict made', function(data) {
+        console.log("slat array read from python? If so, here it is: ", data)
+        slatCounter = importDesign(data, data, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+    });
     
     
+
+
+    //Add event listener for design saving
+    document.getElementById('save-design').addEventListener('click', function(event) {
+        console.log("design to be saved now!")
+        let gridArray = createGridArray(layerList, minorGridSize)
+        socket.emit('design saved', gridArray);
+    });
+
+    //Add event listener for design importing
+    document.getElementById('import-design').addEventListener('click', function(event) {
+        console.log("design to be imported now!")
+        socket.emit('design import request')
+    });
+
+    socket.on('design import sent', function(data) {
+        console.log("Imported design!", data)
+        slatCounter = importDesign(data[0], data[1], layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+    });
 
 
 });

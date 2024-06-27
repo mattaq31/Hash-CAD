@@ -354,7 +354,11 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             let defaultColor = activeLayerColor; 
             let tmpLine = activeSlatLayer.line(roundedX, roundedY - 0.5 * minorGridSize, roundedX, roundedY + 31.5 * minorGridSize)
                                         .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
-            tmpLine.attr('id','ID-'+activeLayerId + '-N' + slatCounter)
+            //tmpLine.attr('id',activeLayerId + '_number:' + slatCounter)
+
+            tmpLine.attr('id', slatCounter)
+            tmpLine.attr('layer', activeLayerId)
+
             tmpLine.attr('class',"line")
             tmpLine.attr({ 'pointer-events': 'stroke' })
             tmpLine.attr('data-default-color', defaultColor);
@@ -375,7 +379,11 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             let defaultColor = activeLayerColor 
             let tmpLine = activeSlatLayer.line(roundedX - 0.5 * minorGridSize, roundedY, roundedX + 31.5 * minorGridSize, roundedY )
                                         .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
-            tmpLine.attr('id','ID-'+activeLayerId+'-N' + slatCounter)
+            //tmpLine.attr('id',activeLayerId+'_number:' + slatCounter)
+
+            tmpLine.attr('id', slatCounter)
+            tmpLine.attr('layer', activeLayerId)
+
             tmpLine.attr('class',"line")
             tmpLine.attr({ 'pointer-events': 'stroke' })
             tmpLine.attr('data-default-color', defaultColor);
@@ -409,7 +417,7 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
                                             .fill(cargoItem.color) // You can set the fill color here
                                             .stroke(activeLayerColor) // You can set the stroke color here
                                             .opacity(shownCargoOpacity);//shownOpacity * 1.25);
-            tmpCircle.attr('id','CargoID-'+activeLayerId + '-N' + cargoCounter)
+            //tmpCircle.attr('id',+activeLayerId + '-type:' + selectedCargoId + '_cargoNumber:' + cargoCounter)
             tmpCircle.attr('class',"cargo")
             tmpCircle.attr('data-cargo-component', 'circle')
             tmpCircle.attr('data-default-color', defaultColor)
@@ -448,7 +456,11 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
     
             // Set pointer-events attribute to the group
             group.attr('pointer-events', 'bounding-box');
-            group.attr('data-cargo-Id', selectedCargoId)
+            group.attr('id'  ,  cargoCounter    )
+            group.attr('type',  selectedCargoId )
+            group.attr('layer', activeLayerId   )
+            //group.attr('id', activeLayerId + '_number:' + cargoCounter + '_type:' + selectedCargoId )
+            //group.attr('data-cargo-Id', selectedCargoId)
     
             //tmpLine.attr({ 'pointer-events': 'stroke' })
     
@@ -484,9 +496,9 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
 
 
 // Initialize the sparse 3D grid dictionary
-export function initializeSparseGridDictionary() {
-    return {};
-}
+//export function initializeSparseGridDictionary() {
+//    return {};
+//}
 
 
 // Convert grid coordinates to a string key for the dictionary
@@ -496,7 +508,7 @@ export function gridKey(x, y, layer) {
 
 
 // Populate the sparse grid dictionary with slat IDs
-export function populateSparseGridDictionary(gridDict, layers, minorGridSize) {
+export function populateSparseGridDictionarySlats(gridDict, layers, minorGridSize) {
     layers.forEach((layer, layerIndex) => {
         layer[1].children().forEach(child => {
             let slatId = child.attr('id');
@@ -518,21 +530,182 @@ export function populateSparseGridDictionary(gridDict, layers, minorGridSize) {
 }
 
 
+// Populate the sparse grid dictionary with cargo IDs
+export function populateSparseGridDictionaryCargo(gridDict, layers, minorGridSize) {
+    layers.forEach((layer, layerIndex) => {
+        layer[2].children().forEach(child => {
+            let cargoId = child.attr('type');
+            let bbox = child.bbox();
+            
+            let centerX = Math.round((bbox.x + bbox.width / 2) / minorGridSize);
+            let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
+
+            // Populate the grid dictionary with the cargo ID for the occupied positions
+            let key = gridKey(centerX, centerY, layerIndex);
+            gridDict[key] = cargoId;
+        });
+    });
+}
+
+
 //Create array
 export function createGridArray(layerList, minorGridSize) {
     // Initialize the sparse grid dictionary
-    let gridDict = initializeSparseGridDictionary();
+    let gridDictSlats = {};
+    let gridDictCargo = {};
 
     // Populate the sparse grid dictionary with slat IDs
-    populateSparseGridDictionary(gridDict, Array.from(layerList.values()), minorGridSize);
+    populateSparseGridDictionarySlats(gridDictSlats, Array.from(layerList.values()), minorGridSize);
+
+    // Populate the sparse grid dictionary with cargo IDs
+    populateSparseGridDictionaryCargo(gridDictCargo, Array.from(layerList.values()), minorGridSize);
 
     // You can now use the gridDict as needed
-    console.log(gridDict);
+    let gridDict = [gridDictSlats, gridDictCargo];
+    //console.log(gridDict);
 
     return gridDict
 }
   
 
+function removeAllLayers(layerList){
+    const layerRemoveButtons = document.querySelectorAll('.layer-remove-button');
+    
+    // Click each button
+    layerRemoveButtons.forEach(button => {
+        button.click(); // Simulate a click on each button
+    });
+}
 
 
+function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity){
+    //Now add new cargo:
+    let cargoCounter = 1;
 
+    // Iterate through the dictionary
+    for (const [key, value] of Object.entries(cargoDict)) {
+        
+        let keyArray = key.split(',')
+
+        let dictX   = Number(keyArray[0])
+        let dictY   = Number(keyArray[1])
+        let layerId = keyArray[2]
+
+        let cargoId = value
+
+        while(!layerList.has(layerId)){
+            const addLayerButton = document.getElementById('add-layer');
+            addLayerButton.click();
+        }
+
+        let fullLayer = layerList.get(layerId);
+        let activeCargoLayer = fullLayer[2]
+
+        let placeX = dictX * minorGridSize
+        let placeY = dictY * minorGridSize
+
+        let activeLayerColor = fullLayer[3]// '#ff0000'
+
+        cargoCounter = placeCargo(placeX, placeY, activeCargoLayer, layerId, minorGridSize, 
+                                    activeLayerColor, shownCargoOpacity, cargoCounter, cargoId, layerList)
+
+    }
+
+    console.log("new cargo is placed!")
+}
+
+
+function findSlatStartOrientation(slatDict, slatNum){
+    let minX = Infinity;
+    let maxX = -Infinity;
+
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    let horizontal = null;
+
+    let layerId = null;
+
+    for (const [key, value] of Object.entries(slatDict)) {
+        
+        if(value == slatNum){
+            let keyArray = key.split(',')
+            let tmpX = Number(keyArray[0])
+            let tmpY = Number(keyArray[1])
+            layerId = keyArray[2]
+
+            if(tmpX < minX){
+                minX = tmpX
+            }
+            if(tmpX > maxX){
+                maxX = tmpX
+            }
+
+            if(tmpY < minY){
+                minY = tmpY
+            }
+            if(tmpY > maxY){
+                maxY = tmpY
+            }
+        }
+    }
+
+    if(minY == maxY){
+        horizontal = true
+    }
+    else if(minX == maxX){
+        horizontal = false; 
+    }
+
+    return [minX, minY, layerId, horizontal]
+}
+
+
+function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
+
+    //Get unique slat numbers
+    let slatNums = Object.values(slatDict)
+    const uniqueSlatNums = new Set(slatNums);
+    const maxSlatNum = Math.max(...uniqueSlatNums); // The ... convert this slat to an array basically?
+
+    for (const slatNum of uniqueSlatNums) {
+        console.log(slatNum);
+
+        let orientation = findSlatStartOrientation(slatDict, slatNum)
+
+        let dictX = orientation[0]
+        let dictY = orientation[1]
+        let layerId = orientation[2]
+        let horizontal = orientation[3]
+
+        while(!layerList.has(layerId)){
+            const addLayerButton = document.getElementById('add-layer');
+            addLayerButton.click();
+        }
+
+        let fullLayer = layerList.get(layerId);
+        let activeSlatLayer = fullLayer[1]
+
+        let placeX = dictX * minorGridSize
+        let placeY = dictY * minorGridSize
+
+        let activeLayerColor = fullLayer[3] //fullLayer[3] store the layer color! '#ff0000'
+
+        //MAKE SURE TO SOMEHOW PASS THE MAX COUNTER VALUE TO THE MAIN GLOBAL SO THAT WE CAN ACTUALLY CONTINUE MODIFYING THE DESIGN...
+        placeSlat(placeX, placeY, activeSlatLayer, layerId, minorGridSize, 
+                    activeLayerColor, shownOpacity, slatNum, horizontal, layerList)
+            
+        console.log("new slat is placed!")
+    }
+
+    return (maxSlatNum + 1)
+}
+
+
+export function importDesign(slatDict, cargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+    removeAllLayers(layerList)
+    let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
+    importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity)
+
+    return slatCounter;
+}
