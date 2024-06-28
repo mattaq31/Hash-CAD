@@ -7,9 +7,6 @@ var minorGridSize = 10;                 //Size of minor grid squares
 var majorGridSize = 5*minorGridSize;    //Size of major grid squares
 var gridStyle = 1;                      //0 for off, 1 for grid, 2 for dots
 
-//For dragging
-//let dragSelectedElement = null;         //Item selected to drag
-
 
 //For adding elements
 let placeRoundedX = 0;                  //Snapped position of mouse (X)
@@ -27,7 +24,6 @@ var activeLayerColor = null;
 
 //Layers
 let layerList = new Map();
-let layerArray = null
 
 //Opacity
 let shownOpacity = 0.5
@@ -40,19 +36,11 @@ let placeHorizontal = false;
 let slatCounter = 1;
 let cargoCounter = 1;
 
-//Select
-//let drawEraseSelectMode = 0; //0 for draw, 1 for erase, 2 for select
-let selectedColor = '#93f5f2';
-
 //Draw mode
 let drawSlatCargoHandleMode = 0; //0 for slats, 1 for cargo, 2 for handles
 
 //Cargo options
 let selectedCargoId = null;
-let selectedCargoName = null;
-let selectedCargoAcronym = null;
-let selectedCargoColor = null;
-
 
 var socket = io();
 
@@ -63,22 +51,15 @@ var socket = io();
 import { drawGrid } from './helper_functions.js';
 import { placeSlat, placeCargo } from './helper_functions.js';
 import { createGridArray } from './helper_functions.js';
-
 import { importDesign } from './helper_functions.js';
 
-import { populateCargoPalette, getInventoryItemById, renderInventoryTable, addInventoryItem } from './inventory.js';
+import { populateCargoPalette, renderInventoryTable, addInventoryItem } from './inventory.js';
 
 
 
 
-///////////////////////////////
-//  Custom Events for Server //
-///////////////////////////////
-// Function to dispatch custom events
-function dispatchServerEvent(eventName, eventItem) {
-    const event = new CustomEvent(eventName, {detail: eventItem});
-    document.dispatchEvent(event);
-}
+
+
 
 
 ///////////////////////////////
@@ -88,47 +69,30 @@ function dispatchServerEvent(eventName, eventItem) {
 SVG.on(document, 'DOMContentLoaded', function() {
     
     //Configure Grid
-    
     var width = document.getElementById('svg-container').getBoundingClientRect().width
     var height = document.getElementById('svg-container').getBoundingClientRect().height
     var fullDrawing = SVG().addTo('#svg-container').size(width, height)
-    
-    //Layers
-    var drawGridLayer = fullDrawing.group();
-
 
     //Initialize Grid
+    var drawGridLayer = fullDrawing.group();
     drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
 
 
-    //Change grid configuration by radio buttons
-        //Get radio buttons
-        var graphModeRadios = document.querySelectorAll('input[name="graphMode');
+    //Get grid configuration radio buttons
+    var graphModeRadios = document.querySelectorAll('input[name="graphMode');
 
-        //Add a change event listener to each radio button:
-        graphModeRadios.forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                gridStyle = this.value;
-                drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
-
-            })
+    //Change grid style if radio buttons change
+    graphModeRadios.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            gridStyle = this.value;
+            drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
         })
+    })
 
-    //Change edit mode by radio buttons
-    //    //Get radio buttons
-    //    var editModeRadios = document.querySelectorAll('input[name="editMode');
-    //
-    //    //Add a change event listener to each radio button:
-    //    editModeRadios.forEach(function(radio) {
-    //        radio.addEventListener('change', function() {
-    //            drawEraseSelectMode = this.value;
-    //        })
-    //    })
-
-
+    
     const svgcontainer = document.getElementById('svg-container')
     
-    
+    //Configure panning and zooming
     const panzoom = Panzoom(svgcontainer, {
         maxScale: 5,
         minScale: 0.25,
@@ -145,9 +109,17 @@ SVG.on(document, 'DOMContentLoaded', function() {
         panzoom.zoom(2)
     });
     
-
     //Allow zoom with touchpad
     svgcontainer.parentElement.addEventListener('wheel', panzoom.zoomWithWheel)
+
+
+
+
+
+
+    /////////////////////////////////
+    //  Keyboard event listeners   //
+    /////////////////////////////////
 
     // Event listener to enable pan only when shift is down
     document.addEventListener('keydown', (event) => {
@@ -257,7 +229,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         fullLayer[2].remove();
         layerList.delete(event.detail.layerId)
 
-        socket.emit('my layer removed event', {data: 'Layer removed'});
+        //socket.emit('my layer removed event', {data: 'Layer removed'});
     });
 
     document.addEventListener('layerShown', (event) => {
@@ -385,15 +357,15 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
 
-    document.addEventListener('slatPlaced', (event) => {
-        console.log('Slat placed:', event.detail);
-        socket.emit('slat placed', event.detail);
-    });
+    //document.addEventListener('slatPlaced', (event) => {
+    //    console.log('Slat placed:', event.detail);
+    //    socket.emit('slat placed', event.detail);
+    //});
 
-    document.addEventListener('cargoPlaced', (event) => {
-        console.log('Cargo placed:', event.detail);
-        socket.emit('cargo placed', event.detail);
-    });
+    //document.addEventListener('cargoPlaced', (event) => {
+    //    console.log('Cargo placed:', event.detail);
+    //    socket.emit('cargo placed', event.detail);
+    //});
 
   
 
@@ -421,6 +393,46 @@ SVG.on(document, 'DOMContentLoaded', function() {
     socket.on('design import sent', function(data) {
         console.log("Imported design!", data)
         slatCounter = importDesign(data[0], data[1], layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+    });
+
+
+
+    let uploadForm = document.getElementById('upload-form')
+
+    uploadForm.addEventListener('submit', function(event){
+        console.log("Upload form submitted!")
+        event.preventDefault(); // Prevent the default form submission
+        
+        var fileInput = document.getElementById('file-input');
+        if (fileInput.files.length == 0) {
+            console.log("No file selected.")
+            return
+        }
+
+        var file = fileInput.files[0];
+        console.log(file)
+        var reader = new FileReader();
+
+        reader.onload = function(event) {
+            var data = {
+                'file': {
+                    'filename': file.name,
+                    'data': new Uint8Array(event.target.result)
+                }
+            };
+
+            console.log("reader.onload executed!")
+            socket.emit('upload_file', data);
+        };
+
+        reader.readAsArrayBuffer(file)
+    })
+
+
+
+
+    socket.on('upload_response', function(data) {
+        console.log(data.message)
     });
 
 

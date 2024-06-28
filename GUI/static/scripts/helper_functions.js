@@ -1,5 +1,6 @@
 let dragOffset = { x: 0, y: 0 };    //Offset between mouse position and item position
 let handleDrag = null;              //Function to call when a drag event is happening
+let selectedColor = '#69F5EE'
 
 
 ///////////////////////////////
@@ -611,7 +612,7 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity){
 
     }
 
-    console.log("new cargo is placed!")
+    //console.log("new cargo is placed!")
 }
 
 
@@ -669,7 +670,7 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
     const maxSlatNum = Math.max(...uniqueSlatNums); // The ... convert this slat to an array basically?
 
     for (const slatNum of uniqueSlatNums) {
-        console.log(slatNum);
+        //console.log(slatNum);
 
         let orientation = findSlatStartOrientation(slatDict, slatNum)
 
@@ -695,7 +696,7 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
         placeSlat(placeX, placeY, activeSlatLayer, layerId, minorGridSize, 
                     activeLayerColor, shownOpacity, slatNum, horizontal, layerList)
             
-        console.log("new slat is placed!")
+        //console.log("new slat is placed!")
     }
 
     return (maxSlatNum + 1)
@@ -708,4 +709,16 @@ export function importDesign(slatDict, cargoDict, layerList, minorGridSize, show
     importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity)
 
     return slatCounter;
+}
+
+
+
+///////////////////////////////
+//  Custom Events for Server //
+///////////////////////////////
+
+// Function to dispatch custom events
+function dispatchServerEvent(eventName, eventItem) {
+    const event = new CustomEvent(eventName, {detail: eventItem});
+    document.dispatchEvent(event);
 }
