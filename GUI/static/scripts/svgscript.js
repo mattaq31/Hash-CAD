@@ -1,3 +1,4 @@
+// TODO: consider moving such global variables to their own file
 ///////////////////////////////
 //     Global Variables!     //
 ///////////////////////////////
@@ -55,13 +56,6 @@ import { importDesign } from './helper_functions.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem } from './inventory.js';
 
-
-
-
-
-
-
-
 ///////////////////////////////
 //         Main Code!        //
 ///////////////////////////////
@@ -89,7 +83,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
         })
     })
 
-    
     const svgcontainer = document.getElementById('svg-container')
     
     //Configure panning and zooming
@@ -111,11 +104,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
     
     //Allow zoom with touchpad
     svgcontainer.parentElement.addEventListener('wheel', panzoom.zoomWithWheel)
-
-
-
-
-
 
     /////////////////////////////////
     //  Keyboard event listeners   //
@@ -150,10 +138,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
             placeHorizontal = false;
         }
     });
-    
-
-
-
 
     const targetElement = document.getElementById('svg-container');
     
@@ -167,13 +151,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
         placeRoundedY = Math.round(mousePoints.y/(minorGridSize))*minorGridSize ;
     });
 
-
-
-
-    
-
     // Event listener to print slat when mouse is pressed
     targetElement.addEventListener('pointerdown', (event) => {
+        // TODO: pycharm is complaining that these == functions could result in type coercion.  Investigate if === is needed.
         if(disablePanStatus == true){
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
@@ -186,6 +166,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
                 //Create grid array if a slat has been sucessfully placed!
                 if(oldSlatCounter < slatCounter){
+                    // TODO: remove this if not in use
                     //let gridArray = createGridArray(layerList, minorGridSize)
                     //dispatchServerEvent('slatPlaced', gridArray)
                 }
@@ -199,6 +180,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 
                 //Create grid array if a cargo has been sucessfully placed!
                 if(oldCargoCounter < cargoCounter){
+                     // TODO: remove this if not in use
                     //let gridArray = createGridArray(layerList, minorGridSize)
                     //dispatchServerEvent('cargoPlaced', gridArray)
                 }
@@ -206,7 +188,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
              
         }        
     });
-
 
     //Layers Event Listeners
     document.addEventListener('layerAdded', (event) => {
@@ -257,7 +238,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log(`Layer marked active: ${event.detail.layerId}`, event.detail.layerElement);
         // Deal with layer marked active
 
-
         activeLayerId = event.detail.layerId
 
         const fullLayer = layerList.get(event.detail.layerId)
@@ -276,7 +256,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
         const layerColor = event.detail.layerColor;
         //console.log(`New color for ${layerId}: ${layerColor}`);
 
-
         //Only change slat layer colors
         const fullLayer = layerList.get(event.detail.layerId)
         const layerToChange = fullLayer[1]
@@ -286,6 +265,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
             child.attr('data-default-color', layerColor); // Update the default color attribute
         });
 
+        // TODO === as before
         if(layerId == activeLayerId){
             activeLayerColor = layerColor
         }
@@ -327,7 +307,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
     });
 
 
-
     //Add event listener for cargo option selection
     document.getElementById('cargo-options').addEventListener('click', function(event) {
         if (event.target.classList.contains('cargo-option')) {
@@ -342,7 +321,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
     });
 
 
-
     // When the user clicks on <span> (x), close the modal
     document.getElementById('inventory-modal-close').addEventListener('click',function(event){
         let modal = document.getElementById('cargoInventoryModal')
@@ -354,9 +332,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         renderInventoryTable();
     })
 
-
-
-
+    // TODO: remove if done
     //document.addEventListener('slatPlaced', (event) => {
     //    console.log('Slat placed:', event.detail);
     //    socket.emit('slat placed', event.detail);
@@ -367,15 +343,13 @@ SVG.on(document, 'DOMContentLoaded', function() {
     //    socket.emit('cargo placed', event.detail);
     //});
 
-  
 
     socket.on('slat dict made', function(data) {
+        // TODO: why is there a ? here?
         console.log("slat array read from python? If so, here it is: ", data)
         slatCounter = importDesign(data, data, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
     
-    
-
 
     //Add event listener for design saving
     document.getElementById('save-design').addEventListener('click', function(event) {
@@ -394,7 +368,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log("Imported design!", data)
         slatCounter = importDesign(data[0], data[1], layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
-
 
 
     let uploadForm = document.getElementById('upload-form')
@@ -427,8 +400,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
         reader.readAsArrayBuffer(file)
     })
-
-
 
 
     socket.on('upload_response', function(data) {

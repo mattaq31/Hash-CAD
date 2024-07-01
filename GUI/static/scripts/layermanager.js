@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addLayer();
     });
 
+    // TODO: move this to its own global function in this file and add a docstring
     function addLayer() {
         const layerItem = document.createElement('div');
         layerItem.className = 'layer-item';
@@ -72,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // TODO: move this to its own global function in this file and add a docstring
     function setActiveLayer(event) {
         const allLayers = document.querySelectorAll('.layer-item');
         allLayers.forEach(layer => layer.classList.remove('active'));
@@ -81,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dispatchCustomEvent('layerMarkedActive', activeLayer);
     }
 
+    // TODO: move this to its own global function in this file and add a docstring
     function setColor(event) {
         const layerItem = event.target.parentElement;
         const color = event.target.value;
@@ -88,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dispatchCustomEvent('layerColorChanged', layerItem);
     }
 
+    // TODO: move this to its own global function in this file and add a docstring
     // Function to dispatch custom events
     function dispatchCustomEvent(eventName, layerItem) {
         const event = new CustomEvent(eventName, {

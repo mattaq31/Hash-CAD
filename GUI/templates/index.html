@@ -2,26 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    
     <!-- Include bootstrap styles-->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-
     <!-- Include my own styles-->
     <link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
-
-
-    
-
-
-
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>CrisscrossDesigner</title>
-    
-    
-
 </head>
-
-
 <body>    
     <nav class="navbar sticky-top navbar-expand-lg navbar-light bg-light" >
         <a class="navbar-brand" href="#">Crisscross Designer</a>
@@ -29,7 +16,7 @@
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
-      
+        <!--TODO: Consider adding brief comments here identifying what each of these elements are-->
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item active">
@@ -46,16 +33,14 @@
         </div>
     </nav>
 
-
     <div class="main-window">
         <div class="central-window">
-            
             <div id="sideMenu" class="left-panel, collapse">
-                
                 <h2 class="centeredText">Configuration</h2>
                 <div class="config">
                     <div class="mode">
                         <h4 class="centeredText">Mode</h4>
+                       <!-- TODO: These three radio buttons are not aligned  -->
                         <form class="edit-mode-selector, centeredText">
                             <input type="radio" id="draw" name="editMode" value=0 checked >
                             <label for="draw">Draw</label><br>
@@ -69,11 +54,12 @@
                     <div class="settings">
                         <h4>Canvas</h4>
                         <div class="graph-settings">
+                            <!-- TODO: These three radio buttons are not aligned  -->
                             <form class="graph-mode-selector, centeredText">
                                 <input type="radio" id="gridStyle" name="graphMode" value=1 checked=true>
                                 <label for="gridStyle">Grid</label><br>
                                 <input type="radio" id="dotStyle" name="graphMode" value=2>
-                                <label for="dotsStyle">Dots</label><br>
+                                <label for="dotStyle">Dots</label><br>
                                 <input type="radio" id="noStyle" name="graphMode" value=0>
                                 <label for="noStyle">None</label>
                             </form> 
@@ -92,15 +78,10 @@
                     </select> 
                 </div>
 
-                
                 <div id="cargo-palette" style="display: none;">
                     <h4 class="centeredText">Cargo Options</h4>
-                    <!--<div id="inventory-list"></div>  -->                 
-                    <!-- <button id="add-inventory-item">Add Item</button> -->
                     <div id="cargo-options"></div>
                 </div>
-                
-
 
                 <p>Note: press "alt" to rotate slat direction</p>
 
@@ -129,11 +110,7 @@
 
             <div class="right-panel" id="right-panel">
                 <div id="svg-container"></div>   
-    
-                <!--  <canvas id="main-canvas" width="500" height="800">-->
-    
-                </canvas>
-                
+
             </div>
             
         </div>
@@ -145,7 +122,7 @@
     </div>
 
 
-    <!-- The Modal -->
+    <!-- The Modal - TODO: elaborate! -->
     <div id="cargoInventoryModal" >
 
         <!-- Modal content -->
@@ -171,18 +148,16 @@
     
     </div>
 
-
-
     <!-- Socket.io basic connection script-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
     <script type="text/javascript" charset="utf-8">
         var socket = io();
+        // TODO: does this do anything?  If not, remove
         socket.on('connect', function() {
             socket.emit('my event', {data: 'I\'m connected!'});
         });
     </script>
 
-    
 
     <!-- Scripts for Bootstrap! -->
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
@@ -198,17 +173,8 @@
     <!-- Include SVG.draggable.js -->
     <script src="https://cdn.jsdelivr.net/gh/svgdotjs/svg.draggable.js/dist/svg.draggable.min.js"></script>
 
-    <!-- <script src="node_modules/@svgdotjs/svg.draggable.js/dist/svg.draggable.js"></script> -->
-
-
-    
-    <!--<script type="module" src="{{url_for('static', filename='scripts/fabricscript.js')}}"></script> -->
     <script type="module" src="{{url_for('static', filename='scripts/svgscript.js')}}"></script>
     <script type="module" src="{{url_for('static', filename='scripts/layermanager.js')}}"></script>
     <script type="module" src="{{url_for('static', filename='scripts/inventory.js')}}"></script>
-
-    
 </body>
-
-
 </html>

@@ -1,3 +1,6 @@
+// TODO: this file is huge and seems to contain a random collection of various functions.
+//  I think you should split this up further, perhaps dedicating one file to the grid operations, one for the IO, etc.  Don't be afraid to spread out your functions.
+
 let dragOffset = { x: 0, y: 0 };    //Offset between mouse position and item position
 let handleDrag = null;              //Function to call when a drag event is happening
 let selectedColor = '#69F5EE'
@@ -6,7 +9,17 @@ let selectedColor = '#69F5EE'
 ///////////////////////////////
 //       Grid Drawing        //
 ///////////////////////////////
-//Draw grid:
+
+/**
+ * TODO: fill in docstring
+ * @param gridGroup
+ * @param width
+ * @param height
+ * @param style
+ * @param majorSize
+ * @param minorSize
+ * @returns {*}
+ */
 export function drawGrid(gridGroup, width, height, style, majorSize, minorSize) {
     //Grid style: 
         //0 corresponds to no grid
@@ -63,6 +76,14 @@ export function drawGrid(gridGroup, width, height, style, majorSize, minorSize) 
 ///////////////////////////////
 
 // Check if a point is on any existing line
+/** TODO: fill in docstring
+ *
+ * @param Layer
+ * @param x
+ * @param y
+ * @param selectedLine
+ * @returns {*}
+ */
 export function isPointOnLine(Layer, x, y, selectedLine = false) {
     const lines = Layer.find('.line');
     return lines.some(line => {
@@ -85,7 +106,15 @@ export function isPointOnLine(Layer, x, y, selectedLine = false) {
     });
   }
 
-
+/** TODO: fill in docstring
+ *
+ * @param startX
+ * @param startY
+ * @param layer
+ * @param GridSize
+ * @param selectedLine
+ * @returns {boolean}
+ */
 export function isLineOnLine(startX, startY, layer, GridSize, selectedLine) {
     const x1 = selectedLine.attr('x1');
     const y1 = selectedLine.attr('y1');
@@ -114,7 +143,15 @@ export function isLineOnLine(startX, startY, layer, GridSize, selectedLine) {
 
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param startX
+ * @param startY
+ * @param layer
+ * @param gridSize
+ * @param length
+ * @returns {boolean}
+ */
 export function willVertBeOnLine(startX, startY, layer, gridSize, length=32){
     let overlap = false
     for (let i = 0; i<= length; i++) {
@@ -125,6 +162,15 @@ export function willVertBeOnLine(startX, startY, layer, gridSize, length=32){
     return overlap
 }
 
+/**
+ * TODO: fill in docstring
+ * @param startX
+ * @param startY
+ * @param layer
+ * @param gridSize
+ * @param length
+ * @returns {boolean}
+ */
 export function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
     let overlap = false
     for (let i = 0; i<= length; i++) {
@@ -135,12 +181,19 @@ export function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
     return overlap
 }
 
-
-
 ///////////////////////////////
 //  Cargo Overlap Checkers   //
 ///////////////////////////////
 
+/**
+ * TODO: fill in docstring
+ *
+ * @param x
+ * @param y
+ * @param layer
+ * @param selectedPoint
+ * @returns {*}
+ */
 export function isCargoOnCargo(x, y, layer, selectedPoint = false){
     const cargos = layer.find('.cargo');
     return cargos.some(cargo => {
@@ -162,17 +215,15 @@ export function isCargoOnCargo(x, y, layer, selectedPoint = false){
     });
 }
 
-
-
-
-
-
-
-
 ///////////////////////////////
 //       Drag and Drop       //
 ///////////////////////////////
 
+/**
+ * TODO: fill in docstring
+ * @param layerList
+ * @returns {{fullLayer: *}|null}
+ */
 export function getActiveLayer(layerList) {
     const activeRadio = document.querySelector('input[name="active-layer"]:checked');
     if (activeRadio) {
@@ -193,7 +244,10 @@ export function getActiveLayer(layerList) {
     return null;
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @returns {*|null}
+ */
 function getSelectedEditMode() {
     var editModeRadios = document.querySelectorAll('input[name="editMode"]');
     for (const radio of editModeRadios) {
@@ -205,6 +259,12 @@ function getSelectedEditMode() {
 }
 
 
+/**
+ * TODO: fill in docstring
+ * @param event
+ * @param layerList
+ * @param minorGridSize
+ */
 //Start dragging (OR SELECTING OR ERASING)
 export function startDrag(event, layerList, minorGridSize) {
 
@@ -267,7 +327,13 @@ export function startDrag(event, layerList, minorGridSize) {
     }
   }
 
-
+/**
+ * TODO: fill in docstring
+ * @param event
+ * @param layerList
+ * @param selectedElement
+ * @param minorGridSize
+ */
 //Actually drag the element
 export function drag(event, layerList, selectedElement, minorGridSize) {
 
@@ -324,6 +390,9 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
 }
 
 
+/**
+ * TODO: fill in docstring
+ */
 // Function to end dragging
 export function endDrag() {
     
@@ -337,14 +406,23 @@ export function endDrag() {
     document.removeEventListener('pointerup', endDrag);
   }
 
-
-
-
   import { getInventoryItemById } from './inventory.js';
 
 
-
-
+/**
+ * TODO: fill in docstring
+ * @param roundedX
+ * @param roundedY
+ * @param activeSlatLayer
+ * @param activeLayerId
+ * @param minorGridSize
+ * @param activeLayerColor
+ * @param shownOpacity
+ * @param slatCounter
+ * @param horizontal
+ * @param layerList
+ * @returns {*}
+ */
 ///////////////////////////////
 //     Drawing Functions     //
 ///////////////////////////////
@@ -403,7 +481,20 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
     return slatCounter;
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param roundedX
+ * @param roundedY
+ * @param activeCargoLayer
+ * @param activeLayerId
+ * @param minorGridSize
+ * @param activeLayerColor
+ * @param shownCargoOpacity
+ * @param cargoCounter
+ * @param selectedCargoId
+ * @param layerList
+ * @returns {*}
+ */
 export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownCargoOpacity, cargoCounter, selectedCargoId, layerList) {
     
     
@@ -472,23 +563,8 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
         }
 
     }
-
-    
-
-    
     return cargoCounter;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 ///////////////////////////////
@@ -501,13 +577,24 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
 //    return {};
 //}
 
-
+/**
+ * TODO: fill in docstring
+ * @param x
+ * @param y
+ * @param layer
+ * @returns {string}
+ */
 // Convert grid coordinates to a string key for the dictionary
 export function gridKey(x, y, layer) {
     return `${x},${y},${layer}`;
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param gridDict
+ * @param layers
+ * @param minorGridSize
+ */
 // Populate the sparse grid dictionary with slat IDs
 export function populateSparseGridDictionarySlats(gridDict, layers, minorGridSize) {
     layers.forEach((layer, layerIndex) => {
@@ -530,7 +617,12 @@ export function populateSparseGridDictionarySlats(gridDict, layers, minorGridSiz
     });
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param gridDict
+ * @param layers
+ * @param minorGridSize
+ */
 // Populate the sparse grid dictionary with cargo IDs
 export function populateSparseGridDictionaryCargo(gridDict, layers, minorGridSize) {
     layers.forEach((layer, layerIndex) => {
@@ -548,7 +640,12 @@ export function populateSparseGridDictionaryCargo(gridDict, layers, minorGridSiz
     });
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param layerList
+ * @param minorGridSize
+ * @returns {{}[]}
+ */
 //Create array
 export function createGridArray(layerList, minorGridSize) {
     // Initialize the sparse grid dictionary
@@ -567,8 +664,11 @@ export function createGridArray(layerList, minorGridSize) {
 
     return gridDict
 }
-  
 
+/**
+ * TODO: fill in docstring
+ * @param layerList
+ */
 function removeAllLayers(layerList){
     const layerRemoveButtons = document.querySelectorAll('.layer-remove-button');
     
@@ -578,7 +678,13 @@ function removeAllLayers(layerList){
     });
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param cargoDict
+ * @param layerList
+ * @param minorGridSize
+ * @param shownCargoOpacity
+ */
 function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity){
     //Now add new cargo:
     let cargoCounter = 1;
@@ -612,10 +718,14 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity){
 
     }
 
-    //console.log("new cargo is placed!")
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param slatDict
+ * @param slatNum
+ * @returns {number[]}
+ */
 function findSlatStartOrientation(slatDict, slatNum){
     let minX = Infinity;
     let maxX = -Infinity;
@@ -661,7 +771,14 @@ function findSlatStartOrientation(slatDict, slatNum){
     return [minX, minY, layerId, horizontal]
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param slatDict
+ * @param layerList
+ * @param minorGridSize
+ * @param shownOpacity
+ * @returns {number}
+ */
 function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
 
     //Get unique slat numbers
@@ -702,7 +819,16 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
     return (maxSlatNum + 1)
 }
 
-
+/**
+ * TODO: fill in docstring
+ * @param slatDict
+ * @param cargoDict
+ * @param layerList
+ * @param minorGridSize
+ * @param shownOpacity
+ * @param shownCargoOpacity
+ * @returns {number}
+ */
 export function importDesign(slatDict, cargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity){
     removeAllLayers(layerList)
     let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
@@ -718,6 +844,7 @@ export function importDesign(slatDict, cargoDict, layerList, minorGridSize, show
 ///////////////////////////////
 
 // Function to dispatch custom events
+// TODO: seems like this is not used - can it be removed?
 function dispatchServerEvent(eventName, eventItem) {
     const event = new CustomEvent(eventName, {detail: eventItem});
     document.dispatchEvent(event);

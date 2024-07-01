@@ -1,26 +1,31 @@
-
-
-// inventory.js
-
 // Sample inventory data
 let inventoryData = [
-    { id: 1, name: "Green Fluorescent Protein", acronym: "GFP", color: "#00FF00" },
-    { id: 2, name: "Red Fluorescent Protein",   acronym: "RFP", color: "#FF0000" },
-    { id: 3, name: "Antibody 1",                acronym: "Ab1", color: "#0000FF" },
-    { id: 4, name: "Antibody 2",                acronym: "Ab2", color: "#FFFF00" },
-    { id: 5, name: "Dummy Handle",              acronym: "DH",  color: "#FF00FF" }
+    {id: 1, name: "Green Fluorescent Protein", acronym: "GFP", color: "#00FF00"},
+    {id: 2, name: "Red Fluorescent Protein", acronym: "RFP", color: "#FF0000"},
+    {id: 3, name: "Antibody 1", acronym: "Ab1", color: "#0000FF"},
+    {id: 4, name: "Antibody 2", acronym: "Ab2", color: "#FFFF00"},
+    {id: 5, name: "Dummy Handle", acronym: "DH", color: "#FF00FF"}
 ];
 
+// TODO: is this in use?
 // Function to get all inventory items
 export function getInventoryItems() {
     return inventoryData;
 }
 
+/**
+ * TODO: fill in
+ * @param id
+ * @returns {{color: string, acronym: string, name: string, id: number} | {color: string, acronym: string, name: string, id: number} | {color: string, acronym: string, name: string, id: number} | {color: string, acronym: string, name: string, id: number} | {color: string, acronym: string, name: string, id: number}}
+ */
 // Function to get a specific inventory item by ID
 export function getInventoryItemById(id) {
     return inventoryData.find(item => item.id === id);
 }
 
+/**
+ * TODO: fill in
+ */
 // Function to populate the cargo palette
 export function populateCargoPalette() {
     const cargoOptions = document.getElementById('cargo-options');
@@ -35,7 +40,7 @@ export function populateCargoPalette() {
         const option = document.createElement('div');
         option.className = 'cargo-option';
 
-        option.style.width  = `${optionSize}px`;
+        option.style.width = `${optionSize}px`;
         option.style.height = `${optionSize}px`;
         option.style.backgroundColor = 'lightgrey';
         option.style.borderRadius = '5px'
@@ -46,34 +51,33 @@ export function populateCargoPalette() {
         const draw = SVG().addTo(option).size(optionSize, optionSize);
         draw.attr('pointer-events', 'none')
         let radius = optionSize * 0.33
-        let circle = draw.circle(radius * 2).attr({
-            cx: optionSize/2,
-            cy: optionSize/2,
+        draw.circle(radius * 2).attr({
+            cx: optionSize / 2,
+            cy: optionSize / 2,
             fill: item.color, // Example color for the circle
             stroke: 'black'
         });
 
-
         let text = draw.text(item.acronym)
-                .attr({ x: optionSize/2, y: optionSize/2, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
-                .attr({'stroke-width': radius/20})
-                .font({ size: radius * 0.4, family: 'Arial', weight: 'bold' , stroke: '#000000'})
-                .fill('#FFFFFF'); // White text
-            text.attr('pointer-events', 'none');
-            
-    
-            // Function to adjust text size
-            function adjustTextSize() {
-                let fontSize = radius;
-                text.font({ size: fontSize });
-                
-                while (text.length() > radius * 1.5) {
-                    fontSize *= 0.9;
-                    text.font({ size: fontSize });
-                }
+            .attr({x: optionSize / 2, y: optionSize / 2, 'dominant-baseline': 'middle', 'text-anchor': 'middle'})
+            .attr({'stroke-width': radius / 20})
+            .font({size: radius * 0.4, family: 'Arial', weight: 'bold', stroke: '#000000'})
+            .fill('#FFFFFF'); // White text
+        text.attr('pointer-events', 'none');
+
+
+        // Function to adjust text size
+        function adjustTextSize() {
+            let fontSize = radius;
+            text.font({size: fontSize});
+
+            while (text.length() > radius * 1.5) {
+                fontSize *= 0.9;
+                text.font({size: fontSize});
             }
-    
-            adjustTextSize();
+        }
+
+        adjustTextSize();
 
         cargoOptions.appendChild(option);
     });
@@ -82,7 +86,7 @@ export function populateCargoPalette() {
     const editCargo = document.createElement('div');
     editCargo.id = 'cargo-editor';
 
-    editCargo.style.width  = `${optionSize}px`;
+    editCargo.style.width = `${optionSize}px`;
     editCargo.style.height = `${optionSize}px`;
     editCargo.style.backgroundColor = 'lightgrey';
     editCargo.style.borderRadius = '5px'
@@ -95,10 +99,15 @@ export function populateCargoPalette() {
     editCargo.style.alignItems = "center"
     cargoOptions.appendChild(editCargo)
 
-
 }
 
-
+/**
+ * TODO: fill in
+ * @param name
+ * @param acronym
+ * @param color
+ * @returns {{color, acronym, name, id: (number|number)}}
+ */
 // Function to add a new inventory item
 export function addInventoryItem(name, acronym, color) {
     const newId = inventoryData.length > 0 ? Math.max(...inventoryData.map(item => item.id)) + 1 : 1;
@@ -115,6 +124,10 @@ export function addInventoryItem(name, acronym, color) {
 }
 
 
+/**
+ * TODO: fill in
+ * @param id
+ */
 // Function to remove an item
 function removeItem(id) {
     inventoryData = inventoryData.filter(item => item.id !== id);
@@ -122,8 +135,9 @@ function removeItem(id) {
     renderInventoryTable();
 }
 
-
-
+/**
+ * TODO: fill in
+ */
 // Function to render the inventory table
 export function renderInventoryTable() {
     const tableBody = document.getElementById('inventoryTableBody');
@@ -140,8 +154,9 @@ export function renderInventoryTable() {
                 <button id="inventory-remove-item">Remove</button>
             </td>
         `;
-        
+
         // Add event listeners to inputs
+        // TODO: idInput is not used - remove if not needed
         const idInput = row.querySelector('input[name="id"]');
         const nameInput = row.querySelector('input[name="name"]');
         const acronymInput = row.querySelector('input[name="acronym"]');
@@ -167,7 +182,7 @@ export function renderInventoryTable() {
                 const text = element.querySelectorAll(`[data-cargo-component="text"]`)[0]
                 console.log(text)
                 text.firstChild.textContent = item.acronym; //We need to do child bc there is a tspan in the <text> element...
-            }); 
+            });
         });
 
         colorInput.addEventListener('input', (event) => {
@@ -182,7 +197,7 @@ export function renderInventoryTable() {
                 const circle = element.querySelectorAll(`[data-cargo-component="circle"]`)[0]
                 const text = element.querySelectorAll(`[data-cargo-component="text"]`)[0]
                 circle.setAttribute('fill', item.color);
-            }); 
+            });
         });
 
         removeButton.addEventListener('click', (event) => {
@@ -191,7 +206,7 @@ export function renderInventoryTable() {
             // Loop through the selected elements
             elementsWithSpecificCargoId.forEach(element => {
                 element.remove()
-            }); 
+            });
 
             removeItem(item.id)
 
@@ -199,10 +214,4 @@ export function renderInventoryTable() {
         });
     });
 
-    
 }
-
-
-
-
-
