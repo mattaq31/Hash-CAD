@@ -291,19 +291,24 @@ SVG.on(document, 'DOMContentLoaded', function() {
         //2 for handles
     const drawModeSelector = document.getElementById('palette-type-selector');
     const cargoPalette = document.getElementById('cargo-palette');
+    const handlePalette = document.getElementById('handle-palette');
 
     drawModeSelector.addEventListener('change', function () {
         drawSlatCargoHandleMode = drawModeSelector.value;
         console.log("draw mode: "+drawSlatCargoHandleMode)
 
         // Show/hide cargo palette based on selection
+        handlePalette.style.display = 'none'
+        cargoPalette.style.display = 'none'
+
         if (drawSlatCargoHandleMode == 1) { // Cargo mode
             cargoPalette.style.display = 'block';
             populateCargoPalette(); // Populate the cargo palette
         } 
-        else {
-            cargoPalette.style.display = 'none';
+        else if(drawSlatCargoHandleMode == 2){
+            handlePalette.style.display = 'block'
         }
+
     });
 
 
@@ -370,6 +375,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
     });
 
 
+
+
+    //File uploading
     let uploadForm = document.getElementById('upload-form')
 
     uploadForm.addEventListener('submit', function(event){

@@ -849,3 +849,26 @@ function dispatchServerEvent(eventName, eventItem) {
     const event = new CustomEvent(eventName, {detail: eventItem});
     document.dispatchEvent(event);
 }
+
+
+
+
+function updateHandleLayers(layerList){
+
+    const handleLayers = document.getElementById('handle-layers')
+
+    layers.forEach((layer, layerIndex) => {
+        layer[2].children().forEach(child => {
+            let cargoId = child.attr('type');
+            let bbox = child.bbox();
+            
+            let centerX = Math.round((bbox.x + bbox.width / 2) / minorGridSize);
+            let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
+
+            // Populate the grid dictionary with the cargo ID for the occupied positions
+            let key = gridKey(centerX, centerY, layerIndex);
+            gridDict[key] = cargoId;
+        });
+    });
+
+}
