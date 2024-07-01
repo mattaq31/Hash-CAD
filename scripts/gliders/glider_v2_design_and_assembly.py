@@ -10,7 +10,7 @@ from crisscross.plate_mapping import get_plateclass
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center, cargo_plate_folder,
+                                                         seed_plug_plate_center, cargo_plate_folder, simpsons_mixplate_antihandles,
                                                          nelson_quimby_antihandles, seed_plug_plate_corner)
 ############### DESIGN PREPARATION ###############
 output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
@@ -151,6 +151,7 @@ crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
 nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
+simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
 edge_seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 
 # Prepares the seed array, assuming the first position will start from the far right of the layer
@@ -181,11 +182,31 @@ nelson_mega.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
 nelson_mega.assign_cargo_handles(cargo_array_0, nelson_plate, layer=1, requested_handle_orientation=2)
 nelson_mega.assign_cargo_handles(cargo_array_1, nelson_plate, layer=2, requested_handle_orientation=2)
 nelson_mega.patch_control_handles(core_plate)
-nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
-                                             cargo_colormap='Paired')
+# nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
+#                                              cargo_colormap='Paired')
+print(Fore.GREEN + 'Design exported to Echo commands successfully.')
 
 convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', output_folder,
                                  'all_echo_commands.csv', transfer_volume=100)
 
+# prepares the actual full megastructure here
+nelson_mega_2 = Megastructure(slat_array, None, connection_angle='60')
+
+for rev_slat in range(48, 64):  # this intervention is being done to accommodate the seed plate handles we have available
+    nelson_mega_2.slats[f'layer2-slat{rev_slat}'].reverse_direction()
+
+nelson_mega_2.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+nelson_mega_2.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
+nelson_mega_2.assign_cargo_handles(cargo_array_0, simpsons_plate, layer=1, requested_handle_orientation=2)
+nelson_mega_2.assign_cargo_handles(cargo_array_1, simpsons_plate, layer=2, requested_handle_orientation=2)
+nelson_mega_2.patch_control_handles(core_plate)
+# nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
+#                                              cargo_colormap='Paired')
 print(Fore.GREEN + 'Design exported to Echo commands successfully.')
+
+
+convert_slats_into_echo_commands(nelson_mega_2.slats, 'glider_plate', output_folder,
+                                 'all_echo_commands_with_src007.csv', transfer_volume=100)
+
+print(Fore.GREEN + 'Alternative plate mapping design exported to Echo commands successfully.')
 
