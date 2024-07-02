@@ -31,6 +31,7 @@ h2_biotin_direct = 'P3510_SSW_biotin'  # this contains two core slat sequences w
 octahedron_patterning_v1 = 'P3518_MA_octahedron_patterning_v1'  # this contains the H2 sequences for the octahedron patterning (diagonal) and H2/H5 strands for cross-bar binding
 simpsons_mixplate_antihandles = 'sw_src007_nelson_quimby_bart_edna'  # this contains a variety of Bart, Edna, Nelson and Quimby handles for both H2 and H5
 
+
 def sanitize_plate_map(name):
     """
     Actual plate name for the Echo always just features the person's name and the plate ID.

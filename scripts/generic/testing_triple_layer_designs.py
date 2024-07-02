@@ -1,8 +1,9 @@
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import read_design_from_excel, calculate_slat_hamming
+from crisscross.core_functions.slat_design import read_design_from_excel
 import numpy as np
 import matplotlib.pyplot as plt
-from crisscross.core_functions.slat_design import (generate_standard_square_slats, generate_handle_set_and_optimize)
+from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.slats import Slat
 from crisscross.plate_mapping import get_plateclass
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
@@ -29,7 +30,7 @@ cargo_array[20, 10:20] = 3
 
 # Step 3 - prepare assembly array optimization system - problem here - need to rejig for multiple layers and also output handle array will have to have multiple channels too
 
-handle_array = generate_handle_set_and_optimize(base_array, unique_sequences=32, min_hamming=29, max_rounds=1)
+handle_array = generate_handle_set_and_optimize(base_array, unique_sequences=32, max_rounds=3)
 
 # Step 4 - generate dictionary of slats
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
@@ -69,5 +70,5 @@ megastructure.assign_cargo_handles(cargo_array, cargo_plate, layer='bottom')
 megastructure.patch_control_handles(core_plate)
 # megastructure.create_graphical_slat_view()
 # megastructure.create_graphical_assembly_handle_view()
-megastructure.create_graphical_slat_views(folder)
+# megastructure.create_graphical_slat_views(folder)
 # Step 5 - export slats to robot format
