@@ -49,10 +49,9 @@ var socket = io();
 //     Helper Functions!     //
 ///////////////////////////////
 
-import { drawGrid } from './helper_functions.js';
-import { placeSlat, placeCargo } from './helper_functions.js';
-import { createGridArray } from './helper_functions.js';
-import { importDesign } from './helper_functions.js';
+import { drawGrid } from './helper_functions_misc.js';
+import { placeSlat, placeCargo } from './helper_functions_drawing.js';
+import { createGridArray, importDesign } from './helper_functions_io.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem } from './inventory.js';
 
@@ -360,13 +359,14 @@ SVG.on(document, 'DOMContentLoaded', function() {
     document.getElementById('save-design').addEventListener('click', function(event) {
         console.log("design to be saved now!")
         let gridArray = createGridArray(layerList, minorGridSize)
-        socket.emit('design saved', gridArray);
+        socket.emit('design_saved', gridArray);
+        console.log("save emit has been sent!")
     });
 
     //Add event listener for design importing
     document.getElementById('import-design').addEventListener('click', function(event) {
         console.log("design to be imported now!")
-        socket.emit('design import request')
+        socket.emit('design_import_request')
     });
 
     socket.on('design import sent', function(data) {
