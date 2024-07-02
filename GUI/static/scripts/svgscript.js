@@ -54,6 +54,7 @@ var socket = io();
 import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo } from './helper_functions_drawing.js';
 import { createGridArray, importDesign } from './helper_functions_io.js';
+import { updateHandleLayers } from './helper_functions_layers.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem } from './inventory.js';
 
@@ -202,6 +203,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         const tmpFullLayer = [handleGroup, slatGroup, cargoGroup, event.detail.layerColor];
 
         layerList.set(event.detail.layerId, tmpFullLayer)
+        updateHandleLayers(layerList)
     });
 
     document.addEventListener('layerRemoved', (event) => {
@@ -212,6 +214,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         fullLayer[1].remove();
         fullLayer[2].remove();
         layerList.delete(event.detail.layerId)
+        updateHandleLayers(layerList)
 
         //socket.emit('my layer removed event', {data: 'Layer removed'});
     });
@@ -263,6 +266,10 @@ SVG.on(document, 'DOMContentLoaded', function() {
         const fullLayer = layerList.get(event.detail.layerId)
         const layerToChange = fullLayer[1]
 
+        //First, change color attribute of layer element
+        fullLayer[3] = layerColor
+        updateHandleLayers(layerList)
+
         layerToChange.children().forEach(child => {
             child.stroke({ color: layerColor });
             child.attr('data-default-color', layerColor); // Update the default color attribute
@@ -310,6 +317,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         } 
         else if(drawSlatCargoHandleMode == 2){
             handlePalette.style.display = 'block'
+            updateHandleLayers(layerList)
         }
 
     });
@@ -338,6 +346,12 @@ SVG.on(document, 'DOMContentLoaded', function() {
     document.getElementById('add-inventory-cargo-element').addEventListener('click',function(event){
         addInventoryItem('Cargo Name', 'ABC', '#000000')
         renderInventoryTable();
+    })
+
+
+    document.getElementById('generate-handles-button').addEventListener('click',function(event){
+        let gridArray = createGridArray(layerList, minorGridSize)
+        socket.emit('generate_handles', gridArray)
     })
 
     // TODO: remove if done

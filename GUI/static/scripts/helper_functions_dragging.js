@@ -23,9 +23,9 @@ export function getActiveLayer(layerList) {
         const activeLayer = activeRadio.parentElement;
         let layerId = activeLayer.dataset.layerId
         
-        console.log('get active layer')
-        console.log(layerList)
-        console.log(layerId)
+        //console.log('get active layer')
+        //console.log(layerList)
+        //console.log(layerId)
         
         const fullLayer = layerList.get(layerId)
         return {

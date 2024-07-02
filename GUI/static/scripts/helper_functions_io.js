@@ -29,10 +29,10 @@ export function populateSparseGridDictionarySlats(gridDict, layers, minorGridSiz
         layer[1].children().forEach(child => {
             let slatId = child.attr('id');
             let bbox = child.bbox();
-            let startX = Math.round(bbox.x / minorGridSize);
-            let startY = Math.round(bbox.y / minorGridSize);
-            let endX = Math.round((bbox.x + bbox.width) / minorGridSize);
-            let endY = Math.round((bbox.y + bbox.height) / minorGridSize);
+            let startX = Math.ceil(bbox.x / minorGridSize);
+            let startY = Math.ceil(bbox.y / minorGridSize);
+            let endX = Math.floor((bbox.x + bbox.width) / minorGridSize);
+            let endY = Math.floor((bbox.y + bbox.height) / minorGridSize);
 
             // Populate the grid dictionary with the slat ID for the occupied positions
             for (let x = startX; x <= endX; x++) {

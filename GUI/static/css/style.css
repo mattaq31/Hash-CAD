@@ -193,3 +193,18 @@ canvas {
     font-size: 25px;
 }
 
+
+#handle-layers {
+    max-height: 150px;
+    overflow-y: scroll;
+}
+
+
+.handle-layer-divider{
+    height: 4px;
+    margin: 0px;
+}
+
+.handle-layer-label{
+    margin: 0px;
+}
