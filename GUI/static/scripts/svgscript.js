@@ -45,6 +45,8 @@ let selectedCargoId = null;
 
 var socket = io();
 
+
+
 ///////////////////////////////
 //     Helper Functions!     //
 ///////////////////////////////
@@ -54,6 +56,8 @@ import { placeSlat, placeCargo } from './helper_functions_drawing.js';
 import { createGridArray, importDesign } from './helper_functions_io.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem } from './inventory.js';
+
+
 
 ///////////////////////////////
 //         Main Code!        //
@@ -361,15 +365,12 @@ SVG.on(document, 'DOMContentLoaded', function() {
         let gridArray = createGridArray(layerList, minorGridSize)
         socket.emit('design_saved', gridArray);
         console.log("save emit has been sent!")
+
+        const filename = 'crisscross_design.npz';
+        window.location.href = '/download/' + filename;
     });
 
-    //Add event listener for design importing
-    document.getElementById('import-design').addEventListener('click', function(event) {
-        console.log("design to be imported now!")
-        socket.emit('design_import_request')
-    });
-
-    socket.on('design import sent', function(data) {
+    socket.on('design_imported', function(data) {
         console.log("Imported design!", data)
         slatCounter = importDesign(data[0], data[1], layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });

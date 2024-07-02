@@ -2,7 +2,7 @@
 # TODO: consider renaming static folder to 'frontend' to be more descriptive, and to include the HTML there too
 
 #Basic flask imports
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory, send_file
 from flask_socketio import SocketIO
 from flask_socketio import send, emit
 
@@ -22,7 +22,7 @@ app = Flask(__name__)
 #app.config['SECRET_KEY'] = 'secret!'
 app.config['UPLOAD_FOLDER'] = 'uploads/'  # Directory to save uploaded files
 app.config['ALLOWED_EXTENSIONS'] = {'txt', 'npz'}  # Allowed file extensions
-socketio = SocketIO(app)
+socketio = SocketIO(app, max_http_buffer_size=100 * 1024 * 1024) #Set max transfer size 100MB
 
 # Ensure the upload directory exists
 create_dir_if_empty(app.config['UPLOAD_FOLDER'])
@@ -41,6 +41,18 @@ def allowed_file(filename):
 def index():
     return render_template('index.html')
 
+# Serve a file from a specific path
+@app.route('/download/<filename>', methods=['GET'])
+def download_file(filename):
+    try:
+        # Change 'path_to_files' to the directory where your files are stored
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        return send_file(filepath, as_attachment=True)
+    except FileNotFoundError:
+        return "File not found", 404
+
+
+
 
 # TODO: consider giving this a more descriptive name - what type of file is being uploaded?
 @socketio.on('upload_file')
@@ -51,7 +63,7 @@ def save_file_to_uploads(data):
     :return:
     """
     file = data['file']
-    filename = secure_filename(file['filename'])
+    filename = 'crisscross_design.npz' #secure_filename(file['filename'])
     if file and allowed_file(filename):
         try:
             with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'wb') as f:
@@ -66,6 +78,24 @@ def save_file_to_uploads(data):
         print('File type not allowed')
 
 
+    print('Design will be imported')
+    crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    crisscross_design_file = np.load(crisscross_design_path)
+    slat_array = crisscross_design_file['slat_array']
+    cargo_array = crisscross_design_file['cargo_array']
+
+    slat_dict = {}
+    cargo_dict = {}
+
+    if(slat_array.ndim == 3):
+        slat_dict = array_to_dict(slat_array)
+
+    if (cargo_array.ndim == 3):
+        cargo_dict = array_to_dict(cargo_array)
+
+    emit('design_imported', [slat_dict, cargo_dict])
+
+
 # TODO: make function names more descriptive
 @socketio.on('design_saved')
 def save_crisscross_design(crisscross_dict):
@@ -76,8 +106,14 @@ def save_crisscross_design(crisscross_dict):
     """
     print('Design has been saved')
     # TODO: consider saving file in a human-readable format like toml
-    slat_array = slat_dict_to_array(crisscross_dict[0])
-    cargo_array = cargo_dict_to_array(crisscross_dict[1])
+    slat_array = ()
+    cargo_array = ()
+
+    if(crisscross_dict[0]):
+        slat_array = slat_dict_to_array(crisscross_dict[0])
+
+    if (crisscross_dict[1]):
+        cargo_array = cargo_dict_to_array(crisscross_dict[1])
 
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], 'crisscross_design.npz')
 
@@ -85,21 +121,7 @@ def save_crisscross_design(crisscross_dict):
     np.savez(crisscross_design_path, slat_array=slat_array, cargo_array=cargo_array)
 
 
-@socketio.on('design_import_request')
-def load_crisscross_design():
-    """
-    TODO: fill in
-    :return:
-    """
-    print('Design will be imported')
-    crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], 'crisscross_design.npz')
-    crisscross_design_file = np.load(crisscross_design_path)
-    slat_array = crisscross_design_file['slat_array']
-    cargo_array = crisscross_design_file['cargo_array']
 
-    slat_dict = array_to_dict(slat_array)
-    cargo_dict = array_to_dict(cargo_array)
-    emit('design import sent', [slat_dict, cargo_dict])
 
 
 if __name__ == '__main__':
