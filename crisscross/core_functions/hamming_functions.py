@@ -15,8 +15,8 @@ def compute_hamming(handle_dict, antihandle_dict, valid_product_indices, slat_le
     """
     single_combo = 4 * slat_length
     total_combos = single_combo * sum(valid_product_indices)
-    combination_matrix_1 = np.zeros((total_combos, 32))
-    combination_matrix_2 = np.zeros((total_combos, 32))
+    combination_matrix_1 = np.zeros((total_combos, slat_length))
+    combination_matrix_2 = np.zeros((total_combos, slat_length))
     valid_combo_index = 0
     for i, ((hk, handle_slat), (ahk, antihandle_slat)) in enumerate(product(handle_dict.items(), antihandle_dict.items())):
         if valid_product_indices[i]:
