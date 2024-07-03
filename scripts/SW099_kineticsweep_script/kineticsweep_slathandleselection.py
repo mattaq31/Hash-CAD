@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import generate_handle_set_and_optimize, calculate_slat_hamming
+from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 from crisscross.plate_mapping import get_plateclass
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
@@ -44,17 +44,11 @@ if ReadHandlesFromFile:  # this is to re-load a pre-computed handle array and sa
         except FileNotFoundError:
             raise RuntimeError("No handle array file was found. Switch 'HandlesFromFile' flag to False and try again.")
 
-    UniqueSlatsPerLayer = [] # Count the number of slats in the design
-    for i in range(SlatArray.shape[2]):
-        slatIDs = np.unique(SlatArray[:, :, i])
-        slatIDs = slatIDs[slatIDs != 0]
-        UniqueSlatsPerLayer.append(slatIDs)
-
-    _, _, res = calculate_slat_hamming(SlatArray, HandleArray, UniqueSlatsPerLayer, unique_sequences=32)
-    print('Hamming distance from file-loaded design: %s' % np.min(res))
+    result = multi_rule_hamming(SlatArray, HandleArray)
+    print('Hamming distance from file-loaded design: %s' % result['Universal'])
 
 else:
-    HandleArray = generate_handle_set_and_optimize(SlatArray, unique_sequences=32, min_hamming=29, max_rounds=1000) 
+    HandleArray = generate_handle_set_and_optimize(SlatArray, unique_sequences=32, max_rounds=10)
     for i in range(HandleArray.shape[-1]):
         np.savetxt(os.path.join(DesignFolder, OutputFilePrefix + "%s.csv" % (i+1)),
                    HandleArray[..., i].astype(np.int32), delimiter=',', fmt='%i')
@@ -84,6 +78,7 @@ KineticMegastructure.assign_cargo_handles(CargoArray, CargoPlate, layer='top')
 
 # Patch up missing controls
 KineticMegastructure.patch_control_handles(CorePlate)
+KineticMegastructure.create_standard_graphical_report(DesignFolder)
 
 # Exports design to echo format csv file for production
 convert_slats_into_echo_commands(KineticMegastructure.slats, 'kineticsweep', DesignFolder, 'all_echo_commands.csv',

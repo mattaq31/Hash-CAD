@@ -15,7 +15,6 @@ import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
 from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict, cargo_plate_to_inventory, convert_np_to_py
 
-
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.plate_mapping import get_plateclass
@@ -23,9 +22,7 @@ from crisscross.helper_functions.plate_constants import (slat_core, core_plate_f
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
                                                          seed_plug_plate_center, cargo_plate_folder, simpsons_mixplate_antihandles,
                                                          nelson_quimby_antihandles, seed_plug_plate_corner)
-from crisscross.core_functions.slat_design import generate_handle_set_and_optimize, calculate_slat_hamming
-
-
+from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 
 
 app = Flask(__name__)
@@ -45,7 +42,6 @@ def allowed_file(filename):
     :return: True if the file is an allowed extension, False otherwise.
     """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
 
 
 @app.route('/')

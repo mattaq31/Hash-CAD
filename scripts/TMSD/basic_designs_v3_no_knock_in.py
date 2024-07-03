@@ -7,8 +7,8 @@ from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import (generate_standard_square_slats, generate_handle_set_and_optimize,
-                                                   calculate_slat_hamming)
+from crisscross.core_functions.slat_design import generate_standard_square_slats, attach_cargo_handles_to_core_sequences
+from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 from crisscross.core_functions.slats import Slat
 
 from crisscross.helper_functions import create_dir_if_empty
@@ -54,10 +54,10 @@ if read_handles_from_file:
     handle_array = np.loadtxt(os.path.join(output_folder, 'optimized_handle_array.csv'), delimiter=',').astype(
         np.float32)
     handle_array = handle_array[..., np.newaxis]
-    _, _, res = calculate_slat_hamming(slat_array, handle_array, unique_slats_per_layer, unique_sequences=32)
-    print('Hamming distance from file-loaded design: %s' % np.min(res))
+    result = multi_rule_hamming(slat_array, handle_array)
+    print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=150)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=150)
     np.savetxt(os.path.join(output_folder, 'optimized_handle_array.csv'), handle_array.squeeze().astype(np.int32),
                delimiter=',',
                fmt='%i')

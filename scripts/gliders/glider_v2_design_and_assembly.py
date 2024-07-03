@@ -5,7 +5,7 @@ from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import generate_handle_set_and_optimize, calculate_slat_hamming
+from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 from crisscross.plate_mapping import get_plateclass
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
@@ -17,7 +17,6 @@ output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/glider
 design_file = 'layer_arrays.xlsx'
 read_handles_from_file = True  # if true, skips hamming distance optimization
 skip_redesign = True  # if true, skips the regeneration of the slat layers
-same_layer_hamming_only = True  # if true, will only optimize hamming distance between adjacent layers rather than universally
 np.random.seed(8)
 
 if not skip_redesign:
@@ -125,18 +124,10 @@ if read_handles_from_file:  # this is to re-load a pre-computed handle array and
     for i in range(slat_array.shape[-1]-1):
         handle_array[..., i] = np.loadtxt(os.path.join(output_folder, 'optimized_handle_array_layer_%s.csv' % (i+1)), delimiter=',').astype(np.float32)
 
-    unique_slats_per_layer = []
-    for i in range(slat_array.shape[2]):
-        slat_ids = np.unique(slat_array[:, :, i])
-        slat_ids = slat_ids[slat_ids != 0]
-        unique_slats_per_layer.append(slat_ids)
-
-    _, _, res = calculate_slat_hamming(slat_array, handle_array, unique_slats_per_layer, unique_sequences=32,
-                                       same_layer_hamming_only=same_layer_hamming_only)
-    print('Hamming distance from file-loaded design: %s' % np.min(res))
+    result = multi_rule_hamming(slat_array, handle_array)
+    print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=400,
-                                                    same_layer_hamming_only=same_layer_hamming_only)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=400, layer_hamming=True)
     for i in range(handle_array.shape[-1]):
         np.savetxt(os.path.join(output_folder, 'optimized_handle_array_layer_%s.csv' % (i+1)),
                    handle_array[..., i].astype(np.int32), delimiter=',', fmt='%i')
