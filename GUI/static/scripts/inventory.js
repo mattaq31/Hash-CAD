@@ -1,17 +1,27 @@
 // Sample inventory data
 let inventoryData = [
-    {id: 1, name: "Green Fluorescent Protein", acronym: "GFP", color: "#00FF00"},
-    {id: 2, name: "Red Fluorescent Protein", acronym: "RFP", color: "#FF0000"},
-    {id: 3, name: "Antibody 1", acronym: "Ab1", color: "#0000FF"},
-    {id: 4, name: "Antibody 2", acronym: "Ab2", color: "#FFFF00"},
-    {id: 5, name: "Dummy Handle", acronym: "DH", color: "#FF00FF"}
+    {id: "default_GFP", name: "Green Fluorescent Protein", acronym: "GFP", color: "#00FF00", plate: ""},
+    {id: "default_RFP", name: "Red Fluorescent Protein", acronym: "RFP", color: "#FF0000", plate: ""},
+    {id: "default_AB1", name: "Antibody 1", acronym: "Ab1", color: "#0000FF", plate: ""},
+    {id: "default_AB2", name: "Antibody 2", acronym: "Ab2", color: "#FFFF00", plate: ""},
+    {id: "default_DH", name: "Dummy Handle", acronym: "DH", color: "#FF00FF", plate: ""}
 ];
+
+updateInventoryItems("C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates")
+
+
 
 // TODO: is this in use?
 // Function to get all inventory items
-export function getInventoryItems() {
-    return inventoryData;
+export function updateInventoryItems(filepath) {
+    var socket = io();
+    socket.emit('get_inventory', filepath)
+    socket.on('inventory_sent', function(inventory) {
+        console.log("Imported inventory!", inventory)
+        inventoryData = inventory
+    });
 }
+
 
 /**
  * TODO: fill in
@@ -109,13 +119,14 @@ export function populateCargoPalette() {
  * @returns {{color, acronym, name, id: (number|number)}}
  */
 // Function to add a new inventory item
-export function addInventoryItem(name, acronym, color) {
-    const newId = inventoryData.length > 0 ? Math.max(...inventoryData.map(item => item.id)) + 1 : 1;
+export function addInventoryItem(name, acronym, color, plate) {
+    const newId = inventoryData.length + 1;
     const newItem = {
         id: newId,
         name: name,
         acronym: acronym,
-        color: color
+        color: color,
+        plate: plate
     };
     inventoryData.push(newItem);
     populateCargoPalette();
@@ -150,6 +161,7 @@ export function renderInventoryTable() {
             <td><input type="text" value="${item.name}" name="name"></td>
             <td><input type="text" value="${item.acronym}" name="acronym"></td>
             <td><input type="color" value="${item.color}" name="color"></td>
+            <td><input type="plate" value="${item.plate}" name="plate"></td>
             <td>
                 <button id="inventory-remove-item">Remove</button>
             </td>

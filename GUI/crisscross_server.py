@@ -13,7 +13,7 @@ import os
 # For data handling
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
-from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict
+from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict, cargo_plate_to_inventory
 
 
 #For generating handles
@@ -63,6 +63,20 @@ def download_file(filename):
         return "File not found", 404
 
 
+
+@socketio.on('get_inventory')
+def get_inventory(folder_path):
+    all_inventory_items = []
+
+    # Iterate through all .xlsx files in the directory
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.xlsx'):
+            file_path = os.path.join(folder_path, filename)
+            # Run getInventory on the current file and extend the results to the all_inventory_items list
+            inventory_items = cargo_plate_to_inventory(file_path)
+            all_inventory_items.extend(inventory_items)
+
+    emit('inventory_sent',all_inventory_items)
 
 
 # TODO: consider giving this a more descriptive name - what type of file is being uploaded?

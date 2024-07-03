@@ -1,5 +1,10 @@
 
 import numpy as np
+import pandas as pd
+import os
+
+
+
 def slat_dict_to_array(grid_dict, trim_offset = False):
     """
     Converts a slat dictionary (produced by javascript) into a slat array.
@@ -74,3 +79,53 @@ def array_to_dict(array):
                 if entry != 0:
                     dict[f'{x},{y},{layer}'] = entry
     return dict
+
+
+
+# Function to create the acronym
+def create_acronym(word):
+    vowels = 'aeiouAEIOU'
+    if word.startswith('anti'):
+        rest = word[4:]  # Remove 'anti'
+        acronym = 'a' + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels])
+    else:
+        acronym = ''.join([char for i, char in enumerate(word) if i == 0 or char not in vowels])
+    return acronym
+
+
+
+def cargo_plate_to_inventory(cargo_plate_filepath):
+    #Select the sheet of the cargo plate file storing the cargo names
+    sheet_name = 'Names'
+
+    # Load the specified sheet into a DataFrame
+    df = pd.read_excel(cargo_plate_filepath, sheet_name=sheet_name, skiprows=1)
+
+    # Step 2: Select the 2nd column (index 1 since indexing starts from 0)
+    second_column = df.iloc[:, 1]
+
+    # Step 3: Split each element by '_' and keep the first results in an array
+    split_arrays = second_column.dropna().astype(str).apply(lambda x: x.split('_')[:1])
+
+    # Step 4: Find unique arrays and return them as a list
+    unique_arrays = split_arrays.drop_duplicates().tolist()
+
+    # Step 5: Create the list of elements with the specified format
+    inventory = []
+    hexColors = ['#ff0000', '#0000ff', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
+    for item in unique_arrays:
+        id_name = item[0]
+        acronym = create_acronym(id_name)
+        element = {
+            "id": id_name,
+            "name": id_name,
+            "acronym": acronym,
+            "color": hexColors[len(inventory)%6],
+            "plate": os.path.basename(cargo_plate_filepath)
+        }
+        inventory.append(element)
+
+    return inventory
+
+
+

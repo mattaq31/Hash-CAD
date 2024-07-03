@@ -326,7 +326,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
     //Add event listener for cargo option selection
     document.getElementById('cargo-options').addEventListener('click', function(event) {
         if (event.target.classList.contains('cargo-option')) {
-            selectedCargoId = parseInt(event.target.dataset.id);
+            selectedCargoId = event.target.dataset.id;
             console.log("Selected cargo ID: " + selectedCargoId);
         }
         else if(event.target.id == 'cargo-editor'){
@@ -344,7 +344,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
     })
 
     document.getElementById('add-inventory-cargo-element').addEventListener('click',function(event){
-        addInventoryItem('Cargo Name', 'ABC', '#000000')
+        addInventoryItem('Cargo Name', 'ABC', '#000000',"")
         renderInventoryTable();
     })
 
