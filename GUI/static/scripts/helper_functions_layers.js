@@ -16,6 +16,24 @@ export function updateHandleLayers(layerList){
         h2Text.className = 'handle-layer-label'
         h2Text.textContent = "h2";
 
+        h2Text.addEventListener('click', function(event){
+
+            let clickedChild = event.target.parentElement;
+            let parent = clickedChild.parentElement
+            let children = Array.from(parent.children); // Convert HTMLCollection to an array
+            
+            let index = children.indexOf(clickedChild);
+
+            document.querySelectorAll('.arrow').forEach(e => e.remove());
+            let arrow = document.createElement('p')
+            arrow.className = 'arrow'
+            arrow.textContent = '\u2194'
+            clickedChild.prepend(arrow)
+
+            console.log("Handle layer selected: ",index)
+
+        })
+
         const layerDivider = document.createElement('hr')
         layerDivider.className = 'handle-layer-divider'
         layerDivider.style.backgroundColor = layerColor; 
@@ -23,6 +41,24 @@ export function updateHandleLayers(layerList){
         const h5Text = document.createElement('p')
         h5Text.className = 'handle-layer-label'
         h5Text.textContent = "h5";
+
+        h5Text.addEventListener('click', function(event){
+
+            let clickedChild = event.target.parentElement;
+            let parent = clickedChild.parentElement
+            let children = Array.from(parent.children); // Convert HTMLCollection to an array
+            
+            let index = children.indexOf(clickedChild) + 1;
+
+            document.querySelectorAll('.arrow').forEach(e => e.remove());
+            let arrow = document.createElement('p')
+            arrow.className = 'arrow'
+            arrow.textContent = '\u2194'
+            clickedChild.appendChild(arrow)
+
+            console.log("Handle layer selected: ",index)
+
+        })
 
         handleLayerItem.appendChild(h2Text)
         handleLayerItem.appendChild(layerDivider)

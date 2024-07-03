@@ -129,3 +129,16 @@ def cargo_plate_to_inventory(cargo_plate_filepath):
 
 
 
+def convert_np_to_py(data):
+    if isinstance(data, dict):
+        return {key: convert_np_to_py(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [convert_np_to_py(element) for element in data]
+    elif isinstance(data, np.integer):
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+    elif isinstance(data, np.ndarray):
+        return data.tolist()
+    else:
+        return data

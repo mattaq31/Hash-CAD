@@ -13,7 +13,7 @@ import os
 # For data handling
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
-from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict, cargo_plate_to_inventory
+from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict, cargo_plate_to_inventory, convert_np_to_py
 
 
 #For generating handles
@@ -146,10 +146,37 @@ def save_crisscross_design(crisscross_dict):
     np.savez(crisscross_design_path, slat_array=slat_array, cargo_array=cargo_array)
 
 
-
-
 @socketio.on('generate_handles')
 def generate_handles(crisscross_dict):
+    slat_array = ()
+    if (crisscross_dict[0]):
+        slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=False)
+
+    # Generate empty handle array
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=25, max_rounds=5,
+                                                    same_layer_hamming_only=False)
+
+    # Generates plate dictionaries from provided files
+    crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
+                                                    crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
+                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+    crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
+                                                crisscross_h5_handle_plates[0:3],
+                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+
+    # prepares the actual full megastructure here
+    crisscross_megastructure = Megastructure(slat_array, None, connection_angle='90')
+    crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates,
+                                                       crisscross_antihandle_y_plates)
+    handle_dict = array_to_dict(handle_array)
+
+    converted_handle_dict = convert_np_to_py(handle_dict)
+
+    print(converted_handle_dict)
+    emit('handles_sent', converted_handle_dict)
+
+@socketio.on('generate_megastructures')
+def generate_megastructure(crisscross_dict):
 
 
     slat_array = ()
@@ -162,28 +189,29 @@ def generate_handles(crisscross_dict):
         cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
 
     #Generate empty handle array
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=1,
-                                                    same_layer_hamming_only=True)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=25, max_rounds=5,
+                                                    same_layer_hamming_only=False)
 
     #Get plates!
 
     # Generates plate dictionaries from provided files
-    core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
     crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
                                                     crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
                                                     assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
     crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[0:3],
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+
+    core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
     simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
 
     # prepares the actual full megastructure here
     crisscross_megastructure = Megastructure(slat_array, None, connection_angle='90')
     crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 
-    cargo_array_layer0 = cargo_array[:,:,0]
+    #cargo_array_layer0 = cargo_array[:,:,0]
     #cargo_array_layer1 = cargo_array[:, :, 1]
-    crisscross_megastructure.assign_cargo_handles(cargo_array_layer0, simpsons_plate, layer='top')
+    #crisscross_megastructure.assign_cargo_handles(cargo_array_layer0, simpsons_plate, layer='top')
     #crisscross_megastructure.assign_cargo_handles(cargo_array_layer1, simpsons_plate, layer=2, requested_handle_orientation=2)
     #crisscross_megastructure.patch_control_handles(core_plate)
     crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['UPLOAD_FOLDER'], 'Design Graphics'), colormap='Set1',

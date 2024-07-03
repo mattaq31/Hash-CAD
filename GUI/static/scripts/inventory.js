@@ -11,7 +11,6 @@ updateInventoryItems("C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024
 
 
 
-// TODO: is this in use?
 // Function to get all inventory items
 export function updateInventoryItems(filepath) {
     var socket = io();

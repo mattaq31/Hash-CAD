@@ -3,7 +3,7 @@
 //   Creating Slat Array     //
 ///////////////////////////////
 
-import {placeCargo, placeSlat} from './helper_functions_drawing.js'
+import {placeCargo, placeSlat, placeHandle} from './helper_functions_drawing.js'
 
 
 
@@ -263,4 +263,41 @@ export function importDesign(slatDict, cargoDict, layerList, minorGridSize, show
     importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity)
 
     return slatCounter;
+}
+
+
+
+
+
+
+
+/** Draws handles on canvas as described in a handle dictionary passed to the function
+ * 
+ * @param handleDict Handle dictionary describing handle IDs by locations (x, y, layer)
+ * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ */
+export function importHandles(handleDict, layerList, minorGridSize){
+
+    // Iterate through the dictionary
+    for (const [key, value] of Object.entries(handleDict)) {
+        
+        let keyArray = key.split(',')
+
+        let dictX   = Number(keyArray[0])
+        let dictY   = Number(keyArray[1])
+        let layerId = keyArray[2]
+
+        let handleId = value.toString()
+
+        let fullLayer = layerList.get(layerId);
+        let activeHandleLayer = fullLayer[0]
+
+        let placeX = dictX * minorGridSize
+        let placeY = dictY * minorGridSize
+
+        placeHandle(placeX, placeY, activeHandleLayer, minorGridSize, handleId, layerList)
+
+    }
+
 }

@@ -53,7 +53,7 @@ var socket = io();
 
 import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo } from './helper_functions_drawing.js';
-import { createGridArray, importDesign } from './helper_functions_io.js';
+import { createGridArray, importDesign, importHandles } from './helper_functions_io.js';
 import { updateHandleLayers } from './helper_functions_layers.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem } from './inventory.js';
@@ -349,26 +349,26 @@ SVG.on(document, 'DOMContentLoaded', function() {
     })
 
 
+    document.getElementById('generate-megastructure-button').addEventListener('click',function(event){
+        let gridArray = createGridArray(layerList, minorGridSize)
+        socket.emit('generate_megastructures', gridArray)
+    })
+
     document.getElementById('generate-handles-button').addEventListener('click',function(event){
         let gridArray = createGridArray(layerList, minorGridSize)
+        console.log('generating handles now...')
         socket.emit('generate_handles', gridArray)
     })
 
-    // TODO: remove if done
-    //document.addEventListener('slatPlaced', (event) => {
-    //    console.log('Slat placed:', event.detail);
-    //    socket.emit('slat placed', event.detail);
-    //});
+    socket.on('handles_sent', function(handleDict){
+        console.log('handles have been generated and recieved:', handleDict)
+        importHandles(handleDict, layerList, minorGridSize)
 
-    //document.addEventListener('cargoPlaced', (event) => {
-    //    console.log('Cargo placed:', event.detail);
-    //    socket.emit('cargo placed', event.detail);
-    //});
+    })
 
 
     socket.on('slat dict made', function(data) {
-        // TODO: why is there a ? here?
-        console.log("slat array read from python? If so, here it is: ", data)
+        console.log("slat array read from python: ", data)
         slatCounter = importDesign(data, data, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
     

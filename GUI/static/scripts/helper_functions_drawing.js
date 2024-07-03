@@ -151,3 +151,16 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
     }
     return cargoCounter;
 }
+
+
+
+
+
+export function placeHandle(roundedX, roundedY, activeHandleLayer, minorGridSize, handleId, layerList) {
+    let text = activeHandleLayer.text(handleId)
+        .attr({ x: roundedX, y: roundedY - 0.8*minorGridSize, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
+        .font({ size: minorGridSize * 0.66, family: 'Arial' , weight: 'lighter', stroke: '#000000'})
+    
+    //text.attr('pointer-events', 'none');
+
+}
