@@ -15,7 +15,6 @@ import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
 from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict
 
-
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.plate_mapping import get_plateclass
@@ -23,9 +22,7 @@ from crisscross.helper_functions.plate_constants import (slat_core, core_plate_f
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
                                                          seed_plug_plate_center, cargo_plate_folder, simpsons_mixplate_antihandles,
                                                          nelson_quimby_antihandles, seed_plug_plate_corner)
-from crisscross.core_functions.slat_design import generate_handle_set_and_optimize, calculate_slat_hamming
-
-
+from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 
 
 app = Flask(__name__)
@@ -47,7 +44,6 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -61,8 +57,6 @@ def download_file(filename):
         return send_file(filepath, as_attachment=True)
     except FileNotFoundError:
         return "File not found", 404
-
-
 
 
 # TODO: consider giving this a more descriptive name - what type of file is being uploaded?
@@ -132,8 +126,6 @@ def save_crisscross_design(crisscross_dict):
     np.savez(crisscross_design_path, slat_array=slat_array, cargo_array=cargo_array)
 
 
-
-
 @socketio.on('generate_handles')
 def generate_handles(crisscross_dict):
 
@@ -148,8 +140,8 @@ def generate_handles(crisscross_dict):
         cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
 
     #Generate empty handle array
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=1,
-                                                    same_layer_hamming_only=True)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32,
+                                                    layer_hamming=True, max_rounds=1)
 
     #Get plates!
 
@@ -167,7 +159,7 @@ def generate_handles(crisscross_dict):
     crisscross_megastructure = Megastructure(slat_array, None, connection_angle='90')
     crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 
-    cargo_array_layer0 = cargo_array[:,:,0]
+    cargo_array_layer0 = cargo_array[:, :, 0]
     #cargo_array_layer1 = cargo_array[:, :, 1]
     crisscross_megastructure.assign_cargo_handles(cargo_array_layer0, simpsons_plate, layer='top')
     #crisscross_megastructure.assign_cargo_handles(cargo_array_layer1, simpsons_plate, layer=2, requested_handle_orientation=2)
