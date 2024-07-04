@@ -30,7 +30,14 @@ export function updateHandleLayers(layerList){
             arrow.textContent = '\u2194'
             clickedChild.prepend(arrow)
 
-            console.log("Handle layer selected: ",index)
+            console.log("Handle layer selected: ", index)
+
+            layerList.forEach((layer, layerIndex) => {
+                layer[0].attr('opacity', 0)
+                if(layerIndex == index - 1){
+                    layer[0].attr('opacity', 1)
+                }
+            })
 
         })
 
@@ -57,6 +64,14 @@ export function updateHandleLayers(layerList){
             clickedChild.appendChild(arrow)
 
             console.log("Handle layer selected: ",index)
+            layerList.forEach((layer, layerIndex) => {
+
+                layer[0].attr('opacity', 0)
+
+                if(layerIndex == index - 1){
+                    layer[0].attr('opacity', 1)
+                }
+            })
 
         })
 

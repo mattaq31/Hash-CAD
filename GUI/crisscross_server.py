@@ -149,8 +149,9 @@ def generate_handles(crisscross_dict):
         slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=False)
 
     # Generate empty handle array
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=25, max_rounds=5,
-                                                    same_layer_hamming_only=False)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
+                                     split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
+                                     group_hamming=None, metric_to_optimize='Universal')
 
     # Generates plate dictionaries from provided files
     crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
@@ -185,8 +186,9 @@ def generate_megastructure(crisscross_dict):
         cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
 
     #Generate empty handle array
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=25, max_rounds=5,
-                                                    same_layer_hamming_only=False)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
+                                     split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
+                                     group_hamming=None, metric_to_optimize='Universal')
 
     #Get plates!
 
