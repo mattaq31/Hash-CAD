@@ -26,7 +26,7 @@ output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/tmsd_d
 create_dir_if_empty(output_folder)
 np.random.seed(8)
 read_handles_from_file = True
-regenerate_graphics = True
+regenerate_graphics = False
 ################################
 # Plate sequences
 core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
