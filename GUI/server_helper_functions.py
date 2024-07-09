@@ -4,6 +4,14 @@ import pandas as pd
 import os
 
 
+# For getting inventory plate drivers
+from os.path import join
+import ast
+
+from crisscross.plate_mapping import get_plateclass
+
+
+
 
 def slat_dict_to_array(grid_dict, trim_offset = False):
     """
@@ -85,47 +93,23 @@ def array_to_dict(array):
 # Function to create the acronym
 def create_acronym(word):
     vowels = 'aeiouAEIOU'
-    if word.startswith('anti'):
+
+    # Check if the word contains 'mer-'
+    if 'mer-' in word:
+        prefix, rest = word.split('mer-', 1)
+        if rest.startswith('anti'):
+            rest = rest[4:]  # Remove 'anti'
+            acronym = prefix + 'a' + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels])
+        else:
+            acronym = prefix + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels])
+    elif word.startswith('anti'):
         rest = word[4:]  # Remove 'anti'
         acronym = 'a' + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels])
     else:
         acronym = ''.join([char for i, char in enumerate(word) if i == 0 or char not in vowels])
+
     return acronym
 
-
-
-def cargo_plate_to_inventory(cargo_plate_filepath):
-    #Select the sheet of the cargo plate file storing the cargo names
-    sheet_name = 'Names'
-
-    # Load the specified sheet into a DataFrame
-    df = pd.read_excel(cargo_plate_filepath, sheet_name=sheet_name, skiprows=1)
-
-    # Step 2: Select the 2nd column (index 1 since indexing starts from 0)
-    second_column = df.iloc[:, 1]
-
-    # Step 3: Split each element by '_' and keep the first results in an array
-    split_arrays = second_column.dropna().astype(str).apply(lambda x: x.split('_')[:1])
-
-    # Step 4: Find unique arrays and return them as a list
-    unique_arrays = split_arrays.drop_duplicates().tolist()
-
-    # Step 5: Create the list of elements with the specified format
-    inventory = []
-    hexColors = ['#ff0000', '#0000ff', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
-    for item in unique_arrays:
-        id_name = item[0]
-        acronym = create_acronym(id_name)
-        element = {
-            "id": id_name,
-            "name": id_name,
-            "acronym": acronym,
-            "color": hexColors[len(inventory)%6],
-            "plate": os.path.basename(cargo_plate_filepath)
-        }
-        inventory.append(element)
-
-    return inventory
 
 
 
@@ -142,3 +126,62 @@ def convert_np_to_py(data):
         return data.tolist()
     else:
         return data
+
+
+
+def getDriverNames(plate_mapping_filepath):
+    base_directory = os.path.abspath(join(__file__, os.path.pardir, os.path.pardir))
+
+    available_plate_loaders = {}
+
+    for file in os.listdir(plate_mapping_filepath):
+        if file == '.DS_Store' or file == '__init__.py' or '.py' not in file:
+            continue
+        p = ast.parse(open(os.path.join(plate_mapping_filepath, file), 'r').read())
+        classes = [node.name for node in ast.walk(p) if isinstance(node, ast.ClassDef)]
+        for _class in classes:
+            available_plate_loaders[_class] = 'crisscross.plate_mapping.%s.%s' % (file.split('.py')[0], _class)
+
+    return list(available_plate_loaders.keys())
+
+
+
+
+
+def cargo_to_inventory(driver, cargo_plate_filepath, cargo_plate_folder):
+    plate = get_plateclass(driver, cargo_plate_filepath, cargo_plate_folder)
+    plate_cargo_dict = plate.cargo_key
+
+    # Create the list of elements with the specified format
+    inventory = []
+    hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
+    for key, value in plate_cargo_dict.items():
+        #tag = create_acronym(id_name)
+        element = {
+            "id": str(key) + "-plate:" + os.path.basename(cargo_plate_filepath),
+            "name": value,
+            "tag": value if isinstance(value, str) else key, #  value, #key,
+            "color": hexColors[len(inventory)%6],
+            "plate": os.path.basename(cargo_plate_filepath)
+        }
+        inventory.append(element)
+
+    return inventory
+
+
+def break_array_by_plates(array):
+    # Extract the tags from each element (assuming the format is ID-plate:PLATE)
+    id_parts = np.vectorize(lambda x: x.split('-plate:')[0])(array)
+    plates = np.vectorize(lambda x: x.split('-plate:')[1])(array)
+
+    # Get the unique tags
+    unique_plates = np.unique(plates)
+
+    # Dictionary to store arrays for each unique tag
+    plate_arrays = {plate: np.zeros_like(array, dtype=array.dtype) for plate in unique_plates}
+
+    # Iterate over the array and populate the tag-specific arrays
+    for plate in unique_plates:
+        plate_arrays[plate] = np.where(plates == plate, id_parts, '0')
+
+    return plate_arrays

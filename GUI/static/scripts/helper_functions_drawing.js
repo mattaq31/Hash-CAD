@@ -107,8 +107,8 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
             tmpCircle.attr('data-default-color', defaultColor)
             tmpCircle.attr('pointer-events', 'none');
     
-            // Adding text (acronym) to the cargo
-            let text = activeCargoLayer.text(cargoItem.acronym)
+            // Adding text (tag) to the cargo
+            let text = activeCargoLayer.text(cargoItem.tag)
                 .attr({ x: roundedX, y: roundedY - circleRadius, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
                 .attr({'stroke-width': circleRadius/20})
                 .font({ size: minorGridSize * 0.4, family: 'Arial', weight: 'bold' , stroke: '#000000'})
@@ -125,6 +125,7 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
                 while (text.length() > circleRadius * 1.8) {
                     fontSize *= 0.9;
                     text.font({ size: fontSize });
+                    text.attr({ x: roundedX, y: roundedY - 1.25*fontSize, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
                 }
             }
     
@@ -142,6 +143,8 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
             group.attr('pointer-events', 'bounding-box');
             group.attr('id'  ,  cargoCounter    )
             group.attr('type',  selectedCargoId )
+            group.attr('plate', cargoItem.plate )
+            group.attr('driver', cargoItem.driver)
             group.attr('layer', activeLayerId   )
 
     

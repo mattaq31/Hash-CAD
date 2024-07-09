@@ -215,3 +215,10 @@ canvas {
 .arrow{
     margin: 0px;
 }
+
+.plate-name {
+    max-width: 150px; /* Adjust the width as needed */
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: auto; /* Enable scrolling */
+
+}

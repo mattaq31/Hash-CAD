@@ -56,7 +56,7 @@ import { placeSlat, placeCargo } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles } from './helper_functions_io.js';
 import { updateHandleLayers } from './helper_functions_layers.js';
 
-import { populateCargoPalette, renderInventoryTable, addInventoryItem } from './inventory.js';
+import { populateCargoPalette, renderMappingTable, renderInventoryTable, addInventoryItem } from './inventory.js';
 
 
 
@@ -313,6 +313,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
         if (drawSlatCargoHandleMode == 1) { // Cargo mode
             cargoPalette.style.display = 'block';
+            renderMappingTable();
             populateCargoPalette(); // Populate the cargo palette
         } 
         else if(drawSlatCargoHandleMode == 2){
@@ -344,7 +345,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
     })
 
     document.getElementById('add-inventory-cargo-element').addEventListener('click',function(event){
-        addInventoryItem('Cargo Name', 'ABC', '#000000',"")
+        addInventoryItem('Cargo Name', 'ABC', '#000000',"", "")
         renderInventoryTable();
     })
 
@@ -428,6 +429,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
     socket.on('upload_response', function(data) {
         console.log(data.message)
     });
+
+    document.getElementById('update-inventory-from-mapping').addEventListener('click', function(){
+        populateCargoPalette();
+        renderInventoryTable();
+    })
 
 
 });

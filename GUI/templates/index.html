@@ -79,6 +79,23 @@
                 </div>
 
                 <div id="cargo-palette" style="display: none;">
+                    <h4 class="centeredText">Plate Mappings</h4>
+                    <div id="plate-mappings">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Plate</th>
+                                    <th>Driver</th>
+                                </tr>
+                            </thead>
+                            <tbody id="plate-mapping-table">
+                                <!-- Table rows will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                        <button id="update-inventory-from-mapping">Update Inventory</button>
+
+                    </div>
+
                     <h4 class="centeredText">Cargo Options</h4>
                     <div id="cargo-options"></div>
                 </div>
@@ -144,6 +161,7 @@
                             <th>Acronym</th>
                             <th>Color</th>
                             <th>Plate</th>
+                            <th>Driver</th>
                         </tr>
                     </thead>
                     <tbody id="inventoryTableBody">

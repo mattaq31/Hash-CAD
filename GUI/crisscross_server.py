@@ -9,11 +9,12 @@ from flask_socketio import send, emit
 # For file uploads
 from werkzeug.utils import secure_filename
 import os
+from os.path import join
 
 # For data handling
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
-from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict, cargo_plate_to_inventory, convert_np_to_py
+from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict, cargo_to_inventory, convert_np_to_py, getDriverNames
 
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
@@ -61,18 +62,44 @@ def download_file(filename):
 
 
 @socketio.on('get_inventory')
-def get_inventory(folder_path):
+def get_inventory(folder_path, plate_driver_dict):
+
     all_inventory_items = []
 
-    # Iterate through all .xlsx files in the directory
-    for filename in os.listdir(folder_path):
-        if filename.endswith('.xlsx'):
-            file_path = os.path.join(folder_path, filename)
-            # Run getInventory on the current file and extend the results to the all_inventory_items list
-            inventory_items = cargo_plate_to_inventory(file_path)
-            all_inventory_items.extend(inventory_items)
+    for filename in plate_driver_dict.keys():
+        shortened_filename = filename[:-5]
+        file_path = os.path.join(folder_path, shortened_filename)
+        # Run getInventory on the current file and extend the results to the all_inventory_items list
+        inventory_items = cargo_to_inventory(plate_driver_dict[filename], file_path, folder_path)
+        all_inventory_items.extend(inventory_items)
+
+    # Iterate through all .xlsx files in the directory to get inventory items
+    #for filename in os.listdir(folder_path):
+    #    if filename.endswith('.xlsx'):
+    #        if filename in plate_driver_dict:
+    #            shortened_filename = filename[:-5]
+    #            file_path = os.path.join(folder_path, shortened_filename)
+    #            # Run getInventory on the current file and extend the results to the all_inventory_items list
+    #            inventory_items = cargo_to_inventory(plate_driver_dict[filename], file_path, folder_path)
+    #            all_inventory_items.extend(inventory_items)
 
     emit('inventory_sent',all_inventory_items)
+
+@socketio.on('get_drivers')
+def get_drivers(folder_path):
+    # Get inventory drivers
+    base_directory = os.path.abspath(join(folder_path, os.path.pardir, os.path.pardir))
+    functions_dir = os.path.join(base_directory, 'crisscross', 'plate_mapping')
+    all_inventory_drivers = getDriverNames(functions_dir)
+
+    # Now get a list of the plates:
+    plate_names = []
+    for filename in os.listdir(folder_path):
+        plate_names.append(filename)
+
+
+    emit('drivers_sent',[all_inventory_drivers, plate_names])
+
 
 
 # TODO: consider giving this a more descriptive name - what type of file is being uploaded?
@@ -173,7 +200,7 @@ def generate_handles(crisscross_dict):
     emit('handles_sent', converted_handle_dict)
 
 @socketio.on('generate_megastructures')
-def generate_megastructure(crisscross_dict):
+def generate_megastructure(crisscross_dict, plateDriverMap):
 
 
     slat_array = ()
@@ -192,7 +219,7 @@ def generate_megastructure(crisscross_dict):
 
     #Get plates!
 
-    # Generates plate dictionaries from provided files
+    # Generates crisscross handle plate dictionaries from provided files
     crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
                                                     crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
                                                     assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
@@ -200,12 +227,19 @@ def generate_megastructure(crisscross_dict):
                                                 crisscross_h5_handle_plates[0:3],
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 
-    core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-    simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
-
     # prepares the actual full megastructure here
     crisscross_megastructure = Megastructure(slat_array, None, connection_angle='90')
-    crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+    crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates,
+                                                       crisscross_antihandle_y_plates)
+
+    # Add cargo
+    if(cargo_array):
+
+        core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+
+
+    simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
+
 
     #cargo_array_layer0 = cargo_array[:,:,0]
     #cargo_array_layer1 = cargo_array[:, :, 1]
