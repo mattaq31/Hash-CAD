@@ -58,16 +58,18 @@ def cargo_dict_to_array(grid_dict, trim_offset = False, slat_grid_dict ={}):
     max_layer = max(int(key.split(',')[2]) for key in grid_dict.keys()) + 1
 
     if (trim_offset == True):
+        max_x = max(int(key.split(',')[0]) for key in slat_grid_dict.keys()) + 1
+        max_y = max(int(key.split(',')[1]) for key in slat_grid_dict.keys()) + 1
         min_x = min(int(key.split(',')[0]) for key in slat_grid_dict.keys())
         min_y = min(int(key.split(',')[1]) for key in slat_grid_dict.keys())
 
     # Initialize the array
-    array = np.zeros((max_x-min_x, max_y-min_y, max_layer))
+    array = np.zeros((max_x-min_x, max_y-min_y, max_layer), dtype='<U100')
 
     # Populate the array
     for key, cargo_type in grid_dict.items():
         x, y, layer = map(int, key.split(','))
-        array[x-min_x, y-min_y, layer] = cargo_type
+        array[x-min_x, y-min_y, layer] = str(cargo_type)
 
     return array
 
@@ -157,10 +159,12 @@ def cargo_to_inventory(driver, cargo_plate_filepath, cargo_plate_folder):
     hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
     for key, value in plate_cargo_dict.items():
         #tag = create_acronym(id_name)
+        id_num = key if isinstance(key, int) else value
+        name = value if isinstance(value, str) else key
         element = {
-            "id": str(key) + "-plate:" + os.path.basename(cargo_plate_filepath),
-            "name": value,
-            "tag": value if isinstance(value, str) else key, #  value, #key,
+            "id": str(id_num) + "-plate:" + os.path.basename(cargo_plate_filepath),
+            "name": name,
+            "tag": name,
             "color": hexColors[len(inventory)%6],
             "plate": os.path.basename(cargo_plate_filepath)
         }
@@ -172,16 +176,18 @@ def cargo_to_inventory(driver, cargo_plate_filepath, cargo_plate_folder):
 def break_array_by_plates(array):
     # Extract the tags from each element (assuming the format is ID-plate:PLATE)
     id_parts = np.vectorize(lambda x: x.split('-plate:')[0])(array)
-    plates = np.vectorize(lambda x: x.split('-plate:')[1])(array)
+    int_id_parts = [[int(i) if i else 0 for i in j] for j in id_parts]
+    plates = np.vectorize(lambda x: x.split('-plate:')[-1])(array)
 
     # Get the unique tags
     unique_plates = np.unique(plates)
 
     # Dictionary to store arrays for each unique tag
-    plate_arrays = {plate: np.zeros_like(array, dtype=array.dtype) for plate in unique_plates}
+    plate_arrays = {plate: np.zeros_like(array, dtype=int) for plate in unique_plates}
+    #plate_arrays = dict((plate, np.zeros_like(array, dtype=int)) for plate in unique_plates)
 
     # Iterate over the array and populate the tag-specific arrays
     for plate in unique_plates:
-        plate_arrays[plate] = np.where(plates == plate, id_parts, '0')
+        plate_arrays[plate] = np.where(plates == plate, int_id_parts, 0)
 
     return plate_arrays

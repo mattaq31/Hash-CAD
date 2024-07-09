@@ -14,7 +14,9 @@ from os.path import join
 # For data handling
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
-from server_helper_functions import slat_dict_to_array, cargo_dict_to_array,array_to_dict, cargo_to_inventory, convert_np_to_py, getDriverNames
+from server_helper_functions import (slat_dict_to_array, cargo_dict_to_array,
+                                     array_to_dict, cargo_to_inventory, convert_np_to_py,
+                                     getDriverNames, break_array_by_plates)
 
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
@@ -30,6 +32,7 @@ app = Flask(__name__)
 
 #app.config['SECRET_KEY'] = 'secret!'
 app.config['UPLOAD_FOLDER'] = 'uploads/'  # Directory to save uploaded files
+app.config['USED_CARGO_FOLDER'] = 'used-cargo-plates/'  # Directory to save uploaded files
 app.config['ALLOWED_EXTENSIONS'] = {'txt', 'npz'}  # Allowed file extensions
 socketio = SocketIO(app, max_http_buffer_size=100 * 1024 * 1024) #Set max transfer size 100MB
 
@@ -128,7 +131,7 @@ def save_file_to_uploads(data):
 
     print('Design will be imported')
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    crisscross_design_file = np.load(crisscross_design_path)
+    crisscross_design_file = np.load(crisscross_design_path, allow_pickle=True)
     slat_array = crisscross_design_file['slat_array']
     cargo_array = crisscross_design_file['cargo_array']
 
@@ -233,21 +236,29 @@ def generate_megastructure(crisscross_dict, plateDriverMap):
                                                        crisscross_antihandle_y_plates)
 
     # Add cargo
-    if(cargo_array):
+    if(cargo_array.size != 0):
+        # Iterate over layers:
+        layer_counter = 1
+        for layer in range(cargo_array.shape[2]):
+            tmp_layer_array = cargo_array[:, :, layer]
+            tmp_layer_plate_dict = break_array_by_plates(tmp_layer_array)
+            for plate, cargo_by_plate in tmp_layer_plate_dict.items():
+                if(plate != ''):
+                    plate_file = plate + ".xlsx"
+                    plate_driver_name = plateDriverMap[plate_file]
+                    plate_folder = app.config['USED_CARGO_FOLDER']
+
+
+                    plate_class = get_plateclass(plate_driver_name, plate, plate_folder)
+                    crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate_class,
+                                                                  layer=layer_counter, requested_handle_orientation=2)
+            layer_counter += 1
 
         core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+        crisscross_megastructure.patch_control_handles(core_plate)
 
-
-    simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
-
-
-    #cargo_array_layer0 = cargo_array[:,:,0]
-    #cargo_array_layer1 = cargo_array[:, :, 1]
-    #crisscross_megastructure.assign_cargo_handles(cargo_array_layer0, simpsons_plate, layer='top')
-    #crisscross_megastructure.assign_cargo_handles(cargo_array_layer1, simpsons_plate, layer=2, requested_handle_orientation=2)
-    #crisscross_megastructure.patch_control_handles(core_plate)
-    crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['UPLOAD_FOLDER'], 'Design Graphics'), colormap='Set1',
-                                                  cargo_colormap='Paired')
+    crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['UPLOAD_FOLDER'], 'Design Graphics'),
+                                                              colormap='Set1', cargo_colormap='Paired')
 
 
 if __name__ == '__main__':

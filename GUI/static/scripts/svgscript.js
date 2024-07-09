@@ -56,7 +56,7 @@ import { placeSlat, placeCargo } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles } from './helper_functions_io.js';
 import { updateHandleLayers } from './helper_functions_layers.js';
 
-import { populateCargoPalette, renderMappingTable, renderInventoryTable, addInventoryItem } from './inventory.js';
+import { populateCargoPalette, renderMappingTable, renderInventoryTable, addInventoryItem, currentPlateMap} from './inventory.js';
 
 
 
@@ -352,7 +352,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     document.getElementById('generate-megastructure-button').addEventListener('click',function(event){
         let gridArray = createGridArray(layerList, minorGridSize)
-        socket.emit('generate_megastructures', gridArray)
+        socket.emit('generate_megastructures', gridArray, currentPlateMap())
     })
 
     document.getElementById('generate-handles-button').addEventListener('click',function(event){

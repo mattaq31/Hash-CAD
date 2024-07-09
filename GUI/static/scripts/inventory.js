@@ -287,3 +287,7 @@ export function renderMappingTable() {
     })
 
 }
+
+export function currentPlateMap() {
+    return plateToDriverMap
+}
