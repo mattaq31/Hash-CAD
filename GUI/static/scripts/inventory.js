@@ -1,7 +1,3 @@
-let drivers = []; // List of drivers
-let plateNames = [];
-let plateToDriverMap = {};
-
 // Sample inventory data
 let inventoryData = [
     {id: "default_GFP", name: "Green Fluorescent Protein", tag: "GFP", color: "#00FF00", plate: "", driver: ""},
@@ -11,19 +7,23 @@ let inventoryData = [
     {id: "default_DH", name: "Dummy Handle", tag: "DH", color: "#FF00FF", plate: "", driver: ""}
 ];
 
-updatePlateDrivers("C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates")
-updateInventoryItems("C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates")
+updateInventoryItems()
 renderInventoryTable() 
 
 
 // Function to get all inventory items
-export function updateInventoryItems(filepath, driverDict) {
+export function updateInventoryItems() {
+    var filepath = "C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates"
     var socket = io();
-    socket.emit('get_inventory', filepath, driverDict)
+    socket.emit('get_inventory', filepath)
     socket.on('inventory_sent', function(inventory) {
         console.log("Imported inventory!", inventory)
         inventoryData = inventory
+
+        updatePlates()
     });
+
+    
 }
 
 
@@ -42,6 +42,7 @@ export function getInventoryItemById(id) {
  */
 // Function to populate the cargo palette
 export function populateCargoPalette() {
+
     const cargoOptions = document.getElementById('cargo-options');
     cargoOptions.innerHTML = ''; // Clear existing options
 
@@ -236,58 +237,30 @@ export function renderInventoryTable() {
 
 
 
-
-
-
-
-function updatePlateDrivers(filepath){
+export function updatePlates() {
     var socket = io();
-    socket.emit('get_drivers', filepath)
-    socket.on('drivers_sent', function(plates){
-        drivers = plates[0]
-        plateNames = plates[1]
-
-        return 1;
-    })
-
-}
+    socket.emit('list_plates')
+    socket.on('list_plates_response', function(files) {
 
 
-export function renderMappingTable() {
-    const tableBody = document.getElementById('plate-mapping-table');
-    tableBody.innerHTML = '';
 
-    updatePlateDrivers("C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates")
+        var fileList = document.getElementById('file-list');
+        fileList.innerHTML = ''; // Clear any existing content
+    
+        files.forEach(function(file) {
 
-    plateNames.forEach(plate =>{
-        const row = tableBody.insertRow();
-        row.innerHTML = `
-            <td class="plate-name">${plate}</td>
-            <td>
-                <select name="driver-selector" style="width: 100px;">
-                    <option value=""></option>
-                    ${drivers.map(driver => `<option value="${driver}">${driver}</option>`).join('')}
-                </select>
-            </td>
-        `;
+            var fileContainer = document.createElement('div');
+            fileContainer.classList.add('file-container');
+            fileContainer.textContent = file;
+            fileList.appendChild(fileContainer);
+        });
 
-        const driverSelector = row.querySelector('select[name="driver-selector"]');
-        driverSelector.addEventListener('change', (event) =>{
-            plateToDriverMap[plate] = event.target.value
+        
 
-            if(event.target.value == ""){
-                delete plateToDriverMap[plate]
-            }
+    });
 
-            console.log("New Plate-Driver Map: ", plateToDriverMap)
-            updateInventoryItems("C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates", plateToDriverMap)
-
-        })
-
-    })
 
 }
 
-export function currentPlateMap() {
-    return plateToDriverMap
-}
+
+

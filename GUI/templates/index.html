@@ -79,21 +79,21 @@
                 </div>
 
                 <div id="cargo-palette" style="display: none;">
-                    <h4 class="centeredText">Plate Mappings</h4>
-                    <div id="plate-mappings">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Plate</th>
-                                    <th>Driver</th>
-                                </tr>
-                            </thead>
-                            <tbody id="plate-mapping-table">
-                                <!-- Table rows will be dynamically inserted here -->
-                            </tbody>
-                        </table>
-                        <button id="update-inventory-from-mapping">Update Inventory</button>
+                    
+                    <div id="plate-import">
+                        <h4 class="centeredText">Import Plates</h4>
+                        <div id="file-list-container">
+                            <div id="file-list"></div>
+                        </div>
 
+                        <div id="plate-upload-dialog">
+                            <form id="plate-upload-form" method="post" enctype="multipart/form-data">
+                                <input id="plate-file-input" type="file" name="file"  required multiple>
+                                <button id="plate-file-submit" type="submit" >Upload</button>
+                            </form>
+                        </div>
+                        
+                        <button id="update-inventory-from-import">Update Inventory</button>
                     </div>
 
                     <h4 class="centeredText">Cargo Options</h4>

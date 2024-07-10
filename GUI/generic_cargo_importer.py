@@ -142,9 +142,9 @@ file_path = '/GUI/used-cargo-plates/sw_src007_nelson_quimby_bart_edna.xlsx'
 #    print(f"ID: {id_num}, Word: {word}")
 
 
-plate_folder= 'C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates'
-plate_name = 'sw_src007_nelson_quimby_bart_edna.xlsx'
+#plate_folder= 'C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates'
+#plate_name = 'sw_src007_nelson_quimby_bart_edna.xlsx'
 
-plate = createGenericPlate(plate_name, plate_folder)
+#plate = createGenericPlate(plate_name, plate_folder)
 
-print("Finished")
+#print("Finished")

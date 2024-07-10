@@ -56,7 +56,7 @@ import { placeSlat, placeCargo } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles } from './helper_functions_io.js';
 import { updateHandleLayers } from './helper_functions_layers.js';
 
-import { populateCargoPalette, renderMappingTable, renderInventoryTable, addInventoryItem, currentPlateMap} from './inventory.js';
+import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './inventory.js';
 
 
 
@@ -313,7 +313,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
         if (drawSlatCargoHandleMode == 1) { // Cargo mode
             cargoPalette.style.display = 'block';
-            renderMappingTable();
             populateCargoPalette(); // Populate the cargo palette
         } 
         else if(drawSlatCargoHandleMode == 2){
@@ -430,7 +429,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log(data.message)
     });
 
-    document.getElementById('update-inventory-from-mapping').addEventListener('click', function(){
+    document.getElementById('update-inventory-from-import').addEventListener('click', function(){
+        
+
         populateCargoPalette();
         renderInventoryTable();
     })
@@ -438,6 +439,46 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 });
 
+
+
+
+// File uploading
+let plateUploadForm = document.getElementById('plate-upload-form')
+
+plateUploadForm.addEventListener('submit', function(event) {
+    console.log("Plate upload form submitted!")
+    event.preventDefault(); // Prevent the default form submission
+
+    var fileInput = document.getElementById('plate-file-input');
+    if (fileInput.files.length == 0) {
+        console.log("No file selected.")
+        return
+    }
+
+    Array.from(fileInput.files).forEach(file => {
+        var reader = new FileReader();
+
+        reader.onload = function(event) {
+            var data = {
+                'file': {
+                    'filename': file.name,
+                    'data': new Uint8Array(event.target.result)
+                }
+            };
+
+            console.log("reader.onload executed!")
+            socket.emit('upload_plates', data);
+        };
+
+        reader.readAsArrayBuffer(file)
+    });
+})
+
+
+socket.on('plate_upload_response', function(data) {
+    console.log(data.message)
+    updateInventoryItems();
+});
     
 
         

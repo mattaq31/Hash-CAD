@@ -216,9 +216,36 @@ canvas {
     margin: 0px;
 }
 
-.plate-name {
-    max-width: 150px; /* Adjust the width as needed */
-    white-space: nowrap; /* Prevent text wrapping */
-    overflow: auto; /* Enable scrolling */
 
+.file-container {
+    display: inline-block;
+    white-space: nowrap;
+    overflow-x: auto;
+    border: 1px solid #ccc;
+    padding: 5px;
+    margin: 2px;
+}
+
+#file-list {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+
+#plate-import {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 5px;
+    margin: 5px;
+    padding: 5px;
+    outline: inset;
+}
+
+#plate-upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin: 10px;
 }

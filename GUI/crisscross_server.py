@@ -28,12 +28,17 @@ from crisscross.helper_functions.plate_constants import (slat_core, core_plate_f
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 
 
+from generic_cargo_importer import createGenericPlate
+
+
 app = Flask(__name__)
 
 #app.config['SECRET_KEY'] = 'secret!'
 app.config['UPLOAD_FOLDER'] = 'uploads/'  # Directory to save uploaded files
 app.config['USED_CARGO_FOLDER'] = 'used-cargo-plates/'  # Directory to save uploaded files
 app.config['ALLOWED_EXTENSIONS'] = {'txt', 'npz'}  # Allowed file extensions
+app.config['PLATE_ALLOWED_EXTENSIONS'] = {'xlsx'}  # Allowed file extensions
+
 socketio = SocketIO(app, max_http_buffer_size=100 * 1024 * 1024) #Set max transfer size 100MB
 
 # Ensure the upload directory exists
@@ -46,6 +51,14 @@ def allowed_file(filename):
     :return: True if the file is an allowed extension, False otherwise.
     """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+def plate_allowed_file(filename):
+    """
+    Checks if the uploaded file is an allowed extension.
+    :param filename: Full filename of the uploaded file
+    :return: True if the file is an allowed extension, False otherwise.
+    """
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['PLATE_ALLOWED_EXTENSIONS']
 
 
 @app.route('/')
@@ -65,43 +78,21 @@ def download_file(filename):
 
 
 @socketio.on('get_inventory')
-def get_inventory(folder_path, plate_driver_dict):
+def get_inventory(folder_path):
 
     all_inventory_items = []
 
-    for filename in plate_driver_dict.keys():
-        shortened_filename = filename[:-5]
-        file_path = os.path.join(folder_path, shortened_filename)
-        # Run getInventory on the current file and extend the results to the all_inventory_items list
-        inventory_items = cargo_to_inventory(plate_driver_dict[filename], file_path, folder_path)
-        all_inventory_items.extend(inventory_items)
-
     # Iterate through all .xlsx files in the directory to get inventory items
-    #for filename in os.listdir(folder_path):
-    #    if filename.endswith('.xlsx'):
-    #        if filename in plate_driver_dict:
-    #            shortened_filename = filename[:-5]
-    #            file_path = os.path.join(folder_path, shortened_filename)
-    #            # Run getInventory on the current file and extend the results to the all_inventory_items list
-    #            inventory_items = cargo_to_inventory(plate_driver_dict[filename], file_path, folder_path)
-    #            all_inventory_items.extend(inventory_items)
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.xlsx'):
+            shortened_filename = filename[:-5]
+            file_path = os.path.join(folder_path, shortened_filename)
+            # Run getInventory on the current file and extend the results to the all_inventory_items list
+            inventory_items = cargo_to_inventory(file_path, folder_path)
+            all_inventory_items.extend(inventory_items)
 
     emit('inventory_sent',all_inventory_items)
 
-@socketio.on('get_drivers')
-def get_drivers(folder_path):
-    # Get inventory drivers
-    base_directory = os.path.abspath(join(folder_path, os.path.pardir, os.path.pardir))
-    functions_dir = os.path.join(base_directory, 'crisscross', 'plate_mapping')
-    all_inventory_drivers = getDriverNames(functions_dir)
-
-    # Now get a list of the plates:
-    plate_names = []
-    for filename in os.listdir(folder_path):
-        plate_names.append(filename)
-
-
-    emit('drivers_sent',[all_inventory_drivers, plate_names])
 
 
 
@@ -248,9 +239,9 @@ def generate_megastructure(crisscross_dict, plateDriverMap):
                     plate_driver_name = plateDriverMap[plate_file]
                     plate_folder = app.config['USED_CARGO_FOLDER']
 
-
-                    plate_class = get_plateclass(plate_driver_name, plate, plate_folder)
-                    crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate_class,
+                    plate = createGenericPlate(plate, plate_folder)
+                    #plate_class = get_plateclass(plate_driver_name, plate, plate_folder)
+                    crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
                                                                   layer=layer_counter, requested_handle_orientation=2)
             layer_counter += 1
 
@@ -259,6 +250,33 @@ def generate_megastructure(crisscross_dict, plateDriverMap):
 
     crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['UPLOAD_FOLDER'], 'Design Graphics'),
                                                               colormap='Set1', cargo_colormap='Paired')
+
+@socketio.on('upload_plates')
+def save_file_to_plate_folder(data):
+    """
+    Save uploaded file to the upload folder.
+    :param data: Dictionary containing file data
+    :return: None
+    """
+    file = data['file']
+    filename = secure_filename(file['filename'])
+    if file and plate_allowed_file(filename):
+        try:
+            with open(os.path.join(app.config['USED_CARGO_FOLDER'], filename), 'wb') as f:
+                f.write(file['data'])
+            emit('plate_upload_response', {'message': f'File {filename} successfully uploaded'})
+            print(f'File {filename} successfully uploaded')
+        except Exception as e:
+            emit('plate_upload_response', {'message': f"An error occurred while saving the file {filename}: {str(e)}"})
+            print(f"An error occurred while saving the file {filename}: {str(e)}")
+    else:
+        emit('plate_upload_response', {'message': f'File type {filename} not allowed'})
+        print(f'File type {filename} not allowed')
+
+@socketio.on('list_plates')
+def list_plates():
+    files = os.listdir(app.config['USED_CARGO_FOLDER'])
+    emit('list_plates_response', files)
 
 
 if __name__ == '__main__':

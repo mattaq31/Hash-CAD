@@ -10,7 +10,7 @@ import ast
 
 from crisscross.plate_mapping import get_plateclass
 
-
+from generic_cargo_importer import createGenericPlate
 
 
 def slat_dict_to_array(grid_dict, trim_offset = False):
@@ -150,17 +150,16 @@ def getDriverNames(plate_mapping_filepath):
 
 
 
-def cargo_to_inventory(driver, cargo_plate_filepath, cargo_plate_folder):
-    plate = get_plateclass(driver, cargo_plate_filepath, cargo_plate_folder)
+def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
+    plate = createGenericPlate(os.path.basename(cargo_plate_filepath) + ".xlsx", cargo_plate_folder )
     plate_cargo_dict = plate.cargo_key
 
     # Create the list of elements with the specified format
     inventory = []
     hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
-    for key, value in plate_cargo_dict.items():
+    for id_char, name in plate_cargo_dict.items():
         #tag = create_acronym(id_name)
-        id_num = key if isinstance(key, int) else value
-        name = value if isinstance(value, str) else key
+        id_num = int(id_char)
         element = {
             "id": str(id_num) + "-plate:" + os.path.basename(cargo_plate_filepath),
             "name": name,
