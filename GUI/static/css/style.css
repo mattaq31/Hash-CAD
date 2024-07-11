@@ -195,7 +195,7 @@ canvas {
 
 
 #handle-layers {
-    max-height: 150px;
+    max-height: 200px;
     overflow-y: scroll;
 }
 
@@ -248,4 +248,10 @@ canvas {
     flex-direction: column;
     gap: 25px;
     margin: 10px;
+}
+
+
+
+.h25-toggle-selected {
+    background-color:greenyellow
 }

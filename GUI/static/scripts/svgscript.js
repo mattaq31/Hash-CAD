@@ -6,7 +6,7 @@
 //Configure grid
 var minorGridSize = 10;                 //Size of minor grid squares
 var majorGridSize = 5*minorGridSize;    //Size of major grid squares
-var gridStyle = 1;                      //0 for off, 1 for grid, 2 for dots
+var gridStyle = 2;                      //0 for off, 1 for grid, 2 for dots
 
 
 //For adding elements
@@ -54,7 +54,7 @@ var socket = io();
 import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles } from './helper_functions_io.js';
-import { updateHandleLayers } from './helper_functions_layers.js';
+import { updateHandleLayers, updateHandleLayerButtons } from './helper_functions_layers.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './inventory.js';
 
@@ -252,6 +252,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
         activeCargoLayer  = fullLayer[2]
 
         activeLayerColor = event.detail.layerColor
+
+        updateHandleLayerButtons(layerList, activeLayerId)
 
     });
 

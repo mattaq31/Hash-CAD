@@ -124,27 +124,3 @@ def createGenericPlate(plate_name, plate_folder):
     return plate
 
 
-
-#############################
-#     Example usage         #
-#############################
-file_path = '/GUI/used-cargo-plates/sw_src007_nelson_quimby_bart_edna.xlsx'
-
-#grid_data, cargo_key, regex = import_plate_from_excel(file_path)
-
-# Print the result
-#print("Grid Data:")
-#for item in grid_data:
-#    print(item)
-#
-#print("\nID to Word Map:")
-#for id_num, word in cargo_key.items():
-#    print(f"ID: {id_num}, Word: {word}")
-
-
-#plate_folder= 'C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates'
-#plate_name = 'sw_src007_nelson_quimby_bart_edna.xlsx'
-
-#plate = createGenericPlate(plate_name, plate_folder)
-
-#print("Finished")

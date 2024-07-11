@@ -11,6 +11,25 @@ updateInventoryItems()
 renderInventoryTable() 
 
 
+const topLayerButton = document.getElementById('top-layer-selector')
+const bottomLayerButton = document.getElementById('bottom-layer-selector')
+
+topLayerButton.addEventListener('click', (event)=>{
+    topLayerButton.classList.add('h25-toggle-selected')
+    bottomLayerButton.classList.remove('h25-toggle-selected')
+})
+
+bottomLayerButton.addEventListener('click', (event)=>{
+    bottomLayerButton.classList.add('h25-toggle-selected')
+    topLayerButton.classList.remove('h25-toggle-selected')
+})
+
+
+
+
+
+
+
 // Function to get all inventory items
 export function updateInventoryItems() {
     var filepath = "C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates"
