@@ -93,7 +93,8 @@ def create_slat_material(color, mat_name, metallic_strength=0.3):
     return material
 
 
-def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, connection_angle='90', colormap='Set1'):
+def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None, animate_delay_frames=20,
+                                 connection_angle='90', colormap='Set1'):
     """
     Creates a 3D video of a megastructure slat design. TODO: add cargo and seeds to this view too.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
@@ -151,9 +152,16 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, connection
         )
         bpy.context.object.name = slat_id
         bpy.ops.object.shade_smooth()
-
         bpy.context.object.data.materials.append(materials[layer - 1])  # TODO: how would I add the emission to this material?
 
+        if animate_slat_group_dict is not None:
+            # Set initial visibility to False
+            bpy.context.object.hide_viewport = True
+            bpy.context.object.keyframe_insert(data_path="hide_viewport", frame=0)
+
+            # Set visibility to True in the next frame
+            bpy.context.object.hide_viewport = False
+            bpy.context.object.keyframe_insert(data_path="hide_viewport", frame=animate_slat_group_dict[slat_id] * animate_delay_frames)
 
     # Create an area light
     bpy.ops.object.light_add(type='AREA', location=(5, -5, 5))

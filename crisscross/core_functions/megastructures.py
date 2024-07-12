@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import numpy as np
 import matplotlib.pyplot as plt
 from colorama import Fore
@@ -214,6 +216,58 @@ class Megastructure:
                                     control_plate.get_plate_name(),
                                     descriptor='Control Handle')
 
+    def get_slats_by_assembly_stage(self, minimum_handle_cutoff=16):
+        """
+        Runs through the design and separates out all slats into groups sorted on their predicted assembly stage.
+        :param minimum_handle_cutoff: Minimum number of handles that need to be present for a slat to be considered stably setup.
+        :return: Dict of slats (key = slat ID, value = assembly order)
+        """
+
+        slat_count = 0
+        slat_groups = []
+        complete_slats = set()
+        while slat_count < len(self.slats):  # will loop through the design until all slats have been given a home
+            if slat_count == 0:  # first extracts slats that will attach to the seed
+
+                first_step_slats = set()
+                seed_coords = np.where(self.seed_array[1] > 0)
+                for y, x in zip(seed_coords[0], seed_coords[1]):  # extracts the slat ids from the layer connecting to the seed
+                    overlapping_slat = (self.seed_array[0], self.slat_array[y, x, self.seed_array[0]-1])
+                    first_step_slats.add(overlapping_slat)
+
+                complete_slats.update(first_step_slats)  # tracks all slats that have been assigned a group
+                slat_count += len(first_step_slats)
+                slat_groups.append(list(first_step_slats))
+
+            else:
+                slat_overlap_counts = defaultdict(int)
+                # these loops will check all slats in all groups to see if a combination
+                # of different slats provide enough of a foundation for a new slat to attach
+                for slat_group in slat_groups:
+                    for layer, slat in slat_group:
+                        slat_posns = np.where(self.slat_array[..., layer-1] == slat)
+                        for y, x in zip(slat_posns[0], slat_posns[1]):
+                            if layer != 1 and self.slat_array[y, x, layer-2] != 0:  # checks the layer below
+                                slat_overlap_counts[(layer-1, self.slat_array[y, x, layer-2])] += 1
+                            if layer != self.num_layers and self.slat_array[y, x, layer] != 0:  # checks the layer above
+                                slat_overlap_counts[(layer+1, self.slat_array[y, x, layer])] += 1
+                next_slat_group = []
+                for k, v in slat_overlap_counts.items():
+                    # a slat is considered stable when it has a minimum of the target handle number stably attached
+                    if v >= minimum_handle_cutoff and k not in complete_slats:
+                        next_slat_group.append(k)
+                complete_slats.update(next_slat_group)
+                slat_groups.append(next_slat_group)
+                slat_count += len(next_slat_group)
+
+        slat_id_animation_classification = {}
+
+        for order, group in enumerate(slat_groups):
+            for slat in group:
+                slat_id_animation_classification[get_slat_key(*slat)] = order
+
+        return slat_id_animation_classification
+
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
                                    include_cargo=True, include_seed=True,
                                    colormap='Set1', cargo_colormap='Set1'):
@@ -306,15 +360,23 @@ class Megastructure:
         create_graphical_3D_view(self.slat_array, save_folder, slats=self.slats, connection_angle=self.connection_angle,
                                  window_size=window_size, colormap=colormap)
 
-    def create_blender_3D_view(self, save_folder, colormap='Set1'):
+    def create_blender_3D_view(self, save_folder, animate_assembly=False, colormap='Set1'):
         """
         Creates a 3D model of the megastructure slat design as a Blender file.
         :param save_folder: Folder to save all video to.
+        :param animate_assembly: Set to true to also generate an animation of the design being assembled group by group
         :param colormap: Colormap to extract layer colors from
         :return: N/A
         """
+        if animate_assembly:
+            assembly_groups = self.get_slats_by_assembly_stage()
+        else:
+            assembly_groups = None
+
         create_graphical_3D_view_bpy(self.slat_array, save_folder, slats=self.slats,
-                                     connection_angle=self.connection_angle, colormap=colormap)
+                                     animate_slat_group_dict=assembly_groups,
+                                     connection_angle=self.connection_angle,
+                                     colormap=colormap)
 
     def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
                                          colormap='Dark2', cargo_colormap='Set1'):
