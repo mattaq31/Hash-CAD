@@ -2,6 +2,69 @@ from crisscross.plate_mapping import BasePlate
 import math
 
 
+
+
+
+class GenericPlate(BasePlate):
+    """
+    Cargo plate (FILL IN NAME) containing Bart and Edna antiHandles for all 32 H5 slat positions.
+    """
+    def __init__(self, *args, **kwargs):
+        self.cargo_key = {}
+        super().__init__(*args, generic_cargo_plate = True, **kwargs)
+
+        full_name_list = self.plates[0]['name'].tolist()
+        short_name_list = [name.split('_')[self.name_encoding['name']] for name in full_name_list]
+        unique_name_list =list(set(short_name_list)) #Removes duplicates
+
+        tmp_cargo_key = {}
+        for index, name in enumerate(unique_name_list):
+            tmp_cargo_key[index] = name
+
+        self.cargo_key = tmp_cargo_key
+
+
+
+    def identify_wells_and_sequences(self):
+        for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
+                                      self.plates[0]['well'].tolist(), self.plates[0]['sequence'].tolist()):
+
+            cargo = pattern.split('_')[self.name_encoding['name']]
+
+            if cargo in self.cargo_key:
+                continue
+            else:
+                raise RuntimeError('The plate file does not match the expected pattern for this plate.')
+
+            position_str = pattern.split('_')[self.name_encoding['position']]
+            int_string = ''.join(ch for ch in position_str if ch.isdigit())
+
+            key = (int(int_string), 5 if 'h5' in pattern else 2, cargo)
+
+            self.wells[key] = well
+            self.sequences[key] = seq
+
+    def get_sequence(self, slat_position, slat_side, cargo_id=0):
+        return self.sequences[(slat_position, slat_side, self.cargo_key[cargo_id])]
+
+    def get_well(self, slat_position, slat_side, cargo_id=0):
+        return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class OctahedronPlate(BasePlate):
     """
     Cargo plate created in February 2024 for an octahedron placement system (collab with Oleg Gang's group)

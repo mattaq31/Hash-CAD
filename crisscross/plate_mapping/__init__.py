@@ -5,6 +5,9 @@ import ast
 from pydoc import locate
 from collections import defaultdict
 
+import pandas as pd
+
+
 
 class BasePlate:
     """
@@ -12,7 +15,8 @@ class BasePlate:
     Once all data read in, access can be facilitated via a standard 3-element index of the slat position (1-32),
     the slat side (H2 or H5) and the cargo ID (which can vary according to the specific plate in question).
     """
-    def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_style='2d_excel', plate_size=384):
+    def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_style='2d_excel', plate_size=384,
+                 generic_cargo_plate = False):
 
         if isinstance(plate_name, str):
             plate_name = [plate_name]
@@ -31,7 +35,18 @@ class BasePlate:
 
         self.wells = defaultdict(bool)
         self.sequences = defaultdict(bool)
-        self.identify_wells_and_sequences()
+        if(generic_cargo_plate):
+            all_data = pd.ExcelFile(os.path.join(self.plate_folder, plate + '.xlsx'))
+            names = all_data.parse("Names", header=None)
+            name_encoding = names.iloc[0, 0]
+
+            name_encoding_dict = {}
+            for index, name in enumerate(name_encoding.split('-')):
+                name_encoding_dict[name] = index
+
+            self.name_encoding = name_encoding_dict
+        else:
+            self.identify_wells_and_sequences()
 
     def identify_wells_and_sequences(self):
         raise NotImplementedError('This class is just a template - need to use one of the subclasses instead of this.')

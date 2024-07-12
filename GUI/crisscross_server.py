@@ -2,34 +2,27 @@
 # TODO: consider renaming static folder to 'frontend' to be more descriptive, and to include the HTML there too
 
 #Basic flask imports
-from flask import Flask, render_template, send_from_directory, send_file
+from flask import Flask, render_template, send_file
 from flask_socketio import SocketIO
-from flask_socketio import send, emit
+from flask_socketio import emit
 
 # For file uploads
 from werkzeug.utils import secure_filename
 import os
-from os.path import join
 
 # For data handling
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
 from server_helper_functions import (slat_dict_to_array, cargo_dict_to_array,
                                      array_to_dict, cargo_to_inventory, convert_np_to_py,
-                                     getDriverNames, break_array_by_plates)
+                                     break_array_by_plates)
 
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.plate_mapping import get_plateclass
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center, cargo_plate_folder, simpsons_mixplate_antihandles,
-                                                         nelson_quimby_antihandles, seed_plug_plate_corner)
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-
-
-from generic_cargo_importer import createGenericPlate
-
+                                                         crisscross_h2_handle_plates, assembly_handle_folder)
+from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize
 
 app = Flask(__name__)
 
@@ -263,8 +256,9 @@ def generate_megastructure(crisscross_dict):
                     #plate_driver_name = plateDriverMap[plate_file]
                     plate_folder = app.config['USED_CARGO_FOLDER']
 
-                    plate = createGenericPlate(plate_file, plate_folder)
-                    #plate_class = get_plateclass(plate_driver_name, plate, plate_folder)
+                    #plate = createGenericPlate(plate_file, plate_folder)
+                    plate = get_plateclass('GenericPlate', plate, plate_folder)
+
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
                                                                   layer=layer_counter, requested_handle_orientation=2)
             layer_counter += 1
@@ -281,8 +275,8 @@ def generate_megastructure(crisscross_dict):
                     #plate_driver_name = plateDriverMap[plate_file]
                     plate_folder = app.config['USED_CARGO_FOLDER']
 
-                    plate = createGenericPlate(plate_file, plate_folder)
-                    # plate_class = get_plateclass(plate_driver_name, plate, plate_folder)
+                    #plate = createGenericPlate(plate_file, plate_folder)
+                    plate = get_plateclass('GenericPlate', plate, plate_folder)
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
                                                                   layer=layer_counter, requested_handle_orientation=2)
             layer_counter += 1

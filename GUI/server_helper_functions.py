@@ -1,6 +1,5 @@
 
 import numpy as np
-import pandas as pd
 import os
 
 
@@ -9,8 +8,6 @@ from os.path import join
 import ast
 
 from crisscross.plate_mapping import get_plateclass
-
-from generic_cargo_importer import createGenericPlate
 
 
 def slat_dict_to_array(grid_dict, trim_offset = False):
@@ -153,7 +150,8 @@ def getDriverNames(plate_mapping_filepath):
 
 
 def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
-    plate = createGenericPlate(os.path.basename(cargo_plate_filepath) + ".xlsx", cargo_plate_folder )
+    plate = get_plateclass('GenericPlate', os.path.basename(cargo_plate_filepath), cargo_plate_folder)
+    #plate = createGenericPlate(os.path.basename(cargo_plate_filepath) + ".xlsx", cargo_plate_folder )
     plate_cargo_dict = plate.cargo_key
 
     # Create the list of elements with the specified format
