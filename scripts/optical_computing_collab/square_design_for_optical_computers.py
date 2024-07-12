@@ -5,10 +5,9 @@ import os
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
-from crisscross.core_functions.slat_design import generate_standard_square_slats, attach_cargo_handles_to_core_sequences
+from crisscross.core_functions.slat_design import generate_standard_square_slats, attach_cargo_handles_to_core_sequences, generate_patterned_square_cco
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 from crisscross.core_functions.slats import Slat
-from crisscross.graphics.megastructures import generate_patterned_square_cco
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,

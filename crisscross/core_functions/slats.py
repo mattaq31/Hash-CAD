@@ -1,5 +1,26 @@
 from collections import defaultdict
 from colorama import Fore
+import numpy as np
+
+
+def get_slat_key(layer, slat_id):
+    """
+    Convenience function to generate slat key string.
+    """
+    return f'layer{layer}-slat{int(slat_id)}'
+
+
+def convert_slat_array_into_slat_objects(slat_array):
+    slats = {}
+    for layer in range(slat_array.shape[2]):
+        for slat_id in np.unique(slat_array[:, :, layer]):
+            if slat_id <= 0:  # removes any non-slat markers
+                continue
+            # slat coordinates are read in top-bottom, left-right
+            slat_coords = np.argwhere(slat_array[:, :, layer] == slat_id).tolist()
+            # generates a set of empty slats matching the design array
+            slats[get_slat_key(layer + 1, int(slat_id))] = Slat(get_slat_key(layer + 1, int(slat_id)), layer + 1, slat_coords)
+    return slats
 
 
 class Slat:
