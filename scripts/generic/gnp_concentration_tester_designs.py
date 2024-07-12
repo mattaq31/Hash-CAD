@@ -9,7 +9,6 @@ from crisscross.core_functions.plate_handling import generate_new_plate_from_sla
 from crisscross.core_functions.slat_design import generate_standard_square_slats, attach_cargo_handles_to_core_sequences
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 from crisscross.core_functions.slats import Slat
-from crisscross.graphics.megastructures import generate_patterned_square_cco, two_side_plot
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
                                                          crisscross_h5_handle_plates,

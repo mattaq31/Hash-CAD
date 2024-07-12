@@ -1,5 +1,4 @@
-from crisscross.core_functions.slat_design import read_design_from_excel, generate_standard_square_slats
-from crisscross.graphics.megastructures import generate_patterned_square_cco
+from crisscross.core_functions.slat_design import read_design_from_excel, generate_standard_square_slats, generate_patterned_square_cco
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle

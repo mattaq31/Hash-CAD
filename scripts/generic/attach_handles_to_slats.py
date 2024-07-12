@@ -1,6 +1,5 @@
-from crisscross.graphics.megastructures import generate_patterned_square_cco
 from crisscross.core_functions.plate_handling import read_dna_plate_mapping
-from crisscross.core_functions.slat_design import generate_standard_square_slats
+from crisscross.core_functions.slat_design import generate_standard_square_slats, generate_patterned_square_cco
 from crisscross.helper_functions.standard_sequences import simpsons_anti
 import os
 import pandas as pd

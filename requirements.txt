@@ -3,4 +3,3 @@ pandas
 matplotlib
 openpyxl
 tqdm
-pyvista

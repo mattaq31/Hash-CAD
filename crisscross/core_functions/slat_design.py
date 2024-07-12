@@ -89,3 +89,55 @@ def attach_cargo_handles_to_core_sequences(pattern, sequence_map, target_plate, 
     seq_df = pd.DataFrame.from_dict(seq_dict)
 
     return seq_df
+
+
+def generate_patterned_square_cco(pattern='2_slat_jump'):
+    """
+    Pre-generates a square megastructure with specific repeating patterns.
+    :param pattern: Choose from the set of available pre-made patterns.
+    :return: 2D array containing pattern
+    TODO: make size of square adjustable
+    """
+    base = np.zeros((32, 32))
+    if pattern == '2_slat_jump':
+        for i in range(1, 32, 4):
+            for j in range(1, 32, 4):
+                base[i, j] = 1
+                base[i + 1, j + 1] = 1
+                base[i, j + 1] = 1
+                base[i + 1, j] = 1
+    elif pattern == 'diagonal_octahedron_top_corner':
+        for i in range(1, 31, 6):
+            for j in range(1, 31, 6):
+                base[i, j] = 1
+                base[i + 1, j + 1] = 1
+                base[i, j + 1] = 1
+                base[i + 1, j] = 1
+        for i in range(4, 31, 6):
+            for j in range(4, 31, 6):
+                base[i, j] = 2
+                base[i + 1, j + 1] = 2
+                base[i, j + 1] = 2
+                base[i + 1, j] = 2
+
+    elif pattern == 'diagonal_octahedron_centred':
+        for i in range(3, 31, 6):
+            for j in range(3, 31, 6):
+                base[i, j] = 1
+                base[i + 1, j + 1] = 1
+                base[i, j + 1] = 1
+                base[i + 1, j] = 1
+        for i in range(6, 27, 6):
+            for j in range(6, 27, 6):
+                base[i, j] = 2
+                base[i + 1, j + 1] = 2
+                base[i, j + 1] = 2
+                base[i + 1, j] = 2
+
+    elif pattern == 'biotin_patterning':
+        for i in range(2, 32, 3):
+            base[1, i] = 3
+            base[30, i] = 3
+
+    return base
+
