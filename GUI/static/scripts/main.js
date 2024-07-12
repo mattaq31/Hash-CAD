@@ -250,8 +250,21 @@ SVG.on(document, 'DOMContentLoaded', function() {
         const fullLayer = layerList.get(event.detail.layerId)
         activeHandleLayer = fullLayer[0]
         activeSlatLayer   = fullLayer[1]
-        activeTopCargoLayer     = fullLayer[3]  
         activeBottomCargoLayer  = fullLayer[2]  
+        activeTopCargoLayer     = fullLayer[3]  
+
+        activeCargoLayer = null;
+
+        const topLayerButton = document.getElementById('top-layer-selector')
+        const bottomLayerButton = document.getElementById('bottom-layer-selector')
+        if(topLayerButton.classList.contains('h25-toggle-selected')){
+            activeCargoLayer = activeTopCargoLayer
+        }
+        else if(bottomLayerButton.classList.contains('h25-toggle-selected')){
+            activeCargoLayer = activeBottomCargoLayer
+        }
+
+        
 
         activeLayerColor = event.detail.layerColor
 
@@ -285,9 +298,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
         }
         
         //Also change cargo layer color?
-        const layerToChangeTopCargo = fullLayer[3] 
         const layerToChangeBottomCargo = fullLayer[2] 
-
+        const layerToChangeTopCargo = fullLayer[3] 
+        
         layerToChangeTopCargo.children().forEach(child => {
 
             child.children().forEach(childChild => {

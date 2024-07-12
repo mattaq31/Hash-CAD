@@ -19,21 +19,22 @@ class GenericPlate(BasePlate):
 
         tmp_cargo_key = {}
         for index, name in enumerate(unique_name_list):
-            tmp_cargo_key[index] = name
+            tmp_cargo_key[index+1] = name
 
         self.cargo_key = tmp_cargo_key
+
+        self.identify_wells_and_sequences()
 
 
 
     def identify_wells_and_sequences(self):
         for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
-                                      self.plates[0]['well'].tolist(), self.plates[0]['sequence'].tolist()):
+                                      self.plates[0]['well'].tolist(),
+                                      self.plates[0]['sequence'].tolist()):
 
             cargo = pattern.split('_')[self.name_encoding['name']]
 
-            if cargo in self.cargo_key:
-                continue
-            else:
+            if cargo not in self.cargo_key.values():
                 raise RuntimeError('The plate file does not match the expected pattern for this plate.')
 
             position_str = pattern.split('_')[self.name_encoding['position']]

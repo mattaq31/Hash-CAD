@@ -209,7 +209,6 @@ def generate_megastructure(crisscross_dict):
     slat_array = ()
     top_cargo_array = ()
     bottom_cargo_array = ()
-    cargo_array = ()
 
     if (crisscross_dict[0]):
         slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=True)
@@ -219,9 +218,6 @@ def generate_megastructure(crisscross_dict):
 
     if (crisscross_dict[2]):
         top_cargo_array = cargo_dict_to_array(crisscross_dict[2], trim_offset=True, slat_grid_dict=crisscross_dict[0])
-
-    #if (crisscross_dict[1]):
-    #    cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
 
     #Generate empty handle array
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
@@ -278,7 +274,7 @@ def generate_megastructure(crisscross_dict):
                     #plate = createGenericPlate(plate_file, plate_folder)
                     plate = get_plateclass('GenericPlate', plate, plate_folder)
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
-                                                                  layer=layer_counter, requested_handle_orientation=2)
+                                                                  layer=layer_counter, requested_handle_orientation=5)
             layer_counter += 1
 
     core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
