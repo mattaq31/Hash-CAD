@@ -122,24 +122,30 @@ def save_file_to_uploads(data):
 
     print('Design will be imported')
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    print(crisscross_design_path)
     crisscross_design_file = np.load(crisscross_design_path, allow_pickle=True)
     slat_array = crisscross_design_file['slat_array']
-    cargo_array = crisscross_design_file['cargo_array']
+    bottom_cargo_array = crisscross_design_file['bottom_cargo_array']
+    top_cargo_array = crisscross_design_file['top_cargo_array']
 
     slat_dict = {}
-    cargo_dict = {}
+    bottom_cargo_dict = {}
+    top_cargo_dict = {}
 
     if(slat_array.ndim == 3):
         slat_dict = array_to_dict(slat_array)
 
-    if (cargo_array.ndim == 3):
-        cargo_dict = array_to_dict(cargo_array)
+    if (bottom_cargo_array.ndim == 3):
+        bottom_cargo_dict = array_to_dict(bottom_cargo_array)
 
-    emit('design_imported', [slat_dict, cargo_dict])
+    if (top_cargo_array.ndim == 3):
+        top_cargo_dict = array_to_dict(top_cargo_array)
+
+    emit('design_imported', [slat_dict, bottom_cargo_dict, top_cargo_dict])
 
 
 # TODO: make function names more descriptive
-@socketio.on('design_saved')
+@socketio.on('design_to_backend_for_download')
 def save_crisscross_design(crisscross_dict):
     """
     TODO: fill in
@@ -149,18 +155,28 @@ def save_crisscross_design(crisscross_dict):
     print('Design has been saved')
     # TODO: consider saving file in a human-readable format like toml
     slat_array = ()
-    cargo_array = ()
+    top_cargo_array = ()
+    bottom_cargo_array = ()
 
     if(crisscross_dict[0]):
         slat_array = slat_dict_to_array(crisscross_dict[0])
 
     if (crisscross_dict[1]):
-        cargo_array = cargo_dict_to_array(crisscross_dict[1])
+        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[1])
+
+    if (crisscross_dict[2]):
+        top_cargo_array = cargo_dict_to_array(crisscross_dict[2])
+
+
 
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], 'crisscross_design.npz')
 
     # Save the arrays to a .npz file (including multiple numpy arrays!)
-    np.savez(crisscross_design_path, slat_array=slat_array, cargo_array=cargo_array)
+    np.savez(crisscross_design_path, slat_array=np.array(slat_array),
+            bottom_cargo_array=np.array(bottom_cargo_array),
+             top_cargo_array=np.array(top_cargo_array))
+
+    emit('saved_design_ready_to_download')
 
 
 @socketio.on('generate_handles')
@@ -194,17 +210,25 @@ def generate_handles(crisscross_dict):
     emit('handles_sent', converted_handle_dict)
 
 @socketio.on('generate_megastructures')
-def generate_megastructure(crisscross_dict, plateDriverMap):
+def generate_megastructure(crisscross_dict):
 
 
     slat_array = ()
+    top_cargo_array = ()
+    bottom_cargo_array = ()
     cargo_array = ()
 
     if (crisscross_dict[0]):
         slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=True)
 
     if (crisscross_dict[1]):
-        cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
+        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
+
+    if (crisscross_dict[2]):
+        top_cargo_array = cargo_dict_to_array(crisscross_dict[2], trim_offset=True, slat_grid_dict=crisscross_dict[0])
+
+    #if (crisscross_dict[1]):
+    #    cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
 
     #Generate empty handle array
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
@@ -227,26 +251,44 @@ def generate_megastructure(crisscross_dict, plateDriverMap):
                                                        crisscross_antihandle_y_plates)
 
     # Add cargo
-    if(cargo_array.size != 0):
+    if(top_cargo_array.size != 0):
         # Iterate over layers:
         layer_counter = 1
-        for layer in range(cargo_array.shape[2]):
-            tmp_layer_array = cargo_array[:, :, layer]
+        for layer in range(top_cargo_array.shape[2]):
+            tmp_layer_array = top_cargo_array[:, :, layer]
             tmp_layer_plate_dict = break_array_by_plates(tmp_layer_array)
             for plate, cargo_by_plate in tmp_layer_plate_dict.items():
                 if(plate != ''):
                     plate_file = plate + ".xlsx"
-                    plate_driver_name = plateDriverMap[plate_file]
+                    #plate_driver_name = plateDriverMap[plate_file]
                     plate_folder = app.config['USED_CARGO_FOLDER']
 
-                    plate = createGenericPlate(plate, plate_folder)
+                    plate = createGenericPlate(plate_file, plate_folder)
                     #plate_class = get_plateclass(plate_driver_name, plate, plate_folder)
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
                                                                   layer=layer_counter, requested_handle_orientation=2)
             layer_counter += 1
 
-        core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-        crisscross_megastructure.patch_control_handles(core_plate)
+    if (bottom_cargo_array.size != 0):
+        # Iterate over layers:
+        layer_counter = 1
+        for layer in range(bottom_cargo_array.shape[2]):
+            tmp_layer_array = bottom_cargo_array[:, :, layer]
+            tmp_layer_plate_dict = break_array_by_plates(tmp_layer_array)
+            for plate, cargo_by_plate in tmp_layer_plate_dict.items():
+                if (plate != ''):
+                    plate_file = plate + ".xlsx"
+                    #plate_driver_name = plateDriverMap[plate_file]
+                    plate_folder = app.config['USED_CARGO_FOLDER']
+
+                    plate = createGenericPlate(plate_file, plate_folder)
+                    # plate_class = get_plateclass(plate_driver_name, plate, plate_folder)
+                    crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
+                                                                  layer=layer_counter, requested_handle_orientation=2)
+            layer_counter += 1
+
+    core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+    crisscross_megastructure.patch_control_handles(core_plate)
 
     crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['UPLOAD_FOLDER'], 'Design Graphics'),
                                                               colormap='Set1', cargo_colormap='Paired')

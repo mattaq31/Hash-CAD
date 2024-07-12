@@ -92,6 +92,8 @@ def array_to_dict(array):
 
 
 
+
+
 # Function to create the acronym
 def create_acronym(word):
     vowels = 'aeiouAEIOU'

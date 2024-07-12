@@ -7,6 +7,7 @@ class ControlPlate(BasePlate):
     Core control plate containing slat sequences and flat (not jutting out) H2/H5 staples.
     """
     def __init__(self, *args, **kwargs):
+
         super().__init__(*args, **kwargs)
 
     def identify_wells_and_sequences(self):

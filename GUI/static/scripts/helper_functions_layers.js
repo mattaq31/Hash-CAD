@@ -1,164 +1,122 @@
-export function updateHandleLayers(layerList){
-    const handleLayerViewer = document.getElementById('handle-layers')
+const hexColors = ['#ff0000', '#0000ff', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
 
-    handleLayerViewer.innerHTML = ''
+/** Function to create a new layer in the project
+ * 
+ * @param 
+ * @returns
+ */
+export function addLayer() {
+    const layerList = document.getElementById('layer-list');
 
-    layerList.forEach((layer, layerIndex) => {
+    const layerItem = document.createElement('div');
+    layerItem.className = 'layer-item';
 
-        console.log(layer)
+    const layerId = layerList.children.length 
+    layerItem.dataset.layerId = layerId;  // Add a data attribute to identify the layer
 
-        let layerColor = layer[3]
+    const layerCheckbox = document.createElement('input');
+    layerCheckbox.type = 'checkbox';
+    layerCheckbox.checked = true;
+    layerCheckbox.addEventListener('change', toggleLayer);
 
-        const handleLayerItem = document.createElement('div')
-        handleLayerItem.className = 'handle-layer-item'
-        
+    const layerName = document.createElement('span');
+    layerName.textContent = `Layer ${layerId }`;
 
-        const h25TopDropdown = document.createElement('select')
-        h25TopDropdown.options.add( new Option("H2", 2, true, true))
-        h25TopDropdown.options.add( new Option("H5", 5))
-        h25TopDropdown.style.margin = '5px'
+    const layerRadio = document.createElement('input');
+    layerRadio.type = 'radio';
+    layerRadio.name = 'active-layer';
+    layerRadio.dataset.layerId = layerId;
+    layerRadio.addEventListener('change', setActiveLayer);
 
-        const h25BottomDropdown = document.createElement('select')
-        h25BottomDropdown.options.add( new Option("H2", 2))
-        h25BottomDropdown.options.add( new Option("H5", 5, true, true))
-        h25BottomDropdown.style.margin = '5px'
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.value = hexColors[layerId % 6]
+    colorPicker.addEventListener('input', setColor);
 
-        
-        const h25TopDiv = document.createElement('div')
-        h25TopDiv.appendChild(h25TopDropdown)
-
-        const h25BottomDiv = document.createElement('div')
-        h25BottomDiv.appendChild(h25BottomDropdown)
-
-
-
-
-        h25TopDiv.addEventListener('click', function(event){
-
-            //Only execute if div clicked directly, NOT if child dropdown was clicked
-            if(event.currentTarget !== event.target){
-                return
-            }
-
-            let clickedChild = event.target.parentElement;
-            let parent = clickedChild.parentElement
-            let children = Array.from(parent.children); // Convert HTMLCollection to an array
-            
-            let index = children.indexOf(clickedChild);
-
-            document.querySelectorAll('.arrow').forEach(e => e.remove());
-            let arrow = document.createElement('p')
-            arrow.className = 'arrow'
-            arrow.textContent = '\u2194'
-            clickedChild.prepend(arrow)
-
-            console.log("Handle layer selected: ", index)
-
-            layerList.forEach((layer, layerIndex) => {
-                layer[0].attr('opacity', 0)
-                if(layerIndex == index - 1){
-                    layer[0].attr('opacity', 1)
-                }
-            })
-
-        })
-
-        
-
-        h25BottomDiv.addEventListener('click', function(event){
-
-            //Only execute if div clicked directly, NOT if child dropdown was clicked
-            if(event.currentTarget !== event.target){
-                return
-            }
-
-            let clickedChild = event.target.parentElement;
-            let parent = clickedChild.parentElement
-            let children = Array.from(parent.children); // Convert HTMLCollection to an array
-            
-            let index = children.indexOf(clickedChild) + 1;
-
-            document.querySelectorAll('.arrow').forEach(e => e.remove());
-            let arrow = document.createElement('p')
-            arrow.className = 'arrow'
-            arrow.textContent = '\u2194'
-            clickedChild.appendChild(arrow)
-
-            console.log("Handle layer selected: ",index)
-            layerList.forEach((layer, layerIndex) => {
-
-                layer[0].attr('opacity', 0)
-
-                if(layerIndex == index - 1){
-                    layer[0].attr('opacity', 1)
-                }
-            })
-
-        })
-
-
-        const layerDivider = document.createElement('hr')
-        layerDivider.className = 'handle-layer-divider'
-        layerDivider.style.backgroundColor = layerColor; 
-
-
-        handleLayerItem.appendChild(h25TopDiv)
-        handleLayerItem.appendChild(layerDivider)
-        handleLayerItem.appendChild(h25BottomDiv)
-
-        handleLayerViewer.appendChild(handleLayerItem);
-
+    const removeButton = document.createElement('button');
+    removeButton.textContent = "\u2715"; //X symbol for removing layer!
+    removeButton.classList.add("layer-remove-button");
+    removeButton.addEventListener('click', () => {
+        layerList.removeChild(layerItem);
+        dispatchCustomLayerEvent('layerRemoved', layerItem);
     });
 
+    layerItem.appendChild(layerCheckbox);
+    layerItem.appendChild(layerRadio);
+    layerItem.appendChild(layerName);
+    layerItem.appendChild(colorPicker);
+    layerItem.appendChild(removeButton);
+
+    layerList.appendChild(layerItem);
+
+    dispatchCustomLayerEvent('layerAdded', layerItem);
+
+    // Set the first added layer as active by default
+    if (layerList.children.length === 1) {
+        layerRadio.checked = true;
+        setActiveLayer({ target: layerRadio });
+    }
+}
 
 
+/** Function to set active layer when appropriate radio button is pressed. 
+ * Note: changes active layer in the layer manager, but doesn't change layer in actual design --> calls an event for that instead
+ * 
+ * @param {event} event Event associated with depression of radio button in layer manager
+ */
+export function setActiveLayer(event) {
+    const allLayers = document.querySelectorAll('.layer-item');
+    allLayers.forEach(layer => layer.classList.remove('active'));
 
+    const activeLayer = event.target.parentElement;
+    activeLayer.classList.add('active');
+    dispatchCustomLayerEvent('layerMarkedActive', activeLayer);
+}
+
+
+/** Function to dispatch custom layer-related events
+ * 
+ * @param {string} eventName Event name to be dispatched
+ * @param {div} layerItem Layer item associated with this event
+ */
+export function dispatchCustomLayerEvent(eventName, layerItem) {
+    const event = new CustomEvent(eventName, {
+        detail: {
+            layerId: layerItem.dataset.layerId,
+            layerElement: layerItem,
+            layerColor: layerItem.dataset.layerColor || hexColors[layerItem.dataset.layerId % 6]
+        }
+    });
+    document.dispatchEvent(event);
+}
+
+
+/**Function to change the layer color when appropriate color-selector is changed. 
+ * Note: Doesn't change layer color in actual design --> calls an event for that instead
+ * 
+ * @param {event} event Event associated with changing of color-picker in layer manager
+ */
+export function setColor(event) {
+    const layerItem = event.target.parentElement;
+    const color = event.target.value;
+    layerItem.dataset.layerColor = color || hexColors[layerItem.dataset.layerId % 6]
+    dispatchCustomLayerEvent('layerColorChanged', layerItem);
 }
 
 
 
-export function getHandleLayerDict(layerList){
-    const handleLayerViewer = document.getElementById('handle-layers')
-    const layerChildren = handleLayerViewer.children
-    const childrenArray = Array.from(layerChildren);
-
-
-    let handleLayerDict = {}
-
-    layerList.forEach((layer, layerIndex) => {
-        var layerElement = childrenArray[layerIndex]
-        var topDiv = layerElement.firstChild
-        var bottomDiv = layerElement.lastChild
-
-        var topSelector = topDiv.firstChild
-        var bottomSelector = bottomDiv.firstChild
-
-        var topH2H5 = topSelector.value
-        var bottomH2H5 = bottomSelector.value
-
-        handleLayerDict[layerIndex] = [topH2H5, bottomH2H5]
-    })
-
-    console.log(handleLayerDict)
-
-    return handleLayerDict
-}
-
-
-
-export function updateHandleLayerButtons(layerList, activeLayerId){
-    const topLayerButton = document.getElementById('top-layer-selector')
-    const bottomLayerButton = document.getElementById('bottom-layer-selector')
-
-    let handleLayerDict = getHandleLayerDict(layerList)
-    let handles = handleLayerDict[activeLayerId]
-
-    let topLayerButtonText = topLayerButton.textContent
-    let bottomLayerButtonText = bottomLayerButton.textContent
-
-    let newTopButtonText = topLayerButtonText.slice(0, -1) + handles[0]; 
-    let newBottomButtonText = bottomLayerButtonText.slice(0, -1) + handles[1]; 
-
-    topLayerButton.textContent = newTopButtonText
-    bottomLayerButton.textContent = newBottomButtonText
+/**Function to make layers high or low opacity depending on whether the layer toggle is on or off
+ * Note: doesn't change the layer opacity in the actual design --> calls an event for that instead.
+ * 
+ * @param {event} event 
+ */
+export function toggleLayer(event) {
+    const layerItem = event.target.parentElement;
+    if (event.target.checked) {
+        layerItem.classList.remove('disabled');
+        dispatchCustomLayerEvent('layerShown', layerItem);
+    } else {
+        layerItem.classList.add('disabled');
+        dispatchCustomLayerEvent('layerHidden', layerItem);
+    }
 }

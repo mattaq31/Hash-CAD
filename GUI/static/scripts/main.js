@@ -18,6 +18,9 @@ var activeHandleLayer = null;
 var activeSlatLayer   = null;
 var activeCargoLayer  = null;
 
+var activeTopCargoLayer = null;
+var activeBottomCargoLayer = null;
+
 //var activeLayer = null;
 
 var activeLayerId = null;
@@ -53,10 +56,10 @@ var socket = io();
 
 import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo } from './helper_functions_drawing.js';
-import { createGridArray, importDesign, importHandles } from './helper_functions_io.js';
-import { updateHandleLayers, updateHandleLayerButtons } from './helper_functions_layers.js';
+import { createGridArray, importDesign, importHandles, downloadFile } from './helper_functions_io.js';
+import { updateHandleLayers, updateHandleLayerButtons } from './helper_functions_handles.js';
 
-import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './inventory.js';
+import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './cargo.js';
 
 
 
@@ -162,32 +165,28 @@ SVG.on(document, 'DOMContentLoaded', function() {
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
             if(drawSlatCargoHandleMode == 0){
-                //Record old number of slats places
-                let oldSlatCounter = slatCounter;
-
                 //Place slat
-                slatCounter = placeSlat(placeRoundedX, placeRoundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, slatCounter, placeHorizontal, layerList)
-
-                //Create grid array if a slat has been sucessfully placed!
-                if(oldSlatCounter < slatCounter){
-                    // TODO: remove this if not in use
-                    //let gridArray = createGridArray(layerList, minorGridSize)
-                    //dispatchServerEvent('slatPlaced', gridArray)
-                }
+                slatCounter = placeSlat(placeRoundedX, placeRoundedY, activeSlatLayer, 
+                                        activeLayerId, minorGridSize, activeLayerColor, 
+                                        shownOpacity, slatCounter, placeHorizontal, 
+                                        layerList)
             }
             else if(drawSlatCargoHandleMode == 1){
-                //Record old number of cargo places
-                let oldCargoCounter = cargoCounter;
+
+                const topLayerButton = document.getElementById('top-layer-selector')
+                const bottomLayerButton = document.getElementById('bottom-layer-selector')
+
+                let top = false;
+                if(topLayerButton.classList.contains('h25-toggle-selected')){
+                    top = true
+                }
+                
 
                 //Place cargo
-                cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownCargoOpacity, cargoCounter, selectedCargoId, layerList)
-                
-                //Create grid array if a cargo has been sucessfully placed!
-                if(oldCargoCounter < cargoCounter){
-                     // TODO: remove this if not in use
-                    //let gridArray = createGridArray(layerList, minorGridSize)
-                    //dispatchServerEvent('cargoPlaced', gridArray)
-                }
+                cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, 
+                                            activeLayerId, minorGridSize, activeLayerColor, 
+                                            shownCargoOpacity, cargoCounter, selectedCargoId, 
+                                            layerList, top) 
             }
              
         }        
@@ -199,8 +198,10 @@ SVG.on(document, 'DOMContentLoaded', function() {
         //Layer added
         let handleGroup = fullDrawing.group();
         let slatGroup = fullDrawing.group();
-        let cargoGroup = fullDrawing.group();
-        const tmpFullLayer = [handleGroup, slatGroup, cargoGroup, event.detail.layerColor];
+        let topCargoGroup = fullDrawing.group();
+        let bottomCargoGroup = fullDrawing.group();
+        //let cargoGroup = fullDrawing.group();
+        const tmpFullLayer = [handleGroup, slatGroup, bottomCargoGroup, topCargoGroup, event.detail.layerColor];
 
         layerList.set(event.detail.layerId, tmpFullLayer)
         updateHandleLayers(layerList)
@@ -213,30 +214,30 @@ SVG.on(document, 'DOMContentLoaded', function() {
         fullLayer[0].remove();
         fullLayer[1].remove();
         fullLayer[2].remove();
+        fullLayer[3].remove();
         layerList.delete(event.detail.layerId)
         updateHandleLayers(layerList)
 
-        //socket.emit('my layer removed event', {data: 'Layer removed'});
     });
 
     document.addEventListener('layerShown', (event) => {
         console.log(`Layer shown: ${event.detail.layerId}`, event.detail.layerElement);
         // Deal with layer shown
-        //layerList.get(event.detail.layerId).attr('opacity',1)
         const fullLayer = layerList.get(event.detail.layerId)
         fullLayer[0].attr('opacity',1)
         fullLayer[1].attr('opacity',1)
         fullLayer[2].attr('opacity',1)
+        fullLayer[3].attr('opacity',1)
     });
 
     document.addEventListener('layerHidden', (event) => {
         console.log(`Layer hidden: ${event.detail.layerId}`, event.detail.layerElement);
         // Deal with layer hidden
-        //layerList.get(event.detail.layerId).attr('opacity',hiddenOpacity)
         const fullLayer = layerList.get(event.detail.layerId)
         fullLayer[0].attr('opacity', hiddenOpacity)
         fullLayer[1].attr('opacity', hiddenOpacity)
         fullLayer[2].attr('opacity', hiddenOpacity)
+        fullLayer[3].attr('opacity', hiddenOpacity)
         
     });
 
@@ -249,27 +250,28 @@ SVG.on(document, 'DOMContentLoaded', function() {
         const fullLayer = layerList.get(event.detail.layerId)
         activeHandleLayer = fullLayer[0]
         activeSlatLayer   = fullLayer[1]
-        activeCargoLayer  = fullLayer[2]
+        activeTopCargoLayer     = fullLayer[3]  
+        activeBottomCargoLayer  = fullLayer[2]  
 
         activeLayerColor = event.detail.layerColor
 
         updateHandleLayerButtons(layerList, activeLayerId)
 
+        console.log(fullLayer)
+
     });
 
 
     document.addEventListener('layerColorChanged', (event) => {
-        //console.log(`Layer color changed: ${event.detail.layerId}`, event.detail.layerElement);
         const layerId = event.detail.layerId;
         const layerColor = event.detail.layerColor;
-        //console.log(`New color for ${layerId}: ${layerColor}`);
 
         //Only change slat layer colors
         const fullLayer = layerList.get(event.detail.layerId)
         const layerToChange = fullLayer[1]
 
         //First, change color attribute of layer element
-        fullLayer[3] = layerColor
+        fullLayer[4] = layerColor
         updateHandleLayers(layerList)
 
         layerToChange.children().forEach(child => {
@@ -283,12 +285,23 @@ SVG.on(document, 'DOMContentLoaded', function() {
         }
         
         //Also change cargo layer color?
-        const layerToChangeCargo = fullLayer[2]
+        const layerToChangeTopCargo = fullLayer[3] 
+        const layerToChangeBottomCargo = fullLayer[2] 
 
-        layerToChangeCargo.children().forEach(child => {
+        layerToChangeTopCargo.children().forEach(child => {
 
             child.children().forEach(childChild => {
-                if(childChild.type === 'circle'){
+                if(childChild.attr('data-cargo-component') === 'shape'){
+                    childChild.stroke({ color: layerColor });
+                    childChild.attr('data-default-color', layerColor); // Update the default color attribute
+                }
+            })
+        });
+
+        layerToChangeBottomCargo.children().forEach(child => {
+
+            child.children().forEach(childChild => {
+                if(childChild.attr('data-cargo-component') === 'shape'){
                     childChild.stroke({ color: layerColor });
                     childChild.attr('data-default-color', layerColor); // Update the default color attribute
                 }
@@ -353,7 +366,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     document.getElementById('generate-megastructure-button').addEventListener('click',function(event){
         let gridArray = createGridArray(layerList, minorGridSize)
-        socket.emit('generate_megastructures', gridArray, currentPlateMap())
+        socket.emit('generate_megastructures', gridArray)
     })
 
     document.getElementById('generate-handles-button').addEventListener('click',function(event){
@@ -379,16 +392,23 @@ SVG.on(document, 'DOMContentLoaded', function() {
     document.getElementById('save-design').addEventListener('click', function(event) {
         console.log("design to be saved now!")
         let gridArray = createGridArray(layerList, minorGridSize)
-        socket.emit('design_saved', gridArray);
+        console.log("Grid array: ", gridArray)
+        socket.emit('design_to_backend_for_download', gridArray);
         console.log("save emit has been sent!")
 
-        const filename = 'crisscross_design.npz';
-        window.location.href = '/download/' + filename;
+        
     });
+
+    socket.on('saved_design_ready_to_download', function(){
+        downloadFile('/download/crisscross_design.npz')
+    })
 
     socket.on('design_imported', function(data) {
         console.log("Imported design!", data)
-        slatCounter = importDesign(data[0], data[1], layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+        let slatDict = data[0]
+        let bottomCargoDict = data[1]
+        let topCargoDict = data[2]
+        slatCounter = importDesign(slatDict, bottomCargoDict, topCargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
 
 
@@ -437,6 +457,20 @@ SVG.on(document, 'DOMContentLoaded', function() {
         populateCargoPalette();
         renderInventoryTable();
     })
+
+
+
+    const topLayerButton = document.getElementById('top-layer-selector')
+    const bottomLayerButton = document.getElementById('bottom-layer-selector')
+
+    topLayerButton.addEventListener('click', (event)=>{
+       activeCargoLayer = activeTopCargoLayer
+    })
+
+    bottomLayerButton.addEventListener('click', (event)=>{
+        activeCargoLayer = activeBottomCargoLayer
+    })
+
 
 
 });

@@ -24,7 +24,9 @@ export function gridKey(x, y, layer) {
  * @param layers List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
  */
-export function populateSparseGridDictionarySlats(gridDict, layers, minorGridSize) {
+export function populateSparseGridDictionarySlats(layers, minorGridSize) {
+    let gridDict = {}
+    
     layers.forEach((layer, layerIndex) => {
         layer[1].children().forEach(child => {
             let slatId = child.attr('id');
@@ -43,16 +45,20 @@ export function populateSparseGridDictionarySlats(gridDict, layers, minorGridSiz
             }
         });
     });
+
+    return gridDict
 }
 
 /** Populates a grid dictionary with cargo type IDs keyed by (x, y, layer)
  * 
- * @param gridDict Dictionary in which to save slats
  * @param layers List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @param minorGridSizeThe snapping grid size. Corresponds to the distance between two handles. 
  */
 // Populate the sparse grid dictionary with cargo IDs
-export function populateSparseGridDictionaryCargo(gridDict, layers, minorGridSize) {
+export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
+    let bottomGridDict = {}
+    let topGridDict = {}
+
     layers.forEach((layer, layerIndex) => {
         layer[2].children().forEach(child => {
             let cargoId = child.attr('type');
@@ -62,10 +68,24 @@ export function populateSparseGridDictionaryCargo(gridDict, layers, minorGridSiz
             let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
 
             // Populate the grid dictionary with the cargo ID for the occupied positions
+            let key = gridKey(centerX, centerY, layerIndex); 
+            bottomGridDict[key] = cargoId;
+        });
+
+        layer[3].children().forEach(child => {
+            let cargoId = child.attr('type');
+            let bbox = child.bbox();
+            
+            let centerX = Math.round((bbox.x + bbox.width / 2) / minorGridSize);
+            let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
+
+            // Populate the grid dictionary with the cargo ID for the occupied positions
             let key = gridKey(centerX, centerY, layerIndex);
-            gridDict[key] = cargoId;
+            topGridDict[key] = cargoId;
         });
     });
+
+    return [bottomGridDict, topGridDict]
 }
 
 /** Creates a filled grid dictionary containing slat and cargo information.
@@ -78,17 +98,21 @@ export function populateSparseGridDictionaryCargo(gridDict, layers, minorGridSiz
 export function createGridArray(layerList, minorGridSize) {
     // Initialize the sparse grid dictionary
     let gridDictSlats = {};
-    let gridDictCargo = {};
+    let gridDictsCargo = [];
+    let bottomGridDictCargo = {};
+    let topGridDictCargo = {};
 
     // Populate the sparse grid dictionary with slat IDs
-    populateSparseGridDictionarySlats(gridDictSlats, Array.from(layerList.values()), minorGridSize);
+    gridDictSlats = populateSparseGridDictionarySlats(Array.from(layerList.values()), minorGridSize);
 
     // Populate the sparse grid dictionary with cargo IDs
-    populateSparseGridDictionaryCargo(gridDictCargo, Array.from(layerList.values()), minorGridSize);
+    gridDictsCargo = populateSparseGridDictionaryCargo(Array.from(layerList.values()), minorGridSize);
+
+    bottomGridDictCargo = gridDictsCargo[0]
+    topGridDictCargo = gridDictsCargo[1]
 
     // You can now use the gridDict as needed
-    let gridDict = [gridDictSlats, gridDictCargo];
-    //console.log(gridDict);
+    let gridDict = [gridDictSlats, bottomGridDictCargo, topGridDictCargo];
 
     return gridDict
 }
@@ -108,14 +132,15 @@ function removeAllLayers(layerList){
 
 /** Draws cargo on canvas as described in a cargo dictionary passed to the function
  * 
- * @param cargoDict Cargo dictionary describing cargo types (ID) by locations (x, y, layer)
+ * @param cargoDict Array of cargo dictionaries (top, bottom) describing cargo types (ID) by locations (x, y, layer)
  * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
  * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
  */
-function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity){
+function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, top){
     //Now add new cargo:
     let cargoCounter = 1;
+
 
     // Iterate through the dictionary
     for (const [key, value] of Object.entries(cargoDict)) {
@@ -134,17 +159,28 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity){
         }
 
         let fullLayer = layerList.get(layerId);
-        let activeCargoLayer = fullLayer[2]
+        let activeCargoLayer = null
+        
+        if(top == true){
+            activeCargoLayer = fullLayer[3]
+        }
+        else{
+            activeCargoLayer = fullLayer[2]
+        }
+            
 
         let placeX = dictX * minorGridSize
         let placeY = dictY * minorGridSize
 
-        let activeLayerColor = fullLayer[3]// '#ff0000'
+        let activeLayerColor = fullLayer[4]// '#ff0000'
 
         cargoCounter = placeCargo(placeX, placeY, activeCargoLayer, layerId, minorGridSize, 
-                                    activeLayerColor, shownCargoOpacity, cargoCounter, cargoId, layerList)
+                                    activeLayerColor, shownCargoOpacity, cargoCounter, cargoId, layerList, top)
 
     }
+
+
+    
 
 }
 
@@ -235,7 +271,7 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
         let placeX = dictX * minorGridSize
         let placeY = dictY * minorGridSize
 
-        let activeLayerColor = fullLayer[3] //fullLayer[3] store the layer color! '#ff0000'
+        let activeLayerColor = fullLayer[4] //fullLayer[4] store the layer color! '#ff0000'
 
         //MAKE SURE TO SOMEHOW PASS THE MAX COUNTER VALUE TO THE MAIN GLOBAL SO THAT WE CAN ACTUALLY CONTINUE MODIFYING THE DESIGN...
         placeSlat(placeX, placeY, activeSlatLayer, layerId, minorGridSize, 
@@ -257,10 +293,11 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
  * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
  * @returns {number}
  */
-export function importDesign(slatDict, cargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+export function importDesign(slatDict, bottomCargoDict, topCargoDict,  layerList, minorGridSize, shownOpacity, shownCargoOpacity){
     removeAllLayers(layerList)
     let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
-    importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity)
+    importCargo(bottomCargoDict, layerList, minorGridSize, shownCargoOpacity, false)
+    importCargo(topCargoDict, layerList, minorGridSize, shownCargoOpacity, true)
 
     return slatCounter;
 }
@@ -300,4 +337,30 @@ export function importHandles(handleDict, layerList, minorGridSize){
 
     }
 
+}
+
+
+
+
+export function downloadFile(url) {
+    fetch(url)
+        .then(response => {
+            if (response.ok) {
+                return response.blob();
+            }
+            throw new Error('Network response was not ok.');
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'crisscross_design.npz';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('There has been a problem with your fetch operation:', error);
+        });
 }

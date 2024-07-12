@@ -1,6 +1,6 @@
 import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo } from './helper_functions_overlap.js';
 import { startDrag } from './helper_functions_dragging.js';
-import { getInventoryItemById } from './inventory.js';
+import { getInventoryItemById } from './cargo.js';
 
 
 
@@ -37,11 +37,9 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             tmpLine.attr('data-horizontal',horizontal)
 
             //Adding draggability:
-            //I'M EDITING HERE
             tmpLine.on('pointerdown', function(event) {
                 startDrag(event, layerList, minorGridSize);
             });
-            //tmpLine.on('pointerdown', startDrag)
 
             slatCounter += 1;
         }
@@ -51,7 +49,6 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             let defaultColor = activeLayerColor 
             let tmpLine = activeSlatLayer.line(roundedX - 0.5 * minorGridSize, roundedY, roundedX + 31.5 * minorGridSize, roundedY )
                                         .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
-            //tmpLine.attr('id',activeLayerId+'_number:' + slatCounter)
 
             tmpLine.attr('id', slatCounter)
             tmpLine.attr('layer', activeLayerId)
@@ -62,7 +59,6 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             tmpLine.attr('data-horizontal',horizontal)
 
             //Adding draggability:
-            //tmpLine.on('pointerdown', startDrag)
             tmpLine.on('pointerdown', function(event) {
                 startDrag(event, layerList, minorGridSize);
             });
@@ -88,7 +84,7 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
  * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @returns {*}
  */
-export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownCargoOpacity, cargoCounter, selectedCargoId, layerList) {
+export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownCargoOpacity, cargoCounter, selectedCargoId, layerList, top=true) {
     
     
     const cargoItem = getInventoryItemById(selectedCargoId);
@@ -96,6 +92,30 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
 
     if(cargoItem){
         if(!isCargoOnCargo(roundedX, roundedY, activeCargoLayer)){
+            const radius = minorGridSize * 0.375
+            let tmpShape = null
+
+            if(top){
+                tmpShape = activeCargoLayer.circle(2 * radius) // SVG.js uses diameter, not radius
+                                           .attr({ cx: roundedX, cy: roundedY })
+                                           .fill(cargoItem.color) // You can set the fill color here
+                                           .stroke(activeLayerColor) // You can set the stroke color here
+                                           .opacity(shownCargoOpacity);//shownOpacity * 1.25);
+            }
+            else {
+                tmpShape = activeCargoLayer.rect(2 * radius, 2 * radius) // SVG.js uses diameter, not radius
+                                           .move(roundedX - radius, roundedY - radius)
+                                           .fill(cargoItem.color) // You can set the fill color here
+                                           .stroke(activeLayerColor) // You can set the stroke color here
+                                           .opacity(shownCargoOpacity);//shownOpacity * 1.25);
+            }
+
+            tmpShape.attr('class',"cargo")
+            tmpShape.attr('data-cargo-component', 'shape')
+            tmpShape.attr('data-default-color', defaultColor)
+            tmpShape.attr('pointer-events', 'none');
+
+            /*
             const circleRadius = minorGridSize * 0.375; // Diameter is 75% of minorGridSize
             let tmpCircle = activeCargoLayer.circle(2 * circleRadius) // SVG.js uses diameter, not radius
                                             .attr({ cx: roundedX, cy: roundedY })
@@ -106,11 +126,12 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
             tmpCircle.attr('data-cargo-component', 'circle')
             tmpCircle.attr('data-default-color', defaultColor)
             tmpCircle.attr('pointer-events', 'none');
+            */
     
             // Adding text (tag) to the cargo
             let text = activeCargoLayer.text(cargoItem.tag)
-                .attr({ x: roundedX, y: roundedY - circleRadius, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
-                .attr({'stroke-width': circleRadius/20})
+                .attr({ x: roundedX, y: roundedY - radius, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
+                .attr({'stroke-width': radius/20})
                 .font({ size: minorGridSize * 0.4, family: 'Arial', weight: 'bold' , stroke: '#000000'})
                 .fill('#FFFFFF'); // White text
             text.attr('pointer-events', 'none');
@@ -119,10 +140,10 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
     
             // Function to adjust text size
             function adjustTextSize() {
-                let fontSize = circleRadius;
+                let fontSize = radius;
                 text.font({ size: fontSize });
                 
-                while (text.length() > circleRadius * 1.8) {
+                while (text.length() > radius * 1.8) {
                     fontSize *= 0.9;
                     text.font({ size: fontSize });
                     text.attr({ x: roundedX, y: roundedY - 1.25*fontSize, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
@@ -133,8 +154,8 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
     
             // Group the circle and text
             let group = activeCargoLayer.group()
-            group.add(tmpCircle).add(text);
-            //group.on('pointerdown', startDrag);
+            //group.add(tmpCircle).add(text);
+            group.add(tmpShape).add(text);
             group.on('pointerdown', function(event) {
                 startDrag(event, layerList, minorGridSize);
             });

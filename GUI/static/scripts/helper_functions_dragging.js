@@ -72,7 +72,17 @@ export function startDrag(event, layerList, minorGridSize) {
     if(drawSlatCargoHandleMode == 0){
         activeLayer = getActiveLayer(layerList).fullLayer[1]
     } else if(drawSlatCargoHandleMode == 1){
-        activeLayer = getActiveLayer(layerList).fullLayer[2]
+
+        let topCargoButton = document.getElementById('top-layer-selector')
+        let bottomCargoButton = document.getElementById('bottom-layer-selector')
+        
+        if(topCargoButton.classList.contains('h25-toggle-selected')){
+            activeLayer = getActiveLayer(layerList).fullLayer[3]
+        }
+        else if(bottomCargoButton.classList.contains('h25-toggle-selected')){
+            activeLayer = getActiveLayer(layerList).fullLayer[2]
+        }
+
     } else if(drawSlatCargoHandleMode == 2){
         activeLayer = getActiveLayer(layerList).fullLayer[0]
     }
@@ -138,7 +148,17 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
     if(drawSlatCargoHandleMode == 0){
         activeLayer = getActiveLayer(layerList).fullLayer[1]
     } else if(drawSlatCargoHandleMode == 1){
-        activeLayer = getActiveLayer(layerList).fullLayer[2]
+        
+        let topCargoButton = document.getElementById('top-layer-selector')
+        let bottomCargoButton = document.getElementById('bottom-layer-selector')
+        
+        if(topCargoButton.classList.contains('h25-toggle-selected')){
+            activeLayer = getActiveLayer(layerList).fullLayer[3]
+        }
+        else if(bottomCargoButton.classList.contains('h25-toggle-selected')){
+            activeLayer = getActiveLayer(layerList).fullLayer[2]
+        }
+        
     } else if(drawSlatCargoHandleMode == 2){
         activeLayer = getActiveLayer(layerList).fullLayer[0]
     }

@@ -1,10 +1,10 @@
 // Sample inventory data
 let inventoryData = [
-    {id: "default_GFP", name: "Green Fluorescent Protein", tag: "GFP", color: "#00FF00", plate: "", driver: ""},
-    {id: "default_RFP", name: "Red Fluorescent Protein", tag: "RFP", color: "#FF0000", plate: "", driver: ""},
-    {id: "default_AB1", name: "Antibody 1", tag: "Ab1", color: "#0000FF", plate: "", driver: ""},
-    {id: "default_AB2", name: "Antibody 2", tag: "Ab2", color: "#FFFF00", plate: "", driver: ""},
-    {id: "default_DH", name: "Dummy Handle", tag: "DH", color: "#FF00FF", plate: "", driver: ""}
+    {id: "default_GFP", name: "Green Fluorescent Protein", tag: "GFP", color: "#00FF00", plate: "", details: ""},
+    {id: "default_RFP", name: "Red Fluorescent Protein", tag: "RFP", color: "#FF0000", plate: "", details: ""},
+    {id: "default_AB1", name: "Antibody 1", tag: "Ab1", color: "#0000FF", plate: "", details: ""},
+    {id: "default_AB2", name: "Antibody 2", tag: "Ab2", color: "#FFFF00", plate: "", details: ""},
+    {id: "default_DH", name: "Dummy Handle", tag: "DH", color: "#FF00FF", plate: "", details: ""}
 ];
 
 updateInventoryItems()
@@ -23,9 +23,6 @@ bottomLayerButton.addEventListener('click', (event)=>{
     bottomLayerButton.classList.add('h25-toggle-selected')
     topLayerButton.classList.remove('h25-toggle-selected')
 })
-
-
-
 
 
 
@@ -146,7 +143,7 @@ export function populateCargoPalette() {
  * @returns {{color, tag, name, id: (number|number)}}
  */
 // Function to add a new inventory item
-export function addInventoryItem(name, tag, color, plate, driver) {
+export function addInventoryItem(name, tag, color, plate, details) {
     const newId = inventoryData.length + 1;
     const newItem = {
         id: newId,
@@ -154,7 +151,7 @@ export function addInventoryItem(name, tag, color, plate, driver) {
         tag: tag,
         color: color,
         plate: plate,
-        driver: driver
+        details: details
     };
     inventoryData.push(newItem);
     populateCargoPalette();
@@ -190,7 +187,7 @@ export function renderInventoryTable() {
             <td><input type="text" value="${item.tag}" name="tag" style="width: 100px;"></td>
             <td><input type="color" value="${item.color}" name="color"></td>
             <td>${item.plate}</td>
-            <td>${item.driver}</td>
+            <td>${item.details}</td>
             <td>
                 <button id="inventory-remove-item">Remove</button>
             </td>
@@ -217,7 +214,7 @@ export function renderInventoryTable() {
 
             // Loop through the selected elements
             elementsWithSpecificCargoId.forEach(element => {
-                const circle = element.querySelectorAll(`[data-cargo-component="circle"]`)[0]
+                const circle = element.querySelectorAll(`[data-cargo-component="shape"]`)[0]
                 const text = element.querySelectorAll(`[data-cargo-component="text"]`)[0]
                 console.log(text)
                 text.firstChild.textContent = item.tag; //We need to do child bc there is a tspan in the <text> element...
@@ -233,7 +230,7 @@ export function renderInventoryTable() {
 
             // Loop through the selected elements
             elementsWithSpecificCargoId.forEach(element => {
-                const circle = element.querySelectorAll(`[data-cargo-component="circle"]`)[0]
+                const circle = element.querySelectorAll(`[data-cargo-component="shape"]`)[0]
                 const text = element.querySelectorAll(`[data-cargo-component="text"]`)[0]
                 circle.setAttribute('fill', item.color);
             });
@@ -261,8 +258,6 @@ export function updatePlates() {
     socket.emit('list_plates')
     socket.on('list_plates_response', function(files) {
 
-
-
         var fileList = document.getElementById('file-list');
         fileList.innerHTML = ''; // Clear any existing content
     
@@ -273,9 +268,6 @@ export function updatePlates() {
             fileContainer.textContent = file;
             fileList.appendChild(fileContainer);
         });
-
-        
-
     });
 
 
