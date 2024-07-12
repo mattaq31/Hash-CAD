@@ -41,7 +41,7 @@ class BasePlate:
             name_encoding = names.iloc[0, 0]
 
             name_encoding_dict = {}
-            for index, name in enumerate(name_encoding.split('-')):
+            for index, name in enumerate(name_encoding.split('_')):
                 name_encoding_dict[name] = index
 
             self.name_encoding = name_encoding_dict
