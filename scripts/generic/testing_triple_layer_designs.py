@@ -9,7 +9,7 @@ from crisscross.plate_mapping import get_plateclass
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
                                                          seed_plug_plate_corner, seed_plug_plate_center,
-                                                         octahedron_patterning_v1, cargo_plate_folder,
+                                                         octahedron_patterning_v1, old_format_cargo_plate_folder,
                                                          nelson_quimby_antihandles, h2_biotin_direct)
 import os
 
@@ -44,7 +44,7 @@ crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
 
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-cargo_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
+cargo_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
 
 # slat_array, x_slats, y_slats = generate_standard_square_slats(32)
 # unique_slats_per_layer = []

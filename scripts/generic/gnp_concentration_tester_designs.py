@@ -13,7 +13,7 @@ from crisscross.helper_functions.standard_sequences import simpsons_anti, simpso
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
                                                          crisscross_h5_handle_plates,
                                                          seed_plug_plate_corner, seed_plug_plate_center,
-                                                         octahedron_patterning_v1, cargo_plate_folder,
+                                                         octahedron_patterning_v1, old_format_cargo_plate_folder,
                                                          nelson_quimby_antihandles, h2_biotin_direct)
 from crisscross.plate_mapping import get_plateclass
 
@@ -59,8 +59,8 @@ crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_han
                                      plate_slat_sides=[5, 5, 5])
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, cargo_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
+cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
+nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
 ########################################
 
 ########################################

@@ -10,6 +10,7 @@ base_directory = os.path.abspath(join(__file__, os.path.pardir, os.path.pardir, 
 core_plate_folder = join(base_directory, 'core_plates')
 assembly_handle_folder = join(base_directory, 'assembly_handle_plates')
 cargo_plate_folder = join(base_directory, 'cargo_plates')
+old_format_cargo_plate_folder = join(cargo_plate_folder, 'old_format')
 
 crisscross_h5_handle_plates = ["P3247_SW_handles", "P3248_SW_handles", "P3249_SW_handles",
                                "P3250_SW_antihandles", "P3251_CW_antihandles",

@@ -8,15 +8,15 @@ from collections import defaultdict
 import pandas as pd
 
 
-
 class BasePlate:
     """
     Base class for plate readers.  The pattern used to identify the wells and sequences needs to be defined in a subclass.
     Once all data read in, access can be facilitated via a standard 3-element index of the slat position (1-32),
     the slat side (H2 or H5) and the cargo ID (which can vary according to the specific plate in question).
     """
+
     def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_style='2d_excel', plate_size=384,
-                 generic_cargo_plate = False):
+                 delay_well_identification=False):
 
         if isinstance(plate_name, str):
             plate_name = [plate_name]
@@ -35,17 +35,7 @@ class BasePlate:
 
         self.wells = defaultdict(bool)
         self.sequences = defaultdict(bool)
-        if(generic_cargo_plate):
-            all_data = pd.ExcelFile(os.path.join(self.plate_folder, plate + '.xlsx'))
-            names = all_data.parse("Names", header=None)
-            name_encoding = names.iloc[0, 0]
-
-            name_encoding_dict = {}
-            for index, name in enumerate(name_encoding.split('_')):
-                name_encoding_dict[name] = index
-
-            self.name_encoding = name_encoding_dict
-        else:
+        if not delay_well_identification:
             self.identify_wells_and_sequences()
 
     def identify_wells_and_sequences(self):

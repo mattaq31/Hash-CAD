@@ -10,7 +10,7 @@ from crisscross.plate_mapping import get_plateclass
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center, cargo_plate_folder, simpsons_mixplate_antihandles,
+                                                         seed_plug_plate_center, old_format_cargo_plate_folder, simpsons_mixplate_antihandles,
                                                          nelson_quimby_antihandles, seed_plug_plate_corner)
 ############### DESIGN PREPARATION ###############
 output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
@@ -141,8 +141,8 @@ crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[0:3],
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
-simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
+nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
+simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, old_format_cargo_plate_folder)
 edge_seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 
 # Prepares the seed array, assuming the first position will start from the far right of the layer

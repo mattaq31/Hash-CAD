@@ -15,7 +15,7 @@ from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
                                                          crisscross_h5_handle_plates, crisscross_h2_handle_plates,
                                                          seed_plug_plate_corner, seed_plug_plate_center,
-                                                         cargo_plate_folder, nelson_quimby_antihandles,
+                                                         old_format_cargo_plate_folder, nelson_quimby_antihandles,
                                                          octahedron_patterning_v1)
 from crisscross.plate_mapping import get_plateclass
 from crisscross.helper_functions.plate_constants import plate96
@@ -37,8 +37,8 @@ crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross
                                             assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
-bart_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, cargo_plate_folder)
+nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
+bart_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
 ################################
 
 ################################

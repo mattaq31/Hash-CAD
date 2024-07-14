@@ -12,7 +12,7 @@ from capc_pattern_generator import capc_pattern_generator
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center, cargo_plate_folder, octahedron_patterning_v1,
+                                                         seed_plug_plate_center, old_format_cargo_plate_folder, octahedron_patterning_v1,
                                                          nelson_quimby_antihandles, simpsons_mixplate_antihandles, seed_plug_plate_corner)
 
 design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/CAPCs/version_1'
@@ -63,9 +63,9 @@ crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross
                                             assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
 center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
-octahedron_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, cargo_plate_folder)
-bart_edna_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
+nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
+octahedron_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
+bart_edna_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, old_format_cargo_plate_folder)
 ########################################
 
 M1_peripheral_dispersed = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])

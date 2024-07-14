@@ -13,7 +13,7 @@ from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
                                                          crisscross_h5_handle_plates,
                                                          seed_plug_plate_corner, seed_plug_plate_center,
-                                                         octahedron_patterning_v1, cargo_plate_folder,
+                                                         octahedron_patterning_v1, old_format_cargo_plate_folder, cargo_plate_folder,
                                                          nelson_quimby_antihandles, h2_biotin_direct)
 from crisscross.plate_mapping import get_plateclass
 
@@ -26,7 +26,7 @@ create_dir_if_empty(output_folder)
 
 np.random.seed(8)
 read_handles_from_file = True
-read_cargo_patterns_from_file = False
+read_cargo_patterns_from_file = True
 ########################################
 
 ########################################
@@ -139,7 +139,7 @@ print('Total new sequences required: %s' % len(full_attachment_df))
 ########################################
 # generates new cargo plate or reads from file TODO: can a standard set of core plates be read within a single function?
 if read_cargo_patterns_from_file:
-    cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, cargo_plate_folder)
+    cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
 else:
     # exports sequences to a new plate
     generate_new_plate_from_slat_handle_df(full_attachment_df, output_folder, 'new_cargo_strands.xlsx',
@@ -154,7 +154,7 @@ else:
                                  pre_read_plate_dfs=[idt_plate])
 
 nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles,
-                              cargo_plate_folder)
+                              old_format_cargo_plate_folder)
 biotin_plate = get_plateclass('DirectBiotinPlate', h2_biotin_direct,
                               cargo_plate_folder)
 ########################################

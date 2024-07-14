@@ -10,7 +10,7 @@ from crisscross.plate_mapping import get_plateclass
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder, 
-                                                         cargo_plate_folder, seed_plug_plate_center, 
+                                                         old_format_cargo_plate_folder, seed_plug_plate_center,
                                                          nelson_quimby_antihandles)
 
 DesignFolder = "/Users/stellawang/Dropbox (HMS)/crisscross_team/Crisscross Designs/SW099_kineticsweep_design"
@@ -62,7 +62,7 @@ CrisscrossHandleXPlates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[0:3],
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 CenterSeedPlate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-CargoPlate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder) 
+CargoPlate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
 
 # Combines handle and slat array into the megastructure
 KineticMegastructure = Megastructure(SlatArray, [2, (5, 5), 2])

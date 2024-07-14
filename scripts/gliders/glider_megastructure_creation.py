@@ -10,7 +10,7 @@ from crisscross.plate_mapping import get_plateclass
 
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center, cargo_plate_folder,
+                                                         seed_plug_plate_center, old_format_cargo_plate_folder,
                                                          nelson_quimby_antihandles)
 
 
@@ -80,7 +80,7 @@ convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_fol
 
 cargo_file = 'cargo_array_v2.xlsx'
 cargo_array = pd.read_excel(os.path.join(design_folder, cargo_file), sheet_name=None, header=None)['Layer_2_cargo'].values
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, cargo_plate_folder)
+nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
 
 nelson_mega = Megastructure(slat_array, None, connection_angle='60')
 nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)

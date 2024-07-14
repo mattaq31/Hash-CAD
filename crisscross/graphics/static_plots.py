@@ -119,6 +119,9 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
             cargo_color_values = cargo_array[cargo_plot_points]
             cargo_color_values_rgb = []
             for col_id in cargo_color_values:
+                if int(col_id) >= len(mpl.colormaps[cargo_colormap].colors):
+                    print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. Recycling other colors for the higher IDs.' % col_id)
+                    col_id = max(int(col_id) - len(mpl.colormaps[cargo_colormap].colors), 0)
                 cargo_color_values_rgb.append(mpl.colormaps[cargo_colormap].colors[int(col_id)])
 
             transformed_cpp = [cargo_plot_points[0] * grid_yd, cargo_plot_points[1] * grid_xd]

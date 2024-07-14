@@ -1,31 +1,38 @@
 from crisscross.plate_mapping import BasePlate
 import math
-
-
-
+import pandas as pd
+import os
 
 
 class GenericPlate(BasePlate):
     """
-    Cargo plate (FILL IN NAME) containing Bart and Edna antiHandles for all 32 H5 slat positions.
+    A generic cargo plate system that can read in any plate file with the handle-position-cargo syntax
+    defined in the top left cell.  ID numbers are assigned to cargo at run-time.
     """
+
     def __init__(self, *args, **kwargs):
         self.cargo_key = {}
-        super().__init__(*args, generic_cargo_plate = True, **kwargs)
+        super().__init__(*args, delay_well_identification=True, **kwargs)
 
+        # reads in the encoding format from the top left cell of the plate 'Names' sheet
+        all_data = pd.ExcelFile(os.path.join(self.plate_folder, self.plate_names[0] + '.xlsx'))
+        names = all_data.parse("Names", header=None)
+        name_encoding = names.iloc[0, 0]
+        self.name_encoding = {}
+        for index, name in enumerate(name_encoding.split('_')):  # TODO: so the only advantage of this system is that the name/side/position can be interchanged?
+            self.name_encoding[name] = index
+
+        # prepares an ID for all cargo types available in the plate
         full_name_list = self.plates[0]['name'].tolist()
         short_name_list = [name.split('_')[self.name_encoding['name']] for name in full_name_list]
-        unique_name_list =list(set(short_name_list)) #Removes duplicates
+        unique_name_list = list(set(short_name_list))  # Removes duplicates
 
-        tmp_cargo_key = {}
+        # assigns an ID to each unique cargo type TODO: this new system assigns numbers that do not match old system!
+        self.cargo_key = {}
         for index, name in enumerate(unique_name_list):
-            tmp_cargo_key[index+1] = name
-
-        self.cargo_key = tmp_cargo_key
+            self.cargo_key[index + 1] = name
 
         self.identify_wells_and_sequences()
-
-
 
     def identify_wells_and_sequences(self):
         for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
@@ -33,9 +40,6 @@ class GenericPlate(BasePlate):
                                       self.plates[0]['sequence'].tolist()):
 
             cargo = pattern.split('_')[self.name_encoding['name']]
-
-            if cargo not in self.cargo_key.values():
-                raise RuntimeError('The plate file does not match the expected pattern for this plate.')
 
             position_str = pattern.split('_')[self.name_encoding['position']]
             int_string = ''.join(ch for ch in position_str if ch.isdigit())
@@ -52,24 +56,11 @@ class GenericPlate(BasePlate):
         return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class OctahedronPlate(BasePlate):
     """
     Cargo plate created in February 2024 for an octahedron placement system (collab with Oleg Gang's group)
     """
+
     def __init__(self, *args, **kwargs):
         self.cargo_key = {
             'Homer': 4,
@@ -96,7 +87,8 @@ class OctahedronPlate(BasePlate):
             else:
                 cargo = self.cargo_key[pattern.split('_h')[0].split('mer-')[-1]] + 7
 
-            key = (int(pattern.split('_cargo_handle_')[-1]) if 'cargo_handle' in pattern else -1, 2 if '_h2_' in pattern else 5, cargo)
+            key = (int(pattern.split('_cargo_handle_')[-1]) if 'cargo_handle' in pattern else -1,
+                   2 if '_h2_' in pattern else 5, cargo)
 
             self.wells[key] = well
             self.sequences[key] = seq
@@ -106,6 +98,7 @@ class AntiNelsonQuimbyPlate(BasePlate):
     """
     Cargo plate (sw_src005) created by Stella containing Nelson and Quimby antiHandles for all 32 slat positions.
     """
+
     def __init__(self, *args, **kwargs):
         self.cargo_key = {
             3: 'Nelson',
@@ -139,6 +132,7 @@ class SimpsonsMixPlate(BasePlate):
     """
     Cargo plate (FILL IN NAME) containing Bart and Edna antiHandles for all 32 H5 slat positions.
     """
+
     def __init__(self, *args, **kwargs):
         self.cargo_key = {
             1: 'Bart',
@@ -181,6 +175,7 @@ class DirectBiotinPlate(BasePlate):
     Cargo plate (P3510_SSW) created by Stella containing various DNA paint handles (Fribourg collab)
     and two additional H2 poly-T handles with biotin directly attached.
     """
+
     def __init__(self, *args, **kwargs):
         self.cargo_key = {
             3: 'biotin',
