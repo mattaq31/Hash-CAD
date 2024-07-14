@@ -1,16 +1,10 @@
-
 import numpy as np
 import os
-
-
-# For getting inventory plate drivers
-from os.path import join
-import ast
 
 from crisscross.plate_mapping import get_plateclass
 
 
-def slat_dict_to_array(grid_dict, trim_offset = False):
+def slat_dict_to_array(grid_dict, trim_offset=False):
     """
     Converts a slat dictionary (produced by javascript) into a slat array.
     :param grid_dict: dictionary of slat IDs by (x,y,layer) coordinates.
@@ -20,25 +14,26 @@ def slat_dict_to_array(grid_dict, trim_offset = False):
     # Parse the keys to determine the dimensions
     max_x = max(int(key.split(',')[0]) for key in grid_dict.keys()) + 1
     max_y = max(int(key.split(',')[1]) for key in grid_dict.keys()) + 1
-    min_x = 0 #min(int(key.split(',')[0]) for key in grid_dict.keys())
-    min_y = 0 #min(int(key.split(',')[1]) for key in grid_dict.keys())
+    min_x = 0  # min(int(key.split(',')[0]) for key in grid_dict.keys())
+    min_y = 0  # min(int(key.split(',')[1]) for key in grid_dict.keys())
     max_layer = max(int(key.split(',')[2]) for key in grid_dict.keys()) + 1
 
-    if(trim_offset==True):
+    if (trim_offset == True):
         min_x = min(int(key.split(',')[0]) for key in grid_dict.keys())
         min_y = min(int(key.split(',')[1]) for key in grid_dict.keys())
 
     # Initialize the array
-    array = np.zeros((max_x-min_x, max_y-min_y, max_layer))
+    array = np.zeros((max_x - min_x, max_y - min_y, max_layer))
 
     # Populate the array
     for key, slatId in grid_dict.items():
         x, y, layer = map(int, key.split(','))
-        array[x-min_x, y-min_y, layer] = slatId
+        array[x - min_x, y - min_y, layer] = slatId
 
     return array
 
-def cargo_dict_to_array(grid_dict, trim_offset = False, slat_grid_dict ={}):
+
+def cargo_dict_to_array(grid_dict, trim_offset=False, slat_grid_dict={}):
     """
     Converts a cargo dictionary (produced by javascript) into a cargo array.
     :param grid_dict: dictionary of cargo IDs by (x,y,layer) coordinates.
@@ -61,14 +56,15 @@ def cargo_dict_to_array(grid_dict, trim_offset = False, slat_grid_dict ={}):
         min_y = min(int(key.split(',')[1]) for key in slat_grid_dict.keys())
 
     # Initialize the array
-    array = np.zeros((max_x-min_x, max_y-min_y, max_layer), dtype='<U100')
+    array = np.zeros((max_x - min_x, max_y - min_y, max_layer), dtype='<U100')
 
     # Populate the array
     for key, cargo_type in grid_dict.items():
         x, y, layer = map(int, key.split(','))
-        array[x-min_x, y-min_y, layer] = str(cargo_type)
+        array[x - min_x, y - min_y, layer] = str(cargo_type)
 
     return array
+
 
 def array_to_dict(array):
     """
@@ -86,9 +82,6 @@ def array_to_dict(array):
                 if entry != 0:
                     dict[f'{x},{y},{layer}'] = entry
     return dict
-
-
-
 
 
 # Function to create the acronym
@@ -112,8 +105,6 @@ def create_acronym(word):
     return acronym
 
 
-
-
 def convert_np_to_py(data):
     if isinstance(data, dict):
         return {key: convert_np_to_py(value) for key, value in data.items()}
@@ -129,42 +120,22 @@ def convert_np_to_py(data):
         return data
 
 
-
-def getDriverNames(plate_mapping_filepath):
-    base_directory = os.path.abspath(join(__file__, os.path.pardir, os.path.pardir))
-
-    available_plate_loaders = {}
-
-    for file in os.listdir(plate_mapping_filepath):
-        if file == '.DS_Store' or file == '__init__.py' or '.py' not in file:
-            continue
-        p = ast.parse(open(os.path.join(plate_mapping_filepath, file), 'r').read())
-        classes = [node.name for node in ast.walk(p) if isinstance(node, ast.ClassDef)]
-        for _class in classes:
-            available_plate_loaders[_class] = 'crisscross.plate_mapping.%s.%s' % (file.split('.py')[0], _class)
-
-    return list(available_plate_loaders.keys())
-
-
-
-
-
 def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
     plate = get_plateclass('GenericPlate', os.path.basename(cargo_plate_filepath), cargo_plate_folder)
-    #plate = createGenericPlate(os.path.basename(cargo_plate_filepath) + ".xlsx", cargo_plate_folder )
+    # plate = createGenericPlate(os.path.basename(cargo_plate_filepath) + ".xlsx", cargo_plate_folder )
     plate_cargo_dict = plate.cargo_key
 
     # Create the list of elements with the specified format
     inventory = []
     hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
     for id_char, name in plate_cargo_dict.items():
-        #tag = create_acronym(id_name)
+        # tag = create_acronym(id_name)
         id_num = int(id_char)
         element = {
             "id": str(id_num) + "-plate:" + os.path.basename(cargo_plate_filepath),
             "name": name,
             "tag": name,
-            "color": hexColors[len(inventory)%6],
+            "color": hexColors[len(inventory) % 6],
             "plate": os.path.basename(cargo_plate_filepath)
         }
         inventory.append(element)
@@ -183,7 +154,7 @@ def break_array_by_plates(array):
 
     # Dictionary to store arrays for each unique tag
     plate_arrays = {plate: np.zeros_like(array, dtype=int) for plate in unique_plates}
-    #plate_arrays = dict((plate, np.zeros_like(array, dtype=int)) for plate in unique_plates)
+    # plate_arrays = dict((plate, np.zeros_like(array, dtype=int)) for plate in unique_plates)
 
     # Iterate over the array and populate the tag-specific arrays
     for plate in unique_plates:
