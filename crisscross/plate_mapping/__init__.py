@@ -5,8 +5,6 @@ import ast
 from pydoc import locate
 from collections import defaultdict
 
-import pandas as pd
-
 
 class BasePlate:
     """
