@@ -389,7 +389,7 @@ class Megastructure:
         else:
             assembly_groups = None
 
-        create_graphical_3D_view_bpy(self.slat_array, save_folder, slats=self.slats,
+        create_graphical_3D_view_bpy(self.slat_array, save_folder, slats=self.slats, seed_layer_and_array=self.seed_array,
                                      animate_slat_group_dict=assembly_groups,
                                      connection_angle=self.connection_angle,
                                      colormap=colormap)

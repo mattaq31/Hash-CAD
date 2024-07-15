@@ -129,26 +129,70 @@ def check_slat_animation_direction(start_point, end_point, current_slat_id, curr
 
     current_group = animate_slat_group_dict[current_slat_id]
     if current_group == 0:
-        return (start_point, end_point)  # no adjustments necessary if the slat is in the first group to be animated
+        return start_point, end_point  # no adjustments necessary if the slat is in the first group to be animated
 
     for slat_id, slat in slats.items():
         if animate_slat_group_dict[slat_id] < current_group:
             if start_point in slat.slat_coordinate_to_position and np.abs(slat.layer - current_layer) == 1:
-                return (start_point, end_point)  # no adjustments necessary if the slat start point is covered by other slats (either directly above or below)
+                return start_point, end_point  # no adjustments necessary if the slat start point is covered by other slats (either directly above or below)
 
     # if the start point is never covered by any other slat, then it needs to be flipped with the end point for the animation to look nicer
     # there could be a case where the start point and end point both aren't covered, in which case the animation can come from either direction
-    return (end_point, start_point)
+    return end_point, start_point
+
+
+def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid_xd, grid_yd):
+    """
+    Interprets the seed array and places seed cylinders in the Blender scene.
+    Makes the assumption that np.where can correctly figure out where each seed cylinder starts/stops.
+    If there are errors here, this will need to be fixed.
+    :param seed_layer_and_array: A tuple of the layer the seed is attached to and the seed position array
+    :param seed_material: The material to use for the seed
+    :param seed_length: The length of each seed cylinder
+    :param grid_xd: The grid x-jump distance
+    :param grid_yd: The grid y-jump distance
+    :return: N/A
+    """
+
+    layer = seed_layer_and_array[0]-1  # -1 as the seed is underneath the particular slat layer
+    seed_array = seed_layer_and_array[1]
+
+    start_points = np.where(seed_array == 1)  # assumes np.where can correctly order the different start/end points
+    end_points = np.where(seed_array == 16)
+
+    # runs through the standard slat cylinder creation process, creating 5 cylinders for each seed
+    for index, (sx, sy, ex, ey) in enumerate(zip(start_points[0], start_points[1], end_points[0], end_points[1])):
+        pos1 = (sx, sy)
+        pos2 = (ex, ey)
+
+        start_point = (pos1[1] * grid_xd, pos1[0] * grid_yd, layer - 1)
+        end_point = (pos2[1] * grid_xd, pos2[0] * grid_yd, layer - 1)
+        blender_vec_1 = mathutils.Vector(start_point)
+        blender_vec_2 = mathutils.Vector(end_point)
+
+        center = ((start_point[0] + end_point[0]) / 2, (start_point[1] + end_point[1]) / 2, layer - 1)
+
+        direction = (blender_vec_2 - blender_vec_1).normalized()
+        up = mathutils.Vector((0, 0, 1))
+        rotation = up.rotation_difference(direction).to_euler()
+
+        bpy.ops.mesh.primitive_cylinder_add(location=center, radius=slat_width / 2, rotation=rotation, depth=seed_length)
+        bpy.context.object.name = 'seed-%s' % index
+        bpy.ops.object.shade_smooth()
+        bpy.context.object.data.materials.append(seed_material)
 
 
 def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None, animate_delay_frames=40,
-                                 connection_angle='90', camera_spin=False, colormap='Set1'):
+                                 connection_angle='90', seed_layer_and_array=None, camera_spin=False, colormap='Set1'):
     """
     Creates a 3D video of a megastructure slat design. TODO: add cargo and seeds to this view too.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
     :param save_folder: Folder to save all video to.
     :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
+    :param animate_slat_group_dict: Dictionary of slat IDs and the group they belong to for animation
+    :param animate_delay_frames: Number of frames to delay between each slat group animation
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
+    :param seed_layer_and_array: Tuple of the seed layer and seed array to be added to the design (or None if no seed to be added)
     :param camera_spin: Set to True to have the camera spin around the design
     :param colormap: Colormap to extract layer colors from
     :return: N/A
@@ -172,6 +216,11 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     cylinder_min_boundaries = [np.inf, np.inf, np.inf]
     cylinder_max_boundaries = [0, 0, 0]
     max_frame = 0
+
+    if seed_layer_and_array is not None:
+        seed_material = create_slat_material((1, 0, 0) + (1,), f'Seed Material')
+        interpret_seed_system(seed_layer_and_array, seed_material, seed_length=list(slats.values())[0].max_length/2,
+                              grid_xd=grid_xd, grid_yd=grid_yd)
 
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
 
