@@ -228,7 +228,6 @@ class Megastructure:
         complete_slats = set()
         while slat_count < len(self.slats):  # will loop through the design until all slats have been given a home
             if slat_count == 0:  # first extracts slats that will attach to the seed
-
                 first_step_slats = set()
                 seed_coords = np.where(self.seed_array[1] > 0)
                 for y, x in zip(seed_coords[0], seed_coords[1]):  # extracts the slat ids from the layer connecting to the seed
@@ -253,7 +252,7 @@ class Megastructure:
                                 slat_overlap_counts[(layer+1, self.slat_array[y, x, layer])] += 1
                 next_slat_group = []
                 for k, v in slat_overlap_counts.items():
-                    # a slat is considered stable when it has a minimum of the target handle number stably attached
+                    # a slat is considered stable when it has the defined minimum handle count stably attached
                     if v >= minimum_handle_cutoff and k not in complete_slats:
                         next_slat_group.append(k)
                 complete_slats.update(next_slat_group)
@@ -262,9 +261,21 @@ class Megastructure:
 
         slat_id_animation_classification = {}
 
-        for order, group in enumerate(slat_groups):
+        # final loop to further separate all slats in a group into several sub-groups based on their layer.
+        # This should match reality more but then the issue is that it is impossible to predict which group will
+        # be assembled first (this depends on what the user prefers).
+        # In that case, the user will need to supply their own manual slat groups.
+        group_tracker = 0
+        for _, group in enumerate(slat_groups):
+            current_layer = 0
             for slat in group:
-                slat_id_animation_classification[get_slat_key(*slat)] = order
+                if current_layer == 0:
+                    current_layer = slat[0]
+                elif current_layer != slat[0]:
+                    group_tracker += 1
+                    current_layer = slat[0]
+                slat_id_animation_classification[get_slat_key(*slat)] = group_tracker
+            group_tracker += 1
 
         return slat_id_animation_classification
 
@@ -360,16 +371,21 @@ class Megastructure:
         create_graphical_3D_view(self.slat_array, save_folder, slats=self.slats, connection_angle=self.connection_angle,
                                  window_size=window_size, colormap=colormap)
 
-    def create_blender_3D_view(self, save_folder, animate_assembly=False, colormap='Set1'):
+    def create_blender_3D_view(self, save_folder, animate_assembly=False,
+                               custom_assembly_groups=None, colormap='Set1'):
         """
         Creates a 3D model of the megastructure slat design as a Blender file.
         :param save_folder: Folder to save all video to.
         :param animate_assembly: Set to true to also generate an animation of the design being assembled group by group
+        :param custom_assembly_groups: If set, will use the specific provided dictionary to assign slats to the animation order.
         :param colormap: Colormap to extract layer colors from
         :return: N/A
         """
         if animate_assembly:
-            assembly_groups = self.get_slats_by_assembly_stage()
+            if custom_assembly_groups:
+                assembly_groups = custom_assembly_groups
+            else:
+                assembly_groups = self.get_slats_by_assembly_stage()
         else:
             assembly_groups = None
 
