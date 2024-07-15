@@ -134,7 +134,12 @@ export function updateHandleLayers(layerList){
         handleLayerItem.appendChild(layerDivider)
         handleLayerItem.appendChild(h25BottomDiv)
 
-        handleLayerViewer.appendChild(handleLayerItem);
+        if (handleLayerViewer.firstChild){
+            handleLayerViewer.insertBefore(handleLayerItem, handleLayerViewer.firstChild)
+        }
+        else{
+            handleLayerViewer.appendChild(handleLayerItem)
+        }
 
     });
 

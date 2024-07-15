@@ -317,6 +317,16 @@ export function importDesign(slatDict, bottomCargoDict, topCargoDict,  layerList
  */
 export function importHandles(handleDict, layerList, minorGridSize){
 
+    //First, clear old handles!
+    layerList.forEach((layer, layerIndex) => {
+        const layerElement = layer[0]; 
+        layerElement.children().forEach(child => {
+            child.remove();
+        });
+
+    })
+
+
     // Iterate through the dictionary
     for (const [key, value] of Object.entries(handleDict)) {
         

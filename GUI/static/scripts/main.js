@@ -330,6 +330,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         //1 for cargo
         //2 for handles
     const drawModeSelector = document.getElementById('palette-type-selector');
+    const slatPalette = document.getElementById('slat-palette')
     const cargoPalette = document.getElementById('cargo-palette');
     const handlePalette = document.getElementById('handle-palette');
 
@@ -338,10 +339,14 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log("draw mode: "+drawSlatCargoHandleMode)
 
         // Show/hide cargo palette based on selection
+        slatPalette.style.display = 'none'
         handlePalette.style.display = 'none'
         cargoPalette.style.display = 'none'
 
-        if (drawSlatCargoHandleMode == 1) { // Cargo mode
+        if(drawSlatCargoHandleMode == 0){ //Slat mode
+            slatPalette.style.display = 'block'
+        }
+        else if (drawSlatCargoHandleMode == 1) { // Cargo mode
             cargoPalette.style.display = 'block';
             populateCargoPalette(); // Populate the cargo palette
             getHandleLayerDict(layerList)

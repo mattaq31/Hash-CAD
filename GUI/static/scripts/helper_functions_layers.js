@@ -47,7 +47,12 @@ export function addLayer() {
     layerItem.appendChild(colorPicker);
     layerItem.appendChild(removeButton);
 
-    layerList.appendChild(layerItem);
+    if (layerList.firstChild){
+        layerList.insertBefore(layerItem, layerList.firstChild)
+    }
+    else{
+        layerList.appendChild(layerItem)
+    }
 
     dispatchCustomLayerEvent('layerAdded', layerItem);
 

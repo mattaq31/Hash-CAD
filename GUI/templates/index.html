@@ -87,6 +87,10 @@
                     </select> 
                 </div>
 
+                <div id="slat-palette">
+                    <p>Note: press "alt" to rotate slat direction</p>
+                </div>
+
                 <div id="cargo-palette" style="display: none;">
                     <div id="cargo-handle-layer-selection">
                         <button id="top-layer-selector">Top Layer: H_</button>
@@ -116,22 +120,28 @@
                     <h4 class="centeredText">Handle Layers</h4>
                     <div id="handle-layers"></div>
                     <button id="generate-handles-button">Generate Handles</button>
-                    <button id="generate-megastructure-button">Generate Megastructure</button>
+                    
+                </div>
+                
+                
+                
+                
+
+                <div id="import-export">
+                    <div id="upload-dialog">
+                        <form id="upload-form" method="post" enctype="multipart/form-data">
+                            <input id="file-input" type="file" name="file"  required>
+                            <button id="file-submit" type="submit" >Upload</button>
+                        </form>
+                    </div>
+
+                    <hr id="import-export-divider">
+
+                    <button id="save-design">Save & Export Design</button>
                 </div>
                 
 
-                <p>Note: press "alt" to rotate slat direction</p>
-
-                
-                
-                <button id="save-design">Save Design</button>
-
-                <div id="upload-dialog">
-                    <form id="upload-form" method="post" enctype="multipart/form-data">
-                        <input id="file-input" type="file" name="file"  required>
-                        <button id="file-submit" type="submit" >Upload</button>
-                    </form>
-                </div>
+                <button id="generate-megastructure-button">Generate Megastructure</button>
                 
             </div>
 
@@ -139,6 +149,17 @@
 
             <div class="right-panel" id="right-panel">
                 <div id="svg-container"></div>   
+
+            </div>
+
+            <div class="resizer" id="resizer">3D</div>
+            <div class="right-3D-panel" id="right-3D-panel">
+                <!-- Use it like any other HTML element -->
+                <model-viewer id="three-D-model-viewer"
+                    alt="Test 3d Geometry" 
+                    src="{{url_for('static', filename='3D-geometry/3D_blender_view_glider_v2.glb')}}"
+                    shadow-intensity="1" camera-controls touch-action="pan-y">
+                </model-viewer>
 
             </div>
             
@@ -204,8 +225,13 @@
     <!-- Include SVG.draggable.js -->
     <script src="https://cdn.jsdelivr.net/gh/svgdotjs/svg.draggable.js/dist/svg.draggable.min.js"></script>
 
+    <!-- Include Model Viewer -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
     <script type="module" src="{{url_for('static', filename='scripts/main.js')}}"></script>
     <script type="module" src="{{url_for('static', filename='scripts/layermanager.js')}}"></script>
     <script type="module" src="{{url_for('static', filename='scripts/cargo.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='scripts/3D_viewer.js')}}"></script>
+    
 </body>
 </html>
