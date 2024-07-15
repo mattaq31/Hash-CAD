@@ -1,9 +1,39 @@
+let handleConfigDict = {}
+
+
+
+
 export function updateHandleLayers(layerList){
+    
     const handleLayerViewer = document.getElementById('handle-layers')
 
     handleLayerViewer.innerHTML = ''
 
     layerList.forEach((layer, layerIndex) => {
+
+        let toggleTopH2 = true
+        let toggleBottomH2 = false
+        if(layerIndex in handleConfigDict){
+            let configuration = handleConfigDict[layerIndex]
+        
+            if(configuration[0] == 2){
+                toggleTopH2 = true
+            }
+            else{
+                toggleTopH2 = false
+            }
+
+            if(configuration[1] == 2){
+                toggleBottomH2 = true
+            }
+            else{
+                toggleBottomH2 = false
+            }
+        }
+        else{
+            handleConfigDict[layerIndex] = [2,5]
+        }
+
 
         console.log(layer)
 
@@ -14,13 +44,13 @@ export function updateHandleLayers(layerList){
         
 
         const h25TopDropdown = document.createElement('select')
-        h25TopDropdown.options.add( new Option("H2", 2, true, true))
-        h25TopDropdown.options.add( new Option("H5", 5))
+        h25TopDropdown.options.add( new Option("H2", 2, toggleTopH2, toggleTopH2))
+        h25TopDropdown.options.add( new Option("H5", 5, !toggleTopH2, !toggleTopH2))
         h25TopDropdown.style.margin = '5px'
 
         const h25BottomDropdown = document.createElement('select')
-        h25BottomDropdown.options.add( new Option("H2", 2))
-        h25BottomDropdown.options.add( new Option("H5", 5, true, true))
+        h25BottomDropdown.options.add( new Option("H2", 2, toggleBottomH2, toggleBottomH2))
+        h25BottomDropdown.options.add( new Option("H5", 5, !toggleBottomH2, !toggleBottomH2))
         h25BottomDropdown.style.margin = '5px'
 
         
@@ -29,8 +59,6 @@ export function updateHandleLayers(layerList){
 
         const h25BottomDiv = document.createElement('div')
         h25BottomDiv.appendChild(h25BottomDropdown)
-
-
 
 
         h25TopDiv.addEventListener('click', function(event){
@@ -123,7 +151,7 @@ export function getHandleLayerDict(layerList){
     const childrenArray = Array.from(layerChildren);
 
 
-    let handleLayerDict = {}
+    handleConfigDict = {}
 
     layerList.forEach((layer, layerIndex) => {
         var layerElement = childrenArray[layerIndex]
@@ -136,12 +164,12 @@ export function getHandleLayerDict(layerList){
         var topH2H5 = topSelector.value
         var bottomH2H5 = bottomSelector.value
 
-        handleLayerDict[layerIndex] = [topH2H5, bottomH2H5]
+        handleConfigDict[layerIndex] = [topH2H5, bottomH2H5]
     })
 
-    console.log(handleLayerDict)
+    console.log(handleConfigDict)
 
-    return handleLayerDict
+    return handleConfigDict
 }
 
 

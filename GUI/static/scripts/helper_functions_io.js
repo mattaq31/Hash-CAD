@@ -7,6 +7,7 @@ import {placeCargo, placeSlat, placeHandle} from './helper_functions_drawing.js'
 
 
 
+
 /** Converts coordinates into a (string) key for the dictionary of slats/cargo/handles
  * 
  * @param x X-coordinate of dictionary/array

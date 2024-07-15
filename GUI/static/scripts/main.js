@@ -57,7 +57,7 @@ var socket = io();
 import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles, downloadFile } from './helper_functions_io.js';
-import { updateHandleLayers, updateHandleLayerButtons } from './helper_functions_handles.js';
+import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict } from './helper_functions_handles.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './cargo.js';
 
@@ -205,6 +205,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
         layerList.set(event.detail.layerId, tmpFullLayer)
         updateHandleLayers(layerList)
+        getHandleLayerDict(layerList)
     });
 
     document.addEventListener('layerRemoved', (event) => {
@@ -217,6 +218,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         fullLayer[3].remove();
         layerList.delete(event.detail.layerId)
         updateHandleLayers(layerList)
+        getHandleLayerDict(layerList)
 
     });
 
@@ -342,9 +344,12 @@ SVG.on(document, 'DOMContentLoaded', function() {
         if (drawSlatCargoHandleMode == 1) { // Cargo mode
             cargoPalette.style.display = 'block';
             populateCargoPalette(); // Populate the cargo palette
+            getHandleLayerDict(layerList)
+            updateHandleLayerButtons(layerList, activeLayerId)
         } 
         else if(drawSlatCargoHandleMode == 2){
             handlePalette.style.display = 'block'
+            getHandleLayerDict(layerList)
             updateHandleLayers(layerList)
         }
 
@@ -379,13 +384,15 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     document.getElementById('generate-megastructure-button').addEventListener('click',function(event){
         let gridArray = createGridArray(layerList, minorGridSize)
-        socket.emit('generate_megastructures', gridArray)
+        let handleConfigs = getHandleLayerDict(layerList)
+        socket.emit('generate_megastructures', [gridArray, handleConfigs])
     })
 
     document.getElementById('generate-handles-button').addEventListener('click',function(event){
         let gridArray = createGridArray(layerList, minorGridSize)
+        let handleConfigs = getHandleLayerDict(layerList)
         console.log('generating handles now...')
-        socket.emit('generate_handles', gridArray)
+        socket.emit('generate_handles', [gridArray, handleConfigs])
     })
 
     socket.on('handles_sent', function(handleDict){

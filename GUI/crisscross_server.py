@@ -173,7 +173,25 @@ def save_crisscross_design(crisscross_dict):
 
 
 @socketio.on('generate_handles')
-def generate_handles(crisscross_dict):
+def generate_handles(data):
+    crisscross_dict = data[0]
+    handle_configs = data[1]
+
+    layer_interface_orientation = []
+    for orientation in handle_configs.values():
+        layer_interface_orientation.append((int(orientation[0]), int(orientation[1])))
+
+    # Now change this layer_interface_orientation array into the proper format: ie [2, (5, 2), (5, 2), 5]
+    first_orientation = layer_interface_orientation[0][0]
+    last_orientation = layer_interface_orientation[-1][1]
+    middle_orientations = [(layer_interface_orientation[i][1], layer_interface_orientation[i + 1][0])
+                           for i in range(len(layer_interface_orientation) - 1)]
+    formatted_orientations = [first_orientation] + middle_orientations + [last_orientation]
+
+    print(formatted_orientations)
+
+
+
     slat_array = ()
     if (crisscross_dict[0]):
         slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=False)
@@ -192,7 +210,7 @@ def generate_handles(crisscross_dict):
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 
     # prepares the actual full megastructure here
-    crisscross_megastructure = Megastructure(slat_array, None, connection_angle='90')
+    crisscross_megastructure = Megastructure(slat_array, formatted_orientations, connection_angle='90')
     crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates,
                                                        crisscross_antihandle_y_plates)
     handle_dict = array_to_dict(handle_array)
@@ -203,12 +221,31 @@ def generate_handles(crisscross_dict):
     emit('handles_sent', converted_handle_dict)
 
 @socketio.on('generate_megastructures')
-def generate_megastructure(crisscross_dict):
+def generate_megastructure(data):
+
+    crisscross_dict = data[0]
+    handle_configs = data[1]
+
+    layer_interface_orientation = []
+    for orientation in handle_configs.values():
+        layer_interface_orientation.append( (int(orientation[0]), int(orientation[1])) )
+
+    #Now change this layer_interface_orientation array into the proper format: ie [2, (5, 2), (5, 2), 5]
+    first_orientation = layer_interface_orientation[0][0]
+    last_orientation = layer_interface_orientation[-1][1]
+    middle_orientations = [(layer_interface_orientation[i][1], layer_interface_orientation[i+1][0])
+                           for i in range(len(layer_interface_orientation)-1)]
+    formatted_orientations = [first_orientation] + middle_orientations + [last_orientation]
+
+    print(formatted_orientations)
+
+
 
 
     slat_array = ()
-    top_cargo_array = ()
-    bottom_cargo_array = ()
+    top_cargo_array = np.array([])
+    bottom_cargo_array = np.array([])
+
 
     if (crisscross_dict[0]):
         slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=True)
@@ -235,7 +272,7 @@ def generate_megastructure(crisscross_dict):
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 
     # prepares the actual full megastructure here
-    crisscross_megastructure = Megastructure(slat_array, None, connection_angle='90')
+    crisscross_megastructure = Megastructure(slat_array, formatted_orientations, connection_angle='90')
     crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates,
                                                        crisscross_antihandle_y_plates)
 
@@ -255,8 +292,13 @@ def generate_megastructure(crisscross_dict):
                     #plate = createGenericPlate(plate_file, plate_folder)
                     plate = get_plateclass('GenericPlate', plate, plate_folder)
 
+                    layerId = str(layer_counter - 1)
+                    handle_orientation = handle_configs[layerId][0]
+                    print("Layer:", layer_counter, " with top handle orientation: ", handle_orientation)
+
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
-                                                                  layer=layer_counter, requested_handle_orientation=2)
+                                                                  layer=layer_counter,
+                                                                  requested_handle_orientation=handle_orientation)
             layer_counter += 1
 
     if (bottom_cargo_array.size != 0):
@@ -273,8 +315,15 @@ def generate_megastructure(crisscross_dict):
 
                     #plate = createGenericPlate(plate_file, plate_folder)
                     plate = get_plateclass('GenericPlate', plate, plate_folder)
+
+                    layerId = str(layer_counter - 1)
+                    handle_orientation = handle_configs[layerId][1]
+                    print("Layer:", layer_counter, " with bottom handle orientation: ", handle_orientation)
+
+
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
-                                                                  layer=layer_counter, requested_handle_orientation=5)
+                                                                  layer=layer_counter,
+                                                                  requested_handle_orientation=handle_orientation)
             layer_counter += 1
 
     core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
