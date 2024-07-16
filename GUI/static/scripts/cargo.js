@@ -1,10 +1,10 @@
 // Sample inventory data
 let inventoryData = [
-    {id: "default_GFP", name: "Green Fluorescent Protein", tag: "GFP", color: "#00FF00", plate: "", details: ""},
-    {id: "default_RFP", name: "Red Fluorescent Protein", tag: "RFP", color: "#FF0000", plate: "", details: ""},
-    {id: "default_AB1", name: "Antibody 1", tag: "Ab1", color: "#0000FF", plate: "", details: ""},
-    {id: "default_AB2", name: "Antibody 2", tag: "Ab2", color: "#FFFF00", plate: "", details: ""},
-    {id: "default_DH", name: "Dummy Handle", tag: "DH", color: "#FF00FF", plate: "", details: ""}
+    {id: "default_GFP", name: "Green Fluorescent Protein", tag: "GFP", color: "#00FF00", plate: "", details: [[],[]]},
+    {id: "default_RFP", name: "Red Fluorescent Protein", tag: "RFP", color: "#FF0000", plate: "", details: [[],[]]},
+    {id: "default_AB1", name: "Antibody 1", tag: "Ab1", color: "#0000FF", plate: "", details: [[],[]]},
+    {id: "default_AB2", name: "Antibody 2", tag: "Ab2", color: "#FFFF00", plate: "", details: [[],[]]},
+    {id: "default_DH", name: "Dummy Handle", tag: "DH", color: "#FF00FF", plate: "", details: [[],[]]}
 ];
 
 updateInventoryItems()
@@ -176,22 +176,93 @@ function removeItem(id) {
  */
 // Function to render the inventory table
 export function renderInventoryTable() {
+    
+
+
+
     const tableBody = document.getElementById('inventoryTableBody');
     tableBody.innerHTML = '';
 
     inventoryData.forEach(item => {
+        
+        console.log("Item.details: ", item.details)
+        
+        const h2CompatibilityDiv = document.createElement('div')
+        h2CompatibilityDiv.style.display = "flex";
+        h2CompatibilityDiv.style.flexDirection = "row";
+        let arrH2Compatibility = item.details[0]
+
+        const h2Label = document.createElement('p')
+        h2Label.textContent = "h2 "
+        h2Label.style.fontSize = "6px"
+        h2Label.style.margin = "0px"
+        h2Label.style.whiteSpaceCollapse = "preserve"
+
+        h2CompatibilityDiv.appendChild(h2Label)
+
+        const h5CompatibilityDiv = document.createElement('div')
+        h5CompatibilityDiv.style.display = "flex";
+        h5CompatibilityDiv.style.flexDirection = "row";
+        let arrH5Compatibility = item.details[1]
+
+        const h5Label = document.createElement('p')
+        h5Label.textContent = "h5 "
+        h5Label.style.fontSize = "6px"
+        h5Label.style.margin = "0px"
+        h5Label.style.whiteSpaceCollapse = "preserve"
+
+        h5CompatibilityDiv.appendChild(h5Label)
+
+        for(let i=1; i!= 33; i++){
+            const childDivH2 = document.createElement('div')
+            if(arrH2Compatibility.includes(i)){
+                childDivH2.style.backgroundColor = "#00FF00";
+            }
+            else{
+                childDivH2.style.backgroundColor = "#808080"
+            }
+
+            const childDivH5 = document.createElement('div')
+            if(arrH5Compatibility.includes(i)){
+                childDivH5.style.backgroundColor = "#00FF00";
+            }
+            else{
+                childDivH5.style.backgroundColor = "#808080"
+            }
+
+            childDivH2.style.width = "2px"
+            childDivH2.style.height = "8px"
+            childDivH5.style.width = "2px"
+            childDivH5.style.height = "8px"
+            
+            h2CompatibilityDiv.appendChild(childDivH2)
+            h5CompatibilityDiv.appendChild(childDivH5)
+        }
+
+        const compatibilityDiv = document.createElement('div')
+        compatibilityDiv.style.display = "flex";
+        compatibilityDiv.style.flexDirection = "column";
+        compatibilityDiv.style.gap = "2px";
+        compatibilityDiv.style.alignItems = "center"
+        compatibilityDiv.appendChild(h2CompatibilityDiv)
+        compatibilityDiv.appendChild(h5CompatibilityDiv)
+
+
+
         const row = tableBody.insertRow();
         row.innerHTML = `
-            <td>${item.id}</td>
+            <td ><nobr style="display: block; width: 150px; overflow-x: scroll; ">${item.id}</nobr></td>
             <td><input type="text" value="${item.name}" name="name" style="width: 100px;"></td>
-            <td><input type="text" value="${item.tag}" name="tag" style="width: 100px;"></td>
+            <td><input type="text" value="${item.tag}" name="tag" style="width: 75px;"></td>
             <td><input type="color" value="${item.color}" name="color"></td>
-            <td>${item.plate}</td>
-            <td>${item.details}</td>
+            <td ><nobr style="display: block; width: 150px; overflow-x: scroll; ">${item.plate}</nobr></td>
+            <td class="rowDetails"></td>
             <td>
                 <button id="inventory-remove-item">Remove</button>
             </td>
         `;
+
+        row.querySelector(".rowDetails").appendChild(compatibilityDiv)
 
         // Add event listeners to inputs
         const nameInput = row.querySelector('input[name="name"]');

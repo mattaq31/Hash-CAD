@@ -41,7 +41,7 @@ let slatCounter = 1;
 let cargoCounter = 1;
 
 //Draw mode
-let drawSlatCargoHandleMode = 0; //0 for slats, 1 for cargo, 2 for handles, 3 for seed
+let drawSlatCargoHandleMode = 0; //0 for slats, 1 for cargo, 2 for handles
 let slatSeedMode = null; //0 for slats, 1 for seeds
 
 //Cargo options
@@ -174,11 +174,23 @@ SVG.on(document, 'DOMContentLoaded', function() {
                         placeHorizontal, layerList)
                 }
                 else{
-                    //Place slat
-                    slatCounter = placeSlat(placeRoundedX, placeRoundedY, activeSlatLayer, 
-                        activeLayerId, minorGridSize, activeLayerColor, 
-                        shownOpacity, slatCounter, placeHorizontal, 
-                        layerList)
+
+                    let slatCountToPlace = document.getElementById('slatNumber').value
+                    for (let i = 0; i < slatCountToPlace; i++) {
+                        let xIterator = minorGridSize * i * (!placeHorizontal)
+                        let yIterator = minorGridSize * i * placeHorizontal
+
+                        //Place slat
+                        slatCounter = placeSlat(placeRoundedX + xIterator, 
+                                                placeRoundedY + yIterator, 
+                                                activeSlatLayer, activeLayerId, 
+                                                minorGridSize, activeLayerColor, 
+                                                shownOpacity, slatCounter, 
+                                                placeHorizontal, layerList)
+
+                    }
+                    
+                    
                 }
                 
             }
@@ -340,7 +352,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
         //0 for slats
         //1 for cargo
         //2 for handles
-        //3 for seeds
     const drawModeSelector = document.getElementById('palette-type-selector');
     const slatPalette = document.getElementById('slat-palette')
     const cargoPalette = document.getElementById('cargo-palette');

@@ -188,6 +188,12 @@ canvas {
     overflow-y: scroll;
 }
 
+#table-inventory{
+    border-collapse: separate;
+    border-spacing: 5px;
+    text-align: center;
+}
+
 
 #inventory-modal-close{
     font-size: 25px;

@@ -42,6 +42,9 @@ class GenericPlate(BasePlate):
             cargo = pattern.split('_')[self.name_encoding['name']]
 
             position_str = pattern.split('_')[self.name_encoding['position']]
+            if(position_str == "*"):
+                continue
+
             int_string = ''.join(ch for ch in position_str if ch.isdigit())
 
             key = (int(int_string), 5 if 'h5' in pattern else 2, cargo)

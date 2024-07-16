@@ -89,13 +89,13 @@ def create_acronym(word):
     vowels = 'aeiouAEIOU'
 
     # Check if the word contains 'mer-'
-    if 'mer-' in word:
-        prefix, rest = word.split('mer-', 1)
+    if '-' in word:
+        rest, postfix = word.split('-', 1)
         if rest.startswith('anti'):
             rest = rest[4:]  # Remove 'anti'
-            acronym = prefix + 'a' + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels])
+            acronym = 'a' + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels]) + "." + postfix[0:2]
         else:
-            acronym = prefix + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels])
+            acronym = ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels]) + "." + postfix[0:2]
     elif word.startswith('anti'):
         rest = word[4:]  # Remove 'anti'
         acronym = 'a' + ''.join([char for i, char in enumerate(rest) if i == 0 or char not in vowels])
@@ -120,6 +120,8 @@ def convert_np_to_py(data):
         return data
 
 
+
+
 def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
     plate = get_plateclass('GenericPlate', os.path.basename(cargo_plate_filepath), cargo_plate_folder)
     # plate = createGenericPlate(os.path.basename(cargo_plate_filepath) + ".xlsx", cargo_plate_folder )
@@ -129,14 +131,25 @@ def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
     inventory = []
     hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
     for id_char, name in plate_cargo_dict.items():
-        # tag = create_acronym(id_name)
+
+        h2_compatibility_arr = []
+        for i in range(1,33):
+            if (i, 2, name) in plate.sequences:
+                h2_compatibility_arr.append(i)
+
+        h5_compatibility_arr = []
+        for i in range(1, 33):
+            if (i, 5, name) in plate.sequences:
+                h5_compatibility_arr.append(i)
+
         id_num = int(id_char)
         element = {
             "id": str(id_num) + "-plate:" + os.path.basename(cargo_plate_filepath),
             "name": name,
-            "tag": name,
+            "tag": create_acronym(name),
             "color": hexColors[len(inventory) % 6],
-            "plate": os.path.basename(cargo_plate_filepath)
+            "plate": os.path.basename(cargo_plate_filepath),
+            "details": [h2_compatibility_arr, h5_compatibility_arr]
         }
         inventory.append(element)
 
