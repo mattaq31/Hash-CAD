@@ -42,13 +42,22 @@ export function getActiveLayer(layerList) {
  * @returns {*|null}
  */
 function getSelectedEditMode() {
-    var editModeRadios = document.querySelectorAll('input[name="editMode"]');
-    for (const radio of editModeRadios) {
-        if (radio.checked) {
-            return radio.value;
-        }
+    const drawButton = document.getElementById('draw-button')
+    const eraseButton = document.getElementById('erase-button')
+    const selectButton = document.getElementById('select-button')
+
+    if(drawButton.classList.contains('draw-erase-select-toggle-selected')){
+        return 0
     }
-    return null; // Return null if no radio button is selected
+    else if(eraseButton.classList.contains('draw-erase-select-toggle-selected')){
+        return 1
+    }
+    else if(selectButton.classList.contains('draw-erase-select-toggle-selected')){
+        return 2
+    }
+    else{
+        return null
+    }
 }
 
 

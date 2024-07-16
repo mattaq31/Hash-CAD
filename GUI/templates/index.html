@@ -41,28 +41,19 @@
                     <div class="mode">
                         <h4 class="centeredText">Mode</h4>
                        <!-- TODO: These three radio buttons are not aligned  -->
-                        <form class="edit-mode-selector, centeredText">
-                            <input type="radio" id="draw" name="editMode" value=0 checked >
-                            <label for="draw" style="font-size:150%">&#9998</label><br> <!-- Unicode Pencil Symbol-->
-                            <input type="radio" id="erase" name="editMode" value=1>
-                            <label for="erase"> &#10060</label><br> <!-- Unicode Erase Symbol-->
-                            <input type="radio" id="select" name="editMode" value=2>
-                            <label for="select" style="font-size:150%">&#9757</label> <!-- Unicode Select Symbol-->
-                        </form> 
+                        <div class="edit-mode-selector">
+                            <button id="draw-button" name="Draw">&#9998</button>
+                            <button id="erase-button" name="Erase">&#10060</button>
+                            <button id="select-button" name="Select">&#9757</button>
+                        </div>
                     </div>
 
                     <div class="settings">
                         <h4>Canvas</h4>
                         <div class="graph-settings">
-                            <!-- TODO: These three radio buttons are not aligned  -->
-                            <form class="graph-mode-selector, centeredText">
-                                <input type="radio" id="gridStyle" name="graphMode" value=1>
-                                <label for="gridStyle" style="font-size:166%">&#9638</label><br> <!-- Unicode Graph Grid Symbol-->
-                                <input type="radio" id="dotStyle" name="graphMode" value=2  checked=true>
-                                <label for="dotStyle">&#9617&#9617</label><br> <!-- Unicode Dot Grid Symbol-->
-                                <input type="radio" id="noStyle" name="graphMode" value=0>
-                                <label for="noStyle" style="font-size:133%">&#11036</label> <!-- Unicode Squre Symbol-->
-                            </form> 
+                            <button id="grid-button" name="Grid">&#9638</button>
+                            <button id="dot-button" name="Dots">&#9617&#9617</button>
+                            <button id="blank-button" name="Empty">&#11036</button>
                         </div>
                     </div>
                 </div>

@@ -81,15 +81,15 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
     //Get grid configuration radio buttons
-    var graphModeRadios = document.querySelectorAll('input[name="graphMode');
+    //var graphModeRadios = document.querySelectorAll('input[name="graphMode');
 
     //Change grid style if radio buttons change
-    graphModeRadios.forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            gridStyle = this.value;
-            drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
-        })
-    })
+    //graphModeRadios.forEach(function(radio) {
+    //    radio.addEventListener('change', function() {
+    //        gridStyle = this.value;
+    //        drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
+    //    })
+    //})
 
     const svgcontainer = document.getElementById('svg-container')
     
@@ -533,6 +533,64 @@ SVG.on(document, 'DOMContentLoaded', function() {
         placeSeedButton.classList.add('slatseed-toggle-selected')
         placeSlatButton.classList.remove('slatseed-toggle-selected')
         slatSeedMode = 1
+    })
+
+
+    const drawButton = document.getElementById('draw-button')
+    const eraseButton = document.getElementById('erase-button')
+    const selectButton = document.getElementById('select-button')
+
+    drawButton.addEventListener('click', (event)=>{
+        drawButton.classList.add('draw-erase-select-toggle-selected')
+        eraseButton.classList.remove('draw-erase-select-toggle-selected')
+        selectButton.classList.remove('draw-erase-select-toggle-selected')
+    })
+
+    eraseButton.addEventListener('click', (event)=>{
+        eraseButton.classList.add('draw-erase-select-toggle-selected')
+        drawButton.classList.remove('draw-erase-select-toggle-selected')
+        selectButton.classList.remove('draw-erase-select-toggle-selected')
+    })
+
+    selectButton.addEventListener('click', (event)=>{
+        selectButton.classList.add('draw-erase-select-toggle-selected')
+        eraseButton.classList.remove('draw-erase-select-toggle-selected')
+        drawButton.classList.remove('draw-erase-select-toggle-selected')
+    })
+
+
+
+
+    const gridButton = document.getElementById('grid-button')
+    const dotsButton = document.getElementById('dot-button')
+    const blankButton = document.getElementById('blank-button')
+
+    gridButton.addEventListener('click', (event)=>{
+        gridButton.classList.add('grid-dots-blank-toggle-selected')
+        dotsButton.classList.remove('grid-dots-blank-toggle-selected')
+        blankButton.classList.remove('grid-dots-blank-toggle-selected')
+
+        gridStyle = 1;
+        drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
+
+    })
+
+    dotsButton.addEventListener('click', (event)=>{
+        dotsButton.classList.add('grid-dots-blank-toggle-selected')
+        gridButton.classList.remove('grid-dots-blank-toggle-selected')
+        blankButton.classList.remove('grid-dots-blank-toggle-selected')
+
+        gridStyle = 2;
+        drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
+    })
+
+    blankButton.addEventListener('click', (event)=>{
+        blankButton.classList.add('grid-dots-blank-toggle-selected')
+        gridButton.classList.remove('grid-dots-blank-toggle-selected')
+        dotsButton.classList.remove('grid-dots-blank-toggle-selected')
+
+        gridStyle = 0;
+        drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
     })
 
 

@@ -324,3 +324,12 @@ canvas {
 .slatseed-toggle-selected{
     background-color:greenyellow
 }
+
+
+.draw-erase-select-toggle-selected {
+    background-color:greenyellow
+}
+
+.grid-dots-blank-toggle-selected{
+    background-color:greenyellow
+}
