@@ -256,6 +256,7 @@ canvas {
     background-color:greenyellow
 }
 
+
 #right-3D-panel{
     display: flex;
     flex-direction: column;
@@ -312,4 +313,8 @@ canvas {
     background-color: rgb(113, 113, 113);
     margin-top: 15px;
     margin-bottom: 15px;
+}
+
+.slatseed-toggle-selected{
+    background-color:greenyellow
 }

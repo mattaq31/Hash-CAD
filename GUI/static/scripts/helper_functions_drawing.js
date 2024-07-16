@@ -188,3 +188,93 @@ export function placeHandle(roundedX, roundedY, activeHandleLayer, minorGridSize
     //text.attr('pointer-events', 'none');
 
 }
+
+
+
+
+
+//TODO: REWRITE THIS!
+export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, horizontal, layerList) {
+    
+    
+    const cols = 16;
+    const rows = 5;
+    const step = minorGridSize;
+    const width = step * cols;
+    const height = step * rows;
+
+    //Only draw if no other seeds:
+    if(document.querySelectorAll('.seed').length == 0){
+        let pathString = `M ${roundedX - step/2} ${roundedY} `;
+    
+        //Start with horizontal lines
+        for (let i = 0; i < rows; i++) {
+            if (i === rows-1){ //Last line
+                if (i % 2 === 0) {
+                    // Forward direction
+                    pathString += `l ${width-step/2} 0`;
+                    } else {
+                    // Backward direction
+                    pathString += `l ${-width+step/2} 0`;
+                    }
+            }
+            else{ //All other horizontal lines
+                if (i % 2 === 0) {
+                    // Forward direction
+                    pathString += `l ${width} 0  l 0 ${step}`;
+                    } else {
+                    // Backward direction
+                    pathString += `l ${-width} 0 l 0 ${step}`;
+                    }
+            }
+        }
+
+        // Now start vertical snaking
+        for (let j = 0; j < cols; j++) {
+            if (j === 0){
+                pathString += ` l 0 ${-height + step/2} l ${-step} 0`;
+            }
+            else if(j === cols - 1){
+                if (j % 2 === 0) {
+                    // Up direction
+                    pathString += ` l 0 ${-height} l ${-step} ${step}`;
+                    } else {
+                    // Down direction
+                    pathString += ` l 0 ${height} l ${-step} ${step}`;
+                    }
+            }
+            else if (j % 2 === 0) {
+            // Up direction
+            pathString += ` l 0 ${-height} l ${-step} 0`;
+            } else {
+            // Down direction
+            pathString += ` l 0 ${height} l ${-step} 0`;
+            }}
+
+        // Draw the path
+        let tmpPath = activeSlatLayer.path(pathString).stroke({ width: 2, color: activeLayerColor }).fill('none');
+        
+        tmpPath.attr('id', "seed")
+        tmpPath.attr('layer', activeLayerId)
+        tmpPath.attr('class',"seed")
+        tmpPath.attr({'pointer-events': 'stroke' })
+
+        if(horizontal){
+            const bbox = tmpPath.bbox();
+
+            // Rotate the path 90 degrees around its top-left corner
+            tmpPath.rotate(-90, bbox.x + bbox.width + minorGridSize/2, bbox.y - minorGridSize/2);
+
+            // Translate the path to its original top-left corner
+            tmpPath.translate(-bbox.width, 0);
+        }
+
+        tmpPath.on('pointerdown', function(event) {
+            startDrag(event, layerList, minorGridSize);
+        });
+
+    }
+
+
+    
+}

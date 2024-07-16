@@ -7,6 +7,16 @@
  * @returns {boolean}
  */
 export function isPointOnLine(Layer, x, y, selectedLine = false) {
+    //First chedk if on seed:
+    let seed = Layer.find('.seed')
+
+    let onSeed = false;
+    if(seed.length != 0){
+        console.log("Seed: ", seed)
+        const seedBbox = seed.bbox()[0];
+        onSeed = (x >= seedBbox.x && x <= seedBbox.x2 && y >= seedBbox.y && y <= seedBbox.y2)
+    }
+
     const lines = Layer.find('.line');
     return lines.some(line => {
       
@@ -23,7 +33,7 @@ export function isPointOnLine(Layer, x, y, selectedLine = false) {
         }
       
       return (
-        onOther && (!onItself)
+        onOther && (!onItself) || onSeed
       );
     });
   }
