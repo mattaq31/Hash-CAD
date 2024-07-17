@@ -193,7 +193,6 @@ export function placeHandle(roundedX, roundedY, activeHandleLayer, minorGridSize
 
 
 
-//TODO: REWRITE THIS!
 export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, horizontal, layerList) {
     
     
@@ -266,7 +265,7 @@ export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             tmpPath.rotate(-90, bbox.x + bbox.width + minorGridSize/2, bbox.y - minorGridSize/2);
 
             // Translate the path to its original top-left corner
-            tmpPath.translate(-bbox.width, 0);
+            tmpPath.translate(-bbox.width - minorGridSize/2, 0);
         }
 
         tmpPath.on('pointerdown', function(event) {

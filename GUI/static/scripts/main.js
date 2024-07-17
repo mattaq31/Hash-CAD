@@ -5,7 +5,7 @@
 
 //Configure grid
 var minorGridSize = 10;                 //Size of minor grid squares
-var majorGridSize = 5*minorGridSize;    //Size of major grid squares
+var majorGridSize = 4*minorGridSize;    //Size of major grid squares
 var gridStyle = 2;                      //0 for off, 1 for grid, 2 for dots
 
 
@@ -430,10 +430,10 @@ SVG.on(document, 'DOMContentLoaded', function() {
     })
 
 
-    socket.on('slat dict made', function(data) {
-        console.log("slat array read from python: ", data)
-        slatCounter = importDesign(data, data, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
-    });
+    //socket.on('slat dict made', function(data) {
+    //    console.log("slat array read from python: ", data)
+    //    slatCounter = importDesign(data, data, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+    //});
     
 
     //Add event listener for design saving
@@ -453,10 +453,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     socket.on('design_imported', function(data) {
         console.log("Imported design!", data)
-        let slatDict = data[0]
-        let bottomCargoDict = data[1]
-        let topCargoDict = data[2]
-        slatCounter = importDesign(slatDict, bottomCargoDict, topCargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+        let seedDict = data[0]
+        let slatDict = data[1]
+        let bottomCargoDict = data[2]
+        let topCargoDict = data[3]
+        slatCounter = importDesign(seedDict, slatDict, bottomCargoDict, topCargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
 
 

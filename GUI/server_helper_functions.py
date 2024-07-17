@@ -4,6 +4,41 @@ import os
 from crisscross.plate_mapping import get_plateclass
 
 
+def seed_dict_to_array(seed_dict, trim_offset=False, slat_grid_dict={}):
+    """
+    Converts a seed dictionary (produced by javascript) into a seed array.
+    :param seed_dict: dictionary of seed by (x,y,layer) coordinates.
+    :param trim_offset: If true, will trim unoccupied positions from top/left of array. If false, will leave full array.
+    :param slat_grid_dict: If trim_offset is set to true, will trim based upon the shape of the slat dictionary
+    :return: array - seed by (x,y,layer) coordinates.
+    """
+
+    # Parse the keys to determine the dimensions
+    max_x = max(int(key.split(',')[0]) for key in seed_dict.keys()) + 1
+    max_y = max(int(key.split(',')[1]) for key in seed_dict.keys()) + 1
+    min_x = 0
+    min_y = 0
+    max_layer = max(int(key.split(',')[2]) for key in seed_dict.keys()) + 1
+
+    if (trim_offset == True):
+        max_x = max(int(key.split(',')[0]) for key in slat_grid_dict.keys()) + 1
+        max_y = max(int(key.split(',')[1]) for key in slat_grid_dict.keys()) + 1
+        min_x = min(int(key.split(',')[0]) for key in slat_grid_dict.keys())
+        min_y = min(int(key.split(',')[1]) for key in slat_grid_dict.keys())
+        max_layer = max(int(key.split(',')[2]) for key in slat_grid_dict.keys()) + 1
+
+    # Initialize the array
+    array = np.zeros((max_x - min_x, max_y - min_y, max_layer))
+
+    # Populate the array
+    for key, seed_id in seed_dict.items():
+        x, y, layer = map(int, key.split(','))
+        array[x - min_x, y - min_y, layer] = seed_id
+
+    return array
+
+
+
 def slat_dict_to_array(grid_dict, trim_offset=False):
     """
     Converts a slat dictionary (produced by javascript) into a slat array.

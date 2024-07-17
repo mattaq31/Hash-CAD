@@ -13,15 +13,17 @@ import os
 # For data handling
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
-from server_helper_functions import (slat_dict_to_array, cargo_dict_to_array,
-                                     array_to_dict, cargo_to_inventory, convert_np_to_py,
+from server_helper_functions import (seed_dict_to_array, slat_dict_to_array,
+                                     cargo_dict_to_array, array_to_dict,
+                                     cargo_to_inventory, convert_np_to_py,
                                      break_array_by_plates)
 
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.plate_mapping import get_plateclass
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, assembly_handle_folder)
+                                                         crisscross_h2_handle_plates, assembly_handle_folder,
+                                                         seed_plug_plate_corner)
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize
 
 app = Flask(__name__)
@@ -117,13 +119,18 @@ def save_file_to_uploads(data):
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     print(crisscross_design_path)
     crisscross_design_file = np.load(crisscross_design_path, allow_pickle=True)
+    seed_array = crisscross_design_file['seed_array']
     slat_array = crisscross_design_file['slat_array']
     bottom_cargo_array = crisscross_design_file['bottom_cargo_array']
     top_cargo_array = crisscross_design_file['top_cargo_array']
 
+    seed_dict = {}
     slat_dict = {}
     bottom_cargo_dict = {}
     top_cargo_dict = {}
+
+    if(seed_array.ndim == 3):
+        seed_dict = array_to_dict(seed_array)
 
     if(slat_array.ndim == 3):
         slat_dict = array_to_dict(slat_array)
@@ -134,7 +141,7 @@ def save_file_to_uploads(data):
     if (top_cargo_array.ndim == 3):
         top_cargo_dict = array_to_dict(top_cargo_array)
 
-    emit('design_imported', [slat_dict, bottom_cargo_dict, top_cargo_dict])
+    emit('design_imported', [seed_dict, slat_dict, bottom_cargo_dict, top_cargo_dict])
 
 
 # TODO: make function names more descriptive
@@ -147,26 +154,32 @@ def save_crisscross_design(crisscross_dict):
     """
     print('Design has been saved')
     # TODO: consider saving file in a human-readable format like toml
+    seed_array = ()
     slat_array = ()
     top_cargo_array = ()
     bottom_cargo_array = ()
 
-    if(crisscross_dict[0]):
-        slat_array = slat_dict_to_array(crisscross_dict[0])
+    if (crisscross_dict[0]):
+        seed_array = seed_dict_to_array(crisscross_dict[0])
 
-    if (crisscross_dict[1]):
-        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[1])
+    if(crisscross_dict[1]):
+        slat_array = slat_dict_to_array(crisscross_dict[1])
 
     if (crisscross_dict[2]):
-        top_cargo_array = cargo_dict_to_array(crisscross_dict[2])
+        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[2])
+
+    if (crisscross_dict[3]):
+        top_cargo_array = cargo_dict_to_array(crisscross_dict[3])
 
 
 
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], 'crisscross_design.npz')
 
     # Save the arrays to a .npz file (including multiple numpy arrays!)
-    np.savez(crisscross_design_path, slat_array=np.array(slat_array),
-            bottom_cargo_array=np.array(bottom_cargo_array),
+    np.savez(crisscross_design_path,
+             seed_array=np.array(seed_array),
+             slat_array=np.array(slat_array),
+             bottom_cargo_array=np.array(bottom_cargo_array),
              top_cargo_array=np.array(top_cargo_array))
 
     emit('saved_design_ready_to_download')
@@ -193,8 +206,8 @@ def generate_handles(data):
 
 
     slat_array = ()
-    if (crisscross_dict[0]):
-        slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=False)
+    if (crisscross_dict[1]):
+        slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=False)
 
     # Generate empty handle array
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
@@ -241,20 +254,22 @@ def generate_megastructure(data):
 
 
 
-
+    seed_array = np.array([])
     slat_array = ()
     top_cargo_array = np.array([])
     bottom_cargo_array = np.array([])
 
-
     if (crisscross_dict[0]):
-        slat_array = slat_dict_to_array(crisscross_dict[0], trim_offset=True)
+        seed_array = seed_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[1])
 
     if (crisscross_dict[1]):
-        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[0])
+        slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=True)
 
     if (crisscross_dict[2]):
-        top_cargo_array = cargo_dict_to_array(crisscross_dict[2], trim_offset=True, slat_grid_dict=crisscross_dict[0])
+        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[2], trim_offset=True, slat_grid_dict=crisscross_dict[1])
+
+    if (crisscross_dict[3]):
+        top_cargo_array = cargo_dict_to_array(crisscross_dict[3], trim_offset=True, slat_grid_dict=crisscross_dict[1])
 
     #Generate empty handle array
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
@@ -271,10 +286,19 @@ def generate_megastructure(data):
                                                 crisscross_h5_handle_plates[0:3],
                                                 assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 
+    edge_seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
+
     # prepares the actual full megastructure here
     crisscross_megastructure = Megastructure(slat_array, formatted_orientations, connection_angle='90')
     crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates,
                                                        crisscross_antihandle_y_plates)
+
+    #Add seeds
+    if (seed_array.size != 0):
+        # Iterate over layers:
+        layer_counter = 1
+        for layer in range(seed_array.shape[2]):
+            crisscross_megastructure.assign_seed_handles(seed_array[:, :, layer], edge_seed_plate, layer_id=layer_counter+1)
 
     # Add cargo
     if(top_cargo_array.size != 0):

@@ -3,7 +3,7 @@
 //   Creating Slat Array     //
 ///////////////////////////////
 
-import {placeCargo, placeSlat, placeHandle} from './helper_functions_drawing.js'
+import {placeCargo, placeSlat, placeHandle, placeSeed} from './helper_functions_drawing.js'
 
 
 
@@ -30,18 +30,20 @@ export function populateSparseGridDictionarySlats(layers, minorGridSize) {
     
     layers.forEach((layer, layerIndex) => {
         layer[1].children().forEach(child => {
-            let slatId = child.attr('id');
-            let bbox = child.bbox();
-            let startX = Math.ceil(bbox.x / minorGridSize);
-            let startY = Math.ceil(bbox.y / minorGridSize);
-            let endX = Math.floor((bbox.x + bbox.width) / minorGridSize);
-            let endY = Math.floor((bbox.y + bbox.height) / minorGridSize);
+            if(child.attr('id') != 'seed'){
+                let slatId = child.attr('id');
+                let bbox = child.bbox();
+                let startX = Math.ceil(bbox.x / minorGridSize);
+                let startY = Math.ceil(bbox.y / minorGridSize);
+                let endX = Math.floor((bbox.x + bbox.width) / minorGridSize);
+                let endY = Math.floor((bbox.y + bbox.height) / minorGridSize);
 
-            // Populate the grid dictionary with the slat ID for the occupied positions
-            for (let x = startX; x <= endX; x++) {
-                for (let y = startY; y <= endY; y++) {
-                    let key = gridKey(x, y, layerIndex);
-                    gridDict[key] = slatId;
+                // Populate the grid dictionary with the slat ID for the occupied positions
+                for (let x = startX; x <= endX; x++) {
+                    for (let y = startY; y <= endY; y++) {
+                        let key = gridKey(x, y, layerIndex);
+                        gridDict[key] = slatId;
+                    }
                 }
             }
         });
@@ -89,6 +91,63 @@ export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
     return [bottomGridDict, topGridDict]
 }
 
+
+
+export function populateSparseGridDictionarySeed(layers, minorGridSize) {
+    let gridDict = {}
+    
+    layers.forEach((layer, layerIndex) => {
+        layer[1].children().forEach(child => {
+            if(child.attr('id') == 'seed'){
+
+
+                console.log("Parent is: ", child, "minorGridSize is: ", minorGridSize)
+                
+                let bbox = child.rbox(layer[1]);
+
+                let horizontal = true
+                if(bbox.width < bbox.height){
+                    horizontal = false
+                }
+                
+                let startX = Math.ceil( Math.round(bbox.x) / minorGridSize);
+                let startY = Math.ceil( Math.round(bbox.y) / minorGridSize);
+                let endX = Math.floor(( Math.round(bbox.x + bbox.width) ) / minorGridSize);
+                let endY = Math.floor(( Math.round(bbox.y + bbox.height)) / minorGridSize);
+
+                if(horizontal){
+                    startX = startX + 1 //Trimming because of the lower LH overhang
+                    endY = endY - 1 //Trimming because of the lower LH overhang
+
+                    // Populate the grid dictionary with the slat ID for the occupied positions
+                    for (let x = startX; x <= endX; x++) {
+                        for (let y = startY; y <= endY; y++) {
+                            let key = gridKey(x, y, layerIndex);
+                            gridDict[key] = x - startX + 1;
+                        }
+                    }
+                }
+                else{
+                    endY = endY - 1 //Trimming because of lower RH overhang
+                    endX = endX - 1 //Trimming because of lower RH overhang
+
+                    // Populate the grid dictionary with the slat ID for the occupied positions
+                    for (let y = startY; y <= endY; y++) {
+                        for (let x = startX; x <= endX; x++) {
+                            let key = gridKey(x, y, layerIndex);
+                            gridDict[key] = y - startY + 1;
+                        }
+                    }
+                }     
+            }
+        });
+    });
+
+    return gridDict
+}
+
+
+
 /** Creates a filled grid dictionary containing slat and cargo information.
  * 
  * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
@@ -98,10 +157,15 @@ export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
 //Create array
 export function createGridArray(layerList, minorGridSize) {
     // Initialize the sparse grid dictionary
+    let gridDictSeed = {}
     let gridDictSlats = {};
     let gridDictsCargo = [];
     let bottomGridDictCargo = {};
     let topGridDictCargo = {};
+    
+
+    // Populate the sparse grid dictionary with seed
+    gridDictSeed = populateSparseGridDictionarySeed(Array.from(layerList.values()), minorGridSize);
 
     // Populate the sparse grid dictionary with slat IDs
     gridDictSlats = populateSparseGridDictionarySlats(Array.from(layerList.values()), minorGridSize);
@@ -113,7 +177,7 @@ export function createGridArray(layerList, minorGridSize) {
     topGridDictCargo = gridDictsCargo[1]
 
     // You can now use the gridDict as needed
-    let gridDict = [gridDictSlats, bottomGridDictCargo, topGridDictCargo];
+    let gridDict = [gridDictSeed, gridDictSlats, bottomGridDictCargo, topGridDictCargo];
 
     return gridDict
 }
@@ -294,8 +358,9 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
  * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
  * @returns {number}
  */
-export function importDesign(slatDict, bottomCargoDict, topCargoDict,  layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+export function importDesign(seedDict, slatDict, bottomCargoDict, topCargoDict,  layerList, minorGridSize, shownOpacity, shownCargoOpacity){
     removeAllLayers(layerList)
+    importSeed(seedDict, layerList, minorGridSize)
     let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
     importCargo(bottomCargoDict, layerList, minorGridSize, shownCargoOpacity, false)
     importCargo(topCargoDict, layerList, minorGridSize, shownCargoOpacity, true)
@@ -349,6 +414,68 @@ export function importHandles(handleDict, layerList, minorGridSize){
     }
 
 }
+
+
+
+function importSeed(seedDict, layerList, minorGridSize){
+
+    let seedKeys = Object.keys(seedDict)
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = 0
+    let maxY = 0
+    let layerId = null
+
+    for (const key of seedKeys){
+        let keyArray = key.split(',')
+
+        let dictX   = Number(keyArray[0])
+        let dictY   = Number(keyArray[1])
+        let layer = keyArray[2]
+
+        if (dictX < minX){
+            minX = dictX
+        }
+
+        if (dictY < minY){
+            minY = dictY
+        }
+
+        if (dictX > maxX){
+            maxX = dictX
+        }
+
+        if (dictY > maxY){
+            maxY = dictY
+        }
+
+        layerId = layer
+    }
+
+    let width = maxX - minX
+    let height = maxY - minY
+    let horizontal = !(Boolean(width > height))
+    console.log("Horizontal? ", horizontal, "With width, height of ", width, height)
+
+    let placeX = minX * minorGridSize
+    let placeY = minY * minorGridSize
+
+    while(!layerList.has(layerId)){
+        const addLayerButton = document.getElementById('add-layer');
+        addLayerButton.click();
+    }
+
+    let fullLayer = layerList.get(layerId);
+    let activeSlatLayer = fullLayer[1]
+    let activeLayerColor = fullLayer[4]
+
+    placeSeed(placeX, placeY, activeSlatLayer, layerId, minorGridSize, 
+                activeLayerColor, horizontal, layerList)
+}
+
+
+
+
 
 
 
