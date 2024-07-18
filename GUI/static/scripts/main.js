@@ -59,6 +59,7 @@ import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo, placeSeed } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles, downloadFile } from './helper_functions_io.js';
 import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict } from './helper_functions_handles.js';
+import { renderSlats } from './helper_functions_3D.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './cargo.js';
 
@@ -180,6 +181,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
                         let xIterator = minorGridSize * i * (!placeHorizontal)
                         let yIterator = minorGridSize * i * placeHorizontal
 
+                        let oldSlatCounter = slatCounter
+
                         //Place slat
                         slatCounter = placeSlat(placeRoundedX + xIterator, 
                                                 placeRoundedY + yIterator, 
@@ -187,6 +190,12 @@ SVG.on(document, 'DOMContentLoaded', function() {
                                                 minorGridSize, activeLayerColor, 
                                                 shownOpacity, slatCounter, 
                                                 placeHorizontal, layerList)
+
+
+                        if(slatCounter > oldSlatCounter){
+                            let gridArray = createGridArray(layerList, minorGridSize)
+                            renderSlats(gridArray[1], gridArray[2], gridArray[3])
+                        }
 
                     }
                     
@@ -443,6 +452,10 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log("Grid array: ", gridArray)
         socket.emit('design_to_backend_for_download', gridArray);
         console.log("save emit has been sent!")
+
+        renderSlats(gridArray[1], gridArray[2], gridArray[3])
+
+
 
         
     });
