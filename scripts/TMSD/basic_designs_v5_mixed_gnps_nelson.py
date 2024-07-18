@@ -7,17 +7,13 @@ from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import generate_standard_square_slats, attach_cargo_handles_to_core_sequences
+from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 from crisscross.core_functions.slats import Slat
 
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
-                                                         crisscross_h5_handle_plates, crisscross_h2_handle_plates,
-                                                         seed_plug_plate_corner, seed_plug_plate_center,
-                                                         old_format_cargo_plate_folder, nelson_quimby_antihandles,
-                                                         octahedron_patterning_v1)
-from crisscross.plate_mapping import get_plateclass
+from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles, octahedron_patterning_v1
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from crisscross.helper_functions.plate_constants import plate96
 
 ################################
@@ -29,16 +25,10 @@ read_handles_from_file = True
 regenerate_graphics = False
 ################################
 # Plate sequences
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3],
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
-bart_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+bart_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
+cargo_key = {3: 'antiNelson', 1: 'antiBart', 2: 'antiEdna'}
 ################################
 
 ################################
@@ -110,8 +100,8 @@ cargo_array_2[5:7, slat_invader_placement] = 1
 cargo_array_2[11:13, slat_invader_placement] = 1
 cargo_array_2[17:19, slat_invader_placement] = 1
 
-M_inv.assign_cargo_handles(cargo_array, nelson_plate, 2, requested_handle_orientation=2)
-M_inv.assign_cargo_handles(cargo_array_2, bart_plate, 2, requested_handle_orientation=2)
+M_inv.assign_cargo_handles_with_array(cargo_array, nelson_plate, cargo_key, 2, handle_orientation=2)
+M_inv.assign_cargo_handles_with_array(cargo_array_2, bart_plate, cargo_key,2, handle_orientation=2)
 
 M_inv.patch_control_handles(core_plate)
 

@@ -1,5 +1,7 @@
 from crisscross.core_functions.plate_handling import read_dna_plate_mapping
-from crisscross.helper_functions.plate_constants import sanitize_plate_map, base_directory
+from crisscross.helper_functions.plate_constants import sanitize_plate_map, base_directory, slat_core, \
+    core_plate_folder, crisscross_h5_handle_plates, assembly_handle_folder, crisscross_h2_handle_plates, \
+    seed_plug_plate_corner, seed_plug_plate_center
 import os
 import ast
 from pydoc import locate
@@ -71,3 +73,21 @@ def get_plateclass(name, plate_name, plate_folder, **kwargs):
     :return: instantiated plate reader class.
     """
     return locate(available_plate_loaders[name])(plate_name, plate_folder, **kwargs)
+
+
+def get_standard_plates():
+    """
+    Generates standard plates used commonly in most designs.
+    """
+    core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+    crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
+                                                    crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
+                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+    crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
+                                                crisscross_h5_handle_plates[0:3],
+                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+
+    seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
+    center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
+
+    return core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate

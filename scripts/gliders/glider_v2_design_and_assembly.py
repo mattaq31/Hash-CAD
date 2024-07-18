@@ -6,14 +6,14 @@ from colorama import Fore
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.plate_mapping import get_plateclass
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center, old_format_cargo_plate_folder, simpsons_mixplate_antihandles,
-                                                         nelson_quimby_antihandles, seed_plug_plate_corner)
+from crisscross.helper_functions.plate_constants import cargo_plate_folder, simpsons_mixplate_antihandles, nelson_quimby_antihandles
+
 ############### DESIGN PREPARATION ###############
-output_folder = 'C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\scratch'#'/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
+# output_folder = 'C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\scratch'
+output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/glider_test'
+
 design_file = 'layer_arrays.xlsx'
 read_handles_from_file = False #True  # if true, skips hamming distance optimization
 skip_redesign = False #True  # if true, skips the regeneration of the slat layers
@@ -133,17 +133,11 @@ else:
                    handle_array[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
 # Generates plate dictionaries from provided files
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                            crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
-simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, old_format_cargo_plate_folder)
-edge_seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, edge_seed_plate, center_seed_plate = get_standard_plates()
+
+nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+simpsons_plate = get_plateclass('GenericPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
+cargo_key = {3: 'antiNelson', 1: 'antiBart', 2: 'antiEdna', 4: 'antiQuimby'}
 
 # Prepares the seed array, assuming the first position will start from the far right of the layer
 seed_array = np.copy(design_df['Layer_0'].values)
@@ -161,7 +155,6 @@ cargo_array_0 = pd.read_excel(os.path.join(output_folder, cargo_file_0), sheet_n
 cargo_file_1 = 'cargo_array_layer_1.xlsx'
 cargo_array_1 = pd.read_excel(os.path.join(output_folder, cargo_file_1), sheet_name=None, header=None)['Layer_2_cargo'].values
 
-
 # prepares the actual full megastructure here
 nelson_mega = Megastructure(slat_array, None, connection_angle='60')
 
@@ -170,11 +163,10 @@ for rev_slat in range(48, 64):  # this intervention is being done to accommodate
 
 nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
-nelson_mega.assign_cargo_handles(cargo_array_0, nelson_plate, layer=1, requested_handle_orientation=2)
-nelson_mega.assign_cargo_handles(cargo_array_1, nelson_plate, layer=2, requested_handle_orientation=2)
+nelson_mega.assign_cargo_handles_with_array(cargo_array_0, nelson_plate, cargo_key, layer=1, handle_orientation=2)
+nelson_mega.assign_cargo_handles_with_array(cargo_array_1, nelson_plate, cargo_key, layer=2, handle_orientation=2)
 nelson_mega.patch_control_handles(core_plate)
-# nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
-#                                              cargo_colormap='Paired')
+nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1', cargo_colormap='Dark2')
 print(Fore.GREEN + 'Design exported to Echo commands successfully.')
 
 convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', output_folder,
@@ -188,13 +180,12 @@ for rev_slat in range(48, 64):  # this intervention is being done to accommodate
 
 nelson_mega_2.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega_2.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
-nelson_mega_2.assign_cargo_handles(cargo_array_0, simpsons_plate, layer=1, requested_handle_orientation=2)
-nelson_mega_2.assign_cargo_handles(cargo_array_1, simpsons_plate, layer=2, requested_handle_orientation=2)
+nelson_mega_2.assign_cargo_handles_with_array(cargo_array_0, simpsons_plate, cargo_key, layer=1, handle_orientation=2)
+nelson_mega_2.assign_cargo_handles_with_array(cargo_array_1, simpsons_plate, cargo_key, layer=2, handle_orientation=2)
 nelson_mega_2.patch_control_handles(core_plate)
-# nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
-#                                              cargo_colormap='Paired')
+nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
+                                             cargo_colormap='Dark2')
 print(Fore.GREEN + 'Design exported to Echo commands successfully.')
-
 
 convert_slats_into_echo_commands(nelson_mega_2.slats, 'glider_plate', output_folder,
                                  'all_echo_commands_with_src007.csv', transfer_volume=100)

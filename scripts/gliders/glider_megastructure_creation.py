@@ -6,13 +6,9 @@ from colorama import Fore
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.plate_mapping import get_plateclass
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center, old_format_cargo_plate_folder,
-                                                         nelson_quimby_antihandles)
-
+from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 
 design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
 design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/glider_v2_2'
@@ -45,19 +41,14 @@ else:
         np.savetxt(os.path.join(design_folder, 'optimized_handle_array_layer_%s.csv' % (i+1)),
                    handle_array[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
-# Generates plate dictionaries from provided files
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                            crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
+# Generates plate classes
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 
-# Combines handle and slat array into the megastructure
-megastructure = Megastructure(slat_array, None, connection_angle='60')
-megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+# prepares cargo
+cargo_file = 'cargo_array_v2.xlsx'
+cargo_array = pd.read_excel(os.path.join(design_folder, cargo_file), sheet_name=None, header=None)['Layer_2_cargo'].values
+cargo_key = {3: 'antiNelson'}
 
 # Prepares the seed array, assuming the first position will start from the far right of the layer
 seed_array = np.copy(design_df['Layer_0'].values)
@@ -68,7 +59,9 @@ for i in range(16):
     filler = (seed_array[:, column] == -1) * (i + 1)
     seed_array[:, column] = filler
 
-# Assigns seed array to layer 2
+# Combines handle, slat and seed arrays into the megastructure
+megastructure = Megastructure(slat_array, None, connection_angle='60')
+megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
 megastructure.patch_control_handles(core_plate)
 megastructure.create_standard_graphical_report(os.path.join(design_folder, 'No Fluoro Graphics'))
@@ -77,15 +70,10 @@ megastructure.create_standard_graphical_report(os.path.join(design_folder, 'No F
 convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_folder, 'all_echo_commands.csv')
 
 # For extended fluorescent microscopy testing, we've also included a cargo array for Nelson handles.  This design is build separately below
-
-cargo_file = 'cargo_array_v2.xlsx'
-cargo_array = pd.read_excel(os.path.join(design_folder, cargo_file), sheet_name=None, header=None)['Layer_2_cargo'].values
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
-
 nelson_mega = Megastructure(slat_array, None, connection_angle='60')
 nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
-nelson_mega.assign_cargo_handles(cargo_array, nelson_plate, layer=2, requested_handle_orientation=2)
+nelson_mega.assign_cargo_handles_with_array(cargo_array, nelson_plate, cargo_key, layer=2, handle_orientation=2)
 nelson_mega.patch_control_handles(core_plate)
 nelson_mega.create_standard_graphical_report(os.path.join(design_folder, 'Fluoro Graphics'))
 

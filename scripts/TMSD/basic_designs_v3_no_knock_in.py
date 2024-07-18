@@ -7,16 +7,13 @@ from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import generate_standard_square_slats, attach_cargo_handles_to_core_sequences
+from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
 from crisscross.core_functions.slats import Slat
 
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
-                                                         crisscross_h5_handle_plates, crisscross_h2_handle_plates,
-                                                         seed_plug_plate_corner, seed_plug_plate_center,
-                                                         old_format_cargo_plate_folder, nelson_quimby_antihandles)
-from crisscross.plate_mapping import get_plateclass
+from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from crisscross.helper_functions.plate_constants import plate96
 
 ########################################
@@ -27,15 +24,9 @@ np.random.seed(8)
 read_handles_from_file = True
 ########################################
 # Plate sequences
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3],
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+cargo_key = {3: 'antiNelson'}
 ########################################
 
 ########################################
@@ -95,7 +86,7 @@ M_inv.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 # adds 16 Nelson handles to allow attachment of fluorescent strands (they are attached to the H2 side of the incumbent strand)
 cargo_array = np.zeros(padded_slat_array.shape[0:2])
 cargo_array[4:20, slat_invader_placement] = 3
-M_inv.assign_cargo_handles(cargo_array, nelson_plate, 2, requested_handle_orientation=2)
+M_inv.assign_cargo_handles_with_array(cargo_array, nelson_plate, cargo_key, 2, handle_orientation=2)
 M_inv.patch_control_handles(core_plate)
 
 # The actual invader for this design is simply the actual control y-slat, so a copy will be made here

@@ -1,21 +1,19 @@
 import pandas as pd
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.plate_mapping import get_plateclass
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, assembly_handle_folder, 
-                                                         old_format_cargo_plate_folder, seed_plug_plate_center,
-                                                         nelson_quimby_antihandles)
+from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 
 DesignFolder = "/Users/stellawang/Dropbox (HMS)/crisscross_team/Crisscross Designs/SW099_kineticsweep_design"
+DesignFolder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/SW099_kineticsweep_design'
+
 DesignFile = "SW099_kineticsweepfiniteribbon_design.xlsx"
-ReadHandlesFromFile = True
+ReadHandlesFromFile = False
 
 # Useful names and variables
 LayerList = ["Layer0_seed", "Layer1_X", "Layer2_Y", "Layer3_cargo"] # in order, seed at bottom and cargo on top
@@ -54,15 +52,10 @@ else:
                    HandleArray[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
 # Generates plate dictionaries from provided files - don't change
-CorePlate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-CrisscrossAntihandleYPlates = get_plateclass('CrisscrossHandlePlates',
-                                            crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-CrisscrossHandleXPlates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-CenterSeedPlate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-CargoPlate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
+CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, CenterSeedPlate = get_standard_plates()
+
+CargoPlate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+cargo_key = {3: 'antiNelson'}
 
 # Combines handle and slat array into the megastructure
 KineticMegastructure = Megastructure(SlatArray, [2, (5, 5), 2])
@@ -74,13 +67,14 @@ KineticMegastructure.assign_seed_handles(SeedArray, CenterSeedPlate, layer_id=1)
 
 # Prepare the cargo layer, map cargo handle ids, and assign to array
 CargoArray = DesignDF[CargoLayer].values
-KineticMegastructure.assign_cargo_handles(CargoArray, CargoPlate, layer='top')
+KineticMegastructure.assign_cargo_handles_with_array(CargoArray, CargoPlate, cargo_key, layer='top')
 
 # Patch up missing controls
 KineticMegastructure.patch_control_handles(CorePlate)
 KineticMegastructure.create_standard_graphical_report(DesignFolder)
+KineticMegastructure.create_blender_3D_view(DesignFolder, animate_assembly=True)
 
 # Exports design to echo format csv file for production
-convert_slats_into_echo_commands(KineticMegastructure.slats, 'kineticsweep', DesignFolder, 'all_echo_commands.csv',
-                                 transfer_volume=100)
-...
+# convert_slats_into_echo_commands(KineticMegastructure.slats, 'kineticsweep', DesignFolder, 'all_echo_commands.csv',
+#                                  transfer_volume=100)
+

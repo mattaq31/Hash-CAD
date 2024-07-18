@@ -1,21 +1,13 @@
 import numpy as np
-import pandas as pd
 import os
-import matplotlib.pyplot as plt
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
-from crisscross.core_functions.slat_design import generate_standard_square_slats, attach_cargo_handles_to_core_sequences
+from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
-                                                         crisscross_h5_handle_plates,
-                                                         seed_plug_plate_corner, seed_plug_plate_center,
-                                                         octahedron_patterning_v1, old_format_cargo_plate_folder,
-                                                         nelson_quimby_antihandles, h2_biotin_direct)
-from crisscross.plate_mapping import get_plateclass
+from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
 # This design is for testing the assembly yield of solution assembly vs bead-based assembly.
 # We will be preparing two types of squares - one with GNPs and one without.  Both will be prepared separately, then combined in one mixture and sent for TEM.
@@ -52,15 +44,9 @@ cargo_names = {**cargo_names, **crossbar_anti_names, **crossbar_names}
 
 ########################################
 # Plate sequences
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], assembly_handle_folder,
-                                     plate_slat_sides=[5, 5, 5])
-crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], assembly_handle_folder,
-                                     plate_slat_sides=[5, 5, 5])
-seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, edge_seed_plate, center_seed_plate = get_standard_plates()
+nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+cargo_key = {3: 'antiNelson'}
 ########################################
 
 ########################################
@@ -100,9 +86,9 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 ########################################
 # Preparing first design - no cargo on top, barts on the bottom
 megastructure = Megastructure(slat_array)
-megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
-megastructure.assign_seed_handles(corner_seed_array, seed_plate)
-megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='bottom')
+megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure.assign_seed_handles(corner_seed_array, edge_seed_plate)
+megastructure.assign_cargo_handles_with_array(cargo_pattern, nelson_plate, cargo_key, layer='bottom')
 megastructure.patch_control_handles(core_plate)
 
 convert_slats_into_echo_commands(megastructure.slats, 'gnp_replacement_plate',
@@ -129,9 +115,9 @@ for i in range(16):
     cargo_pattern[i, 13:15] = 3
 
 megastructure_nelson = Megastructure(slat_array)
-megastructure_nelson.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
-megastructure_nelson.assign_seed_handles(corner_seed_array, seed_plate)
-megastructure_nelson.assign_cargo_handles(cargo_pattern, nelson_plate, layer='bottom')
+megastructure_nelson.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure_nelson.assign_seed_handles(corner_seed_array, edge_seed_plate)
+megastructure_nelson.assign_cargo_handles_with_array(cargo_pattern, nelson_plate, cargo_key, layer='bottom')
 megastructure_nelson.patch_control_handles(core_plate)
 
 convert_slats_into_echo_commands(megastructure_nelson.slats, 'gnp_replacement_plate',

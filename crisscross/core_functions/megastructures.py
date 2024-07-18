@@ -34,7 +34,7 @@ class Megastructure:
         self.slat_array = slat_array
         self.handle_arrays = None
         self.seed_array = None
-        self.cargo_arrays = []
+        self.cargo_dict = {}
         self.slats = {}
         self.num_layers = slat_array.shape[2]
         self.connection_angle = connection_angle
@@ -145,45 +145,27 @@ class Megastructure:
 
         self.seed_array = (layer_id, seed_array)
 
-    def assign_cargo_handles(self, cargo_array, cargo_plate, layer='top', requested_handle_orientation=None):
+    def assign_cargo_handles_with_dict(self, cargo_dict, cargo_plate):
         """
-        Assigns cargo handles to the megastructure slats based on the cargo array provided.
-        :param cargo_array: 2D array containing cargo IDs (must match plate provided).
-        :param cargo_plate: Plate class with sequences to draw from.
-        :param layer: Either 'top' or 'bottom', or the exact layer ID required.
-        :param requested_handle_orientation: If a middle layer is specified,
-        then the handle orientation must be provided since there are always two options available.
-        TODO: what to do if there are multiple cargo plates?
-        TODO: what to do if there are string ids instead of float ids?
+        Assigns cargo handles to the megastructure slats based on the cargo dictionary provided.
+        :param cargo_dict: Dictionary of cargo placements (key = slat position, layer, handle orientation, value = cargo ID)
+        :param cargo_plate: The cargo plate from which cargo will be assigned.
+        :return: N/A
         """
 
-        cargo_coords = np.where(cargo_array > 0)
-        if layer == 'top':
-            handle_orientation = self.layer_interface_orientations[-1]
-            sel_layer = self.num_layers
-            if requested_handle_orientation:
-                raise RuntimeError('Handle orientation cannot be specified when '
-                                   'placing cargo at the top of the design.')
-        elif layer == 'bottom':
-            handle_orientation = self.layer_interface_orientations[0]
-            sel_layer = 1
-            if requested_handle_orientation:
-                raise RuntimeError('Handle orientation cannot be specified when '
-                                   'placing cargo at the bottom of the design.')
-        elif isinstance(layer, int):
-            sel_layer = layer
-            handle_orientation = requested_handle_orientation
-        else:
-            raise RuntimeError('Layer ID must be "top", "bottom" or an integer.')
+        for key, cargo_value in cargo_dict.items():
+            y_pos = key[0][0]
+            x_pos = key[0][1]
+            layer = key[1]
+            handle_orientation = key[2]
+            slat_ID = self.slat_array[y_pos, x_pos, layer - 1]
 
-        for y, x in zip(cargo_coords[0], cargo_coords[1]):
-            slat_ID = self.slat_array[y, x, sel_layer - 1]
             if slat_ID == 0:
                 raise RuntimeError('There is a cargo coordinate placed on a non-slat position.  '
                                    'Please re-verify your cargo pattern array.')
-            selected_slat = self.slats[get_slat_key(sel_layer, slat_ID)]
-            slat_position = selected_slat.slat_coordinate_to_position[(y, x)]
-            cargo_value = cargo_array[y, x]
+
+            selected_slat = self.slats[get_slat_key(layer, slat_ID)]
+            slat_position = selected_slat.slat_coordinate_to_position[(y_pos, x_pos)]
 
             if not isinstance(cargo_plate.get_sequence(slat_position, handle_orientation, cargo_value), str):
                 raise RuntimeError('Cargo plate selected cannot support placement on canvas.')
@@ -193,8 +175,55 @@ class Megastructure:
                                      cargo_plate.get_well(slat_position, handle_orientation, cargo_value),
                                      cargo_plate.get_plate_name(),
                                      descriptor='Cargo Plate %s, Handle %s' % (cargo_plate.get_plate_name(), cargo_value))
+        self.cargo_dict = {**self.cargo_dict, **cargo_dict}
 
-        self.cargo_arrays.append((sel_layer, handle_orientation, cargo_array))
+    def convert_cargo_array_into_cargo_dict(self, cargo_array, cargo_keymap, layer, handle_orientation=None):
+        """
+        Converts a cargo array into a dictionary that can be used to assign cargo handles to the slats.
+        :param cargo_array: Numpy array with cargo IDs (and 0s where no cargo is present).
+        :param cargo_keymap: A dictionary converting cargo ID numbers into unique strings.
+        :param layer: The layer the cargo should be assigned to (either top, bottom or a specific number)
+        :param handle_orientation: The specific slat handle orientation to which the cargo is assigned.
+        :return: Dictionary of converted cargo.
+        """
+
+        cargo_coords = np.where(cargo_array > 0)
+        cargo_dict = {}
+        if layer == 'top':
+            layer = self.num_layers
+            if handle_orientation:
+                raise RuntimeError('Handle orientation cannot be specified when '
+                                   'placing cargo at the top of the design.')
+            handle_orientation = self.layer_interface_orientations[-1]
+
+        elif layer == 'bottom':
+            layer = 1
+            if handle_orientation:
+                raise RuntimeError('Handle orientation cannot be specified when '
+                                   'placing cargo at the top of the design.')
+            handle_orientation = self.layer_interface_orientations[0]
+        elif handle_orientation is None:
+            raise RuntimeError('Handle orientation must specified when '
+                               'placing cargo on middle layers of the design.')
+
+        for y, x in zip(cargo_coords[0], cargo_coords[1]):
+            cargo_value = cargo_keymap[cargo_array[y, x]]
+            cargo_dict[((y, x), layer, handle_orientation)] = cargo_value
+
+        return cargo_dict
+
+    def assign_cargo_handles_with_array(self, cargo_array, cargo_plate, cargo_key, layer='top', handle_orientation=None):
+        """
+        Assigns cargo handles to the megastructure slats based on the cargo array provided.
+        :param cargo_array: 2D array containing cargo IDs (must match plate provided).
+        :param cargo_plate: Plate class with sequences to draw from.
+        :param cargo_key: Dictionary mapping cargo IDs to cargo unique names for proper identification.
+        :param layer: Either 'top' or 'bottom', or the exact layer ID required.
+        :param handle_orientation: If a middle layer is specified,
+        then the handle orientation must be provided since there are always two options available.
+        """
+        cargo_dict = self.convert_cargo_array_into_cargo_dict(cargo_array, cargo_key, layer=layer, handle_orientation=handle_orientation)
+        self.assign_cargo_handles_with_dict(cargo_dict, cargo_plate)
 
     def patch_control_handles(self, control_plate):
         """
@@ -296,7 +325,7 @@ class Megastructure:
         create_graphical_slat_view(self.slat_array,
                                    layer_interface_orientations=self.layer_interface_orientations,
                                    slats=self.slats, seed_array=self.seed_array if include_seed else None,
-                                   cargo_arrays=self.cargo_arrays if include_cargo else None,
+                                   cargo_dict=self.cargo_dict if include_cargo else None,
                                    save_to_folder=save_to_folder, instant_view=instant_view,
                                    connection_angle=self.connection_angle,
                                    colormap=colormap,
