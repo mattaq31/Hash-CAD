@@ -25,7 +25,7 @@ def physical_point_scale_convert(point, grid_xd, grid_yd):
 
 def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
                                slats=None, seed_array=None,
-                               cargo_arrays=None, save_to_folder=None, instant_view=True,
+                               cargo_dict=None, save_to_folder=None, instant_view=True,
                                slat_width=4, connection_angle='90',
                                colormap='Set1',
                                cargo_colormap='Set1'):
@@ -37,7 +37,7 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
     :param layer_interface_orientations: A list of tuples (or integers for top/bottom), each containing the bottom and top interface numbers for each layer
     :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
     :param seed_array: A tuple of (layer_position, 2D numpy array with the seed handle positions)
-    :param cargo_arrays: A list of tuples, each containing the layer position, orientation, and 2D numpy array with cargo handle positions
+    :param cargo_dict: A dictionary containing the (x, y position), layer and orientation of attached cargo handles
     :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
     :param instant_view: Set to True to plot the figures immediately to your active view.
     :param slat_width: The width to use for the slat lines.
@@ -50,8 +50,7 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
     num_layers = slat_array.shape[2]
     if slats is None:
         slats = convert_slat_array_into_slat_objects(slat_array)
-    if not isinstance(cargo_arrays, list) and cargo_arrays is not None:
-        cargo_arrays = [cargo_arrays]
+
     if layer_interface_orientations is None:
         layer_interface_orientations = [2] + [(5, 2)] * (num_layers - 1) + [5]
 
@@ -109,22 +108,22 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
         global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
                              zorder=num_layers - seed_layer)
 
-    if cargo_arrays is not None:
+    if cargo_dict is not None:
         # TODO: is it worth setting a different colour for each different cargo here?
         # TODO: Is there some way to print the slat ID too?
         # TODO: will need to improve colour assignment process to include non-integers..
-        for cargo_layer, cargo_orientation, cargo_array in cargo_arrays:
-            cargo_plot_points = np.where(cargo_array > 0)
-            # sets colour of annotation according to the cargo being added
-            cargo_color_values = cargo_array[cargo_plot_points]
-            cargo_color_values_rgb = []
-            for col_id in cargo_color_values:
-                if int(col_id) >= len(mpl.colormaps[cargo_colormap].colors):
-                    print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. Recycling other colors for the higher IDs.' % col_id)
-                    col_id = max(int(col_id) - len(mpl.colormaps[cargo_colormap].colors), 0)
-                cargo_color_values_rgb.append(mpl.colormaps[cargo_colormap].colors[int(col_id)])
 
-            transformed_cpp = [cargo_plot_points[0] * grid_yd, cargo_plot_points[1] * grid_xd]
+        # sets the colours of annotation according to the cargo being added
+        all_cargo = set(cargo_dict.values())
+        cargo_color_values_rgb = {}
+        for cargo_number, unique_cargo_name in enumerate(all_cargo):
+            if cargo_number >= len(mpl.colormaps[cargo_colormap].colors):
+                print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. Recycling other colors for the higher IDs.' % unique_cargo_name)
+                cargo_number = max(int(cargo_number) - len(mpl.colormaps[cargo_colormap].colors), 0)
+            cargo_color_values_rgb[unique_cargo_name] = (mpl.colormaps[cargo_colormap].colors[cargo_number])
+
+        for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
+            transformed_cpp = [y_cargo * grid_yd, x_cargo * grid_xd]
             top_layer_side = layer_interface_orientations[cargo_layer]
             if isinstance(top_layer_side, tuple):
                 top_layer_side = top_layer_side[0]
@@ -133,11 +132,11 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
             else:
                 top_or_bottom = 1
             layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(transformed_cpp[1], transformed_cpp[0],
-                                                                     color=cargo_color_values_rgb, marker='s',
+                                                                     color=cargo_color_values_rgb[cargo_value], marker='s',
                                                                      s=100, zorder=10)
-            global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb, s=100,
+            global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb[cargo_value], s=100,
                                  marker='s', alpha=0.5, zorder=cargo_layer)
-            global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb,
+            global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb[cargo_value],
                                  s=100, marker='s', alpha=0.5, zorder=num_layers - cargo_layer)
 
     global_fig.tight_layout()

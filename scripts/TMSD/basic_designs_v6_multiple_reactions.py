@@ -9,15 +9,11 @@ from crisscross.core_functions.megastructure_composition import convert_slats_in
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.core_functions.slats import Slat
 
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
-                                                         crisscross_h5_handle_plates, crisscross_h2_handle_plates,
-                                                         seed_plug_plate_corner, seed_plug_plate_center,
-                                                         old_format_cargo_plate_folder, nelson_quimby_antihandles,
+from crisscross.helper_functions.plate_constants import (cargo_plate_folder, nelson_quimby_antihandles,
                                                          octahedron_patterning_v1, simpsons_mixplate_antihandles)
-from crisscross.plate_mapping import get_plateclass
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from crisscross.helper_functions.plate_constants import plate96
 
 ################################
@@ -29,17 +25,12 @@ read_handles_from_file = True
 regenerate_graphics = False
 ################################
 # Plate sequences
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3],
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles, old_format_cargo_plate_folder)
-bart_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
-simpsons_plate = get_plateclass('SimpsonsMixPlate', simpsons_mixplate_antihandles, old_format_cargo_plate_folder)
+# Plate sequences
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+bart_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
+simpsons_plate = get_plateclass('GenericPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
+cargo_key = {3: 'antiNelson', 1: 'antiBart', 2: 'antiEdna'}
 ################################
 
 ################################
@@ -173,4 +164,21 @@ ax.set_xlim(-0.5, rect_length + 0.5)
 ax.invert_yaxis()  # y-axis is inverted to match the way the slats and patterns are numbered
 plt.axis('off')
 plt.savefig(os.path.join(output_folder, 'invader_megastructure.png'), dpi=300)
+plt.show()
+
+
+fig, ax = plt.subplots(figsize=(10, 10))
+slatPadding = 0.25
+rect_length = 32
+for i in range(32):
+    ax.add_patch(Rectangle((i, -slatPadding), 1 - 2 * slatPadding, rect_length, color='b', alpha=0.2))
+
+    ax.add_patch(Rectangle((-slatPadding, i), rect_length, 1 - 2 * slatPadding, color='r', alpha=0.2))
+
+# graph formatting
+ax.set_ylim(-0.5, rect_length + 0.5)
+ax.set_xlim(-0.5, rect_length + 0.5)
+ax.invert_yaxis()  # y-axis is inverted to match the way the slats and patterns are numbered
+plt.axis('off')
+plt.savefig(os.path.join(output_folder, 'empty_megastructure_2.pdf'), transparent=True, dpi=300)
 plt.show()
