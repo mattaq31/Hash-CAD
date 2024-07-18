@@ -260,7 +260,7 @@ def generate_megastructure(data):
     bottom_cargo_array = np.array([])
 
     if (crisscross_dict[0]):
-        seed_array = seed_dict_to_array(crisscross_dict[1], trim_offset=True, slat_grid_dict=crisscross_dict[1])
+        seed_array = seed_dict_to_array(crisscross_dict[0], trim_offset=True, slat_grid_dict=crisscross_dict[1])
 
     if (crisscross_dict[1]):
         slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=True)
@@ -296,14 +296,15 @@ def generate_megastructure(data):
     #Add seeds
     if (seed_array.size != 0):
         # Iterate over layers:
-        layer_counter = 1
+        layer_counter = 0
         for layer in range(seed_array.shape[2]):
-            crisscross_megastructure.assign_seed_handles(seed_array[:, :, layer], edge_seed_plate, layer_id=layer_counter+1)
+            if(np.any(seed_array[:,:,layer])):
+                crisscross_megastructure.assign_seed_handles(seed_array[:, :, layer], edge_seed_plate, layer_id=layer_counter + 1)
 
     # Add cargo
     if(top_cargo_array.size != 0):
         # Iterate over layers:
-        layer_counter = 1
+        layer_counter = 0
         for layer in range(top_cargo_array.shape[2]):
             tmp_layer_array = top_cargo_array[:, :, layer]
             tmp_layer_plate_dict = break_array_by_plates(tmp_layer_array)
@@ -316,18 +317,18 @@ def generate_megastructure(data):
                     #plate = createGenericPlate(plate_file, plate_folder)
                     plate = get_plateclass('GenericPlate', plate, plate_folder)
 
-                    layerId = str(layer_counter - 1)
+                    layerId = str(layer_counter)
                     handle_orientation = handle_configs[layerId][0]
                     print("Layer:", layer_counter, " with top handle orientation: ", handle_orientation)
 
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
-                                                                  layer=layer_counter,
+                                                                  layer=layer_counter + 1,
                                                                   requested_handle_orientation=handle_orientation)
             layer_counter += 1
 
     if (bottom_cargo_array.size != 0):
         # Iterate over layers:
-        layer_counter = 1
+        layer_counter = 0
         for layer in range(bottom_cargo_array.shape[2]):
             tmp_layer_array = bottom_cargo_array[:, :, layer]
             tmp_layer_plate_dict = break_array_by_plates(tmp_layer_array)
@@ -340,13 +341,13 @@ def generate_megastructure(data):
                     #plate = createGenericPlate(plate_file, plate_folder)
                     plate = get_plateclass('GenericPlate', plate, plate_folder)
 
-                    layerId = str(layer_counter - 1)
+                    layerId = str(layer_counter)
                     handle_orientation = handle_configs[layerId][1]
                     print("Layer:", layer_counter, " with bottom handle orientation: ", handle_orientation)
 
 
                     crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
-                                                                  layer=layer_counter,
+                                                                  layer=layer_counter + 1,
                                                                   requested_handle_orientation=handle_orientation)
             layer_counter += 1
 

@@ -11,7 +11,18 @@ export function addLayer() {
     const layerItem = document.createElement('div');
     layerItem.className = 'layer-item';
 
-    const layerId = layerList.children.length 
+    let layerId = null // layerList.children.length 
+
+    console.log("Layerlist: ", layerList)
+
+    if(layerList.children.length == 0){
+        layerId = 0
+    }
+    else{
+        let lastLayerId = layerList.children[0].dataset.layerId
+        layerId = parseInt(lastLayerId) + 1
+    }
+
     layerItem.dataset.layerId = layerId;  // Add a data attribute to identify the layer
 
     const layerCheckbox = document.createElement('input');

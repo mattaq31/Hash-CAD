@@ -6,6 +6,7 @@ import {findSlatStartOrientation} from './helper_functions_io.js'
 
 const right3DPanel = document.getElementById('right-3D-panel');
 const scene = new THREE.Scene();
+scene.background =  new THREE.Color(0xaaaaaa);
 const renderer = new THREE.WebGLRenderer();
 const camera = new THREE.PerspectiveCamera( 75, right3DPanel.clientWidth / right3DPanel.clientHeight, 0.1, 1000 );
 camera.up.set(0, 0, 1);
@@ -19,7 +20,7 @@ controls.screenSpacePanning = false; // if you want to pan in screen space (2D)
 
 
 
-export function renderSlats(slatDict, bottomCargoDict, topCargoDict){
+export function renderMegastructure(slatDict, bottomCargoDict, topCargoDict){
     scene.remove.apply(scene, scene.children);
     let slatGeometry = drawSlatGeometry(slatDict)
     let topCargoGeometry = drawCargoGeometry(topCargoDict, true)
