@@ -13,10 +13,10 @@ from crisscross.helper_functions.plate_constants import (slat_core, core_plate_f
                                                          seed_plug_plate_center, old_format_cargo_plate_folder, simpsons_mixplate_antihandles,
                                                          nelson_quimby_antihandles, seed_plug_plate_corner)
 ############### DESIGN PREPARATION ###############
-output_folder = 'C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\scratch'#'/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
+output_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v2'
 design_file = 'layer_arrays.xlsx'
-read_handles_from_file = False #True  # if true, skips hamming distance optimization
-skip_redesign = False #True  # if true, skips the regeneration of the slat layers
+read_handles_from_file = True  # if true, skips hamming distance optimization
+skip_redesign = True  # if true, skips the regeneration of the slat layers
 np.random.seed(8)
 
 if not skip_redesign:
@@ -127,7 +127,7 @@ if read_handles_from_file:  # this is to re-load a pre-computed handle array and
     result = multi_rule_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=4, layer_hamming=True)
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=400, layer_hamming=True)
     for i in range(handle_array.shape[-1]):
         np.savetxt(os.path.join(output_folder, 'optimized_handle_array_layer_%s.csv' % (i+1)),
                    handle_array[..., i].astype(np.int32), delimiter=',', fmt='%i')

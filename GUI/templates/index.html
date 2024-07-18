@@ -6,6 +6,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <!-- Include my own styles-->
     <link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
+
+    <!-- Include Three.js -->
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@v0.166.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@v0.166.1/examples/jsm/"
+          }
+        }
+    </script>
+
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>CrisscrossDesigner</title>
 </head>
@@ -154,11 +165,11 @@
             <div class="resizer" id="resizer">3D</div>
             <div class="right-3D-panel" id="right-3D-panel">
                 <!-- Use it like any other HTML element -->
-                <model-viewer id="three-D-model-viewer"
+                <!-- <model-viewer id="three-D-model-viewer"
                     alt="Test 3d Geometry" 
                     src="{{url_for('static', filename='3D-geometry/3D_blender_view_glider_v2.glb')}}"
                     shadow-intensity="1" camera-controls touch-action="pan-y">
-                </model-viewer>
+                </model-viewer> -->
 
             </div>
             
@@ -226,6 +237,10 @@
 
     <!-- Include Model Viewer -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
+    
+
+    
 
     <script type="module" src="{{url_for('static', filename='scripts/main.js')}}"></script>
     <script type="module" src="{{url_for('static', filename='scripts/layermanager.js')}}"></script>

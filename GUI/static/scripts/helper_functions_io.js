@@ -255,7 +255,7 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, top
  * @param slatNum SlatID/Number of slat to be found/oriented
  * @returns {number[]}
  */
-function findSlatStartOrientation(slatDict, slatNum){
+export function findSlatStartOrientation(slatDict, slatNum){
     let minX = Infinity;
     let maxX = -Infinity;
 
@@ -360,7 +360,9 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
  */
 export function importDesign(seedDict, slatDict, bottomCargoDict, topCargoDict,  layerList, minorGridSize, shownOpacity, shownCargoOpacity){
     removeAllLayers(layerList)
-    importSeed(seedDict, layerList, minorGridSize)
+    if(Object.keys(seedDict).length != 0){
+        importSeed(seedDict, layerList, minorGridSize)
+    }
     let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
     importCargo(bottomCargoDict, layerList, minorGridSize, shownCargoOpacity, false)
     importCargo(topCargoDict, layerList, minorGridSize, shownCargoOpacity, true)
