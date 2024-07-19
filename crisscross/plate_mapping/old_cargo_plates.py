@@ -123,9 +123,6 @@ class DirectBiotinPlate(BasePlate):
     """
 
     def __init__(self, *args, **kwargs):
-        self.cargo_key = {
-            3: 'biotin',
-        }
         super().__init__(*args, **kwargs, plate_style='IDT_order')
 
     def identify_wells_and_sequences(self):
@@ -142,7 +139,7 @@ class DirectBiotinPlate(BasePlate):
             self.sequences[key] = seq
 
     def get_sequence(self, slat_position, slat_side, cargo_id=0):
-        return self.sequences[(slat_position, slat_side, self.cargo_key[cargo_id])]
+        return self.sequences[(slat_position, slat_side, cargo_id)]
 
     def get_well(self, slat_position, slat_side, cargo_id=0):
-        return self.wells[(slat_position, slat_side, self.cargo_key[cargo_id])]
+        return self.wells[(slat_position, slat_side, cargo_id)]

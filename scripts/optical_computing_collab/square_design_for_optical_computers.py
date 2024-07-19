@@ -10,12 +10,9 @@ from crisscross.core_functions.hamming_functions import generate_handle_set_and_
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
-                                                         crisscross_h5_handle_plates,
-                                                         seed_plug_plate_corner, seed_plug_plate_center,
-                                                         octahedron_patterning_v1, old_format_cargo_plate_folder, cargo_plate_folder,
+from crisscross.helper_functions.plate_constants import (octahedron_patterning_v1, cargo_plate_folder,
                                                          nelson_quimby_antihandles, h2_biotin_direct)
-from crisscross.plate_mapping import get_plateclass
+from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
 ########################################
 # script setup
@@ -47,15 +44,17 @@ crossbar_anti_names = {i + 4: f'10mer-anti{crossbar_linkages[i]}' for i in range
 crossbar_names = {i + 11: f'10mer-{crossbar_linkages[i]}' for i in range(7)}
 cargo_names = {1: f'anti{cargo_1}', 2: f'anti{cargo_2}', 3: f'anti{cargo_biotin}'}
 cargo_names = {**cargo_names, **crossbar_anti_names, **crossbar_names}
+
+cargo_key_for_new_system = {**cargo_names,
+                            **{i + 11: f'{crossbar_linkages[i]}-10mer' for i in range(7)},
+                            **{i + 4: f'anti{crossbar_linkages[i]}-10mer' for i in range(7)}}
+
 ########################################
 
 ########################################
 # Plate sequences
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
+# Plate sequences
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
 ########################################
 
 ########################################
@@ -137,9 +136,9 @@ print('Total new sequences required: %s' % len(full_attachment_df))
 ########################################
 
 ########################################
-# generates new cargo plate or reads from file TODO: can a standard set of core plates be read within a single function?
+# generates new cargo plate or reads from file
 if read_cargo_patterns_from_file:
-    cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
+    cargo_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
 else:
     # exports sequences to a new plate
     generate_new_plate_from_slat_handle_df(full_attachment_df, output_folder, 'new_cargo_strands.xlsx',
@@ -153,10 +152,8 @@ else:
                                  output_folder,
                                  pre_read_plate_dfs=[idt_plate])
 
-nelson_plate = get_plateclass('AntiNelsonQuimbyPlate', nelson_quimby_antihandles,
-                              old_format_cargo_plate_folder)
-biotin_plate = get_plateclass('DirectBiotinPlate', h2_biotin_direct,
-                              cargo_plate_folder)
+nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+biotin_plate = get_plateclass('DirectBiotinPlate', h2_biotin_direct, cargo_plate_folder)
 ########################################
 # preparing seed placements
 insertion_seed_array = np.arange(16) + 1
@@ -171,10 +168,10 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 ########################################
 # Preparing first design - cargo on top, crossbar on bottom
 megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
-megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
+megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(corner_seed_array, seed_plate)
-megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
-megastructure.assign_cargo_handles(crossbar_pattern, cargo_plate, layer='bottom')
+megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_plate, cargo_key_for_new_system, layer='top')
+megastructure.assign_cargo_handles_with_array(crossbar_pattern, cargo_plate, cargo_key_for_new_system, layer='bottom')
 
 # custom slat for crossbar system TODO: is there a way to integrate this into the Megastructure class?
 crossbar_slat = Slat('crossbar_slat', 'Extra', 'N/A')
@@ -204,10 +201,10 @@ biotin_underside_pattern[0, :] = 3
 biotin_underside_pattern[-1, :] = 3
 
 alt_1_megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
-alt_1_megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
+alt_1_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 alt_1_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
-alt_1_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
-alt_1_megastructure.assign_cargo_handles(biotin_underside_pattern, nelson_plate, layer='bottom')
+alt_1_megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_plate, cargo_key_for_new_system, layer='top')
+alt_1_megastructure.assign_cargo_handles_with_array(biotin_underside_pattern, nelson_plate, cargo_key_for_new_system, layer='bottom')
 alt_1_megastructure.patch_control_handles(core_plate)
 alt_1_megastructure.create_standard_graphical_report(os.path.join(output_folder, 'alt_1_graphics'))
 
@@ -221,10 +218,10 @@ biotin_underside_pattern[:, 0] = 3
 biotin_underside_pattern[:, -1] = 3
 
 alt_2_megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
-alt_2_megastructure.assign_crisscross_handles(handle_array, crisscross_x_plates, crisscross_y_plates)
+alt_2_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 alt_2_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
-alt_2_megastructure.assign_cargo_handles(cargo_pattern, cargo_plate, layer='top')
-alt_2_megastructure.assign_cargo_handles(biotin_underside_pattern, biotin_plate, layer='bottom')
+alt_2_megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_plate, cargo_key_for_new_system, layer='top')
+alt_2_megastructure.assign_cargo_handles_with_array(biotin_underside_pattern, biotin_plate, {3: 'biotin'}, layer='bottom')
 alt_2_megastructure.patch_control_handles(core_plate)
 alt_2_megastructure.create_standard_graphical_report(os.path.join(output_folder, 'alt_2_graphics'))
 

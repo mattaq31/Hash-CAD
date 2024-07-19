@@ -23,7 +23,18 @@ def physical_point_scale_convert(point, grid_xd, grid_yd):
     return point[0] * grid_yd, point[1] * grid_xd
 
 
-def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
+def cargo_legend_setup(*ax):
+    for specific_axis in ax:
+        handles, labels = specific_axis.get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        if len(by_label) == 0:
+            continue
+        specific_axis.legend(by_label.values(), by_label.keys(), loc='upper center',
+                             bbox_to_anchor=(0.5, 0.03),
+                             ncol=3, fancybox=True, fontsize=16)
+
+
+def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
                                slats=None, seed_array=None,
                                cargo_dict=None, save_to_folder=None, instant_view=True,
                                slat_width=4, connection_angle='90',
@@ -74,7 +85,7 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
         layer_figures.append((l_fig, l_ax))
 
     for slat_id, slat in slats.items():
-
+        # TODO: Is there some way to print the slat ID too?
         if len(slat.slat_coordinate_to_position) == 0:
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
                                 'view as it does not have a grid position defined.' % slat_id)
@@ -82,7 +93,8 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
         start_pos = slat.slat_position_to_coordinate[1]
         end_pos = slat.slat_position_to_coordinate[slat.max_length]
 
-        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
+        start_pos = physical_point_scale_convert(start_pos, grid_xd,
+                                                 grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
         layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
@@ -109,19 +121,17 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
                              zorder=num_layers - seed_layer)
 
     if cargo_dict is not None:
-        # TODO: is it worth setting a different colour for each different cargo here?
-        # TODO: Is there some way to print the slat ID too?
-        # TODO: will need to improve colour assignment process to include non-integers..
-
         # sets the colours of annotation according to the cargo being added
         all_cargo = set(cargo_dict.values())
         cargo_color_values_rgb = {}
-        for cargo_number, unique_cargo_name in enumerate(all_cargo):
+        for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
             if cargo_number >= len(mpl.colormaps[cargo_colormap].colors):
-                print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. Recycling other colors for the higher IDs.' % unique_cargo_name)
+                print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. '
+                                 'Recycling other colors for the higher IDs.' % unique_cargo_name)
                 cargo_number = max(int(cargo_number) - len(mpl.colormaps[cargo_colormap].colors), 0)
             cargo_color_values_rgb[unique_cargo_name] = (mpl.colormaps[cargo_colormap].colors[cargo_number])
 
+        layers_containing_cargo = set()
         for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
             transformed_cpp = [y_cargo * grid_yd, x_cargo * grid_xd]
             top_layer_side = layer_interface_orientations[cargo_layer]
@@ -131,13 +141,24 @@ def create_graphical_slat_view(slat_array,  layer_interface_orientations=None,
                 top_or_bottom = 0
             else:
                 top_or_bottom = 1
+
+            layers_containing_cargo.add(cargo_layer)
             layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(transformed_cpp[1], transformed_cpp[0],
-                                                                     color=cargo_color_values_rgb[cargo_value], marker='s',
-                                                                     s=100, zorder=10)
-            global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb[cargo_value], s=100,
-                                 marker='s', alpha=0.5, zorder=cargo_layer)
+                                                                     color=cargo_color_values_rgb[cargo_value],
+                                                                     marker='s', s=100, zorder=10, label=cargo_value)
+
+            global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb[cargo_value],
+                                 s=100,
+                                 marker='s', alpha=0.5, zorder=cargo_layer, label=cargo_value)
             global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb[cargo_value],
-                                 s=100, marker='s', alpha=0.5, zorder=num_layers - cargo_layer)
+                                 s=100, marker='s', alpha=0.5, zorder=num_layers - cargo_layer, label=cargo_value)
+
+        # special legend setup to prevent duplicates and reduce overlap
+        for layer in layers_containing_cargo:
+            top_ax = layer_figures[layer - 1][1][0]
+            bottom_ax = layer_figures[layer - 1][1][1]
+            cargo_legend_setup(top_ax, bottom_ax)
+        cargo_legend_setup(global_ax[0], global_ax[1])
 
     global_fig.tight_layout()
     if instant_view:
@@ -199,7 +220,8 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
             continue
         start_pos = slat.slat_position_to_coordinate[1]
         end_pos = slat.slat_position_to_coordinate[slat.max_length]
-        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
+        start_pos = physical_point_scale_convert(start_pos, grid_xd,
+                                                 grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
         layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
@@ -229,24 +251,24 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
     # Preparing layer lines for side profile
     layer_lines = []
     layer_v_jump = 0.1  # set a 10% full-height jump between layers for aesthetic reasons
-    midway_v_point = ((slat_array.shape[0] + 1)/2) * grid_yd
+    midway_v_point = ((slat_array.shape[0] + 1) / 2) * grid_yd
     full_v_scale = (slat_array.shape[0] + 1) * grid_yd
     full_x_scale = (slat_array.shape[1] + 1) * grid_xd
 
     if num_layers % 2 == 0:  # even and odd num of layers should have different spacing to remain centred
-        start_point = midway_v_point - (layer_v_jump/2) - (layer_v_jump * ((num_layers/2)-1) * full_v_scale)
+        start_point = midway_v_point - (layer_v_jump / 2) - (layer_v_jump * ((num_layers / 2) - 1) * full_v_scale)
     else:
-        start_point = midway_v_point - (layer_v_jump * (math.floor(num_layers/2)) * full_v_scale)
+        start_point = midway_v_point - (layer_v_jump * (math.floor(num_layers / 2)) * full_v_scale)
 
     for layer in range(num_layers):  # prepares actual lines here
-        layer_lines.append([[-0.5*grid_xd, (slat_array.shape[1] + 0.5)*grid_xd],
-                            [start_point + (layer_v_jump*layer*full_v_scale),
-                             start_point + (layer_v_jump*layer*full_v_scale)]])
+        layer_lines.append([[-0.5 * grid_xd, (slat_array.shape[1] + 0.5) * grid_xd],
+                            [start_point + (layer_v_jump * layer * full_v_scale),
+                             start_point + (layer_v_jump * layer * full_v_scale)]])
 
     # layer lines are painted here, along with arrows and annotations
     annotation_vert_offset = 0.02
     annotation_vert_offset_btm = 0.026  # made a second offset scale here due to the way the font is positioned in the figure
-    annotation_x_position = full_x_scale/2
+    annotation_x_position = full_x_scale / 2
     for fig_ind, (fig, ax) in enumerate(interface_figures):
         for l_ind, line in enumerate(layer_lines):
             ax[1].plot(line[0], line[1], color=mpl.colormaps[colormap].colors[l_ind], linewidth=slat_width)
@@ -263,15 +285,18 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
                 top_interface = layer_interface_orientations[l_ind + 1][0]
 
             ax[1].text(annotation_x_position, line[1][1] - (annotation_vert_offset_btm * full_v_scale),
-                       'H%s' % bottom_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
+                       'H%s' % bottom_interface, ha='center', va='center', color='black', zorder=3, fontsize=25,
+                       weight='bold')
             ax[1].text(annotation_x_position, line[1][1] + (annotation_vert_offset * full_v_scale),
-                       'H%s' % top_interface, ha='center', va='center', color='black', zorder=3, fontsize=25, weight='bold')
+                       'H%s' % top_interface, ha='center', va='center', color='black', zorder=3, fontsize=25,
+                       weight='bold')
 
-        y_arrow_pos = layer_lines[fig_ind+1][1][1] - (layer_lines[fig_ind+1][1][1] - layer_lines[fig_ind][1][1])/2
+        y_arrow_pos = layer_lines[fig_ind + 1][1][1] - (layer_lines[fig_ind + 1][1][1] - layer_lines[fig_ind][1][1]) / 2
         x_arrow_1 = -0.5 * grid_xd
         x_arrow_2 = (slat_array.shape[1] + 0.5) * grid_xd
-        ax[1].arrow(x_arrow_1, y_arrow_pos, 0.1 * full_x_scale, 0, width=(0.8 * full_v_scale/67), fc='k', ec='k') # arrow width was calibrated on a canvas with a vertical size of 67
-        ax[1].arrow(x_arrow_2, y_arrow_pos, -0.1 * full_x_scale, 0, width=(0.8 * full_v_scale/67), fc='k', ec='k')
+        ax[1].arrow(x_arrow_1, y_arrow_pos, 0.1 * full_x_scale, 0, width=(0.8 * full_v_scale / 67), fc='k',
+                    ec='k')  # arrow width was calibrated on a canvas with a vertical size of 67
+        ax[1].arrow(x_arrow_2, y_arrow_pos, -0.1 * full_x_scale, 0, width=(0.8 * full_v_scale / 67), fc='k', ec='k')
 
     # final display and saving
     for fig_ind, (fig, ax) in enumerate(interface_figures):
