@@ -16,7 +16,6 @@ if bpy_spec is not None:
     bpy_available = True
 else:
     bpy_available = False
-    print('The Blender API is not installed.  3D graphical views cannot be created using Blender.')
 
 
 def look_at(obj, target):
@@ -31,11 +30,12 @@ def look_at(obj, target):
     obj.rotation_euler = rot_quat.to_euler()
 
 
-def create_slat_material(color, mat_name, metallic_strength=0.3):
+def create_slat_material(color, mat_name, metallic_strength=0.3, alpha_animation=False):
     """
     :param color: RGB color code (4-value, with the last value being the alpha)
     :param mat_name: The name to assign to the material
     :param metallic_strength: How metallic the final material should be (default is slightly metallic)
+    :param alpha_animation: Set to True to enable alpha animation (for slat wipe-in animations)
     :return: The complete material object
     """
 
@@ -59,10 +59,14 @@ def create_slat_material(color, mat_name, metallic_strength=0.3):
     # Connects the BSDF shader to Output node
     material.node_tree.links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
 
+    if alpha_animation:
+        material.blend_method = 'BLEND'  # Alpha Blend
+        material.use_backface_culling = True  # turns off backface visibility
+
     return material
 
 
-def set_slat_animation(frame_start, frame_end, slat_id, slat_cylinder, slat_center, slat_rotation, slat_length, hide_cube=True):
+def set_slat_wipe_in_animation(frame_start, frame_end, slat_id, slat_cylinder, slat_center, slat_rotation, slat_length, hide_cube=True):
     """
     Sets up the animation for a single slat, which involves creating a cuboid and slowly covering the slat with the cuboid.
     :param frame_start: The frame from which to start the animation
@@ -113,6 +117,70 @@ def set_slat_animation(frame_start, frame_end, slat_id, slat_cylinder, slat_cent
     cube.keyframe_insert(data_path="location", frame=frame_end)
 
     cube.hide_viewport = hide_cube
+
+
+def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_center, slat_rotation, slat_length):
+    """
+    Sets up a translation-based entry animation for a slat
+    :param frame_start: The frame from which to start the animation
+    :param frame_end: The frame at which the animation ends
+    :param slat_cylinder: The slat cylinder object pre-created in Blender
+    :param slat_center: The center of the slat
+    :param slat_rotation: The slat's orientation
+    :param slat_length: The slat's length
+    :return: N/A
+    """
+
+    # Get the cylinder's direction (z-axis)
+    direction = mathutils.Vector((0, 0, 1))  # Assuming cylinder is aligned with Z-axis
+    direction.rotate(mathutils.Euler(slat_rotation))  # Apply rotation
+
+    # Set the final keyframe (slat in place)
+    final_position = mathutils.Vector(slat_center)
+    slat_cylinder.location = final_position
+    slat_cylinder.keyframe_insert(data_path="location", frame=frame_end)
+
+    # Set the initial position and keyframe (the cylinder will move slowly through the frames in between the start and end)
+    distance = slat_length + 2  # Distance to move the cylinder
+    initial_position = final_position + direction * distance
+    slat_cylinder.location = initial_position
+    slat_cylinder.keyframe_insert(data_path="location", frame=frame_start+5)
+
+    # get the slat's shader node
+    nodes = slat_cylinder.data.materials[0].node_tree.nodes
+    principled_node = None
+    for node in nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            principled_node = node
+            break
+
+    # ensures the slat is transparent until it is called for in the animation
+    principled_node.inputs['Alpha'].default_value = 0.0
+    principled_node.inputs['Alpha'].keyframe_insert(data_path="default_value", frame=1)
+    principled_node.inputs['Alpha'].default_value = 0.0
+    principled_node.inputs['Alpha'].keyframe_insert(data_path="default_value", frame=frame_start)
+
+    # have the slat appear fully at the start of the animation
+    principled_node.inputs['Alpha'].default_value = 1.0
+    principled_node.inputs['Alpha'].keyframe_insert(data_path="default_value", frame=frame_start+5)
+
+    slat_cylinder.data.materials[0].blend_method = 'BLEND'  # turn on alpha blend
+    slat_cylinder.data.materials[0].keyframe_insert(data_path="blend_method", frame=1)
+
+    slat_cylinder.data.materials[0].blend_method = 'OPAQUE'  # turn off alpha blend
+    slat_cylinder.data.materials[0].keyframe_insert(data_path="blend_method", frame=frame_end)
+
+    # turn off slat entirely before the animation to ensure it doesn't interfere with the
+    # other objects (due to alpha blend)
+    slat_cylinder.hide_render = True
+    slat_cylinder.hide_viewport = True
+    slat_cylinder.keyframe_insert(data_path="hide_render", frame=0)
+    slat_cylinder.keyframe_insert(data_path="hide_viewport", frame=0)
+
+    slat_cylinder.hide_render = False
+    slat_cylinder.hide_viewport = False
+    slat_cylinder.keyframe_insert(data_path="hide_render", frame=frame_start)
+    slat_cylinder.keyframe_insert(data_path="hide_viewport", frame=frame_start)
 
 
 def check_slat_animation_direction(start_point, end_point, current_slat_id, current_layer, slats, animate_slat_group_dict):
@@ -183,9 +251,10 @@ def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid
 
 
 def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None, animate_delay_frames=40,
-                                 connection_angle='90', seed_layer_and_array=None, camera_spin=False, colormap='Set1'):
+                                 connection_angle='90', seed_layer_and_array=None, camera_spin=False,
+                                 animation_type='translate', colormap='Set1'):
     """
-    Creates a 3D video of a megastructure slat design. TODO: add cargo and seeds to this view too.
+    Creates a 3D video of a megastructure slat design. TODO: add cargo to this view too.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
     :param save_folder: Folder to save all video to.
     :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
@@ -194,6 +263,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
     :param seed_layer_and_array: Tuple of the seed layer and seed array to be added to the design (or None if no seed to be added)
     :param camera_spin: Set to True to have the camera spin around the design
+    :param animation_type: The type of animation to use for slat entry ('translate' or 'wipe_in')
     :param colormap: Colormap to extract layer colors from
     :return: N/A
     """
@@ -207,10 +277,21 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
 
     # Clear existing objects in the scene
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    materials = []
-    for i in range(slat_array.shape[2]):
-        color = mpl.colormaps[colormap].colors[i]
-        materials.append(create_slat_material(color + (1,), f'Layer {i + 1}'))
+
+    # prepares materials for each slat.  If the translate animation is used,
+    # a different material for each entry group needs to be created
+    materials = {}
+    if animation_type == 'translate' and animate_slat_group_dict is not None:
+        for key, value in animate_slat_group_dict.items():
+            if value not in materials:
+                layer_id = slats[key].layer
+                color = mpl.colormaps[colormap].colors[layer_id-1]
+                materials[value] = create_slat_material(color + (1,), f'Material Group {value}, Layer{layer_id}', alpha_animation=True)
+    else:
+        num_materials = slat_array.shape[2]
+        for i in range(num_materials):
+            color = mpl.colormaps[colormap].colors[i]
+            materials[i+1] = create_slat_material(color + (1,), f'Layer {i + 1}', alpha_animation=False)
 
     # prepares variables
     cylinder_min_boundaries = [np.inf, np.inf, np.inf]
@@ -258,13 +339,23 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         # sets the cylinder's name, makes sure the shading is smooth, and sets the material
         bpy.context.object.name = slat_id
         bpy.ops.object.shade_smooth()
-        bpy.context.object.data.materials.append(materials[layer - 1])
+        if animation_type != 'translate':
+            bpy.context.object.data.materials.append(materials[layer])
+        elif animation_type == 'translate' and animate_slat_group_dict is not None:
+            bpy.context.object.data.materials.append(materials[animate_slat_group_dict[slat_id]])
 
         if animate_slat_group_dict is not None:
             frame_start = animate_slat_group_dict[slat_id] * animate_delay_frames
+            if frame_start == 0:
+                frame_start = 1
             frame_end = frame_start + animate_delay_frames
             max_frame = max(max_frame, frame_end)  # tracks the maximum amount of frames in the animation
-            set_slat_animation(frame_start, frame_end, slat_id, cylinder, center, rotation, length, hide_cube=True)
+            if animation_type == 'wipe_in':
+                set_slat_wipe_in_animation(frame_start, frame_end, slat_id, cylinder, center, rotation, length, hide_cube=True)
+            elif animation_type == 'translate':
+                set_slat_translate_animation(frame_start, frame_end, cylinder, center, rotation, length)
+            else:
+                raise RuntimeError('Animation type not recognized.')
 
     if animate_slat_group_dict is not None:
         bpy.context.scene.frame_end = max_frame

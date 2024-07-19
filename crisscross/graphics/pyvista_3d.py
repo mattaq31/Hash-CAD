@@ -12,7 +12,6 @@ if pyvista_spec is not None:
     pyvista_available = True
 else:
     pyvista_available = False
-    print('Pyvista not installed.  3D graphical views cannot be created.')
 
 
 def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_angle='90',

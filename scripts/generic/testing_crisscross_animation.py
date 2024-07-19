@@ -88,4 +88,5 @@ for order, group in enumerate(groups):
     for slat in group:
         custom_glider_animation_dict[slat] = order
 
-M2.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True, custom_assembly_groups=custom_glider_animation_dict)
+M2.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True, animation_type='wipe_in',
+                          custom_assembly_groups=custom_glider_animation_dict)

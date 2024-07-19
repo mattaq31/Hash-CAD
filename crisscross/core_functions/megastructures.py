@@ -400,7 +400,7 @@ class Megastructure:
         create_graphical_3D_view(self.slat_array, save_folder, slats=self.slats, connection_angle=self.connection_angle,
                                  window_size=window_size, colormap=colormap)
 
-    def create_blender_3D_view(self, save_folder, animate_assembly=False,
+    def create_blender_3D_view(self, save_folder, animate_assembly=False, animation_type='translate',
                                custom_assembly_groups=None, colormap='Set1'):
         """
         Creates a 3D model of the megastructure slat design as a Blender file.
@@ -421,6 +421,7 @@ class Megastructure:
         create_graphical_3D_view_bpy(self.slat_array, save_folder, slats=self.slats, seed_layer_and_array=self.seed_array,
                                      animate_slat_group_dict=assembly_groups,
                                      connection_angle=self.connection_angle,
+                                     animation_type=animation_type,
                                      colormap=colormap)
 
     def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
