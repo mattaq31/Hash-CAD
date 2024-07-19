@@ -59,7 +59,7 @@ import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo, placeSeed } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles, downloadFile } from './helper_functions_io.js';
 import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict } from './helper_functions_handles.js';
-import { renderMegastructure } from './helper_functions_3D.js';
+import { place3DSlat, place3DCargo, delete3DSlatLayer } from './helper_functions_3D.js';
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './cargo.js';
 
@@ -193,8 +193,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
                         if(slatCounter > oldSlatCounter){
-                            let gridArray = createGridArray(layerList, minorGridSize)
-                            renderMegastructure(gridArray[1], gridArray[2], gridArray[3])
+                            let xPos3D = (placeRoundedX + xIterator)/minorGridSize
+                            let yPos3D = (placeRoundedY + yIterator)/minorGridSize
+                            place3DSlat(xPos3D, yPos3D, activeLayerId, 
+                                        slatCounter - 1, activeLayerColor,  
+                                        placeHorizontal)
                         }
 
                     }
@@ -213,12 +216,20 @@ SVG.on(document, 'DOMContentLoaded', function() {
                     top = true
                 }
                 
+                let oldCargoCounter = cargoCounter
 
                 //Place cargo
                 cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, 
                                             activeLayerId, minorGridSize, activeLayerColor, 
                                             shownCargoOpacity, cargoCounter, selectedCargoId, 
                                             layerList, top) 
+
+                if(cargoCounter >oldCargoCounter){
+                    place3DCargo(placeRoundedX / minorGridSize, 
+                                 placeRoundedY / minorGridSize, 
+                                 activeLayerId, selectedCargoId, 
+                                 top, 0.5)
+                }
             }
              
         }        
@@ -244,6 +255,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log(`Layer removed: ${event.detail.layerId}`, event.detail.layerElement);
         //Layer removed
         const fullLayer = layerList.get(event.detail.layerId);
+
+        delete3DSlatLayer(fullLayer[1])
+
         fullLayer[0].remove();
         fullLayer[1].remove();
         fullLayer[2].remove();

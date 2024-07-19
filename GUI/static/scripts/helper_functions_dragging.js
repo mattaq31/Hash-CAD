@@ -4,6 +4,9 @@
 
 
 import { isLineOnLine,  isCargoOnCargo } from './helper_functions_overlap.js';
+import { delete3DSlat,  move3DSlat } from './helper_functions_3D.js';
+
+
 
 let dragOffset = { x: 0, y: 0 };    //Offset between mouse position and item position
 let handleDrag = null;              //Function to call when a drag event is happening
@@ -121,6 +124,12 @@ export function startDrag(event, layerList, minorGridSize) {
             document.addEventListener('pointerup', endDrag);
         }
         else if(drawEraseSelectMode == 1){ //Erasing!
+
+
+            if(dragSelectedElement.attr('class').split(' ').includes('line')){
+                delete3DSlat(dragSelectedElement.attr('id'))
+            }
+
             dragSelectedElement.remove()
             event.stopPropagation(); //needed or else delete doesn't work... oh well!
         }
@@ -191,10 +200,23 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
                 
                 if(isHorizontal=='true'){
                     selectedElement.move(roundedX-moveOffset, roundedY);
+
+                    let slatToMoveId = selectedElement.attr('id')
+                    let x3D = (roundedX - moveOffset)/minorGridSize
+                    let y3D = roundedY/minorGridSize
+                    let layerNum = selectedElement.attr('layer')
+
+                    move3DSlat(slatToMoveId, x3D, y3D, layerNum, true, 32)
                     console.log("moving a horizontal element")
                 }
                 else {
                     selectedElement.move(roundedX, roundedY-moveOffset);
+                    let slatToMoveId = selectedElement.attr('id')
+                    let x3D = roundedX/minorGridSize
+                    let y3D = (roundedY - moveOffset)/minorGridSize
+                    let layerNum = selectedElement.attr('layer')
+
+                    move3DSlat(slatToMoveId, x3D, y3D, layerNum, false, 32)
                     console.log("moving a vertical element")
                 }
                 
