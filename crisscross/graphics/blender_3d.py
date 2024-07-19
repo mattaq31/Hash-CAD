@@ -423,6 +423,10 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
             for keyframe in fcurve.keyframe_points:
                 keyframe.interpolation = 'LINEAR'
 
+    # setting up transparent background for quicker setup
+    render_settings = bpy.context.scene.render
+    render_settings.film_transparent = True
+
     # Ensures the view mode is updated
     bpy.context.view_layer.update()
 
