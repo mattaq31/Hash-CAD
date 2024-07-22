@@ -5,6 +5,8 @@
 
 import {placeCargo, placeSlat, placeHandle, placeSeed} from './helper_functions_drawing.js'
 
+import {getHandleLayerDict} from './helper_functions_handles.js'
+
 
 
 
@@ -41,7 +43,7 @@ export function populateSparseGridDictionarySlats(layers, minorGridSize) {
                 // Populate the grid dictionary with the slat ID for the occupied positions
                 for (let x = startX; x <= endX; x++) {
                     for (let y = startY; y <= endY; y++) {
-                        let key = gridKey(x, y, layerIndex);
+                        let key = gridKey(x, y, layerIndex + 1);
                         gridDict[key] = slatId;
                     }
                 }
@@ -61,8 +63,12 @@ export function populateSparseGridDictionarySlats(layers, minorGridSize) {
 export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
     let bottomGridDict = {}
     let topGridDict = {}
+    let gridDict = {}
+
+    let handleOrientations = getHandleLayerDict(layers)
 
     layers.forEach((layer, layerIndex) => {
+        //BOTTOM LAYER
         layer[2].children().forEach(child => {
             let cargoId = child.attr('type');
             let bbox = child.bbox();
@@ -71,10 +77,11 @@ export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
             let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
 
             // Populate the grid dictionary with the cargo ID for the occupied positions
-            let key = gridKey(centerX, centerY, layerIndex); 
-            bottomGridDict[key] = cargoId;
+            let key = [([centerX, centerY]), layerIndex + 1, handleOrientations[layerIndex][1]]; 
+            gridDict[key] = cargoId
         });
 
+        //TOP LAYER
         layer[3].children().forEach(child => {
             let cargoId = child.attr('type');
             let bbox = child.bbox();
@@ -83,12 +90,12 @@ export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
             let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
 
             // Populate the grid dictionary with the cargo ID for the occupied positions
-            let key = gridKey(centerX, centerY, layerIndex);
-            topGridDict[key] = cargoId;
+            let key = [[centerX, centerY], layerIndex + 1, handleOrientations[layerIndex][0]]; 
+            gridDict[key] = cargoId
         });
     });
 
-    return [bottomGridDict, topGridDict]
+    return gridDict //[bottomGridDict, topGridDict]
 }
 
 
@@ -122,7 +129,7 @@ export function populateSparseGridDictionarySeed(layers, minorGridSize) {
                     // Populate the grid dictionary with the slat ID for the occupied positions
                     for (let x = startX; x <= endX; x++) {
                         for (let y = startY; y <= endY; y++) {
-                            let key = gridKey(x, y, layerIndex);
+                            let key = gridKey(x, y, layerIndex + 1);
                             gridDict[key] = x - startX + 1;
                         }
                     }
@@ -134,7 +141,7 @@ export function populateSparseGridDictionarySeed(layers, minorGridSize) {
                     // Populate the grid dictionary with the slat ID for the occupied positions
                     for (let y = startY; y <= endY; y++) {
                         for (let x = startX; x <= endX; x++) {
-                            let key = gridKey(x, y, layerIndex);
+                            let key = gridKey(x, y, layerIndex + 1);
                             gridDict[key] = y - startY + 1;
                         }
                     }
@@ -159,6 +166,7 @@ export function createGridArray(layerList, minorGridSize) {
     // Initialize the sparse grid dictionary
     let gridDictSeed = {}
     let gridDictSlats = {};
+    let gridDictCargo = {}
     let gridDictsCargo = [];
     let bottomGridDictCargo = {};
     let topGridDictCargo = {};
@@ -171,13 +179,14 @@ export function createGridArray(layerList, minorGridSize) {
     gridDictSlats = populateSparseGridDictionarySlats(Array.from(layerList.values()), minorGridSize);
 
     // Populate the sparse grid dictionary with cargo IDs
-    gridDictsCargo = populateSparseGridDictionaryCargo(Array.from(layerList.values()), minorGridSize);
+    gridDictCargo = populateSparseGridDictionaryCargo(Array.from(layerList.values()), minorGridSize);
 
-    bottomGridDictCargo = gridDictsCargo[0]
-    topGridDictCargo = gridDictsCargo[1]
+    //bottomGridDictCargo = gridDictsCargo[0]
+    //topGridDictCargo = gridDictsCargo[1]
 
     // You can now use the gridDict as needed
-    let gridDict = [gridDictSeed, gridDictSlats, bottomGridDictCargo, topGridDictCargo];
+    let gridDict = [gridDictSeed, gridDictSlats, gridDictCargo];
+    //let gridDict = [gridDictSeed, gridDictSlats, bottomGridDictCargo, topGridDictCargo];
 
     return gridDict
 }
@@ -202,7 +211,7 @@ function removeAllLayers(layerList){
  * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
  * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
  */
-function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, top){
+function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations){
     //Now add new cargo:
     let cargoCounter = 1;
 
@@ -215,6 +224,7 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, top
         let dictX   = Number(keyArray[0])
         let dictY   = Number(keyArray[1])
         let layerId = keyArray[2]
+        let orientation = Number(keyArray[3])
 
         let cargoId = value
 
@@ -225,12 +235,16 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, top
 
         let fullLayer = layerList.get(layerId);
         let activeCargoLayer = null
+
         
-        if(top == true){
+        let top = true;
+        if(handleOrientations[layerId][0] == orientation){
             activeCargoLayer = fullLayer[3]
+            top = true
         }
         else{
             activeCargoLayer = fullLayer[2]
+            top = false
         }
             
 
@@ -358,14 +372,23 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
  * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
  * @returns {number}
  */
-export function importDesign(seedDict, slatDict, bottomCargoDict, topCargoDict,  layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+export function importDesign(seedDict, slatDict, cargoDict,  layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+
     removeAllLayers(layerList)
+    
+    let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
+
     if(Object.keys(seedDict).length != 0){
         importSeed(seedDict, layerList, minorGridSize)
     }
-    let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
-    importCargo(bottomCargoDict, layerList, minorGridSize, shownCargoOpacity, false)
-    importCargo(topCargoDict, layerList, minorGridSize, shownCargoOpacity, true)
+
+    let handleOrientations = getHandleLayerDict(layerList)
+    
+    console.log(cargoDict)
+    importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations)
+
+    //importCargo(bottomCargoDict, layerList, minorGridSize, shownCargoOpacity, false)
+    //importCargo(topCargoDict, layerList, minorGridSize, shownCargoOpacity, true)
 
     return slatCounter;
 }

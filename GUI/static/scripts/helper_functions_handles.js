@@ -158,7 +158,10 @@ export function getHandleLayerDict(layerList){
 
     handleConfigDict = {}
 
-    layerList.forEach((layer, layerIndex) => {
+
+    let layerIndex = 0
+
+    layerList.forEach((layer, layerId) => {
         var layerElement = childrenArray[layerIndex]
         var topDiv = layerElement.firstChild
         var bottomDiv = layerElement.lastChild
@@ -169,7 +172,8 @@ export function getHandleLayerDict(layerList){
         var topH2H5 = topSelector.value
         var bottomH2H5 = bottomSelector.value
 
-        handleConfigDict[layerIndex] = [topH2H5, bottomH2H5]
+        handleConfigDict[layerId] = [topH2H5, bottomH2H5]
+        layerIndex += 1
     })
 
     console.log(handleConfigDict)

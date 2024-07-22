@@ -1,7 +1,7 @@
 import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo } from './helper_functions_overlap.js';
 import { startDrag } from './helper_functions_dragging.js';
 import { getInventoryItemById } from './cargo.js';
-
+import { place3DSlat, place3DCargo } from './helper_functions_3D.js';
 
 
 
@@ -20,7 +20,6 @@ import { getInventoryItemById } from './cargo.js';
  * @returns {*}
  */
 export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, slatCounter, horizontal, layerList) {
-    
     if(!horizontal){
         if(!willVertBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
             let defaultColor = activeLayerColor; 
@@ -40,6 +39,11 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             tmpLine.on('pointerdown', function(event) {
                 startDrag(event, layerList, minorGridSize);
             });
+
+            let xPos3D = (roundedX)/minorGridSize
+            let yPos3D = (roundedY)/minorGridSize
+            place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter - 1, activeLayerColor, horizontal)
+            
 
             slatCounter += 1;
         }
@@ -63,9 +67,16 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
                 startDrag(event, layerList, minorGridSize);
             });
 
+            let xPos3D = (roundedX)/minorGridSize
+            let yPos3D = (roundedY)/minorGridSize
+            place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter - 1, activeLayerColor, horizontal)
+            
+
             slatCounter += 1;
         }
     }
+
+    
 
     return slatCounter;
 }
@@ -85,7 +96,6 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
  * @returns {*}
  */
 export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownCargoOpacity, cargoCounter, selectedCargoId, layerList, top=true) {
-    
     
     const cargoItem = getInventoryItemById(selectedCargoId);
     let defaultColor = activeLayerColor; 
@@ -114,19 +124,6 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
             tmpShape.attr('data-cargo-component', 'shape')
             tmpShape.attr('data-default-color', defaultColor)
             tmpShape.attr('pointer-events', 'none');
-
-            /*
-            const circleRadius = minorGridSize * 0.375; // Diameter is 75% of minorGridSize
-            let tmpCircle = activeCargoLayer.circle(2 * circleRadius) // SVG.js uses diameter, not radius
-                                            .attr({ cx: roundedX, cy: roundedY })
-                                            .fill(cargoItem.color) // You can set the fill color here
-                                            .stroke(activeLayerColor) // You can set the stroke color here
-                                            .opacity(shownCargoOpacity);//shownOpacity * 1.25);
-            tmpCircle.attr('class',"cargo")
-            tmpCircle.attr('data-cargo-component', 'circle')
-            tmpCircle.attr('data-default-color', defaultColor)
-            tmpCircle.attr('pointer-events', 'none');
-            */
     
             // Adding text (tag) to the cargo
             let text = activeCargoLayer.text(cargoItem.tag)
@@ -167,10 +164,16 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
             group.attr('plate', cargoItem.plate )
             group.attr('driver', cargoItem.driver)
             group.attr('layer', activeLayerId   )
+            group.attr('class', "cargo")
 
-    
+            place3DCargo(roundedX / minorGridSize, roundedY / minorGridSize, activeLayerId, selectedCargoId, top, 0.5)
+            
             cargoCounter += 1;
         }
+
+        
+
+
 
     }
     return cargoCounter;
@@ -251,7 +254,7 @@ export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             }}
 
         // Draw the path
-        let tmpPath = activeSlatLayer.path(pathString).stroke({ width: 2, color: activeLayerColor }).fill('none');
+        let tmpPath = activeSlatLayer.path(pathString).stroke({ width: 3, color: activeLayerColor }).fill('none');
         
         tmpPath.attr('id', "seed")
         tmpPath.attr('layer', activeLayerId)

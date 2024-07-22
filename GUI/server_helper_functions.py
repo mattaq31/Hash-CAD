@@ -68,37 +68,6 @@ def slat_dict_to_array(grid_dict, trim_offset=False):
     return array
 
 
-def cargo_dict_to_array(grid_dict, trim_offset=False, slat_grid_dict={}):
-    """
-    Converts a cargo dictionary (produced by javascript) into a cargo array.
-    :param grid_dict: dictionary of cargo IDs by (x,y,layer) coordinates.
-    :param trim_offset: If true, will trim unoccupied positions from top/left of array. If false, will leave full array.
-    :param slat_grid_dict: If trim_offset is set to true, will trim based upon the shape of the slat dictionary
-    :return: array - cargo types/IDs by (x,y,layer) coordinates.
-    """
-
-    # Parse the keys to determine the dimensions
-    max_x = max(int(key.split(',')[0]) for key in grid_dict.keys()) + 1
-    max_y = max(int(key.split(',')[1]) for key in grid_dict.keys()) + 1
-    min_x = 0
-    min_y = 0
-    max_layer = max(int(key.split(',')[2]) for key in grid_dict.keys()) + 1
-
-    if (trim_offset == True):
-        max_x = max(int(key.split(',')[0]) for key in slat_grid_dict.keys()) + 1
-        max_y = max(int(key.split(',')[1]) for key in slat_grid_dict.keys()) + 1
-        min_x = min(int(key.split(',')[0]) for key in slat_grid_dict.keys())
-        min_y = min(int(key.split(',')[1]) for key in slat_grid_dict.keys())
-
-    # Initialize the array
-    array = np.zeros((max_x - min_x, max_y - min_y, max_layer), dtype='<U100')
-
-    # Populate the array
-    for key, cargo_type in grid_dict.items():
-        x, y, layer = map(int, key.split(','))
-        array[x - min_x, y - min_y, layer] = str(cargo_type)
-
-    return array
 
 
 def array_to_dict(array):
@@ -159,16 +128,16 @@ def convert_np_to_py(data):
 
 def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
     plate = get_plateclass('GenericPlate', os.path.basename(cargo_plate_filepath), cargo_plate_folder)
-    # plate = createGenericPlate(os.path.basename(cargo_plate_filepath) + ".xlsx", cargo_plate_folder )
-    plate_cargo_dict = plate.cargo_key
+
+    # Extract unique cargo name values
+    unique_cargo_names = list({key[2] for key in plate.sequences.keys()})
 
     # Create the list of elements with the specified format
     inventory = []
     hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
-    for id_char, name in plate_cargo_dict.items():
-
+    for name in unique_cargo_names:
         h2_compatibility_arr = []
-        for i in range(1,33):
+        for i in range(1, 33):
             if (i, 2, name) in plate.sequences:
                 h2_compatibility_arr.append(i)
 
@@ -177,9 +146,8 @@ def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
             if (i, 5, name) in plate.sequences:
                 h5_compatibility_arr.append(i)
 
-        id_num = int(id_char)
         element = {
-            "id": str(id_num) + "-plate:" + os.path.basename(cargo_plate_filepath),
+            "id": str(name) + "-plate:" + os.path.basename(cargo_plate_filepath),
             "name": name,
             "tag": create_acronym(name),
             "color": hexColors[len(inventory) % 6],
@@ -191,21 +159,51 @@ def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
     return inventory
 
 
-def break_array_by_plates(array):
-    # Extract the tags from each element (assuming the format is ID-plate:PLATE)
-    id_parts = np.vectorize(lambda x: x.split('-plate:')[0])(array)
-    int_id_parts = [[int(i) if i else 0 for i in j] for j in id_parts]
-    plates = np.vectorize(lambda x: x.split('-plate:')[-1])(array)
 
-    # Get the unique tags
-    unique_plates = np.unique(plates)
+def break_dict_by_plates(dict):
+    # Initialize the new dictionary to hold separate dictionaries for each <PLATE>
+    separated_dicts = {}
 
-    # Dictionary to store arrays for each unique tag
-    plate_arrays = {plate: np.zeros_like(array, dtype=int) for plate in unique_plates}
-    # plate_arrays = dict((plate, np.zeros_like(array, dtype=int)) for plate in unique_plates)
+    # Iterate through the original dictionary
+    for key, value in dict.items():
+        # Extract the <PLATE> value
+        plate = value.split('-plate:')[1]
 
-    # Iterate over the array and populate the tag-specific arrays
-    for plate in unique_plates:
-        plate_arrays[plate] = np.where(plates == plate, int_id_parts, 0)
+        # Initialize the dictionary for this <PLATE> if it doesn't already exist
+        if plate not in separated_dicts:
+            separated_dicts[plate] = {}
 
-    return plate_arrays
+        # Add the entry to the appropriate dictionary
+        separated_dicts[plate][key] = value.split('-plate:')[0]
+
+    return separated_dicts
+
+def format_dict(cargo_dict, trim = False, reference_slat_dict = {}):
+    formatted_dict = {}
+    min_x = 0
+    min_y = 0
+
+    if(trim):
+        min_x = min(int(key.split(',')[0]) for key in reference_slat_dict.keys())
+        min_y = min(int(key.split(',')[1]) for key in reference_slat_dict.keys())
+
+    for key, value in cargo_dict.items():
+        parts = key.split(',')
+        x = int(parts[0]) - min_x
+        y = int(parts[1]) - min_y
+        layer = int(parts[2])
+        orientation = int(parts[3])
+
+        converted_key = ((x, y), layer, orientation)
+        formatted_dict[converted_key] = value
+
+    return formatted_dict
+
+
+
+
+
+
+
+
+

@@ -14,9 +14,10 @@ import os
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
 from server_helper_functions import (seed_dict_to_array, slat_dict_to_array,
-                                     cargo_dict_to_array, array_to_dict,
+                                     array_to_dict,
                                      cargo_to_inventory, convert_np_to_py,
-                                     break_array_by_plates)
+                                     break_dict_by_plates,
+                                     format_dict)
 
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
@@ -121,13 +122,14 @@ def save_file_to_uploads(data):
     crisscross_design_file = np.load(crisscross_design_path, allow_pickle=True)
     seed_array = crisscross_design_file['seed_array']
     slat_array = crisscross_design_file['slat_array']
-    bottom_cargo_array = crisscross_design_file['bottom_cargo_array']
-    top_cargo_array = crisscross_design_file['top_cargo_array']
+    cargo_dict = crisscross_design_file['cargo_dict'].item()
+    #bottom_cargo_array = crisscross_design_file['bottom_cargo_array']
+    #top_cargo_array = crisscross_design_file['top_cargo_array']
 
     seed_dict = {}
     slat_dict = {}
-    bottom_cargo_dict = {}
-    top_cargo_dict = {}
+    #bottom_cargo_dict = {}
+    #top_cargo_dict = {}
 
     if(seed_array.ndim == 3):
         seed_dict = array_to_dict(seed_array)
@@ -135,13 +137,16 @@ def save_file_to_uploads(data):
     if(slat_array.ndim == 3):
         slat_dict = array_to_dict(slat_array)
 
-    if (bottom_cargo_array.ndim == 3):
-        bottom_cargo_dict = array_to_dict(bottom_cargo_array)
+    if(not(cargo_dict)):
+        cargo_dict = {}
 
-    if (top_cargo_array.ndim == 3):
-        top_cargo_dict = array_to_dict(top_cargo_array)
+    #if (bottom_cargo_array.ndim == 3):
+    #    bottom_cargo_dict = array_to_dict(bottom_cargo_array)
 
-    emit('design_imported', [seed_dict, slat_dict, bottom_cargo_dict, top_cargo_dict])
+    #if (top_cargo_array.ndim == 3):
+    #    top_cargo_dict = array_to_dict(top_cargo_array)
+
+    emit('design_imported', [seed_dict, slat_dict, cargo_dict])
 
 
 # TODO: make function names more descriptive
@@ -156,8 +161,9 @@ def save_crisscross_design(crisscross_dict):
     # TODO: consider saving file in a human-readable format like toml
     seed_array = ()
     slat_array = ()
-    top_cargo_array = ()
-    bottom_cargo_array = ()
+    cargo_dict = {}
+    #top_cargo_array = ()
+    #bottom_cargo_array = ()
 
     if (crisscross_dict[0]):
         seed_array = seed_dict_to_array(crisscross_dict[0])
@@ -166,10 +172,11 @@ def save_crisscross_design(crisscross_dict):
         slat_array = slat_dict_to_array(crisscross_dict[1])
 
     if (crisscross_dict[2]):
-        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[2])
+        cargo_dict = crisscross_dict[2]
+        #bottom_cargo_array = cargo_dict_to_array(crisscross_dict[2])
 
-    if (crisscross_dict[3]):
-        top_cargo_array = cargo_dict_to_array(crisscross_dict[3])
+    #if (crisscross_dict[3]):
+    #    top_cargo_array = cargo_dict_to_array(crisscross_dict[3])
 
 
 
@@ -179,8 +186,9 @@ def save_crisscross_design(crisscross_dict):
     np.savez(crisscross_design_path,
              seed_array=np.array(seed_array),
              slat_array=np.array(slat_array),
-             bottom_cargo_array=np.array(bottom_cargo_array),
-             top_cargo_array=np.array(top_cargo_array))
+             cargo_dict=cargo_dict)
+             #bottom_cargo_array=np.array(bottom_cargo_array),
+             #top_cargo_array=np.array(top_cargo_array))
 
     emit('saved_design_ready_to_download')
 
@@ -235,7 +243,6 @@ def generate_handles(data):
 
 @socketio.on('generate_megastructures')
 def generate_megastructure(data):
-
     crisscross_dict = data[0]
     handle_configs = data[1]
 
@@ -253,11 +260,9 @@ def generate_megastructure(data):
     print(formatted_orientations)
 
 
-
     seed_array = np.array([])
     slat_array = ()
-    top_cargo_array = np.array([])
-    bottom_cargo_array = np.array([])
+    cargo_dict = {}
 
     if (crisscross_dict[0]):
         seed_array = seed_dict_to_array(crisscross_dict[0], trim_offset=True, slat_grid_dict=crisscross_dict[1])
@@ -266,17 +271,12 @@ def generate_megastructure(data):
         slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=True)
 
     if (crisscross_dict[2]):
-        bottom_cargo_array = cargo_dict_to_array(crisscross_dict[2], trim_offset=True, slat_grid_dict=crisscross_dict[1])
-
-    if (crisscross_dict[3]):
-        top_cargo_array = cargo_dict_to_array(crisscross_dict[3], trim_offset=True, slat_grid_dict=crisscross_dict[1])
+        cargo_dict = format_dict(crisscross_dict[2], trim=True, reference_slat_dict=crisscross_dict[1])
 
     #Generate empty handle array
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
                                      split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
                                      group_hamming=None, metric_to_optimize='Universal')
-
-    #Get plates!
 
     # Generates crisscross handle plate dictionaries from provided files
     crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
@@ -302,54 +302,14 @@ def generate_megastructure(data):
                 crisscross_megastructure.assign_seed_handles(seed_array[:, :, layer], edge_seed_plate, layer_id=layer_counter + 1)
 
     # Add cargo
-    if(top_cargo_array.size != 0):
-        # Iterate over layers:
-        layer_counter = 0
-        for layer in range(top_cargo_array.shape[2]):
-            tmp_layer_array = top_cargo_array[:, :, layer]
-            tmp_layer_plate_dict = break_array_by_plates(tmp_layer_array)
-            for plate, cargo_by_plate in tmp_layer_plate_dict.items():
-                if(plate != ''):
-                    plate_file = plate + ".xlsx"
-                    #plate_driver_name = plateDriverMap[plate_file]
-                    plate_folder = app.config['USED_CARGO_FOLDER']
+    if(crisscross_dict[2]):
+        cargo_by_plate = break_dict_by_plates(cargo_dict)
+        for plate, single_plate_cargo in cargo_by_plate.items():
+            if (plate != ''):
+                plate_folder = app.config['USED_CARGO_FOLDER']
+                plate = get_plateclass('GenericPlate', plate, plate_folder)
+                crisscross_megastructure.assign_cargo_handles_with_dict(single_plate_cargo, plate)
 
-                    #plate = createGenericPlate(plate_file, plate_folder)
-                    plate = get_plateclass('GenericPlate', plate, plate_folder)
-
-                    layerId = str(layer_counter)
-                    handle_orientation = handle_configs[layerId][0]
-                    print("Layer:", layer_counter, " with top handle orientation: ", handle_orientation)
-
-                    crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
-                                                                  layer=layer_counter + 1,
-                                                                  requested_handle_orientation=handle_orientation)
-            layer_counter += 1
-
-    if (bottom_cargo_array.size != 0):
-        # Iterate over layers:
-        layer_counter = 0
-        for layer in range(bottom_cargo_array.shape[2]):
-            tmp_layer_array = bottom_cargo_array[:, :, layer]
-            tmp_layer_plate_dict = break_array_by_plates(tmp_layer_array)
-            for plate, cargo_by_plate in tmp_layer_plate_dict.items():
-                if (plate != ''):
-                    plate_file = plate + ".xlsx"
-                    #plate_driver_name = plateDriverMap[plate_file]
-                    plate_folder = app.config['USED_CARGO_FOLDER']
-
-                    #plate = createGenericPlate(plate_file, plate_folder)
-                    plate = get_plateclass('GenericPlate', plate, plate_folder)
-
-                    layerId = str(layer_counter)
-                    handle_orientation = handle_configs[layerId][1]
-                    print("Layer:", layer_counter, " with bottom handle orientation: ", handle_orientation)
-
-
-                    crisscross_megastructure.assign_cargo_handles(cargo_by_plate, plate,
-                                                                  layer=layer_counter + 1,
-                                                                  requested_handle_orientation=handle_orientation)
-            layer_counter += 1
 
     core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
     crisscross_megastructure.patch_control_handles(core_plate)

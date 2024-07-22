@@ -61,6 +61,7 @@ import { createGridArray, importDesign, importHandles, downloadFile } from './he
 import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict } from './helper_functions_handles.js';
 import { place3DSlat, place3DCargo, delete3DSlatLayer } from './helper_functions_3D.js';
 
+
 import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './cargo.js';
 
 
@@ -181,8 +182,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
                         let xIterator = minorGridSize * i * (!placeHorizontal)
                         let yIterator = minorGridSize * i * placeHorizontal
 
-                        let oldSlatCounter = slatCounter
-
                         //Place slat
                         slatCounter = placeSlat(placeRoundedX + xIterator, 
                                                 placeRoundedY + yIterator, 
@@ -190,15 +189,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
                                                 minorGridSize, activeLayerColor, 
                                                 shownOpacity, slatCounter, 
                                                 placeHorizontal, layerList)
-
-
-                        if(slatCounter > oldSlatCounter){
-                            let xPos3D = (placeRoundedX + xIterator)/minorGridSize
-                            let yPos3D = (placeRoundedY + yIterator)/minorGridSize
-                            place3DSlat(xPos3D, yPos3D, activeLayerId, 
-                                        slatCounter - 1, activeLayerColor,  
-                                        placeHorizontal)
-                        }
 
                     }
                     
@@ -216,20 +206,12 @@ SVG.on(document, 'DOMContentLoaded', function() {
                     top = true
                 }
                 
-                let oldCargoCounter = cargoCounter
-
                 //Place cargo
                 cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, 
                                             activeLayerId, minorGridSize, activeLayerColor, 
                                             shownCargoOpacity, cargoCounter, selectedCargoId, 
                                             layerList, top) 
 
-                if(cargoCounter >oldCargoCounter){
-                    place3DCargo(placeRoundedX / minorGridSize, 
-                                 placeRoundedY / minorGridSize, 
-                                 activeLayerId, selectedCargoId, 
-                                 top, 0.5)
-                }
             }
              
         }        
@@ -479,9 +461,10 @@ SVG.on(document, 'DOMContentLoaded', function() {
         console.log("Imported design!", data)
         let seedDict = data[0]
         let slatDict = data[1]
-        let bottomCargoDict = data[2]
-        let topCargoDict = data[3]
-        slatCounter = importDesign(seedDict, slatDict, bottomCargoDict, topCargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+        let cargoDict = data[2]
+        //let bottomCargoDict = data[2]
+        //let topCargoDict = data[3]
+        slatCounter = importDesign(seedDict, slatDict, cargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
 
 

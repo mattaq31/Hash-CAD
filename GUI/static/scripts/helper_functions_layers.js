@@ -16,7 +16,7 @@ export function addLayer() {
     console.log("Layerlist: ", layerList)
 
     if(layerList.children.length == 0){
-        layerId = 0
+        layerId = 1
     }
     else{
         let lastLayerId = layerList.children[0].dataset.layerId
