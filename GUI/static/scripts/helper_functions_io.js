@@ -258,8 +258,7 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, han
 
     }
 
-
-    
+    return cargoCounter
 
 }
 
@@ -385,12 +384,9 @@ export function importDesign(seedDict, slatDict, cargoDict,  layerList, minorGri
     let handleOrientations = getHandleLayerDict(layerList)
     
     console.log(cargoDict)
-    importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations)
+    let cargoCounter = importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations)
 
-    //importCargo(bottomCargoDict, layerList, minorGridSize, shownCargoOpacity, false)
-    //importCargo(topCargoDict, layerList, minorGridSize, shownCargoOpacity, true)
-
-    return slatCounter;
+    return [slatCounter, cargoCounter];
 }
 
 

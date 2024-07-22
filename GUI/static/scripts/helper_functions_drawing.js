@@ -42,7 +42,7 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
 
             let xPos3D = (roundedX)/minorGridSize
             let yPos3D = (roundedY)/minorGridSize
-            place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter - 1, activeLayerColor, horizontal)
+            place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter, activeLayerColor, horizontal)
             
 
             slatCounter += 1;
@@ -69,7 +69,7 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
 
             let xPos3D = (roundedX)/minorGridSize
             let yPos3D = (roundedY)/minorGridSize
-            place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter - 1, activeLayerColor, horizontal)
+            place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter, activeLayerColor, horizontal)
             
 
             slatCounter += 1;
@@ -162,11 +162,10 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
             group.attr('id'  ,  cargoCounter    )
             group.attr('type',  selectedCargoId )
             group.attr('plate', cargoItem.plate )
-            group.attr('driver', cargoItem.driver)
             group.attr('layer', activeLayerId   )
             group.attr('class', "cargo")
 
-            place3DCargo(roundedX / minorGridSize, roundedY / minorGridSize, activeLayerId, selectedCargoId, top, 0.5)
+            place3DCargo(roundedX / minorGridSize, roundedY / minorGridSize, activeLayerId, selectedCargoId, cargoCounter, top, 0.5)
             
             cargoCounter += 1;
         }

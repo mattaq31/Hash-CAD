@@ -4,7 +4,7 @@
 
 
 import { isLineOnLine,  isCargoOnCargo } from './helper_functions_overlap.js';
-import { delete3DSlat,  move3DSlat } from './helper_functions_3D.js';
+import { delete3DSlat,  move3DSlat, delete3DCargo, move3DCargo} from './helper_functions_3D.js';
 
 
 
@@ -129,6 +129,9 @@ export function startDrag(event, layerList, minorGridSize) {
             if(dragSelectedElement.attr('class').split(' ').includes('line')){
                 delete3DSlat(dragSelectedElement.attr('id'))
             }
+            else if(dragSelectedElement.attr('class').split(' ').includes('cargo')){
+                delete3DCargo(dragSelectedElement.attr('id'))
+            }
 
             dragSelectedElement.remove()
             event.stopPropagation(); //needed or else delete doesn't work... oh well!
@@ -228,6 +231,12 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
                 let xOffset = bbox.width / 2
                 let yOffset = bbox.height / 2
                 selectedElement.move(roundedX-xOffset, roundedY-yOffset)
+
+                let cargoToMoveId = selectedElement.attr('id')
+                let x3D = (roundedX)/minorGridSize
+                let y3D = (roundedY)/minorGridSize
+                let layerNum = selectedElement.attr('layer')
+                move3DCargo(cargoToMoveId, x3D, y3D, layerNum, true, 0.5)
             }
         }
     }

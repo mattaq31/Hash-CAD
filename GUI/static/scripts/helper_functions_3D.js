@@ -222,7 +222,7 @@ export function place3DSlat(x, y, layerNum, id, layerColor,  horizontal, radius 
 
 
 
-export function place3DCargo(x, y, layerNum, id, top, radius=0.5) {
+export function place3DCargo(x, y, layerNum, id, cargoCounter, top, radius=0.5) {
 
     const cargoItem = getInventoryItemById(id);
 
@@ -235,13 +235,13 @@ export function place3DCargo(x, y, layerNum, id, top, radius=0.5) {
     if(top == true){
         const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
         sphere.position.set(x, y + radius, parseInt(layerNum) + radius)
-        sphere.name = 'cargo-3d:' + id
+        sphere.name = 'cargo-3d:' + cargoCounter
         scene.add(sphere)
     }
     else{
         const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
         cube.position.set(x, y + radius, parseInt(layerNum) - 0.75 * radius)
-        cube.name = 'cargo-3d:' + id
+        cube.name = 'cargo-3d:' + cargoCounter
         scene.add(cube)
     }
 
@@ -285,5 +285,34 @@ export function move3DSlat(id, x, y, layerNum, horizontal = false, length=32){
             console.log("NOT HORIZONTAL!")
         }
         
+    }
+}
+
+
+export function delete3DCargo(id){
+    console.log("Cargo ID to remove: ", id)
+
+    let cargoToRemove = scene.getObjectByName('cargo-3d:' + id);
+    
+    if (cargoToRemove) {
+        console.log("we have the cargo!")
+        scene.remove(cargoToRemove);
+    
+        // Dispose of the slat's geometry and material to free up memory
+        if (cargoToRemove.geometry) cargoToRemove.geometry.dispose();
+        if (cargoToRemove.material) cargoToRemove.material.dispose();
+    }
+}
+
+
+export function move3DCargo(id, x, y, layerNum, top = true, radius=0.5){
+    let cargoToMove = scene.getObjectByName('cargo-3d:' + id);
+    if (cargoToMove) {
+        if(cargoToMove.geometry instanceof THREE.SphereGeometry){
+            cargoToMove.position.set(x, y + radius, parseInt(layerNum) + radius)
+        }
+        else{
+            cargoToMove.position.set(x, y + radius, parseInt(layerNum) - 0.75 * radius)
+        }
     }
 }

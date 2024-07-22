@@ -464,7 +464,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         let cargoDict = data[2]
         //let bottomCargoDict = data[2]
         //let topCargoDict = data[3]
-        slatCounter = importDesign(seedDict, slatDict, cargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+        slatCounter, cargoCounter = importDesign(seedDict, slatDict, cargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
 
 
