@@ -26,11 +26,14 @@ from crisscross.helper_functions.plate_constants import (slat_core, core_plate_f
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
                                                          seed_plug_plate_corner)
 from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize
+from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
+
 
 app = Flask(__name__)
 
 #app.config['SECRET_KEY'] = 'secret!'
 app.config['UPLOAD_FOLDER'] = 'uploads/'  # Directory to save uploaded files
+app.config['OUTPUT_FOLDER'] = 'outputs/'
 app.config['USED_CARGO_FOLDER'] = 'used-cargo-plates/'  # Directory to save uploaded files
 app.config['ALLOWED_EXTENSIONS'] = {'txt', 'npz'}  # Allowed file extensions
 app.config['PLATE_ALLOWED_EXTENSIONS'] = {'xlsx'}  # Allowed file extensions
@@ -123,13 +126,9 @@ def save_file_to_uploads(data):
     seed_array = crisscross_design_file['seed_array']
     slat_array = crisscross_design_file['slat_array']
     cargo_dict = crisscross_design_file['cargo_dict'].item()
-    #bottom_cargo_array = crisscross_design_file['bottom_cargo_array']
-    #top_cargo_array = crisscross_design_file['top_cargo_array']
 
     seed_dict = {}
     slat_dict = {}
-    #bottom_cargo_dict = {}
-    #top_cargo_dict = {}
 
     if(seed_array.ndim == 3):
         seed_dict = array_to_dict(seed_array)
@@ -140,11 +139,6 @@ def save_file_to_uploads(data):
     if(not(cargo_dict)):
         cargo_dict = {}
 
-    #if (bottom_cargo_array.ndim == 3):
-    #    bottom_cargo_dict = array_to_dict(bottom_cargo_array)
-
-    #if (top_cargo_array.ndim == 3):
-    #    top_cargo_dict = array_to_dict(top_cargo_array)
 
     emit('design_imported', [seed_dict, slat_dict, cargo_dict])
 
@@ -187,8 +181,6 @@ def save_crisscross_design(crisscross_dict):
              seed_array=np.array(seed_array),
              slat_array=np.array(slat_array),
              cargo_dict=cargo_dict)
-             #bottom_cargo_array=np.array(bottom_cargo_array),
-             #top_cargo_array=np.array(top_cargo_array))
 
     emit('saved_design_ready_to_download')
 
@@ -314,8 +306,12 @@ def generate_megastructure(data):
     core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
     crisscross_megastructure.patch_control_handles(core_plate)
 
-    crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['UPLOAD_FOLDER'], 'Design Graphics'),
+    crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['OUTPUT_FOLDER'], 'Design Graphics'),
                                                               colormap='Set1', cargo_colormap='Paired')
+
+    convert_slats_into_echo_commands(crisscross_megastructure.slats, 'crisscross_design_plate',
+                                     app.config['OUTPUT_FOLDER'],'all_echo_commands_with_crisscross_design.csv',
+                                     transfer_volume=100)
 
 @socketio.on('upload_plates')
 def save_file_to_plate_folder(data):

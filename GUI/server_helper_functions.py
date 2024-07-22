@@ -51,7 +51,7 @@ def slat_dict_to_array(grid_dict, trim_offset=False):
     max_y = max(int(key.split(',')[1]) for key in grid_dict.keys()) + 1
     min_x = 0  # min(int(key.split(',')[0]) for key in grid_dict.keys())
     min_y = 0  # min(int(key.split(',')[1]) for key in grid_dict.keys())
-    max_layer = max(int(key.split(',')[2]) for key in grid_dict.keys()) + 1
+    max_layer = max(int(key.split(',')[2]) for key in grid_dict.keys())
 
     if (trim_offset == True):
         min_x = min(int(key.split(',')[0]) for key in grid_dict.keys())
@@ -63,7 +63,7 @@ def slat_dict_to_array(grid_dict, trim_offset=False):
     # Populate the array
     for key, slatId in grid_dict.items():
         x, y, layer = map(int, key.split(','))
-        array[x - min_x, y - min_y, layer] = slatId
+        array[x - min_x, y - min_y, layer - 1] = slatId
 
     return array
 

@@ -279,3 +279,71 @@ export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
 
     
 }
+
+
+
+
+
+
+
+export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizontal, numSlats=1) {
+    let defaultColor = '#808080'; 
+    let tmpLine = null;
+    let group = fullDrawing.group()
+
+    // Remove any existing lines with the id 'cursor-slat'
+    let cursorSlat = document.getElementById('cursor-slat')
+    
+    if(cursorSlat){
+        cursorSlat.remove()
+    }
+
+
+
+    let drawModeSelector = document.getElementById('palette-type-selector');
+    let drawSlatCargoHandleMode = drawModeSelector.value;
+
+    if(drawSlatCargoHandleMode == 0){
+        for (let i = 0; i < numSlats; i++) {
+            let xIterator = minorGridSize * i * (!horizontal)
+            let yIterator = minorGridSize * i * horizontal
+    
+            if(horizontal){
+                tmpLine = fullDrawing.line(roundedX - 0.5 * minorGridSize + xIterator, 
+                                           roundedY + yIterator, 
+                                           roundedX + 31.5 * minorGridSize + xIterator, 
+                                           roundedY + yIterator)
+                                     .stroke({ width: 3, color:defaultColor, opacity: 0.33 });       
+            }
+            else{
+                tmpLine = fullDrawing.line(roundedX + xIterator, 
+                                           roundedY - 0.5 * minorGridSize + yIterator, 
+                                           roundedX + xIterator, 
+                                           roundedY + 31.5 * minorGridSize + yIterator)
+                                     .stroke({ width: 3, color:defaultColor, opacity: 0.33 });
+            }
+    
+            group.add(tmpLine)
+    
+        }
+    
+        group.attr('id','cursor-slat')
+        
+    }
+    else{
+        // Remove any existing lines with the id 'cursor-slat'
+        let cursorSlat = document.getElementById('cursor-slat')
+        
+        if(cursorSlat){
+            cursorSlat.remove()
+        }
+    }
+
+
+
+
+
+    
+
+    
+}

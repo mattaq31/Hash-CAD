@@ -56,10 +56,10 @@ var socket = io();
 ///////////////////////////////
 
 import { drawGrid } from './helper_functions_misc.js';
-import { placeSlat, placeCargo, placeSeed } from './helper_functions_drawing.js';
+import { placeSlat, placeCargo, placeSeed, showSlat } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles, downloadFile } from './helper_functions_io.js';
 import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict } from './helper_functions_handles.js';
-import { place3DSlat, place3DCargo, delete3DSlatLayer } from './helper_functions_3D.js';
+import { delete3DSlatLayer } from './helper_functions_3D.js';
 
 
 import { populateCargoPalette, renderInventoryTable, addInventoryItem, updateInventoryItems} from './cargo.js';
@@ -138,13 +138,33 @@ SVG.on(document, 'DOMContentLoaded', function() {
     // Place horiztonal slats instead of vertical when alt is down
     document.addEventListener('keydown', (event) => {
         if( event.key === 'Alt') {
+            if(placeHorizontal == false){
+                // Remove any existing cursor slats with the id 'cursor-slat'
+                let cursorSlat = document.getElementById('cursor-slat')
+                if(cursorSlat){
+                    cursorSlat.remove()
+                }
+            }
+
+            event.preventDefault();
             placeHorizontal = true;
+
+            
         }
     });
+
 
     // Place vertical slats instead of horizontal when alt is up
     document.addEventListener('keyup', (event) => {
         if( event.key === 'Alt') {
+            if(placeHorizontal == true){
+                // Remove any existing cursor slats with the id 'cursor-slat'
+                let cursorSlat = document.getElementById('cursor-slat')
+                if(cursorSlat){
+                    cursorSlat.remove()
+                }
+            }
+
             placeHorizontal = false;
         }
     });
@@ -603,6 +623,19 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
 
+
+
+    svgcontainer.addEventListener('mousemove', function(event){
+        let selectedElement = event.target.instance;
+        let mousePoints = selectedElement.point(event.clientX, event.clientY);
+        let slatCountToPlace = document.getElementById('slatNumber').value
+
+        showSlat(mousePoints.x, mousePoints.y, fullDrawing, minorGridSize, placeHorizontal, slatCountToPlace)
+        
+    })
+
+
+
 });
 
 
@@ -648,6 +681,7 @@ socket.on('plate_upload_response', function(data) {
     
 
         
+
 
 
 
