@@ -401,12 +401,16 @@ class Megastructure:
                                  window_size=window_size, colormap=colormap)
 
     def create_blender_3D_view(self, save_folder, animate_assembly=False, animation_type='translate',
-                               custom_assembly_groups=None, colormap='Set1'):
+                               custom_assembly_groups=None, slat_translate_dict=None,
+                               camera_spin=False, colormap='Set1'):
         """
         Creates a 3D model of the megastructure slat design as a Blender file.
         :param save_folder: Folder to save all video to.
         :param animate_assembly: Set to true to also generate an animation of the design being assembled group by group
         :param custom_assembly_groups: If set, will use the specific provided dictionary to assign slats to the animation order.
+        :param slat_translate_dict: If set, will use the specific provided dictionary to assign specific
+        animation translation distances to each slat.
+        :param camera_spin: Set to true to have camera spin around object during the animation.
         :param colormap: Colormap to extract layer colors from
         :return: N/A
         """
@@ -421,8 +425,8 @@ class Megastructure:
         create_graphical_3D_view_bpy(self.slat_array, save_folder, slats=self.slats, seed_layer_and_array=self.seed_array,
                                      animate_slat_group_dict=assembly_groups,
                                      connection_angle=self.connection_angle,
-                                     animation_type=animation_type,
-                                     colormap=colormap)
+                                     animation_type=animation_type, camera_spin=camera_spin,
+                                     colormap=colormap, specific_slat_translate_distances=slat_translate_dict)
 
     def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
                                          colormap='Dark2', cargo_colormap='Set1'):
