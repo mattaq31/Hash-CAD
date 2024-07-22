@@ -119,7 +119,8 @@ def set_slat_wipe_in_animation(frame_start, frame_end, slat_id, slat_cylinder, s
     cube.hide_viewport = hide_cube
 
 
-def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_center, slat_rotation, slat_length):
+def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_center, slat_rotation, slat_length,
+                                 extension_length=2):
     """
     Sets up a translation-based entry animation for a slat
     :param frame_start: The frame from which to start the animation
@@ -128,6 +129,7 @@ def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_cen
     :param slat_center: The center of the slat
     :param slat_rotation: The slat's orientation
     :param slat_length: The slat's length
+    :param extension_length: The distance that the slat will move to complete the animation
     :return: N/A
     """
 
@@ -141,7 +143,7 @@ def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_cen
     slat_cylinder.keyframe_insert(data_path="location", frame=frame_end)
 
     # Set the initial position and keyframe (the cylinder will move slowly through the frames in between the start and end)
-    distance = slat_length + 2  # Distance to move the cylinder
+    distance = slat_length + extension_length  # Distance to move the cylinder
     initial_position = final_position + direction * distance
     slat_cylinder.location = initial_position
     slat_cylinder.keyframe_insert(data_path="location", frame=frame_start+5)
@@ -250,9 +252,10 @@ def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid
         bpy.context.object.data.materials.append(seed_material)
 
 
-def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None, animate_delay_frames=40,
-                                 connection_angle='90', seed_layer_and_array=None, camera_spin=False,
-                                 animation_type='translate', colormap='Set1'):
+def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None,
+                                 animate_delay_frames=40, connection_angle='90', seed_layer_and_array=None,
+                                 camera_spin=False, animation_type='translate', specific_slat_translate_distances=None,
+                                 colormap='Set1'):
     """
     Creates a 3D video of a megastructure slat design. TODO: add cargo to this view too.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
@@ -264,6 +267,9 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     :param seed_layer_and_array: Tuple of the seed layer and seed array to be added to the design (or None if no seed to be added)
     :param camera_spin: Set to True to have the camera spin around the design
     :param animation_type: The type of animation to use for slat entry ('translate' or 'wipe_in')
+    :param specific_slat_translate_distances: The distance each slat will move if using the translate system.
+    This should be in a dictionary format - not all slat needs to have the distance, only those that will be different
+    from the default value of 2.
     :param colormap: Colormap to extract layer colors from
     :return: N/A
     """
@@ -353,7 +359,11 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
             if animation_type == 'wipe_in':
                 set_slat_wipe_in_animation(frame_start, frame_end, slat_id, cylinder, center, rotation, length, hide_cube=True)
             elif animation_type == 'translate':
-                set_slat_translate_animation(frame_start, frame_end, cylinder, center, rotation, length)
+                if specific_slat_translate_distances is not None and slat_id in specific_slat_translate_distances:
+                    translate_distance = specific_slat_translate_distances[slat_id]
+                else:
+                    translate_distance = 2
+                set_slat_translate_animation(frame_start, frame_end, cylinder, center, rotation, length, translate_distance)
             else:
                 raise RuntimeError('Animation type not recognized.')
 
