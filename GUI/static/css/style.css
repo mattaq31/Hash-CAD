@@ -381,3 +381,10 @@ canvas {
     gap: 0px;
     padding: 0px;
 }
+
+
+
+#seed-mode-selector{
+    margin: 5px;
+    width: 50%
+}

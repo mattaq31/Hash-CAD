@@ -42,7 +42,7 @@ let cargoCounter = 1;
 
 //Draw mode
 let drawSlatCargoHandleMode = 0; //0 for slats, 1 for cargo, 2 for handles
-let slatSeedMode = null; //0 for slats, 1 for seeds
+let cargoSeedMode = null; //0 for cargo, 1 for seeds
 
 //Cargo options
 let selectedCargoId = null;
@@ -191,32 +191,22 @@ SVG.on(document, 'DOMContentLoaded', function() {
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
             if(drawSlatCargoHandleMode == 0){
+                let slatCountToPlace = document.getElementById('slatNumber').value
+                for (let i = 0; i < slatCountToPlace; i++) {
+                    let xIterator = minorGridSize * i * (!placeHorizontal)
+                    let yIterator = minorGridSize * i * placeHorizontal
 
-                if(slatSeedMode === 1){
-                    //Place seed
-                    placeSeed(placeRoundedX, placeRoundedY, activeSlatLayer, 
-                        activeLayerId, minorGridSize, activeLayerColor, 
-                        placeHorizontal, layerList)
+                    //Place slat
+                    slatCounter = placeSlat(placeRoundedX + xIterator, 
+                                            placeRoundedY + yIterator, 
+                                            activeSlatLayer, activeLayerId, 
+                                            minorGridSize, activeLayerColor, 
+                                            shownOpacity, slatCounter, 
+                                            placeHorizontal, layerList)
+
                 }
-                else{
-
-                    let slatCountToPlace = document.getElementById('slatNumber').value
-                    for (let i = 0; i < slatCountToPlace; i++) {
-                        let xIterator = minorGridSize * i * (!placeHorizontal)
-                        let yIterator = minorGridSize * i * placeHorizontal
-
-                        //Place slat
-                        slatCounter = placeSlat(placeRoundedX + xIterator, 
-                                                placeRoundedY + yIterator, 
-                                                activeSlatLayer, activeLayerId, 
-                                                minorGridSize, activeLayerColor, 
-                                                shownOpacity, slatCounter, 
-                                                placeHorizontal, layerList)
-
-                    }
                     
                     
-                }
                 
             }
             else if(drawSlatCargoHandleMode == 1){
@@ -228,12 +218,20 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 if(topLayerButton.classList.contains('h25-toggle-selected')){
                     top = true
                 }
-                
-                //Place cargo
-                cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, 
-                                            activeLayerId, minorGridSize, activeLayerColor, 
-                                            shownCargoOpacity, cargoCounter, selectedCargoId, 
-                                            layerList, top) 
+
+                if(seedButton.classList.contains('h25-toggle-selected')){
+                    //Place seed
+                    placeSeed(placeRoundedX, placeRoundedY, activeBottomCargoLayer, 
+                        activeLayerId, minorGridSize, activeLayerColor, 
+                        placeHorizontal, layerList)
+                }
+                else{
+                    //Place cargo
+                    cargoCounter = placeCargo(placeRoundedX, placeRoundedY, activeCargoLayer, 
+                        activeLayerId, minorGridSize, activeLayerColor, 
+                        shownCargoOpacity, cargoCounter, selectedCargoId, 
+                        layerList, top) 
+                }
 
             }
              
@@ -558,6 +556,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     const topLayerButton = document.getElementById('top-layer-selector')
     const bottomLayerButton = document.getElementById('bottom-layer-selector')
+    const seedButton = document.getElementById('seed-mode-selector')
 
     topLayerButton.addEventListener('click', (event)=>{
        activeCargoLayer = activeTopCargoLayer
@@ -567,21 +566,11 @@ SVG.on(document, 'DOMContentLoaded', function() {
         activeCargoLayer = activeBottomCargoLayer
     })
 
-
-    const placeSlatButton = document.getElementById('slat-palette-slats')
-    const placeSeedButton = document.getElementById('slat-palette-seeds')
-
-    placeSlatButton.addEventListener('click', (event)=>{
-        placeSlatButton.classList.add('slatseed-toggle-selected')
-        placeSeedButton.classList.remove('slatseed-toggle-selected')
-        slatSeedMode = 0
+    seedButton.addEventListener('click', (event)=>{
+        activeCargoLayer = activeBottomCargoLayer
     })
 
-    placeSeedButton.addEventListener('click', (event)=>{
-        placeSeedButton.classList.add('slatseed-toggle-selected')
-        placeSlatButton.classList.remove('slatseed-toggle-selected')
-        slatSeedMode = 1
-    })
+
 
 
     const drawButton = document.getElementById('draw-button')

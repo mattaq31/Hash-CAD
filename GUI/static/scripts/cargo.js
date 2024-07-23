@@ -13,13 +13,22 @@ renderInventoryTable()
 
 const topLayerButton = document.getElementById('top-layer-selector')
 const bottomLayerButton = document.getElementById('bottom-layer-selector')
+const seedButton = document.getElementById('seed-mode-selector')
 
 topLayerButton.addEventListener('click', (event)=>{
     topLayerButton.classList.add('h25-toggle-selected')
     bottomLayerButton.classList.remove('h25-toggle-selected')
+    seedButton.classList.remove('h25-toggle-selected')
 })
 
 bottomLayerButton.addEventListener('click', (event)=>{
+    bottomLayerButton.classList.add('h25-toggle-selected')
+    topLayerButton.classList.remove('h25-toggle-selected')
+    seedButton.classList.remove('h25-toggle-selected')
+})
+
+seedButton.addEventListener('click', (event)=>{
+    seedButton.classList.add('h25-toggle-selected')
     bottomLayerButton.classList.add('h25-toggle-selected')
     topLayerButton.classList.remove('h25-toggle-selected')
 })

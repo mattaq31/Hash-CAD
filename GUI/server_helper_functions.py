@@ -36,7 +36,7 @@ def seed_dict_to_array(seed_dict, trim_offset=False, slat_grid_dict={}):
     # Populate the array
     for key, seed_id in seed_dict.items():
         x, y, layer = map(int, key.split(','))
-        array[x - min_x, y - min_y, layer] = seed_id
+        array[x - min_x, y - min_y, layer - 1] = seed_id
 
     return array
 

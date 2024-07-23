@@ -135,9 +135,42 @@ export function isCargoOnCargo(x, y, layer, selectedPoint = false){
             const selfBbox = selectedPoint.bbox();
             onItself = (x >= selfBbox.x && x <= selfBbox.x2 && y >= selfBbox.y && y <= selfBbox.y2)
         }
+
+        let cargoOnSeed = isCargoOnSeed(x, y, layer)
       
         return (
-            (onOther && (!onItself))
+            (onOther && (!onItself) || cargoOnSeed)
         );
+    });
+}
+
+
+
+
+export function isCargoOnSeed(x, y, layer){
+    const seed = layer.find('.seed');
+    if(seed.length != 0){
+        const bbox = seed.bbox()[0];
+        let overlapping = (x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2)
+
+        return overlapping
+    }
+    else{
+        return false
+    }
+    
+}
+
+export function wasSeedOnCargo(layer){
+    const cargos = layer.find('.cargo');
+    return cargos.some(cargo => {
+      
+        //Check if overlapping with any cargo in general
+        const bbox = cargo.bbox();
+        const xPos = (bbox.x + bbox.x2)/2
+        const yPos = (bbox.y + bbox.y2)/2
+        let onOther = isCargoOnSeed(xPos, yPos, layer)
+
+        return onOther
     });
 }

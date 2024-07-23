@@ -226,17 +226,22 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
             }
         }
         else if(drawSlatCargoHandleMode == 1){
-            if(!isCargoOnCargo(roundedX, roundedY, activeLayer, selectedElement)) {
-                let bbox = selectedElement.bbox();
-                let xOffset = bbox.width / 2
-                let yOffset = bbox.height / 2
-                selectedElement.move(roundedX-xOffset, roundedY-yOffset)
-
-                let cargoToMoveId = selectedElement.attr('id')
-                let x3D = (roundedX)/minorGridSize
-                let y3D = (roundedY)/minorGridSize
-                let layerNum = selectedElement.attr('layer')
-                move3DCargo(cargoToMoveId, x3D, y3D, layerNum, true, 0.5)
+            if(selectedElement.attr('class') == "seed"){
+                selectedElement.move(roundedX, roundedY);
+            }
+            else{
+                if(!isCargoOnCargo(roundedX, roundedY, activeLayer, selectedElement)) {
+                    let bbox = selectedElement.bbox();
+                    let xOffset = bbox.width / 2
+                    let yOffset = bbox.height / 2
+                    selectedElement.move(roundedX-xOffset, roundedY-yOffset)
+    
+                    let cargoToMoveId = selectedElement.attr('id')
+                    let x3D = (roundedX)/minorGridSize
+                    let y3D = (roundedY)/minorGridSize
+                    let layerNum = selectedElement.attr('layer')
+                    move3DCargo(cargoToMoveId, x3D, y3D, layerNum, true, 0.5)
+                }
             }
         }
     }

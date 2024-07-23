@@ -70,15 +70,17 @@ export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
     layers.forEach((layer, layerIndex) => {
         //BOTTOM LAYER
         layer[2].children().forEach(child => {
-            let cargoId = child.attr('type');
-            let bbox = child.bbox();
-            
-            let centerX = Math.round((bbox.x + bbox.width / 2) / minorGridSize);
-            let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
+            if(child.attr('id') != 'seed'){
+                let cargoId = child.attr('type');
+                let bbox = child.bbox();
+                
+                let centerX = Math.round((bbox.x + bbox.width / 2) / minorGridSize);
+                let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
 
-            // Populate the grid dictionary with the cargo ID for the occupied positions
-            let key = [([centerX, centerY]), layerIndex + 1, handleOrientations[layerIndex][1]]; 
-            gridDict[key] = cargoId
+                // Populate the grid dictionary with the cargo ID for the occupied positions
+                let key = [([centerX, centerY]), layerIndex + 1, handleOrientations[layerIndex][1]]; 
+                gridDict[key] = cargoId
+            }
         });
 
         //TOP LAYER
@@ -104,7 +106,7 @@ export function populateSparseGridDictionarySeed(layers, minorGridSize) {
     let gridDict = {}
     
     layers.forEach((layer, layerIndex) => {
-        layer[1].children().forEach(child => {
+        layer[2].children().forEach(child => {
             if(child.attr('id') == 'seed'){
 
 
@@ -507,10 +509,10 @@ function importSeed(seedDict, layerList, minorGridSize){
     }
 
     let fullLayer = layerList.get(layerId);
-    let activeSlatLayer = fullLayer[1]
+    let activeBottomCargoLayer = fullLayer[2]
     let activeLayerColor = fullLayer[4]
 
-    placeSeed(placeX, placeY, activeSlatLayer, layerId, minorGridSize, 
+    placeSeed(placeX, placeY, activeBottomCargoLayer, layerId, minorGridSize, 
                 activeLayerColor, horizontal, layerList)
 }
 

@@ -1,4 +1,4 @@
-import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo } from './helper_functions_overlap.js';
+import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo, wasSeedOnCargo } from './helper_functions_overlap.js';
 import { startDrag } from './helper_functions_dragging.js';
 import { getInventoryItemById } from './cargo.js';
 import { place3DSlat, place3DCargo } from './helper_functions_3D.js';
@@ -195,7 +195,7 @@ export function placeHandle(roundedX, roundedY, activeHandleLayer, minorGridSize
 
 
 
-export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, horizontal, layerList) {
+export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGridSize, activeLayerColor, horizontal, layerList) {
     
     
     const cols = 16;
@@ -253,7 +253,7 @@ export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             }}
 
         // Draw the path
-        let tmpPath = activeSlatLayer.path(pathString).stroke({ width: 3, color: activeLayerColor }).fill('none');
+        let tmpPath = cargoLayer.path(pathString).stroke({ width: 3, color: activeLayerColor }).fill('none');
         
         tmpPath.attr('id', "seed")
         tmpPath.attr('layer', activeLayerId)
@@ -273,6 +273,10 @@ export function placeSeed(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
         tmpPath.on('pointerdown', function(event) {
             startDrag(event, layerList, minorGridSize);
         });
+
+        if(wasSeedOnCargo(cargoLayer)){
+            tmpPath.remove()
+        }
 
     }
 
