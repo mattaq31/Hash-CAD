@@ -72,7 +72,7 @@ export function updateHandleLayers(layerList){
             let parent = clickedChild.parentElement
             let children = Array.from(parent.children); // Convert HTMLCollection to an array
             
-            let index = children.indexOf(clickedChild);
+            let index = children.length - (children.indexOf(clickedChild)) + 1;
 
             document.querySelectorAll('.arrow').forEach(e => e.remove());
             let arrow = document.createElement('p')
@@ -104,7 +104,7 @@ export function updateHandleLayers(layerList){
             let parent = clickedChild.parentElement
             let children = Array.from(parent.children); // Convert HTMLCollection to an array
             
-            let index = children.indexOf(clickedChild) + 1;
+            let index = children.length - (children.indexOf(clickedChild));
 
             document.querySelectorAll('.arrow').forEach(e => e.remove());
             let arrow = document.createElement('p')
@@ -149,6 +149,30 @@ export function updateHandleLayers(layerList){
 }
 
 
+// Function to find the first non-<p> element
+function findFirstNonPElement(parent) {
+    for (let child of parent.children) {
+        if (child.tagName.toLowerCase() !== 'p') {
+            return child;
+        }
+    }
+    return null; // Return null if no non-<p> element is found
+}
+
+
+function findLastNonPElement(parent) {
+    for (let i = parent.children.length - 1; i >= 0; i--) {
+        let child = parent.children[i];
+        if (child.tagName.toLowerCase() !== 'p') {
+            console.log("FOUND NON-P ELEMENT")
+            return child;
+        }
+    }
+    console.log("NO NON-P ELEMENTS FOUND")
+    return null; // Return null if no non-<p> element is found
+}
+
+
 
 export function getHandleLayerDict(layerList){
     const handleLayerViewer = document.getElementById('handle-layers')
@@ -166,13 +190,22 @@ export function getHandleLayerDict(layerList){
         var topDiv = layerElement.firstChild
         var bottomDiv = layerElement.lastChild
 
-        var topSelector = topDiv.firstChild
-        var bottomSelector = bottomDiv.firstChild
+        var topSelector = findFirstNonPElement(layerElement).firstChild//topDiv)//.firstChild
+        var bottomSelector = findLastNonPElement(layerElement).firstChild//bottomDiv)//.firstChild
 
-        var topH2H5 = topSelector.value
-        var bottomH2H5 = bottomSelector.value
+        if (topSelector && bottomSelector) {
+            var topH2H5 = topSelector.value;
+            var bottomH2H5 = bottomSelector.value;
+    
+            handleConfigDict[layerId] = [topH2H5, bottomH2H5];
+        } else {
+            console.log(`Could not find suitable elements for layer ${layerId}.`);
+        }
 
-        handleConfigDict[layerId] = [topH2H5, bottomH2H5]
+        //var topH2H5 = topSelector.value
+        //var bottomH2H5 = bottomSelector.value
+
+        //handleConfigDict[layerId] = [topH2H5, bottomH2H5]
         layerIndex += 1
     })
 
@@ -198,4 +231,15 @@ export function updateHandleLayerButtons(layerList, activeLayerId){
 
     topLayerButton.textContent = newTopButtonText
     bottomLayerButton.textContent = newBottomButtonText
+}
+
+export function clearHandles(layerList){
+    //First, clear old handles!
+    layerList.forEach((layer, layerIndex) => {
+        const layerElement = layer[0]; 
+        layerElement.children().forEach(child => {
+            child.remove();
+        });
+
+    })
 }

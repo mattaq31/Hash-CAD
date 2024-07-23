@@ -17,7 +17,9 @@ from server_helper_functions import (seed_dict_to_array, slat_dict_to_array,
                                      array_to_dict,
                                      cargo_to_inventory, convert_np_to_py,
                                      break_dict_by_plates,
-                                     format_dict)
+                                     format_cargo_dict, handle_dict_to_array,
+                                     zip_folder_to_disk,
+                                     clear_folder_contents)
 
 #For generating handles
 from crisscross.core_functions.megastructures import Megastructure
@@ -126,6 +128,7 @@ def save_file_to_uploads(data):
     seed_array = crisscross_design_file['seed_array']
     slat_array = crisscross_design_file['slat_array']
     cargo_dict = crisscross_design_file['cargo_dict'].item()
+    handle_dict = crisscross_design_file['handle_dict'].item()
 
     seed_dict = {}
     slat_dict = {}
@@ -139,8 +142,11 @@ def save_file_to_uploads(data):
     if(not(cargo_dict)):
         cargo_dict = {}
 
+    if (not (handle_dict)):
+        handle_dict = {}
 
-    emit('design_imported', [seed_dict, slat_dict, cargo_dict])
+
+    emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict])
 
 
 # TODO: make function names more descriptive
@@ -156,8 +162,7 @@ def save_crisscross_design(crisscross_dict):
     seed_array = ()
     slat_array = ()
     cargo_dict = {}
-    #top_cargo_array = ()
-    #bottom_cargo_array = ()
+    handle_dict = {}
 
     if (crisscross_dict[0]):
         seed_array = seed_dict_to_array(crisscross_dict[0])
@@ -167,10 +172,9 @@ def save_crisscross_design(crisscross_dict):
 
     if (crisscross_dict[2]):
         cargo_dict = crisscross_dict[2]
-        #bottom_cargo_array = cargo_dict_to_array(crisscross_dict[2])
 
-    #if (crisscross_dict[3]):
-    #    top_cargo_array = cargo_dict_to_array(crisscross_dict[3])
+    if (crisscross_dict[3]):
+        handle_dict = crisscross_dict[3]
 
 
 
@@ -180,7 +184,8 @@ def save_crisscross_design(crisscross_dict):
     np.savez(crisscross_design_path,
              seed_array=np.array(seed_array),
              slat_array=np.array(slat_array),
-             cargo_dict=cargo_dict)
+             cargo_dict=cargo_dict,
+             handle_dict=handle_dict)
 
     emit('saved_design_ready_to_download')
 
@@ -189,6 +194,7 @@ def save_crisscross_design(crisscross_dict):
 def generate_handles(data):
     crisscross_dict = data[0]
     handle_configs = data[1]
+    handle_rounds = int(data[2])
 
     layer_interface_orientation = []
     for orientation in handle_configs.values():
@@ -210,7 +216,7 @@ def generate_handles(data):
         slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=False)
 
     # Generate empty handle array
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=handle_rounds,
                                      split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
                                      group_hamming=None, metric_to_optimize='Universal')
 
@@ -235,8 +241,15 @@ def generate_handles(data):
 
 @socketio.on('generate_megastructures')
 def generate_megastructure(data):
+    clear_folder_contents(app.config['OUTPUT_FOLDER'])
+
     crisscross_dict = data[0]
     handle_configs = data[1]
+    general_configs = data[2]
+
+    old_handles = general_configs[0]
+    generate_graphics = general_configs[1]
+    generate_echo = general_configs[2]
 
     layer_interface_orientation = []
     for orientation in handle_configs.values():
@@ -255,6 +268,7 @@ def generate_megastructure(data):
     seed_array = np.array([])
     slat_array = ()
     cargo_dict = {}
+    handle_array = []
 
     if (crisscross_dict[0]):
         seed_array = seed_dict_to_array(crisscross_dict[0], trim_offset=True, slat_grid_dict=crisscross_dict[1])
@@ -263,12 +277,15 @@ def generate_megastructure(data):
         slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=True)
 
     if (crisscross_dict[2]):
-        cargo_dict = format_dict(crisscross_dict[2], trim=True, reference_slat_dict=crisscross_dict[1])
+        cargo_dict = format_cargo_dict(crisscross_dict[2], trim=True, reference_slat_dict=crisscross_dict[1])
 
-    #Generate empty handle array
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
-                                     split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
-                                     group_hamming=None, metric_to_optimize='Universal')
+    if ((crisscross_dict[3]) and (old_handles)):
+        handle_array = handle_dict_to_array(crisscross_dict[3], trim_offset=True, slat_grid_dict=crisscross_dict[1])
+    else:
+        #Generate handle array
+        handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
+                                         split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
+                                         group_hamming=None, metric_to_optimize='Universal')
 
     # Generates crisscross handle plate dictionaries from provided files
     crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
@@ -306,12 +323,18 @@ def generate_megastructure(data):
     core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
     crisscross_megastructure.patch_control_handles(core_plate)
 
-    crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['OUTPUT_FOLDER'], 'Design Graphics'),
-                                                              colormap='Set1', cargo_colormap='Paired')
+    if(generate_graphics):
+        crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['OUTPUT_FOLDER'], 'Design Graphics'),
+                                                                  colormap='Set1', cargo_colormap='Paired')
 
-    convert_slats_into_echo_commands(crisscross_megastructure.slats, 'crisscross_design_plate',
-                                     app.config['OUTPUT_FOLDER'],'all_echo_commands_with_crisscross_design.csv',
-                                     transfer_volume=100)
+    if(generate_echo):
+        convert_slats_into_echo_commands(crisscross_megastructure.slats, 'crisscross_design_plate',
+                                         app.config['OUTPUT_FOLDER'],'all_echo_commands_with_crisscross_design.csv',
+                                         transfer_volume=100)
+
+    zip_folder_to_disk(app.config['OUTPUT_FOLDER'], os.path.join(app.config['UPLOAD_FOLDER'], 'outputs.zip'))
+    emit('megastructure_output_ready_to_download')
+
 
 @socketio.on('upload_plates')
 def save_file_to_plate_folder(data):

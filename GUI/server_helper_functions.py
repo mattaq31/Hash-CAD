@@ -1,6 +1,9 @@
 import numpy as np
 import os
 
+import os
+import zipfile
+
 from crisscross.plate_mapping import get_plateclass
 
 
@@ -84,7 +87,7 @@ def array_to_dict(array):
             for layer in range(layer_dim):
                 entry = array[x, y, layer]
                 if entry != 0:
-                    dict[f'{x},{y},{layer}'] = entry
+                    dict[f'{x},{y},{layer+1}'] = entry
     return dict
 
 
@@ -178,7 +181,7 @@ def break_dict_by_plates(dict):
 
     return separated_dicts
 
-def format_dict(cargo_dict, trim = False, reference_slat_dict = {}):
+def format_cargo_dict(cargo_dict, trim = False, reference_slat_dict = {}):
     formatted_dict = {}
     min_x = 0
     min_y = 0
@@ -200,6 +203,60 @@ def format_dict(cargo_dict, trim = False, reference_slat_dict = {}):
     return formatted_dict
 
 
+def format_handle_dict(handle_dict, trim = False, reference_slat_dict = {}):
+    formatted_dict = {}
+    min_x = 0
+    min_y = 0
+
+    if(trim):
+        min_x = min(int(key.split(',')[0]) for key in reference_slat_dict.keys())
+        min_y = min(int(key.split(',')[1]) for key in reference_slat_dict.keys())
+
+    for key, value in handle_dict.items():
+        parts = key.split(',')
+        x = int(parts[0]) - min_x
+        y = int(parts[1]) - min_y
+        layer = int(parts[2])
+
+        converted_key = (x, y, layer)
+        formatted_dict[converted_key] = value
+
+    return formatted_dict
+
+
+
+def handle_dict_to_array(handle_dict, trim_offset=False, slat_grid_dict={}):
+    """
+    Converts a handle dictionary (produced by javascript) into a handle array.
+    :param handle_dict: dictionary of handle by (x,y,layer) coordinates.
+    :param trim_offset: If true, will trim unoccupied positions from top/left of array. If false, will leave full array.
+    :param slat_grid_dict: If trim_offset is set to true, will trim based upon the shape of the slat dictionary
+    :return: array - handleIDs by (x,y,layer) coordinates.
+    """
+
+    # Parse the keys to determine the dimensions
+    max_x = max(int(key.split(',')[0]) for key in handle_dict.keys()) + 1
+    max_y = max(int(key.split(',')[1]) for key in handle_dict.keys()) + 1
+    min_x = 0
+    min_y = 0
+    max_layer = max(int(key.split(',')[2]) for key in handle_dict.keys()) + 1
+
+    if (trim_offset == True):
+        max_x = max(int(key.split(',')[0]) for key in slat_grid_dict.keys()) + 1
+        max_y = max(int(key.split(',')[1]) for key in slat_grid_dict.keys()) + 1
+        min_x = min(int(key.split(',')[0]) for key in slat_grid_dict.keys())
+        min_y = min(int(key.split(',')[1]) for key in slat_grid_dict.keys())
+        max_layer = max(int(key.split(',')[2]) for key in slat_grid_dict.keys()) - 1
+
+    # Initialize the array
+    array = np.zeros((max_x - min_x, max_y - min_y, max_layer))
+
+    # Populate the array
+    for key, seed_id in handle_dict.items():
+        x, y, layer = map(int, key.split(','))
+        array[x - min_x, y - min_y, layer - 1] = seed_id
+
+    return array
 
 
 
@@ -207,3 +264,28 @@ def format_dict(cargo_dict, trim = False, reference_slat_dict = {}):
 
 
 
+def zip_folder_to_disk(folder_path, output_zip_path):
+    try:
+        # Create a ZipFile object with the output path
+        with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Walk the directory tree
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    # Create the full path to the file
+                    file_path = os.path.join(root, file)
+                    # Create a relative path inside the zip
+                    arcname = os.path.relpath(file_path, folder_path)
+                    # Write the file to the zip
+                    zipf.write(file_path, arcname=arcname)
+        print(f"ZIP file created successfully: {output_zip_path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+
+def clear_folder_contents(root_folder):
+    for dirpath, dirnames, filenames in os.walk(root_folder, topdown=False):
+        # Remove files
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+            os.remove(file_path)

@@ -154,6 +154,27 @@ export function populateSparseGridDictionarySeed(layers, minorGridSize) {
 }
 
 
+export function populateSparseGridDictionaryHandles(layers, minorGridSize) {
+    let gridDict = {}
+
+    layers.forEach((layer, layerIndex) => {
+        layer[0].children().forEach(child => {
+            let handleId = child.text()
+            let bbox = child.bbox();
+
+            let centerX = Math.round((bbox.x + bbox.width / 2) / minorGridSize);
+            let centerY = Math.round((bbox.y + bbox.height/ 2) / minorGridSize);
+
+            // Populate the grid dictionary with the handle ID for the occupied positions
+            let key = [centerX, centerY, layerIndex + 1]; 
+            gridDict[key] = handleId
+        })
+    });
+
+    return gridDict 
+}
+
+
 
 /** Creates a filled grid dictionary containing slat and cargo information.
  * 
@@ -167,10 +188,7 @@ export function createGridArray(layerList, minorGridSize) {
     let gridDictSeed = {}
     let gridDictSlats = {};
     let gridDictCargo = {}
-    let gridDictsCargo = [];
-    let bottomGridDictCargo = {};
-    let topGridDictCargo = {};
-    
+    let gridDictHandles = {};    
 
     // Populate the sparse grid dictionary with seed
     gridDictSeed = populateSparseGridDictionarySeed(Array.from(layerList.values()), minorGridSize);
@@ -181,12 +199,11 @@ export function createGridArray(layerList, minorGridSize) {
     // Populate the sparse grid dictionary with cargo IDs
     gridDictCargo = populateSparseGridDictionaryCargo(Array.from(layerList.values()), minorGridSize);
 
-    //bottomGridDictCargo = gridDictsCargo[0]
-    //topGridDictCargo = gridDictsCargo[1]
+    // Populate the sparse grid dictionary with handle IDs
+    gridDictHandles = populateSparseGridDictionaryHandles(Array.from(layerList.values()), minorGridSize);
 
     // You can now use the gridDict as needed
-    let gridDict = [gridDictSeed, gridDictSlats, gridDictCargo];
-    //let gridDict = [gridDictSeed, gridDictSlats, bottomGridDictCargo, topGridDictCargo];
+    let gridDict = [gridDictSeed, gridDictSlats, gridDictCargo, gridDictHandles];
 
     return gridDict
 }
@@ -371,7 +388,7 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
  * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
  * @returns {number}
  */
-export function importDesign(seedDict, slatDict, cargoDict,  layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+export function importDesign(seedDict, slatDict, cargoDict, handleDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity){
 
     removeAllLayers(layerList)
     
@@ -382,9 +399,11 @@ export function importDesign(seedDict, slatDict, cargoDict,  layerList, minorGri
     }
 
     let handleOrientations = getHandleLayerDict(layerList)
-    
-    console.log(cargoDict)
     let cargoCounter = importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations)
+
+    if(Object.keys(handleDict).length != 0){
+        importHandles(handleDict, layerList, minorGridSize)
+    }
 
     return [slatCounter, cargoCounter];
 }
@@ -435,6 +454,7 @@ export function importHandles(handleDict, layerList, minorGridSize){
     }
 
 }
+
 
 
 
@@ -515,6 +535,30 @@ export function downloadFile(url) {
             a.style.display = 'none';
             a.href = url;
             a.download = 'crisscross_design.npz';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('There has been a problem with your fetch operation:', error);
+        });
+}
+
+
+export function downloadOutputs(url) {
+    fetch(url)
+        .then(response => {
+            if (response.ok) {
+                return response.blob();
+            }
+            throw new Error('Network response was not ok.');
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'outputs.zip';
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);

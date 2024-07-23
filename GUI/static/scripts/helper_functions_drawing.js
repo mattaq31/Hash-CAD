@@ -328,6 +328,7 @@ export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizon
         }
     
         group.attr('id','cursor-slat')
+        group.attr({ 'pointer-events': 'none' })
         
     }
     else{

@@ -57,8 +57,8 @@ var socket = io();
 
 import { drawGrid } from './helper_functions_misc.js';
 import { placeSlat, placeCargo, placeSeed, showSlat } from './helper_functions_drawing.js';
-import { createGridArray, importDesign, importHandles, downloadFile } from './helper_functions_io.js';
-import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict } from './helper_functions_handles.js';
+import { createGridArray, importDesign, importHandles, downloadFile, downloadOutputs } from './helper_functions_io.js';
+import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict, clearHandles } from './helper_functions_handles.js';
 import { delete3DSlatLayer } from './helper_functions_3D.js';
 
 
@@ -100,6 +100,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         maxScale: 5,
         minScale: 0.25,
         contain: "outside",
+        cursor: "crosshair"
       })
     
     //Turn of pan by default
@@ -124,6 +125,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         if( event.key === 'Shift') {
             disablePanStatus = false;
             panzoom.setOptions({ disablePan: disablePanStatus })
+            panzoom.setOptions({ cursor: "move" })
         }
     });
 
@@ -132,6 +134,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         if( event.key === 'Shift') {
             disablePanStatus = true;
             panzoom.setOptions({ disablePan: disablePanStatus })
+            panzoom.setOptions({ cursor: "crosshair" })
         }
     });
 
@@ -438,20 +441,33 @@ SVG.on(document, 'DOMContentLoaded', function() {
     document.getElementById('generate-megastructure-button').addEventListener('click',function(event){
         let gridArray = createGridArray(layerList, minorGridSize)
         let handleConfigs = getHandleLayerDict(layerList)
-        socket.emit('generate_megastructures', [gridArray, handleConfigs])
+
+        let checkboxOldHandles = document.getElementById('checkbox-old-handles').checked;
+        let checkboxGraphics = document.getElementById('checkbox-graphics').checked;
+        let checkboxEcho = document.getElementById('checkbox-echo').checked;
+
+        let generalConfigs = [checkboxOldHandles, checkboxGraphics, checkboxEcho]
+
+
+        socket.emit('generate_megastructures', [gridArray, handleConfigs, generalConfigs])
     })
 
     document.getElementById('generate-handles-button').addEventListener('click',function(event){
         let gridArray = createGridArray(layerList, minorGridSize)
         let handleConfigs = getHandleLayerDict(layerList)
+        let handleIterations = document.getElementById('handle-iteration-number').value
         console.log('generating handles now...')
-        socket.emit('generate_handles', [gridArray, handleConfigs])
+        socket.emit('generate_handles', [gridArray, handleConfigs, handleIterations])
     })
 
     socket.on('handles_sent', function(handleDict){
         console.log('handles have been generated and recieved:', handleDict)
         importHandles(handleDict, layerList, minorGridSize)
 
+    })
+
+    document.getElementById('clear-handles-button').addEventListener('click', function(event){
+        clearHandles(layerList)
     })
 
 
@@ -477,14 +493,18 @@ SVG.on(document, 'DOMContentLoaded', function() {
         downloadFile('/download/crisscross_design.npz')
     })
 
+    socket.on('megastructure_output_ready_to_download', function(){
+        downloadOutputs('/download/outputs.zip')
+    })
+
+
     socket.on('design_imported', function(data) {
         console.log("Imported design!", data)
         let seedDict = data[0]
         let slatDict = data[1]
         let cargoDict = data[2]
-        //let bottomCargoDict = data[2]
-        //let topCargoDict = data[3]
-        slatCounter, cargoCounter = importDesign(seedDict, slatDict, cargoDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
+        let handleDict = data[3]
+        slatCounter, cargoCounter = importDesign(seedDict, slatDict, cargoDict, handleDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity)
     });
 
 

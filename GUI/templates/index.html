@@ -17,7 +17,7 @@
         }
     </script>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=yes">
     <title>CrisscrossDesigner</title>
 </head>
 <body>    
@@ -129,7 +129,17 @@
                 <div id="handle-palette" style="display: none;">
                     <h4 class="centeredText">Handle Layers</h4>
                     <div id="handle-layers"></div>
-                    <button id="generate-handles-button">Generate Handles</button>
+                    <div id="handle-buttons">
+                        <button id="generate-handles-button">Generate Handles</button>
+                        <button id="clear-handles-button">Clear Handles</button>
+                    </div>
+                    <div id="handle-configuration">
+                        <p id="handle-iteration-number-label">Iterations to attempt: </p>
+                        <input type="number" id="handle-iteration-number" name="handleIterationNumber" min="1" max="10000" value=50>
+                    </div>
+                    <div id="hamming-metrics">
+                        <p id="handleHammingIndicator">Achieved Hamming Distance:</p>
+                    </div>
                     
                 </div>
                 
@@ -152,6 +162,20 @@
                 
 
                 <button id="generate-megastructure-button">Generate Megastructure</button>
+                <form id="megastructure-generation-config-checkboxes">
+                    <label for="checkbox-old-handles">
+                        <input type="checkbox" id="checkbox-old-handles" name="old-handles" value=1>
+                        Use existing handles
+                    </label>
+                    <label for="checkbox-graphics">
+                        <input type="checkbox" id="checkbox-graphics" name="generate-graphics" value=1>
+                        Generate Graphics
+                    </label>
+                    <label for="checkbox-echo">
+                        <input type="checkbox" id="checkbox-echo" name="generate-echo" value=1 checked>
+                        Generate Echo Commands
+                    </label>
+                </form>
                 
             </div>
 

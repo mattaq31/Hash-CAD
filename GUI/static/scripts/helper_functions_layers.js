@@ -1,4 +1,6 @@
-const hexColors = ['#ff0000', '#0000ff', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
+const hexColors = ['#a8327d', '#a83632', '#cf7725', '#a8a632', '#57a832', '#327da8', '#5f32a8']//['#ff0000', '#0000ff', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
+
+
 
 /** Function to create a new layer in the project
  * 

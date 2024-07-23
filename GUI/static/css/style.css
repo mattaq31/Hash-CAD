@@ -19,7 +19,7 @@ body{
     gap: 20px;
     align-items:stretch;
     width: 100vw;
-    height: 100vh;
+    height: 88vh;
 }
 
 .left-panel {
@@ -56,6 +56,7 @@ body{
     height: calc(5*100vh);
     width: calc(5*100vw);
     background-color: white;
+    cursor: crosshair;
 }
 
 .config {
@@ -334,3 +335,49 @@ canvas {
     background-color:greenyellow
 }
 
+
+
+#handle-configuration{
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+    margin: 10px;
+}
+
+
+#handle-iteration-number{
+    flex-basis: 20%;
+}
+
+#handle-iteration-number-label{
+    flex-basis: 80%;
+    text-align: center;
+    margin: 0px;
+}
+
+#handle-buttons{
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin: 10px;
+}
+
+#generate-handles-button{
+    flex-basis: 100%;
+}
+
+#clear-handles-button{
+    flex-basis: 100%;
+}
+
+
+#megastructure-generation-config-checkboxes{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 20px;
+    gap: 0px;
+    padding: 0px;
+}
