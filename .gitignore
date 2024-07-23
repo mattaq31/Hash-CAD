@@ -139,4 +139,4 @@ scratch/*
 GUI/node_modules
 /GUI/uploads/
 /GUI/outputs/*
-/GUI/outputs/Design Graphics/*
+/GUI/outputs/Design\ Graphics/*
