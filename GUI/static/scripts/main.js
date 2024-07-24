@@ -55,7 +55,7 @@ var socket = io();
 //     Helper Functions!     //
 ///////////////////////////////
 
-import { drawGrid } from './helper_functions_misc.js';
+import { drawGrid, changeCursorEvents } from './helper_functions_misc.js';
 import { placeSlat, placeCargo, placeSeed, showSlat } from './helper_functions_drawing.js';
 import { createGridArray, importDesign, importHandles, downloadFile, downloadOutputs } from './helper_functions_io.js';
 import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict, clearHandles } from './helper_functions_handles.js';
@@ -242,10 +242,16 @@ SVG.on(document, 'DOMContentLoaded', function() {
     document.addEventListener('layerAdded', (event) => {
         console.log(`Layer added: ${event.detail.layerId}`, event.detail.layerElement);
         //Layer added
-        let handleGroup = fullDrawing.group();
+        
+        let bottomCargoGroup = fullDrawing.group();
         let slatGroup = fullDrawing.group();
         let topCargoGroup = fullDrawing.group();
-        let bottomCargoGroup = fullDrawing.group();
+        let handleGroup = fullDrawing.group();
+
+        //let handleGroup = fullDrawing.group();
+        //let slatGroup = fullDrawing.group();
+        //let topCargoGroup = fullDrawing.group();
+        //let bottomCargoGroup = fullDrawing.group();
         //let cargoGroup = fullDrawing.group();
         const tmpFullLayer = [handleGroup, slatGroup, bottomCargoGroup, topCargoGroup, event.detail.layerColor];
 
@@ -294,6 +300,23 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     document.addEventListener('layerMarkedActive', (event) => {
         console.log(`Layer marked active: ${event.detail.layerId}`, event.detail.layerElement);
+        
+        //First remove pointer events from all layers!
+        layerList.forEach((layer, layerIndex) => {
+            changeCursorEvents(layer[0], 'none')
+            changeCursorEvents(layer[1], 'none')
+            changeCursorEvents(layer[2], 'none')
+            changeCursorEvents(layer[3], 'none')
+            //layer[0].style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //layer[1].style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //layer[2].style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //layer[3].style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+        });
+
+        //TODO: ADD POINTER EVENTS TO ACTIVE LAYER
+
+
+
         // Deal with layer marked active
 
         activeLayerId = event.detail.layerId
@@ -316,6 +339,46 @@ SVG.on(document, 'DOMContentLoaded', function() {
         }
 
         
+        const drawSlatCargoHandleMode = document.getElementById('palette-type-selector').value;
+
+        if(drawSlatCargoHandleMode == 0){ //Slat mode
+            changeCursorEvents(activeSlatLayer, 'stroke')
+            changeCursorEvents(activeTopCargoLayer, 'none')
+            changeCursorEvents(activeBottomCargoLayer, 'none')
+            changeCursorEvents(activeHandleLayer, 'none')
+            //activeSlatLayer.style.pointerEvents = 'auto'; //.attr({ 'pointer-events': 'auto' })
+            //activeTopCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeBottomCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeHandleLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+        }
+        else if (drawSlatCargoHandleMode == 1) { // Cargo mode
+            changeCursorEvents(activeSlatLayer, 'none')
+            changeCursorEvents(activeTopCargoLayer, 'none')
+            changeCursorEvents(activeBottomCargoLayer, 'none')
+            changeCursorEvents(activeHandleLayer, 'none')
+            if(activeCargoLayer){
+                changeCursorEvents(activeCargoLayer, 'bounding-box')
+            }
+
+            //activeSlatLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeHandleLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //if(activeCargoLayer){
+            //    activeCargoLayer.style.pointerEvents = 'auto';
+            //}
+        } 
+        else if(drawSlatCargoHandleMode == 2){
+            changeCursorEvents(activeSlatLayer, 'none')
+            changeCursorEvents(activeTopCargoLayer, 'none')
+            changeCursorEvents(activeBottomCargoLayer, 'none')
+            changeCursorEvents(activeHandleLayer, 'stroke')
+            //activeSlatLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeTopCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeBottomCargoLayer.style.pointerEvents = 'auto';
+            //activeHandleLayer.style.pointerEvents = 'auto'; //.attr({ 'pointer-events': 'auto' })
+        }
+
+        
+
 
         activeLayerColor = event.detail.layerColor
 
@@ -394,17 +457,50 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
         if(drawSlatCargoHandleMode == 0){ //Slat mode
             slatPalette.style.display = 'block'
+            changeCursorEvents(activeSlatLayer, 'stroke')
+            changeCursorEvents(activeTopCargoLayer, 'none')
+            changeCursorEvents(activeBottomCargoLayer, 'none')
+            changeCursorEvents(activeHandleLayer, 'none')
+            //activeSlatLayer.style.pointerEvents = 'auto'; //.attr({ 'pointer-events': 'auto' })
+            //activeTopCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeBottomCargoLayer.style.pointerEvents = 'none';
+            //activeHandleLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
         }
         else if (drawSlatCargoHandleMode == 1) { // Cargo mode
             cargoPalette.style.display = 'block';
             populateCargoPalette(); // Populate the cargo palette
             getHandleLayerDict(layerList)
             updateHandleLayerButtons(layerList, activeLayerId)
+
+            changeCursorEvents(activeSlatLayer, 'none')
+            changeCursorEvents(activeTopCargoLayer, 'none')
+            changeCursorEvents(activeBottomCargoLayer, 'none')
+            changeCursorEvents(activeHandleLayer, 'none')
+            if(activeCargoLayer){
+                changeCursorEvents(activeCargoLayer, 'bounding-box')
+            }
+
+            //activeSlatLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //if(activeCargoLayer){
+            //    activeCargoLayer.style.pointerEvents = 'auto';
+            //}
+            //activeHandleLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+
         } 
         else if(drawSlatCargoHandleMode == 2){
             handlePalette.style.display = 'block'
             getHandleLayerDict(layerList)
             updateHandleLayers(layerList)
+
+            changeCursorEvents(activeSlatLayer, 'none')
+            changeCursorEvents(activeTopCargoLayer, 'none')
+            changeCursorEvents(activeBottomCargoLayer, 'none')
+            changeCursorEvents(activeHandleLayer, 'stroke')
+            
+            //activeSlatLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeTopCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+            //activeBottomCargoLayer.style.pointerEvents = 'none';
+            //activeHandleLayer.style.pointerEvents = 'auto'; //.attr({ 'pointer-events': 'auto' })
         }
 
     });
@@ -559,14 +655,26 @@ SVG.on(document, 'DOMContentLoaded', function() {
     const seedButton = document.getElementById('seed-mode-selector')
 
     topLayerButton.addEventListener('click', (event)=>{
-       activeCargoLayer = activeTopCargoLayer
+        changeCursorEvents(activeTopCargoLayer, 'bounding-box')
+        changeCursorEvents(activeBottomCargoLayer, 'none')
+        //activeTopCargoLayer.style.pointerEvents = 'auto'; //.attr({ 'pointer-events': 'auto' })
+        //activeBottomCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+        activeCargoLayer = activeTopCargoLayer
     })
 
     bottomLayerButton.addEventListener('click', (event)=>{
+        changeCursorEvents(activeTopCargoLayer, 'none')
+        changeCursorEvents(activeBottomCargoLayer, 'bounding-box')
+        //activeTopCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+        //activeBottomCargoLayer.style.pointerEvents = 'auto'; //.attr({ 'pointer-events': 'auto' })
         activeCargoLayer = activeBottomCargoLayer
     })
 
     seedButton.addEventListener('click', (event)=>{
+        changeCursorEvents(activeTopCargoLayer, 'none')
+        changeCursorEvents(activeBottomCargoLayer, 'bounding-box')
+        //activeTopCargoLayer.style.pointerEvents = 'none'; //.attr({ 'pointer-events': 'none' })
+        //activeBottomCargoLayer.style.pointerEvents = 'auto'; //.attr({ 'pointer-events': 'auto' })
         activeCargoLayer = activeBottomCargoLayer
     })
 
@@ -629,7 +737,6 @@ SVG.on(document, 'DOMContentLoaded', function() {
         gridStyle = 0;
         drawGrid(drawGridLayer, width, height, gridStyle, majorGridSize, minorGridSize)
     })
-
 
 
 

@@ -24,7 +24,7 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
         if(!willVertBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
             let defaultColor = activeLayerColor; 
             let tmpLine = activeSlatLayer.line(roundedX, roundedY - 0.5 * minorGridSize, roundedX, roundedY + 31.5 * minorGridSize)
-                                        .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
+                                        .stroke({ width: 4, color:defaultColor, opacity: shownOpacity });
             //tmpLine.attr('id',activeLayerId + '_number:' + slatCounter)
 
             tmpLine.attr('id', slatCounter)
@@ -52,7 +52,7 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
         if(!willHorzBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
             let defaultColor = activeLayerColor 
             let tmpLine = activeSlatLayer.line(roundedX - 0.5 * minorGridSize, roundedY, roundedX + 31.5 * minorGridSize, roundedY )
-                                        .stroke({ width: 3, color:defaultColor, opacity: shownOpacity });
+                                        .stroke({ width: 4, color:defaultColor, opacity: shownOpacity });
 
             tmpLine.attr('id', slatCounter)
             tmpLine.attr('layer', activeLayerId)
@@ -317,14 +317,14 @@ export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizon
                                            roundedY + yIterator, 
                                            roundedX + 31.5 * minorGridSize + xIterator, 
                                            roundedY + yIterator)
-                                     .stroke({ width: 3, color:defaultColor, opacity: 0.33 });       
+                                     .stroke({ width: 4, color:defaultColor, opacity: 0.33 });       
             }
             else{
                 tmpLine = fullDrawing.line(roundedX + xIterator, 
                                            roundedY - 0.5 * minorGridSize + yIterator, 
                                            roundedX + xIterator, 
                                            roundedY + 31.5 * minorGridSize + yIterator)
-                                     .stroke({ width: 3, color:defaultColor, opacity: 0.33 });
+                                     .stroke({ width: 4, color:defaultColor, opacity: 0.33 });
             }
     
             group.add(tmpLine)

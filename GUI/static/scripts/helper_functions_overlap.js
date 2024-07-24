@@ -84,7 +84,7 @@ export function isLineOnLine(startX, startY, layer, GridSize, selectedLine) {
  */
 export function willVertBeOnLine(startX, startY, layer, gridSize, length=32){
     let overlap = false
-    for (let i = 0; i<= length; i++) {
+    for (let i = 0; i < length; i++) {
         let x = startX 
         let y = startY + i*gridSize
         overlap = overlap || isPointOnLine(layer, x, y)
@@ -103,7 +103,7 @@ export function willVertBeOnLine(startX, startY, layer, gridSize, length=32){
  */
 export function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
     let overlap = false
-    for (let i = 0; i<= length; i++) {
+    for (let i = 0; i < length; i++) {
         let x = startX + i*gridSize
         let y = startY 
         overlap = overlap || isPointOnLine(layer, x, y)

@@ -76,4 +76,20 @@ function dispatchServerEvent(eventName, eventItem) {
 }
 
 
+export function changeCursorEvents(layer, type){
+    layer.children().forEach(child => {
+        child.attr('pointer-events', type);
+    });
+}
 
+export function cursorEventsNone(layer){
+    layer.children().forEach(child => {
+        child.attr('pointer-events', 'none');
+    });
+}
+
+export function cursorEventsStroke(layer){
+    layer.children().forEach(child => {
+        child.attr('pointer-events', 'stroke');
+    });
+}
