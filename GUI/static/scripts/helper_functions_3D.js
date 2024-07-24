@@ -316,3 +316,169 @@ export function move3DCargo(id, x, y, layerNum, top = true, radius=0.5){
         }
     }
 }
+
+
+
+
+export function place3DSeed(roundedX, roundedY, layerNum, layerColor, horizontal){
+    // Define parameters
+    const step = 1; // Step size
+    const rows = 5; // Number of rows
+    const cols = 16; // Number of columns
+
+    const width = cols; // Width of each section
+    const height = rows; // Height of each section
+
+
+    // Function to generate points dynamically
+    function generatePoints() {
+        const points = [];
+        let x = 0 - step / 2
+        let y = 0 + step / 2
+        let z = 0 - 0.375
+        points.push(new THREE.Vector3(x, y, z))
+
+        for (let i = 0; i < rows; i++) {
+            if (i === rows - 1) { // Last line
+                if (i % 2 === 0) {
+                // Forward direction
+                x += (width - step / 2)
+                points.push(new THREE.Vector3(x, y, z))
+                } 
+                else {
+                // Backward direction
+                x += (- width + step / 2)
+                points.push(new THREE.Vector3(x, y, z))
+                }
+            }
+            else{
+                if (i % 2 === 0) {
+                    // Forward direction
+                    x += width
+                    points.push(new THREE.Vector3(x, y, z))
+                    y += step 
+                    points.push(new THREE.Vector3(x, y, z))
+                    } else {
+                    // Backward direction
+                    x -= width
+                    points.push(new THREE.Vector3(x, y, z))
+                    y += step
+                    points.push(new THREE.Vector3(x, y, z))
+                    }
+            }
+        }
+
+        for (let j = 0; j < cols; j++) {
+            if (j === 0) {
+                y += (- height + step / 2)
+                points.push(new THREE.Vector3(x, y, z))
+                x -= step
+                points.push(new THREE.Vector3(x, y, z))
+            } else if (j === cols - 1) {
+                if (j % 2 === 0) {
+                // Up direction
+                y -= height
+                points.push(new THREE.Vector3(x, y, z))
+                x -= step
+                points.push(new THREE.Vector3(x, y, z))
+                } else {
+                // Down direction
+                y += height
+                points.push(new THREE.Vector3(x, y, z))
+                x -= step
+                y += step
+                points.push(new THREE.Vector3(x, y, z))
+                }
+            } else if (j % 2 === 0) {
+                // Up direction
+                y -= height
+                points.push(new THREE.Vector3(x, y, z))
+                x -= step
+                points.push(new THREE.Vector3(x, y, z))
+            } else {
+                // Down direction
+                y += height
+                points.push(new THREE.Vector3(x, y, z))
+                x -= step
+                points.push(new THREE.Vector3(x, y, z))
+            }
+        }
+
+        return points;
+    }
+
+
+    const points = generatePoints();
+
+    // Create curves between points
+    const curveSegments = [];
+    for (let i = 0; i < points.length - 1; i++) {
+    const start = points[i];
+    const end = points[i + 1];
+    const mid = new THREE.Vector3((start.x + end.x) / 2, (start.y + end.y) / 2, (start.z + end.z) / 2);
+
+    // Create a quadratic curve between segments
+    const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+    curveSegments.push(curve);
+    }
+
+    // Combine the curves into one path
+    const path = new THREE.CurvePath();
+    curveSegments.forEach(curve => path.add(curve));
+
+
+    // Step 3: Create a geometry from the curve
+    const tubeGeometry = new THREE.TubeGeometry(path, 1000, 0.25, 4, false);
+
+    // Step 4: Create a material for the geometry
+    const tubeMaterial = new THREE.MeshBasicMaterial({ color: layerColor, side: THREE.DoubleSide });
+
+    // Step 5: Create a mesh and add it to the scene
+    const tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+
+    if(horizontal){
+        tubeMesh.rotation.z = - Math.PI / 2; // Rotate 90 degrees around the z-axis to align along the x-axis
+        tubeMesh.position.set(roundedX - step/2, roundedY + width - step/2, layerNum);
+    }
+    else{
+        tubeMesh.position.set(roundedX, roundedY, layerNum);
+    }
+
+
+    tubeMesh.name = 'seed-3D'
+
+    console.log(tubeMesh)
+
+    // Add the mesh to your scene
+    scene.add(tubeMesh);
+}
+
+
+
+
+export function delete3DSeed(){
+    let seedToRemove = scene.getObjectByName('seed-3D');
+    
+    if (seedToRemove) {
+        console.log("we have the seed!")
+        scene.remove(seedToRemove);
+    
+        // Dispose of the seed's geometry and material to free up memory
+        if (seedToRemove.geometry) seedToRemove.geometry.dispose();
+        if (seedToRemove.material) seedToRemove.material.dispose();
+    }
+}
+
+
+export function move3DSeed(x, y, layerNum, horizontal = false){
+    let seedToMove = scene.getObjectByName('seed-3D');
+    if (seedToMove) {
+        if(horizontal){
+            seedToMove.position.set( x, y, layerNum);
+        }
+        else{
+            seedToMove.position.set(x + 1, y, layerNum)
+        }
+        
+    }
+}

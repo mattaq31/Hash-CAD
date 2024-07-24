@@ -1,7 +1,7 @@
 import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo, wasSeedOnCargo } from './helper_functions_overlap.js';
 import { startDrag } from './helper_functions_dragging.js';
 import { getInventoryItemById } from './cargo.js';
-import { place3DSlat, place3DCargo } from './helper_functions_3D.js';
+import { place3DSlat, place3DCargo, place3DSeed } from './helper_functions_3D.js';
 
 
 
@@ -259,6 +259,7 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
         tmpPath.attr('layer', activeLayerId)
         tmpPath.attr('class',"seed")
         tmpPath.attr({'pointer-events': 'stroke' })
+        tmpPath.attr({'data-horizontal': Boolean(horizontal)})
 
         if(horizontal){
             const bbox = tmpPath.bbox();
@@ -273,6 +274,8 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
         tmpPath.on('pointerdown', function(event) {
             startDrag(event, layerList, minorGridSize);
         });
+
+        place3DSeed(roundedX / minorGridSize, roundedY / minorGridSize, activeLayerId, activeLayerColor, horizontal)
 
         if(wasSeedOnCargo(cargoLayer)){
             tmpPath.remove()

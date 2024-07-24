@@ -4,7 +4,7 @@
 
 
 import { isLineOnLine,  isCargoOnCargo } from './helper_functions_overlap.js';
-import { delete3DSlat,  move3DSlat, delete3DCargo, move3DCargo} from './helper_functions_3D.js';
+import { delete3DSlat,  move3DSlat, delete3DCargo, move3DCargo, delete3DSeed, move3DSeed} from './helper_functions_3D.js';
 
 
 
@@ -132,6 +132,9 @@ export function startDrag(event, layerList, minorGridSize) {
             else if(dragSelectedElement.attr('class').split(' ').includes('cargo')){
                 delete3DCargo(dragSelectedElement.attr('id'))
             }
+            else if(dragSelectedElement.attr('class').split(' ').includes('seed')){
+                delete3DSeed()
+            }
 
             dragSelectedElement.remove()
             event.stopPropagation(); //needed or else delete doesn't work... oh well!
@@ -227,7 +230,24 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
         }
         else if(drawSlatCargoHandleMode == 1){
             if(selectedElement.attr('class') == "seed"){
-                selectedElement.move(roundedX, roundedY);
+                let isHorizontal = selectedElement.attr('data-horizontal')
+
+                if(isHorizontal == 'true'){
+                    selectedElement.move(roundedX, roundedY - minorGridSize/2);
+
+                    let x3D = roundedX/minorGridSize
+                    let y3D = roundedY/minorGridSize
+                    let layerNum = selectedElement.attr('layer')
+
+                    move3DSeed(x3D, y3D, layerNum, true)
+                }
+                else{
+                    selectedElement.move(roundedX, roundedY);
+                    let x3D = roundedX/minorGridSize
+                    let y3D = roundedY/minorGridSize
+                    let layerNum = selectedElement.attr('layer')
+                    move3DSeed(x3D, y3D, layerNum, false)
+                }
             }
             else{
                 if(!isCargoOnCargo(roundedX, roundedY, activeLayer, selectedElement)) {
