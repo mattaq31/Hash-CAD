@@ -233,20 +233,20 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
                 let isHorizontal = selectedElement.attr('data-horizontal')
 
                 if(isHorizontal == 'true'){
-                    selectedElement.move(roundedX, roundedY - minorGridSize/2);
+                    selectedElement.move(roundedX + minorGridSize/2, roundedY - minorGridSize/2);
 
-                    let x3D = roundedX/minorGridSize
-                    let y3D = roundedY/minorGridSize
+                    let x3D = roundedX/minorGridSize + 0.5
+                    let y3D = roundedY/minorGridSize + 15.5
                     let layerNum = selectedElement.attr('layer')
 
-                    move3DSeed(x3D, y3D, layerNum, true)
+                    move3DSeed(x3D, y3D, layerNum)
                 }
                 else{
-                    selectedElement.move(roundedX, roundedY);
-                    let x3D = roundedX/minorGridSize
+                    selectedElement.move(roundedX, roundedY - minorGridSize/2);
+                    let x3D = roundedX/minorGridSize + 1
                     let y3D = roundedY/minorGridSize
                     let layerNum = selectedElement.attr('layer')
-                    move3DSeed(x3D, y3D, layerNum, false)
+                    move3DSeed(x3D, y3D, layerNum)
                 }
             }
             else{

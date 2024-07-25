@@ -206,51 +206,106 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
 
     //Only draw if no other seeds:
     if(document.querySelectorAll('.seed').length == 0){
-        let pathString = `M ${roundedX - step/2} ${roundedY} `;
-    
-        //Start with horizontal lines
-        for (let i = 0; i < rows; i++) {
-            if (i === rows-1){ //Last line
-                if (i % 2 === 0) {
-                    // Forward direction
-                    pathString += `l ${width-step/2} 0`;
-                    } else {
-                    // Backward direction
-                    pathString += `l ${-width+step/2} 0`;
-                    }
+        let pathString = ``
+        
+        
+
+        if(horizontal){
+            pathString += `M ${roundedX} ${roundedY + width - step/2}`;
+            //Start with horizontal lines
+            for (let i = 0; i < rows; i++) {
+                if (i === rows-1){ //Last line
+                    if (i % 2 === 0) {
+                        // Forward direction
+                        pathString += `l 0 ${-width+step/2}`;
+                        } else {
+                        // Backward direction
+                        pathString += `l 0 ${width-step/2}`;
+                        }
+                }
+                else{ //All other horizontal lines
+                    if (i % 2 === 0) {
+                        // Forward direction
+                        pathString += `l 0 ${-width}  l ${step} 0`;
+                        } else {
+                        // Backward direction
+                        pathString += `l 0 ${width} l ${step} 0`;
+                        }
+                }
             }
-            else{ //All other horizontal lines
-                if (i % 2 === 0) {
-                    // Forward direction
-                    pathString += `l ${width} 0  l 0 ${step}`;
-                    } else {
-                    // Backward direction
-                    pathString += `l ${-width} 0 l 0 ${step}`;
-                    }
+
+            // Now start vertical snaking
+            for (let j = 0; j < cols; j++) {
+                if (j === 0){
+                    pathString += ` l ${-height + step/2} 0 l 0 ${step} `;
+                }
+                else if(j === cols - 1){
+                    if (j % 2 === 0) {
+                        // Up direction
+                        pathString += ` l ${height} 0 l ${step} ${step}`;
+                        } else {
+                        // Down direction
+                        pathString += ` l ${height} 0 l ${step} ${step}`;
+                        }
+                }
+                else if (j % 2 === 0) {
+                // Up direction
+                pathString += ` l ${-height} 0 l 0 ${step}`;
+                } else {
+                // Down direction
+                pathString += ` l ${height} 0 l 0 ${step}`;
+                }
             }
         }
+        else{
+            pathString += `M ${roundedX - step/2} ${roundedY} `;
+            //Start with horizontal lines
+            for (let i = 0; i < rows; i++) {
+                if (i === rows-1){ //Last line
+                    if (i % 2 === 0) {
+                        // Forward direction
+                        pathString += `l ${width-step/2} 0`;
+                        } else {
+                        // Backward direction
+                        pathString += `l ${-width+step/2} 0`;
+                        }
+                }
+                else{ //All other horizontal lines
+                    if (i % 2 === 0) {
+                        // Forward direction
+                        pathString += `l ${width} 0  l 0 ${step}`;
+                        } else {
+                        // Backward direction
+                        pathString += `l ${-width} 0 l 0 ${step}`;
+                        }
+                }
+            }
 
-        // Now start vertical snaking
-        for (let j = 0; j < cols; j++) {
-            if (j === 0){
-                pathString += ` l 0 ${-height + step/2} l ${-step} 0`;
+            // Now start vertical snaking
+            for (let j = 0; j < cols; j++) {
+                if (j === 0){
+                    pathString += ` l 0 ${-height + step/2} l ${-step} 0`;
+                }
+                else if(j === cols - 1){
+                    if (j % 2 === 0) {
+                        // Up direction
+                        pathString += ` l 0 ${-height} l ${-step} ${step}`;
+                        } else {
+                        // Down direction
+                        pathString += ` l 0 ${height} l ${-step} ${step}`;
+                        }
+                }
+                else if (j % 2 === 0) {
+                // Up direction
+                pathString += ` l 0 ${-height} l ${-step} 0`;
+                } else {
+                // Down direction
+                pathString += ` l 0 ${height} l ${-step} 0`;
+                }
             }
-            else if(j === cols - 1){
-                if (j % 2 === 0) {
-                    // Up direction
-                    pathString += ` l 0 ${-height} l ${-step} ${step}`;
-                    } else {
-                    // Down direction
-                    pathString += ` l 0 ${height} l ${-step} ${step}`;
-                    }
-            }
-            else if (j % 2 === 0) {
-            // Up direction
-            pathString += ` l 0 ${-height} l ${-step} 0`;
-            } else {
-            // Down direction
-            pathString += ` l 0 ${height} l ${-step} 0`;
-            }}
+        }
+    
+        
 
         // Draw the path
         let tmpPath = cargoLayer.path(pathString).stroke({ width: 3, color: activeLayerColor }).fill('none');
@@ -261,7 +316,7 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
         tmpPath.attr({'pointer-events': 'stroke' })
         tmpPath.attr({'data-horizontal': Boolean(horizontal)})
 
-        if(horizontal){
+        /*if(horizontal){
             const bbox = tmpPath.bbox();
 
             // Rotate the path 90 degrees around its top-left corner
@@ -269,7 +324,7 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
 
             // Translate the path to its original top-left corner
             tmpPath.translate(-bbox.width - minorGridSize/2, 0);
-        }
+        }*/
 
         tmpPath.on('pointerdown', function(event) {
             startDrag(event, layerList, minorGridSize);

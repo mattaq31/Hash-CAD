@@ -682,6 +682,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
 
     const drawButton = document.getElementById('draw-button')
+    drawButton.classList.add('draw-erase-select-toggle-selected')
     const eraseButton = document.getElementById('erase-button')
     const selectButton = document.getElementById('select-button')
 
@@ -708,6 +709,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     const gridButton = document.getElementById('grid-button')
     const dotsButton = document.getElementById('dot-button')
+    dotsButton.classList.add('grid-dots-blank-toggle-selected')
     const blankButton = document.getElementById('blank-button')
 
     gridButton.addEventListener('click', (event)=>{

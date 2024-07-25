@@ -7,6 +7,7 @@ import { getInventoryItemById } from './cargo.js';
 
 const right3DPanel = document.getElementById('right-3D-panel');
 const scene = new THREE.Scene();
+scene.scale.y = -1;
 scene.background =  new THREE.Color(0xffffff);
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -470,15 +471,9 @@ export function delete3DSeed(){
 }
 
 
-export function move3DSeed(x, y, layerNum, horizontal = false){
+export function move3DSeed(x, y, layerNum){
     let seedToMove = scene.getObjectByName('seed-3D');
     if (seedToMove) {
-        if(horizontal){
-            seedToMove.position.set( x, y, layerNum);
-        }
-        else{
-            seedToMove.position.set(x + 1, y, layerNum)
-        }
-        
+        seedToMove.position.set( x, y, layerNum);        
     }
 }
