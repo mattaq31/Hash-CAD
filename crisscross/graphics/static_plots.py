@@ -220,8 +220,7 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
             continue
         start_pos = slat.slat_position_to_coordinate[1]
         end_pos = slat.slat_position_to_coordinate[slat.max_length]
-        start_pos = physical_point_scale_convert(start_pos, grid_xd,
-                                                 grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
+        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
         layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]

@@ -163,9 +163,12 @@ for rev_slat in range(48, 64):  # this intervention is being done to accommodate
 
 nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
-nelson_mega.assign_cargo_handles_with_array(cargo_array_0, nelson_plate, cargo_key, layer=1, handle_orientation=2)
-nelson_mega.assign_cargo_handles_with_array(cargo_array_1, nelson_plate, cargo_key, layer=2, handle_orientation=2)
+nelson_mega.assign_cargo_handles_with_array(cargo_array_0, cargo_key, nelson_plate, layer=1, handle_orientation=2)
+nelson_mega.assign_cargo_handles_with_array(cargo_array_1, cargo_key, nelson_plate, layer=2, handle_orientation=2)
 nelson_mega.patch_control_handles(core_plate)
+
+nelson_mega.export_design('full_design.xlsx', output_folder)
+
 nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1', cargo_colormap='Dark2')
 print(Fore.GREEN + 'Design exported to Echo commands successfully.')
 
@@ -180,8 +183,8 @@ for rev_slat in range(48, 64):  # this intervention is being done to accommodate
 
 nelson_mega_2.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega_2.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
-nelson_mega_2.assign_cargo_handles_with_array(cargo_array_0, simpsons_plate, cargo_key, layer=1, handle_orientation=2)
-nelson_mega_2.assign_cargo_handles_with_array(cargo_array_1, simpsons_plate, cargo_key, layer=2, handle_orientation=2)
+nelson_mega_2.assign_cargo_handles_with_array(cargo_array_0, cargo_key, simpsons_plate, layer=1, handle_orientation=2)
+nelson_mega_2.assign_cargo_handles_with_array(cargo_array_1, cargo_key, simpsons_plate, layer=2, handle_orientation=2)
 nelson_mega_2.patch_control_handles(core_plate)
 nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics'), colormap='Set1',
                                              cargo_colormap='Dark2')

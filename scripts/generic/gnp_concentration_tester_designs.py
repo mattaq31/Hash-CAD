@@ -88,7 +88,7 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 megastructure = Megastructure(slat_array)
 megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(corner_seed_array, edge_seed_plate)
-megastructure.assign_cargo_handles_with_array(cargo_pattern, nelson_plate, cargo_key, layer='bottom')
+megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_key, nelson_plate, layer='bottom')
 megastructure.patch_control_handles(core_plate)
 
 convert_slats_into_echo_commands(megastructure.slats, 'gnp_replacement_plate',
@@ -117,7 +117,7 @@ for i in range(16):
 megastructure_nelson = Megastructure(slat_array)
 megastructure_nelson.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure_nelson.assign_seed_handles(corner_seed_array, edge_seed_plate)
-megastructure_nelson.assign_cargo_handles_with_array(cargo_pattern, nelson_plate, cargo_key, layer='bottom')
+megastructure_nelson.assign_cargo_handles_with_array(cargo_pattern, cargo_key, nelson_plate, layer='bottom')
 megastructure_nelson.patch_control_handles(core_plate)
 
 convert_slats_into_echo_commands(megastructure_nelson.slats, 'gnp_replacement_plate',

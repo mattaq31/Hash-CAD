@@ -67,7 +67,7 @@ KineticMegastructure.assign_seed_handles(SeedArray, CenterSeedPlate, layer_id=1)
 
 # Prepare the cargo layer, map cargo handle ids, and assign to array
 CargoArray = DesignDF[CargoLayer].values
-KineticMegastructure.assign_cargo_handles_with_array(CargoArray, CargoPlate, cargo_key, layer='top')
+KineticMegastructure.assign_cargo_handles_with_array(CargoArray, cargo_key, CargoPlate, layer='top')
 
 # Patch up missing controls
 KineticMegastructure.patch_control_handles(CorePlate)

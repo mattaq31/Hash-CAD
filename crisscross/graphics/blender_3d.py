@@ -255,7 +255,7 @@ def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid
 def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None,
                                  animate_delay_frames=40, connection_angle='90', seed_layer_and_array=None,
                                  camera_spin=False, animation_type='translate', specific_slat_translate_distances=None,
-                                 colormap='Set1'):
+                                 correct_slat_entrance_direction=True, colormap='Set1'):
     """
     Creates a 3D video of a megastructure slat design. TODO: add cargo to this view too.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
@@ -270,6 +270,8 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     :param specific_slat_translate_distances: The distance each slat will move if using the translate system.
     This should be in a dictionary format - not all slat needs to have the distance, only those that will be different
     from the default value of 2.
+    :param correct_slat_entrance_direction: If set to true, will attempt to correct the slat entrance animation to
+    always start from a place that is supported.
     :param colormap: Colormap to extract layer colors from
     :return: N/A
     """
@@ -314,7 +316,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         pos1 = slat.slat_position_to_coordinate[1]  # first slat position
         pos2 = slat.slat_position_to_coordinate[32]  # second slat position
 
-        if animate_slat_group_dict is not None:  # attempts to remove any conflicting animation directions
+        if correct_slat_entrance_direction and animate_slat_group_dict is not None:  # attempts to remove any conflicting animation directions
             pos1, pos2 = check_slat_animation_direction(pos1, pos2, slat_id, slat.layer, slats, animate_slat_group_dict)
 
         layer = slat.layer

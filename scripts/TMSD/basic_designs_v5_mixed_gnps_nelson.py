@@ -100,8 +100,8 @@ cargo_array_2[5:7, slat_invader_placement] = 1
 cargo_array_2[11:13, slat_invader_placement] = 1
 cargo_array_2[17:19, slat_invader_placement] = 1
 
-M_inv.assign_cargo_handles_with_array(cargo_array, nelson_plate, cargo_key, 2, handle_orientation=2)
-M_inv.assign_cargo_handles_with_array(cargo_array_2, bart_plate, cargo_key,2, handle_orientation=2)
+M_inv.assign_cargo_handles_with_array(cargo_array, cargo_key, nelson_plate, 2, handle_orientation=2)
+M_inv.assign_cargo_handles_with_array(cargo_array_2, cargo_key, bart_plate, 2, handle_orientation=2)
 
 M_inv.patch_control_handles(core_plate)
 

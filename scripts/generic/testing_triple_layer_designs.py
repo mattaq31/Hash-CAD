@@ -33,7 +33,7 @@ standard_seed_array = np.arange(16) + 1
 standard_seed_array = np.pad(standard_seed_array[:, np.newaxis], ((0, 0), (4, 0)), mode='edge')
 seed_array[17:33, 1:6] = standard_seed_array
 megastructure.assign_seed_handles(seed_array, seed_plate)
-megastructure.assign_cargo_handles_with_array(cargo_array, cargo_plate, cargo_key, layer='bottom')
+megastructure.assign_cargo_handles_with_array(cargo_array, cargo_key, cargo_plate, layer='bottom')
 
 megastructure.patch_control_handles(core_plate)
 megastructure.create_graphical_slat_view(instant_view=True)

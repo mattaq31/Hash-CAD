@@ -92,8 +92,9 @@ slat_translate_dict = {}
 for slat in groups[8] + groups[9]:
     slat_translate_dict[slat] = 20
 
-M2.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True,
-                          animation_type='translate',
-                          camera_spin=True,
-                          custom_assembly_groups=custom_glider_animation_dict,
-                          slat_translate_dict=slat_translate_dict)
+# M2.export_design('full_design.xlsx', '/Users/matt/Desktop')
+# M2.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True,
+#                           animation_type='translate',
+#                           camera_spin=True,
+#                           custom_assembly_groups=custom_glider_animation_dict,
+#                           slat_translate_dict=slat_translate_dict)

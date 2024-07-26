@@ -170,8 +170,8 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
 megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(corner_seed_array, seed_plate)
-megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_plate, cargo_key_for_new_system, layer='top')
-megastructure.assign_cargo_handles_with_array(crossbar_pattern, cargo_plate, cargo_key_for_new_system, layer='bottom')
+megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_key_for_new_system, cargo_plate, layer='top')
+megastructure.assign_cargo_handles_with_array(crossbar_pattern, cargo_key_for_new_system, cargo_plate, layer='bottom')
 
 # custom slat for crossbar system TODO: is there a way to integrate this into the Megastructure class?
 crossbar_slat = Slat('crossbar_slat', 'Extra', 'N/A')
@@ -203,8 +203,9 @@ biotin_underside_pattern[-1, :] = 3
 alt_1_megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
 alt_1_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 alt_1_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
-alt_1_megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_plate, cargo_key_for_new_system, layer='top')
-alt_1_megastructure.assign_cargo_handles_with_array(biotin_underside_pattern, nelson_plate, cargo_key_for_new_system, layer='bottom')
+alt_1_megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_key_for_new_system, cargo_plate, layer='top')
+alt_1_megastructure.assign_cargo_handles_with_array(biotin_underside_pattern, cargo_key_for_new_system, nelson_plate,
+                                                    layer='bottom')
 alt_1_megastructure.patch_control_handles(core_plate)
 alt_1_megastructure.create_standard_graphical_report(os.path.join(output_folder, 'alt_1_graphics'))
 
@@ -220,8 +221,9 @@ biotin_underside_pattern[:, -1] = 3
 alt_2_megastructure = Megastructure(slat_array, layer_interface_orientations=[2, (5, 5), 2])
 alt_2_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 alt_2_megastructure.assign_seed_handles(center_seed_array, center_seed_plate)
-alt_2_megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_plate, cargo_key_for_new_system, layer='top')
-alt_2_megastructure.assign_cargo_handles_with_array(biotin_underside_pattern, biotin_plate, {3: 'biotin'}, layer='bottom')
+alt_2_megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_key_for_new_system, cargo_plate, layer='top')
+alt_2_megastructure.assign_cargo_handles_with_array(biotin_underside_pattern, {3: 'biotin'}, biotin_plate,
+                                                    layer='bottom')
 alt_2_megastructure.patch_control_handles(core_plate)
 alt_2_megastructure.create_standard_graphical_report(os.path.join(output_folder, 'alt_2_graphics'))
 

@@ -86,7 +86,7 @@ M_inv.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 # adds 16 Nelson handles to allow attachment of fluorescent strands (they are attached to the H2 side of the incumbent strand)
 cargo_array = np.zeros(padded_slat_array.shape[0:2])
 cargo_array[4:20, slat_invader_placement] = 3
-M_inv.assign_cargo_handles_with_array(cargo_array, nelson_plate, cargo_key, 2, handle_orientation=2)
+M_inv.assign_cargo_handles_with_array(cargo_array, cargo_key, nelson_plate, 2, handle_orientation=2)
 M_inv.patch_control_handles(core_plate)
 
 # The actual invader for this design is simply the actual control y-slat, so a copy will be made here
