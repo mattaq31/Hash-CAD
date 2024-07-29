@@ -413,7 +413,7 @@ class Megastructure:
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
                                    include_cargo=True, include_seed=True,
-                                   colormap='Set1', cargo_colormap='Set1'):
+                                   colormap='Set1', seed_color=(1.0, 0.0, 0.0), cargo_colormap='Set1'):
         """
         Creates a graphical view of the slats, cargo and seeds in the design.  Refer to the graphics module for more details.
         :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
@@ -421,6 +421,7 @@ class Megastructure:
         :param include_cargo: Set to True to include cargo in the graphical view.
         :param include_seed: Set to True to include the seed in the graphical view.
         :param colormap: The colormap to sample from for each additional layer.
+        :param seed_color: The color of the seed in the design.
         :param cargo_colormap: The colormap to sample from for each cargo type.
         :return: N/A
         """
@@ -431,7 +432,7 @@ class Megastructure:
                                    cargo_dict=self.cargo_dict if include_cargo else None,
                                    save_to_folder=save_to_folder, instant_view=instant_view,
                                    connection_angle=self.connection_angle,
-                                   colormap=colormap,
+                                   colormap=colormap, seed_color=seed_color,
                                    cargo_colormap=cargo_colormap)
 
     def create_graphical_assembly_handle_view(self, save_to_folder=None, instant_view=True, colormap='Set1'):
@@ -492,20 +493,27 @@ class Megastructure:
             plt.savefig(os.path.join(output_folder, '%s.png' % slat_id), dpi=300)
             plt.close(l_fig)
 
-    def create_graphical_3D_view(self, save_folder, window_size=(2048, 2048), colormap='Set1'):
+    def create_graphical_3D_view(self, save_folder, window_size=(2048, 2048), colormap='Set1',
+                                 cargo_colormap='Dark2', seed_color=(1, 0, 0)):
         """
         Creates a 3D video of the megastructure slat design.
         :param save_folder: Folder to save all video to.
         :param window_size: Resolution of video generated.  2048x2048 seems reasonable in most cases.
         :param colormap: Colormap to extract layer colors from
+        :param cargo_colormap: Colormap to extract cargo colors from
+        :param seed_color: Color of the seed in the design.
         :return: N/A
         """
         create_graphical_3D_view(self.slat_array, save_folder, slats=self.slats, connection_angle=self.connection_angle,
-                                 window_size=window_size, colormap=colormap)
+                                 cargo_dict=self.cargo_dict, cargo_colormap=cargo_colormap,
+                                 layer_interface_orientations=self.layer_interface_orientations,
+                                 seed_color=seed_color,
+                                 seed_layer_and_array=self.seed_array, window_size=window_size, colormap=colormap)
 
     def create_blender_3D_view(self, save_folder, animate_assembly=False, animation_type='translate',
                                custom_assembly_groups=None, slat_translate_dict=None, minimum_slat_cutoff=15,
-                               camera_spin=False, correct_slat_entrance_direction=True, colormap='Set1'):
+                               camera_spin=False, correct_slat_entrance_direction=True, colormap='Set1',
+                               seed_color=(1, 0, 0)):
         """
         Creates a 3D model of the megastructure slat design as a Blender file.
         :param save_folder: Folder to save all video to.
@@ -519,6 +527,7 @@ class Megastructure:
         :param correct_slat_entrance_direction: If set to true, will attempt to correct the slat entrance animation to
         always start from a place that is supported.
         :param colormap: Colormap to extract layer colors from
+        :param seed_color: Color of the seed in the design.
         :return: N/A
         """
         if animate_assembly:
@@ -535,26 +544,31 @@ class Megastructure:
                                      connection_angle=self.connection_angle,
                                      animation_type=animation_type, camera_spin=camera_spin,
                                      correct_slat_entrance_direction=correct_slat_entrance_direction,
-                                     colormap=colormap, specific_slat_translate_distances=slat_translate_dict)
+                                     seed_color=seed_color, colormap=colormap,
+                                     specific_slat_translate_distances=slat_translate_dict)
 
-    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
-                                         colormap='Dark2', cargo_colormap='Set1'):
+    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False, generate_3d_video=True,
+                                         colormap='Dark2', cargo_colormap='Set1', seed_color=(1.0, 0.0, 0.0)):
         """
         Generates entire set of graphical reports for the megastructure design.
         :param output_folder: Output folder to save all images to.
         :param draw_individual_slat_reports: If set, to true, will generate individual slat reports (slow).
+        :param generate_3d_video: If set to true, will generate a 3D video of the design.
         :param colormap: Colormap to extract layer colors from
         :param cargo_colormap: Colormap to extract cargo colors from
+        :param seed_color: Color of the seed in the design.
         :return: N/A
         """
         print(Fore.CYAN + 'Generating graphical reports for megastructure design, this might take a few seconds...')
         create_dir_if_empty(output_folder)
         self.create_graphical_slat_view(save_to_folder=output_folder, instant_view=False, colormap=colormap,
-                                        cargo_colormap=cargo_colormap)
+                                        cargo_colormap=cargo_colormap, seed_color=seed_color)
         self.create_graphical_assembly_handle_view(save_to_folder=output_folder, instant_view=False, colormap=colormap)
         if draw_individual_slat_reports:
             self.create_graphical_slat_views(output_folder, colormap=colormap)
-        self.create_graphical_3D_view(output_folder, colormap=colormap)
+        if generate_3d_video:
+            self.create_graphical_3D_view(output_folder, colormap=colormap, cargo_colormap=cargo_colormap,
+                                          seed_color=seed_color)
 
     def export_design(self, filename, folder):
         """

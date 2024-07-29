@@ -254,8 +254,9 @@ def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid
 
 def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None,
                                  animate_delay_frames=40, connection_angle='90', seed_layer_and_array=None,
-                                 camera_spin=False, animation_type='translate', specific_slat_translate_distances=None,
-                                 correct_slat_entrance_direction=True, colormap='Set1'):
+                                 seed_color=(1, 0, 0), camera_spin=False, animation_type='translate',
+                                 specific_slat_translate_distances=None, correct_slat_entrance_direction=True,
+                                 colormap='Set1'):
     """
     Creates a 3D video of a megastructure slat design. TODO: add cargo to this view too.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
@@ -265,6 +266,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     :param animate_delay_frames: Number of frames to delay between each slat group animation
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
     :param seed_layer_and_array: Tuple of the seed layer and seed array to be added to the design (or None if no seed to be added)
+    :param seed_color: The color to use for the seed cylinders
     :param camera_spin: Set to True to have the camera spin around the design
     :param animation_type: The type of animation to use for slat entry ('translate' or 'wipe_in')
     :param specific_slat_translate_distances: The distance each slat will move if using the translate system.
@@ -307,7 +309,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     max_frame = 0
 
     if seed_layer_and_array is not None:
-        seed_material = create_slat_material((1, 0, 0) + (1,), f'Seed Material')
+        seed_material = create_slat_material(seed_color + (1,), f'Seed Material')
         interpret_seed_system(seed_layer_and_array, seed_material, seed_length=list(slats.values())[0].max_length/2,
                               grid_xd=grid_xd, grid_yd=grid_yd)
 
