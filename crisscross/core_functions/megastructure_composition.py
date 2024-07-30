@@ -5,7 +5,8 @@ from crisscross.helper_functions.plate_constants import plate96
 
 
 def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_folder, output_filename,
-                                     transfer_volume=75, source_plate_type='384PP_AQ_BP', specific_plate_wells=None):
+                                     transfer_volume=75, source_plate_type='384PP_AQ_BP',
+                                     specific_plate_wells=None, unique_transfer_volume_for_plates=None):
     """
     Converts a dictionary of slats into an echo liquid handler command list for all handles provided.
     :param slat_dict: Dictionary of slat objects
@@ -15,6 +16,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param transfer_volume: The transfer volume for each handle (either a single integer, or a list of integers for each individual slat)
     :param source_plate_type: The physical plate type in use
     :param specific_plate_wells: The specific output wells to use for each slat (if not provided, the script will automatically assign wells)
+    :param unique_transfer_volume_for_plates: Dictionary assigning a special transfer volume for certain plates (supersedes all other settings)
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 
@@ -39,21 +41,33 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             tv = transfer_volume[index]
         else:
             tv = transfer_volume
+
         for h2_num, h2 in slat.get_sorted_handles('h2'):
             if 'plate' not in h2:
                 raise RuntimeError(f'The design provided has an incomplete slat: {slat.ID}')
+
+            if unique_transfer_volume_for_plates is not None and h2['plate'] in unique_transfer_volume_for_plates:
+                handle_specific_vol = unique_transfer_volume_for_plates[h2['plate']]
+            else:
+                handle_specific_vol = tv
             complete_list.append([slat.ID + '_h2_staple_%s' % h2_num, h2['plate'], h2['well'],
-                                  well, tv, sel_plate_name, source_plate_type])
+                                  well, handle_specific_vol, sel_plate_name, source_plate_type])
 
         for h5_num, h5 in slat.get_sorted_handles('h5'):
             if 'plate' not in h5:
                 raise RuntimeError(f'The design provided has an incomplete slat: {slat.ID}')
+
+            if unique_transfer_volume_for_plates is not None and h5['plate'] in unique_transfer_volume_for_plates:
+                handle_specific_vol = unique_transfer_volume_for_plates[h5['plate']]
+            else:
+                handle_specific_vol = tv
             complete_list.append([slat.ID + '_h5_staple_%s' % h5_num, h5['plate'], h5['well'],
-                                  well, tv, sel_plate_name, source_plate_type])
+                                  well, handle_specific_vol, sel_plate_name, source_plate_type])
 
     combined_df = pd.DataFrame(complete_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                        'Destination Well', 'Transfer Volume',
                                                        'Destination Plate Name', 'Source Plate Type'])
+
     combined_df.to_csv(os.path.join(output_folder, output_filename), index=False)
 
     return combined_df

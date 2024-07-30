@@ -83,8 +83,8 @@ def update_split_slat_handles(handle_array, unique_sequences=32):
     :param unique_sequences: Max number of unique sequences
     :return: N/A
     """
-    handle_array[handle_array > (unique_sequences/2)] = np.random.randint(1, int(unique_sequences/2) + 1, size=handle_array[handle_array > (unique_sequences/2)].shape)
-    handle_array[(unique_sequences / 2) >= handle_array > 0] = np.random.randint(int(unique_sequences/2) + 1, unique_sequences + 1, size=handle_array[(unique_sequences / 2) >= handle_array > 0].shape)
+    handle_array[handle_array > (unique_sequences/2)] = np.random.randint(int(unique_sequences/2) + 1, unique_sequences + 1, size=handle_array[handle_array > (unique_sequences/2)].shape)
+    handle_array[((unique_sequences / 2) >= handle_array) & (handle_array > 0)] = np.random.randint(1, int(unique_sequences/2) + 1, size=handle_array[((unique_sequences / 2) >= handle_array) & (handle_array > 0)].shape)
 
 
 def update_random_slat_handles(handle_array, unique_sequences=32):
