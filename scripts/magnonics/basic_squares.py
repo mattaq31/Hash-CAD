@@ -48,14 +48,14 @@ slat_array, _ = generate_standard_square_slats(32)
 reduced_handle_array = np.load(os.path.join(hamming_folder, reduced_handle_array_file))
 best_array = np.load(os.path.join(hamming_folder, best_array_file))
 
-optimized_hamming_results = multi_rule_hamming(slat_array, best_array, request_duplicate_risk_score=True)
-reduced_handle_set_hamming_results = multi_rule_hamming(slat_array, reduced_handle_array, request_duplicate_risk_score=True)
+optimized_hamming_results = multi_rule_hamming(slat_array, best_array, request_substitute_risk_score=True)
+reduced_handle_set_hamming_results = multi_rule_hamming(slat_array, reduced_handle_array, request_substitute_risk_score=True)
 print('Hamming distance from optimized array: %s, Duplication Risk: %s' % (optimized_hamming_results['Universal'], optimized_hamming_results['Duplicate Risk']))
 print('Hamming distance from reduced-handle array: %s, Duplication Risk: %s' % (reduced_handle_set_hamming_results['Universal'], reduced_handle_set_hamming_results['Duplicate Risk']))
 
 if read_randomised_handle_from_file:
     random_handle_array = np.load(os.path.join(hamming_folder, handle_array_file))
-    result = multi_rule_hamming(slat_array, random_handle_array, request_duplicate_risk_score=True)
+    result = multi_rule_hamming(slat_array, random_handle_array, request_substitute_risk_score=True)
     print('Hamming distance from file-loaded random design: %s, Duplication Risk: %s' % (result['Universal'], result['Duplicate Risk']))
 else:
     random_handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, split_sequence_handles=True, max_rounds=optim_rounds)

@@ -101,7 +101,7 @@ def update_random_slat_handles(handle_array, unique_sequences=32):
 
 
 def multi_rule_hamming(slat_array, handle_array, universal_check=True, per_layer_check=False,
-                       specific_slat_groups=None, slat_length=32, request_duplicate_risk_score=False):
+                       specific_slat_groups=None, slat_length=32, request_substitute_risk_score=False):
     """
     Given a slat and handle array, this function computes the hamming distance of all handle/antihandle combinations provided.
     Scores for individual components, such as specific slat groups, can also be requested.
@@ -111,7 +111,7 @@ def multi_rule_hamming(slat_array, handle_array, universal_check=True, per_layer
     :param per_layer_check: Set to true to provide a hamming score for the individual layers of the design (i.e. the interface between each layer)
     :param specific_slat_groups: Provide a dictionary, where the key is a group name and the value is a list of tuples containing the layer and slat ID of the slats in the group for which the specific hamming distance is being requested.
     :param slat_length: The length of a single slat (must be an integer)
-    :param request_duplicate_risk_score: Set to true to provide a measure of the largest amount of handle duplication between slats of the same type (handle or antihandle)
+    :param request_substitute_risk_score: Set to true to provide a measure of the largest amount of handle duplication between slats of the same type (handle or antihandle)
     :return: Dictionary of scores for each of the aspects requested from the design
     """
 
@@ -172,7 +172,7 @@ def multi_rule_hamming(slat_array, handle_array, universal_check=True, per_layer
 
     # this computes the risk that two slats are identical i.e. the risk that one slat could replace another in the wrong place if it has enough complementary handles
     # for now, no special index validation is provided for this feature.
-    if request_duplicate_risk_score:
+    if request_substitute_risk_score:
 
         duplicate_results = []
         for bag in [bag_of_slat_handles, bag_of_slat_antihandles]:
@@ -187,7 +187,7 @@ def multi_rule_hamming(slat_array, handle_array, universal_check=True, per_layer
         global_min = 32
         for sim_list in duplicate_results:
             global_min = np.min([np.min(sim_list), global_min])
-        score_dict['Duplicate Risk'] = global_min
+        score_dict['Substitute Risk'] = global_min
 
     # the individual scores for the components requested are computed here
     if universal_check:
