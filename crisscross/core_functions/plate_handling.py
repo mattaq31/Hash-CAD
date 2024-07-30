@@ -109,14 +109,15 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
         plate_id = plate[row_num * max_col + column_num]
         letter_id, num_id = plate_id[0], plate_id[1:]
 
-        seq_dict[letter_id][num_id] = row['Sequence']
-        name_dict[letter_id][num_id] = row['Name']
-        desc_dict[letter_id][num_id] = row['Description']
+        if row['Name'] != 'SKIP':  # a 'skip' name can be used to manually skip a well position
+            seq_dict[letter_id][num_id] = row['Sequence']
+            name_dict[letter_id][num_id] = row['Name']
+            desc_dict[letter_id][num_id] = row['Description']
 
-        idt_order_dict['WellPosition'].append(plate_id)
-        idt_order_dict['Name'].append(row['Name'])
-        idt_order_dict['Sequence'].append(row['Sequence'])
-        idt_order_dict['Notes'].append(row['Description'])
+            idt_order_dict['WellPosition'].append(plate_id)
+            idt_order_dict['Name'].append(row['Name'])
+            idt_order_dict['Sequence'].append(row['Sequence'])
+            idt_order_dict['Notes'].append(row['Description'])
 
         column_num += 1
 
