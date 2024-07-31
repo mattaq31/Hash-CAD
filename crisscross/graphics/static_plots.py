@@ -38,7 +38,7 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
                                slats=None, seed_array=None,
                                cargo_dict=None, save_to_folder=None, instant_view=True,
                                slat_width=4, connection_angle='90',
-                               colormap='Set1',
+                               colormap='Set1', seed_color='black',
                                cargo_colormap='Set1'):
     """
     Creates a graphical view of all slats in the assembled design, including cargo and seed handles.
@@ -54,6 +54,7 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
     :param slat_width: The width to use for the slat lines.
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
     :param colormap: The colormap to sample from for each additional layer.
+    :param seed_color: The color to use for the seed handles.
     :param cargo_colormap: The colormap to sample from for each cargo type.
     :return: N/A
     """
@@ -113,11 +114,11 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         seed_layer = seed_array[0]
         seed_plot_points = np.where(seed_array[1] > 0)
         transformed_spp = [seed_plot_points[0] * grid_yd, seed_plot_points[1] * grid_xd]
-        layer_figures[seed_layer - 1][1][1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100,
+        layer_figures[seed_layer - 1][1][1].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100,
                                                     zorder=10)
-        global_ax[0].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
+        global_ax[0].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100, alpha=0.5,
                              zorder=seed_layer)
-        global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
+        global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100, alpha=0.5,
                              zorder=num_layers - seed_layer)
 
     if cargo_dict is not None:
