@@ -1,5 +1,5 @@
-/** Check if a point on the SVG canvas (in a specific layer) is on any existing lines 
- *
+/** 
+ * Check if a point on the SVG canvas (in a specific layer) is on any existing lines 
  * @param Layer The selected layer on the SVG canvas
  * @param x The X-coordinate to check
  * @param y The Y-coordinate to check
@@ -38,8 +38,8 @@ export function isPointOnLine(Layer, x, y, selectedLine = false) {
     });
   }
 
-/** Check if a line on the SVG canvas (in a specific layer) would overlap with any existing lines (for dragging)
- *
+/** 
+ * Check if a line on the SVG canvas (in a specific layer) would overlap with any existing lines (for dragging)
  * @param startX The starting X-coordinate to test a line from
  * @param startY The starting Y-coordinate to test a line from
  * @param layer The selected layer on the SVG canvas
@@ -69,12 +69,10 @@ export function isLineOnLine(startX, startY, layer, GridSize, selectedLine) {
     }
 
     return overlap
-
-
 }
 
-/** Check if a vertically drawn line would overlap with any existing lines
- * 
+/** 
+ * Check if a vertically drawn line would overlap with any existing lines
  * @param startX The starting (top left) X-coordinate from which to draw the line
  * @param startY The starting (top left) Y-coordinate from which to draw the line
  * @param layer The selected layer on the SVG canvas
@@ -92,8 +90,8 @@ export function willVertBeOnLine(startX, startY, layer, gridSize, length=32){
     return overlap
 }
 
-/** Check if a vertically drawn line would overlap with any existing lines
- * 
+/** 
+ * Check if a horizontally drawn line would overlap with any existing lines
  * @param startX The starting (top left) X-coordinate from which to draw the line
  * @param startY The starting (top left) Y-coordinate from which to draw the line
  * @param layer The selected layer on the SVG canvas
@@ -112,9 +110,8 @@ export function willHorzBeOnLine(startX, startY, layer, gridSize, length=32){
 }
 
 
-/** Check if a new cargo would overlap with any existing cargo
- * 
- *
+/** 
+ * Check if a new cargo would overlap with any existing cargo
  * @param x The X-coordinate of the cargo
  * @param y The Y-coordinate of the cargo
  * @param layer The selected layer on the SVG canvas
@@ -144,9 +141,13 @@ export function isCargoOnCargo(x, y, layer, selectedPoint = false){
     });
 }
 
-
-
-
+/**
+ * Check if a new cargo would overlap with the seed
+ * @param {Number} x The X-coordinate of the cargo
+ * @param {Number} y The Y-coordinate of the cargo
+ * @param {Number} layer The selected layer on the SVG canvas
+ * @returns {Boolean} True if cargo overlaps with seed. False otherwise
+ */
 export function isCargoOnSeed(x, y, layer){
     const seed = layer.find('.seed');
     if(seed.length != 0){
@@ -161,6 +162,11 @@ export function isCargoOnSeed(x, y, layer){
     
 }
 
+/**
+ * Check if a seed that has been placed overlaps with any cargo
+ * @param {The selected layer on the SVG Canvas} layer The selected layer on the SVG canvas
+ * @returns {Boolean} True if the seed overlaps with a cargo. False otherwise
+ */
 export function wasSeedOnCargo(layer){
     const cargos = layer.find('.cargo');
     return cargos.some(cargo => {

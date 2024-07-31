@@ -388,3 +388,9 @@ canvas {
     margin: 5px;
     width: 50%
 }
+
+
+.mode-selector-button{
+    width: 40px;
+    height: 40px;
+}

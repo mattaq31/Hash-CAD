@@ -1,11 +1,16 @@
 const hexColors = ['#a8327d', '#a83632', '#cf7725', '#a8a632', '#57a832', '#327da8', '#5f32a8']//['#ff0000', '#0000ff', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
+let layerList = new Map();
 
+/**
+ * Function to return a reference to the layerList map
+ * @returns {Map} Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ */
+export function getLayerList(){
+    return layerList
+}
 
-
-/** Function to create a new layer in the project
- * 
- * @param 
- * @returns
+/**
+ * Function to create a new layer in the project
  */
 export function addLayer() {
     const layerList = document.getElementById('layer-list');
@@ -13,7 +18,7 @@ export function addLayer() {
     const layerItem = document.createElement('div');
     layerItem.className = 'layer-item';
 
-    let layerId = null // layerList.children.length 
+    let layerId = null 
 
     console.log("Layerlist: ", layerList)
 
@@ -76,24 +81,8 @@ export function addLayer() {
     }
 }
 
-
-/** Function to set active layer when appropriate radio button is pressed. 
- * Note: changes active layer in the layer manager, but doesn't change layer in actual design --> calls an event for that instead
- * 
- * @param {event} event Event associated with depression of radio button in layer manager
- */
-export function setActiveLayer(event) {
-    const allLayers = document.querySelectorAll('.layer-item');
-    allLayers.forEach(layer => layer.classList.remove('active'));
-
-    const activeLayer = event.target.parentElement;
-    activeLayer.classList.add('active');
-    dispatchCustomLayerEvent('layerMarkedActive', activeLayer);
-}
-
-
-/** Function to dispatch custom layer-related events
- * 
+/** 
+ * Function to dispatch custom layer-related events
  * @param {string} eventName Event name to be dispatched
  * @param {div} layerItem Layer item associated with this event
  */
@@ -108,10 +97,23 @@ export function dispatchCustomLayerEvent(eventName, layerItem) {
     document.dispatchEvent(event);
 }
 
+/** 
+ * Function to set active layer when appropriate radio button is pressed. 
+ * Note: changes active layer in the layer manager, but doesn't change layer in actual design --> calls an event for that instead
+ * @param {event} event Event associated with depression of radio button in layer manager
+ */
+export function setActiveLayer(event) {
+    const allLayers = document.querySelectorAll('.layer-item');
+    allLayers.forEach(layer => layer.classList.remove('active'));
 
-/**Function to change the layer color when appropriate color-selector is changed. 
+    const activeLayer = event.target.parentElement;
+    activeLayer.classList.add('active');
+    dispatchCustomLayerEvent('layerMarkedActive', activeLayer);
+}
+
+/**
+ * Function to change the layer color when appropriate color-selector is changed. 
  * Note: Doesn't change layer color in actual design --> calls an event for that instead
- * 
  * @param {event} event Event associated with changing of color-picker in layer manager
  */
 export function setColor(event) {
@@ -121,12 +123,10 @@ export function setColor(event) {
     dispatchCustomLayerEvent('layerColorChanged', layerItem);
 }
 
-
-
-/**Function to make layers high or low opacity depending on whether the layer toggle is on or off
+/**
+ * Function to make layers high or low opacity depending on whether the layer toggle is on or off
  * Note: doesn't change the layer opacity in the actual design --> calls an event for that instead.
- * 
- * @param {event} event 
+ * @param {event} event Event associated with the toggling of layers in layer manager
  */
 export function toggleLayer(event) {
     const layerItem = event.target.parentElement;

@@ -53,18 +53,30 @@
                         <h4 class="centeredText">Mode</h4>
                        <!-- TODO: These three radio buttons are not aligned  -->
                         <div class="edit-mode-selector">
-                            <button id="draw-button" name="Draw">&#9998</button>
-                            <button id="erase-button" name="Erase">&#10060</button>
-                            <button id="select-button" name="Select">&#9757</button>
+                            <button id="draw-button" class="mode-selector-button" name="Draw">
+                                <img src="{{url_for('static', filename='icons/pencil.png')}}" alt="Pencil Image" style="width: 25px; height: 25px;">
+                            </button>
+                            <button id="erase-button" class="mode-selector-button" name="Erase">
+                                <img src="{{url_for('static', filename='icons/eraser.png')}}" alt="Eraser Image" style="width: 25px; height: 25px;">
+                            </button>
+                            <button id="select-button" class="mode-selector-button" name="Select">
+                                <img src="{{url_for('static', filename='icons/selector.png')}}" alt="Selector Image" style="width: 25px; height: 25px;">
+                            </button>
                         </div>
                     </div>
 
                     <div class="settings">
                         <h4>Canvas</h4>
                         <div class="graph-settings">
-                            <button id="grid-button" name="Grid">&#9638</button>
-                            <button id="dot-button" name="Dots">&#9617&#9617</button>
-                            <button id="blank-button" name="Empty">&#11036</button>
+                            <button id="grid-button" class="mode-selector-button" name="Grid">
+                                <img src="{{url_for('static', filename='icons/grid.png')}}" alt="Grid Image" style="width: 25px; height: 25px;">
+                            </button>
+                            <button id="dot-button" class="mode-selector-button" name="Dots">
+                                <img src="{{url_for('static', filename='icons/dots.png')}}" alt="Dot Grid Image" style="width: 25px; height: 25px;">
+                            </button>
+                            <button id="blank-button" class="mode-selector-button" name="Empty">
+                                <img src="{{url_for('static', filename='icons/emptygrid.png')}}" alt="Empty Grid Image" style="width: 25px; height: 25px;">
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -267,10 +279,11 @@
 
     
 
-    <script type="module" src="{{url_for('static', filename='scripts/main.js')}}"></script>
-    <script type="module" src="{{url_for('static', filename='scripts/layermanager.js')}}"></script>
-    <script type="module" src="{{url_for('static', filename='scripts/cargo.js')}}"></script>
-    <script type="module" src="{{url_for('static', filename='scripts/3D_viewer.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='scripts/script_core_interface.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='scripts/script_layers.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='scripts/script_cargo.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='scripts/script_3D.js')}}"></script>
+    <script type="module" src="{{url_for('static', filename='scripts/script_socket.js')}}"></script>
     
 </body>
 </html>

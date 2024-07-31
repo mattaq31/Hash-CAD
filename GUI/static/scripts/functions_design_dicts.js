@@ -1,33 +1,24 @@
+import {placeCargo, placeSlat, placeHandle, placeSeed} from './functions_drawing.js'
+import {getHandleLayerDict} from './functions_handles.js'
 
-///////////////////////////////
-//   Creating Slat Array     //
-///////////////////////////////
-
-import {placeCargo, placeSlat, placeHandle, placeSeed} from './helper_functions_drawing.js'
-
-import {getHandleLayerDict} from './helper_functions_handles.js'
-
-
-
-
-/** Converts coordinates into a (string) key for the dictionary of slats/cargo/handles
- * 
+/** 
+ * Converts coordinates into a (string) key for the dictionary of slats/cargo/handles
  * @param x X-coordinate of dictionary/array
  * @param y Y-coordinate of dictionary/array
  * @param layer Layer coordinate of dictionary/array
- * @returns {string}
+ * @returns {string} Key for dictionary of slats/cargo/handles
  */
-export function gridKey(x, y, layer) {
+function gridKey(x, y, layer) {
     return `${x},${y},${layer}`;
 }
 
-/** Populates a grid dictionary with slat IDs keyed by (x, y, layer)
- * 
- * @param gridDict Dictionary in which to save slats
- * @param layers List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+/**
+ * Populates a grid dictionary with slat IDs keyed by (x, y, layer)
+ * @param {Array} layers List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @returns {Map} Slat dictionary
  */
-export function populateSparseGridDictionarySlats(layers, minorGridSize) {
+function populateSparseGridDictionarySlats(layers, minorGridSize) {
     let gridDict = {}
     
     layers.forEach((layer, layerIndex) => {
@@ -54,17 +45,14 @@ export function populateSparseGridDictionarySlats(layers, minorGridSize) {
     return gridDict
 }
 
-/** Populates a grid dictionary with cargo type IDs keyed by (x, y, layer)
- * 
- * @param layers List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @param minorGridSizeThe snapping grid size. Corresponds to the distance between two handles. 
+/** 
+ * Populates a grid dictionary with cargo type IDs keyed by ([x, y], layer, orientation)
+ * @param {Array} layers List of layers containing the SVG.js layer group items
+ * @param {Number} minorGridSizeThe The snapping grid size. Corresponds to the distance between two handles. 
+ * @returns {Map} Cargo dictionary
  */
-// Populate the sparse grid dictionary with cargo IDs
-export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
-    let bottomGridDict = {}
-    let topGridDict = {}
+function populateSparseGridDictionaryCargo(layers, minorGridSize) {
     let gridDict = {}
-
     let handleOrientations = getHandleLayerDict(layers)
 
     layers.forEach((layer, layerIndex) => {
@@ -97,21 +85,21 @@ export function populateSparseGridDictionaryCargo(layers, minorGridSize) {
         });
     });
 
-    return gridDict //[bottomGridDict, topGridDict]
+    return gridDict 
 }
 
-
-
-export function populateSparseGridDictionarySeed(layers, minorGridSize) {
+/**
+ * Populates a grid dictionary with seed keyed by (x, y, layer)
+ * @param {Array} layers List of layers containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @returns {Map} Seed dictionary
+ */
+function populateSparseGridDictionarySeed(layers, minorGridSize) {
     let gridDict = {}
     
     layers.forEach((layer, layerIndex) => {
         layer[2].children().forEach(child => {
-            if(child.attr('id') == 'seed'){
-
-
-                console.log("Parent is: ", child, "minorGridSize is: ", minorGridSize)
-                
+            if(child.attr('id') == 'seed'){                
                 let bbox = child.rbox(layer[1]);
 
                 let horizontal = true
@@ -155,8 +143,13 @@ export function populateSparseGridDictionarySeed(layers, minorGridSize) {
     return gridDict
 }
 
-
-export function populateSparseGridDictionaryHandles(layers, minorGridSize) {
+/**
+ * Populate a grid dictionary with handle IDs keyed by (x, y, layer)
+ * @param {Array} layers List of layers containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @returns {Map} Handle dictionary
+ */
+function populateSparseGridDictionaryHandles(layers, minorGridSize) {
     let gridDict = {}
 
     layers.forEach((layer, layerIndex) => {
@@ -176,15 +169,12 @@ export function populateSparseGridDictionaryHandles(layers, minorGridSize) {
     return gridDict 
 }
 
-
-
-/** Creates a filled grid dictionary containing slat and cargo information.
- * 
- * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
- * @returns {{}[]}
+/**
+ * Function to save full design into dictionaries
+ * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @returns {Array} Array holding [SeedDict, SlatDict, CargoDict, HandleDict]
  */
-//Create array
 export function createGridArray(layerList, minorGridSize) {
     // Initialize the sparse grid dictionary
     let gridDictSeed = {}
@@ -210,11 +200,10 @@ export function createGridArray(layerList, minorGridSize) {
     return gridDict
 }
 
-/** Removes all layers from the crisscross design
- * 
- * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+/**
+ * Function to remove all layers from the crisscross design
  */
-function removeAllLayers(layerList){
+function removeAllLayers(){
     const layerRemoveButtons = document.querySelectorAll('.layer-remove-button');
     
     // Click each button
@@ -223,69 +212,12 @@ function removeAllLayers(layerList){
     });
 }
 
-/** Draws cargo on canvas as described in a cargo dictionary passed to the function
- * 
- * @param cargoDict Array of cargo dictionaries (top, bottom) describing cargo types (ID) by locations (x, y, layer)
- * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
- * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
- */
-function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations){
-    //Now add new cargo:
-    let cargoCounter = 1;
-
-
-    // Iterate through the dictionary
-    for (const [key, value] of Object.entries(cargoDict)) {
-        
-        let keyArray = key.split(',')
-
-        let dictX   = Number(keyArray[0])
-        let dictY   = Number(keyArray[1])
-        let layerId = keyArray[2]
-        let orientation = Number(keyArray[3])
-
-        let cargoId = value
-
-        while(!layerList.has(layerId)){
-            const addLayerButton = document.getElementById('add-layer');
-            addLayerButton.click();
-        }
-
-        let fullLayer = layerList.get(layerId);
-        let activeCargoLayer = null
-
-        
-        let top = true;
-        if(handleOrientations[layerId][0] == orientation){
-            activeCargoLayer = fullLayer[3]
-            top = true
-        }
-        else{
-            activeCargoLayer = fullLayer[2]
-            top = false
-        }
-            
-
-        let placeX = dictX * minorGridSize
-        let placeY = dictY * minorGridSize
-
-        let activeLayerColor = fullLayer[4]// '#ff0000'
-
-        cargoCounter = placeCargo(placeX, placeY, activeCargoLayer, layerId, minorGridSize, 
-                                    activeLayerColor, shownCargoOpacity, cargoCounter, cargoId, layerList, top)
-
-    }
-
-    return cargoCounter
-
-}
-
-/** Within a slat dictionary, finds a slat with a particular ID. Then identifies starting coordinates, orientation (horizontal/vertical)
- * 
- * @param slatDict Slat dictionary describing slat IDs by locations (x, y, layer)
- * @param slatNum SlatID/Number of slat to be found/oriented
- * @returns {number[]}
+/** 
+ * Within a slat dictionary, finds a slat with a particular ID. 
+ * Then identifies starting coordinates, orientation (horizontal/vertical)
+ * @param {Map} slatDict Slat dictionary describing slat IDs by locations (x, y, layer)
+ * @param {Number} slatNum ID of slat to be found/oriented
+ * @returns {Array} Orientation array [minX, minY, layer, horizontal]
  */
 export function findSlatStartOrientation(slatDict, slatNum){
     let minX = Infinity;
@@ -295,7 +227,6 @@ export function findSlatStartOrientation(slatDict, slatNum){
     let maxY = -Infinity;
 
     let horizontal = null;
-
     let layerId = null;
 
     for (const [key, value] of Object.entries(slatDict)) {
@@ -332,24 +263,22 @@ export function findSlatStartOrientation(slatDict, slatNum){
     return [minX, minY, layerId, horizontal]
 }
 
-/** Draws slats on canvas as described in a slat dictionary passed to the function
- * 
- * @param slatDict Slat dictionary describing slat IDs by location (x, y, layer)
- * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
- * @param shownOpacity Opacity at which slats should be drawn when shown -- default
- * @returns {number}
+/** 
+ * Draws slats on canvas as described in a slat dictionary passed to the function
+ * @param {Map} slatDict Slat dictionary describing slat IDs by location (x, y, layer)
+ * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @param {Number} shownOpacity Opacity at which slats should be drawn when shown - default
+ * @returns {number} Slat counter after all slats have been placed
  */
 function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
 
     //Get unique slat numbers
     let slatNums = Object.values(slatDict)
     const uniqueSlatNums = new Set(slatNums);
-    const maxSlatNum = Math.max(...uniqueSlatNums); // The ... convert this slat to an array basically?
+    const maxSlatNum = Math.max(...uniqueSlatNums); // The ... convert this slat to an array basically
 
     for (const slatNum of uniqueSlatNums) {
-        //console.log(slatNum);
-
         let orientation = findSlatStartOrientation(slatDict, slatNum)
 
         let dictX = orientation[0]
@@ -370,57 +299,72 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
 
         let activeLayerColor = fullLayer[4] //fullLayer[4] store the layer color! '#ff0000'
 
-        //MAKE SURE TO SOMEHOW PASS THE MAX COUNTER VALUE TO THE MAIN GLOBAL SO THAT WE CAN ACTUALLY CONTINUE MODIFYING THE DESIGN...
         placeSlat(placeX, placeY, activeSlatLayer, layerId, minorGridSize, 
                     activeLayerColor, shownOpacity, slatNum, horizontal, layerList)
-            
-        //console.log("new slat is placed!")
     }
-
     return (maxSlatNum + 1)
 }
 
-/** Draws full design on canvas as described in slat and cargo dictionaries
- * 
- * @param slatDict Slat dictionary describing slat IDs by location (x, y, layer)
- * @param cargoDict Cargo dictionary describing cargo types (ID) by locations (x, y, layer)
- * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
- * @param shownOpacity Opacity at which slats should be drawn when shown -- default
- * @param shownCargoOpacity Opacity at which cargo should be drawn when shown -- default.
- * @returns {number}
+/**
+ * Function to place cargo into design as described in a dictionary
+ * @param {Map} cargoDict Cargo dictionary with items keyed by ([x,y], layer, orientation)
+ * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @param {Number} shownCargoOpacity Opacity at which cargo should be drawn when shown - default.
+ * @param {Map} handleOrientations Map of handle orientations by layer
+ * @returns {Number} Cargo counter after all cargo is placed
  */
-export function importDesign(seedDict, slatDict, cargoDict, handleDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations){
+    //Now add new cargo:
+    let cargoCounter = 1;
 
-    removeAllLayers(layerList)
-    
-    let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
+    // Iterate through the dictionary
+    for (const [key, value] of Object.entries(cargoDict)) {
+        
+        let keyArray = key.split(',')
 
-    if(Object.keys(seedDict).length != 0){
-        importSeed(seedDict, layerList, minorGridSize)
+        let dictX   = Number(keyArray[0])
+        let dictY   = Number(keyArray[1])
+        let layerId = keyArray[2]
+        let orientation = Number(keyArray[3])
+
+        let cargoId = value
+
+        while(!layerList.has(layerId)){
+            const addLayerButton = document.getElementById('add-layer');
+            addLayerButton.click();
+        }
+
+        let fullLayer = layerList.get(layerId);
+        let activeCargoLayer = null
+
+        let top = true;
+        if(handleOrientations[layerId][0] == orientation){
+            activeCargoLayer = fullLayer[3]
+            top = true
+        }
+        else{
+            activeCargoLayer = fullLayer[2]
+            top = false
+        }
+
+        let placeX = dictX * minorGridSize
+        let placeY = dictY * minorGridSize
+
+        let activeLayerColor = fullLayer[4]
+
+        cargoCounter = placeCargo(placeX, placeY, activeCargoLayer, layerId, minorGridSize, 
+                                    activeLayerColor, shownCargoOpacity, cargoCounter, cargoId, layerList, top)
+
     }
-
-    let handleOrientations = getHandleLayerDict(layerList)
-    let cargoCounter = importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations)
-
-    if(Object.keys(handleDict).length != 0){
-        importHandles(handleDict, layerList, minorGridSize)
-    }
-
-    return [slatCounter, cargoCounter];
+    return cargoCounter
 }
 
-
-
-
-
-
-
-/** Draws handles on canvas as described in a handle dictionary passed to the function
- * 
- * @param handleDict Handle dictionary describing handle IDs by locations (x, y, layer)
- * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+/** 
+ * Draws handles on canvas as described in a handle dictionary passed to the function
+ * @param {Map} handleDict Handle dictionary describing handle IDs by locations (x, y, layer)
+ * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
  */
 export function importHandles(handleDict, layerList, minorGridSize){
 
@@ -430,9 +374,7 @@ export function importHandles(handleDict, layerList, minorGridSize){
         layerElement.children().forEach(child => {
             child.remove();
         });
-
     })
-
 
     // Iterate through the dictionary
     for (const [key, value] of Object.entries(handleDict)) {
@@ -451,15 +393,16 @@ export function importHandles(handleDict, layerList, minorGridSize){
         let placeX = dictX * minorGridSize
         let placeY = dictY * minorGridSize
 
-        placeHandle(placeX, placeY, activeHandleLayer, minorGridSize, handleId, layerList)
-
+        placeHandle(placeX, placeY, activeHandleLayer, minorGridSize, handleId)
     }
-
 }
 
-
-
-
+/**
+ * Draws seed on canvas as described in a seed dictionary passed to the function
+ * @param {Map} seedDict Seed dictionary describing seed by locations (x, y, layer)
+ * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ */
 function importSeed(seedDict, layerList, minorGridSize){
 
     let seedKeys = Object.keys(seedDict)
@@ -516,56 +459,55 @@ function importSeed(seedDict, layerList, minorGridSize){
                 activeLayerColor, horizontal, layerList)
 }
 
+/** 
+ * Function to draw full design on canvas as described in slat, handle, seed, and cargo dictionaries
+ * 
+ * @param {Map} seedDict Seed dictionary describing seed by location (x, y, layer)
+ * @param {Map} slatDict Slat dictionary describing slat IDs by location (x, y, layer)
+ * @param {Map} cargoDict Cargo dictionary describing cargo types (ID) by locations ([x, y], layer, orientation)
+ * @param {Map} handleDict Handle dictionary describing handles by location (x, y, layer)
+ * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @param {number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @param {number} shownOpacity Opacity at which slats should be drawn when shown - default
+ * @param {number} shownCargoOpacity Opacity at which cargo should be drawn when shown - default.
+ * @returns {Array} Array of [slatCounter, cargoCounter]
+ */
+export function importDesign(seedDict, slatDict, cargoDict, handleDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity){
 
+    removeAllLayers()
+    
+    let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
 
+    if(Object.keys(seedDict).length != 0){
+        importSeed(seedDict, layerList, minorGridSize)
+    }
 
+    let handleOrientations = getHandleLayerDict(layerList)
+    let cargoCounter = importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations)
 
+    if(Object.keys(handleDict).length != 0){
+        importHandles(handleDict, layerList, minorGridSize)
+    }
 
-
-
-export function downloadFile(url) {
-    fetch(url)
-        .then(response => {
-            if (response.ok) {
-                return response.blob();
-            }
-            throw new Error('Network response was not ok.');
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'crisscross_design.npz';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-        })
-        .catch(error => {
-            console.error('There has been a problem with your fetch operation:', error);
-        });
+    return [slatCounter, cargoCounter];
 }
 
 
-export function downloadOutputs(url) {
-    fetch(url)
-        .then(response => {
-            if (response.ok) {
-                return response.blob();
-            }
-            throw new Error('Network response was not ok.');
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'outputs.zip';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-        })
-        .catch(error => {
-            console.error('There has been a problem with your fetch operation:', error);
-        });
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

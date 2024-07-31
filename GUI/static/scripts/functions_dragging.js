@@ -1,48 +1,65 @@
-///////////////////////////////
-//       Drag and Drop       //
-///////////////////////////////
-
-
-import { isLineOnLine,  isCargoOnCargo } from './helper_functions_overlap.js';
-import { delete3DSlat,  move3DSlat, delete3DCargo, move3DCargo, delete3DSeed, move3DSeed} from './helper_functions_3D.js';
-
-
+import { isLineOnLine,  isCargoOnCargo } from './functions_overlap.js';
+import { delete3DElement, move3DSlat, move3DCargo, move3DSeed} from './functions_3D.js';
 
 let dragOffset = { x: 0, y: 0 };    //Offset between mouse position and item position
 let handleDrag = null;              //Function to call when a drag event is happening
 let selectedColor = '#69F5EE'
 
-
-
-
-/** Function to return active layer -- in particular, the active SVG.js layer group
- * 
+/** 
+ * Function to return active layer
  * @param layerList  List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
- * @returns {{fullLayer: *}|null}
+ * @returns {{fullLayer: Array}|null} Array of sublayers for active layer [handles, slats, bottomCargo, topCargo, color]
  */
-export function getActiveLayer(layerList) {
+export function getActiveFullLayer(layerList) {
     const activeRadio = document.querySelector('input[name="active-layer"]:checked');
     if (activeRadio) {
         const activeLayer = activeRadio.parentElement;
         let layerId = activeLayer.dataset.layerId
         
-        //console.log('get active layer')
-        //console.log(layerList)
-        //console.log(layerId)
-        
         const fullLayer = layerList.get(layerId)
         return {
             fullLayer
-            //layerId: activeLayer.dataset.layerId,
-            //layerElement: activeLayer
         };
     }
     return null;
 }
 
-/** Function to find what editting mode the program is currently set to
- * 
- * @returns {*|null}
+/**
+ * Function to return active sublayer
+ * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
+ * @returns {SVG.G} SVG Group element corresponding to active sublayer of active layer (ie cargoLayer, HandleLayer, etc) 
+ */
+function getActiveSublayer(layerList){
+    let drawModeSelector = document.getElementById('palette-type-selector');
+    let drawSlatCargoHandleMode = drawModeSelector.value; //0 for slats, 1 for cargo, 2 for handles
+
+    let fullLayer = getActiveFullLayer(layerList)
+    let activeLayer = null
+
+    if(drawSlatCargoHandleMode == 0){
+        activeLayer = fullLayer.fullLayer[1]
+    } 
+    else if(drawSlatCargoHandleMode == 1){
+        let topCargoButton = document.getElementById('top-layer-selector')
+        let bottomCargoButton = document.getElementById('bottom-layer-selector')
+        
+        if(topCargoButton.classList.contains('h25-toggle-selected')){
+            activeLayer = fullLayer.fullLayer[3]
+        }
+        else if(bottomCargoButton.classList.contains('h25-toggle-selected')){
+            activeLayer = fullLayer.fullLayer[2]
+        }
+    } 
+    else if(drawSlatCargoHandleMode == 2){
+        activeLayer = fullLayer.fullLayer[0]
+    }
+
+    return activeLayer
+}
+
+/** 
+ * Function to identify current editing mode
+ * @returns {Number|null} 0 for drawing, 1 for erasing, 2 for selecting, null for none
  */
 function getSelectedEditMode() {
     const drawButton = document.getElementById('draw-button')
@@ -63,8 +80,8 @@ function getSelectedEditMode() {
     }
 }
 
-
-/** Function for interactions with elements. 
+/** 
+ * Function for interactions with elements. 
  * In particular, deals with initiating drag, selecting, and erasing. 
  * When assigned as an event function, will add draggability (& selectability, erasability) to an element.
  * 
@@ -73,41 +90,14 @@ function getSelectedEditMode() {
  * @param minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
  */
 export function startDrag(event, layerList, minorGridSize) {
+    let drawEraseSelectMode = getSelectedEditMode() //0 for drawing, 1 for erasing, 2 for selecting
 
-    let drawEraseSelectMode = getSelectedEditMode()
-
-    let activeLayer = null
-
-    let drawModeSelector = document.getElementById('palette-type-selector');
-    let drawSlatCargoHandleMode = drawModeSelector.value;
-
-    if(drawSlatCargoHandleMode == 0){
-        activeLayer = getActiveLayer(layerList).fullLayer[1]
-    } else if(drawSlatCargoHandleMode == 1){
-
-        let topCargoButton = document.getElementById('top-layer-selector')
-        let bottomCargoButton = document.getElementById('bottom-layer-selector')
-        
-        if(topCargoButton.classList.contains('h25-toggle-selected')){
-            activeLayer = getActiveLayer(layerList).fullLayer[3]
-        }
-        else if(bottomCargoButton.classList.contains('h25-toggle-selected')){
-            activeLayer = getActiveLayer(layerList).fullLayer[2]
-        }
-
-    } else if(drawSlatCargoHandleMode == 2){
-        activeLayer = getActiveLayer(layerList).fullLayer[0]
-    }
-        
+    let activeLayer = getActiveSublayer(layerList)
     let dragSelectedElement = event.target.instance;
 
     console.log("Draw-erase-select mode is set to: "+drawEraseSelectMode+"with element: "+dragSelectedElement)
 
     if(activeLayer.children().includes(dragSelectedElement)){
-
-        //drawEraseSelectMode == 0 corresponds to drawing
-        //drawEraseSelectMode == 1 corresponds to erasing
-        //drawEraseSelectMode == 2 corresponds to selecting
         if(drawEraseSelectMode == 0){ //Drawing!
             const point = dragSelectedElement.point(event.clientX, event.clientY);
     
@@ -124,18 +114,7 @@ export function startDrag(event, layerList, minorGridSize) {
             document.addEventListener('pointerup', endDrag);
         }
         else if(drawEraseSelectMode == 1){ //Erasing!
-
-
-            if(dragSelectedElement.attr('class').split(' ').includes('line')){
-                delete3DSlat(dragSelectedElement.attr('id'))
-            }
-            else if(dragSelectedElement.attr('class').split(' ').includes('cargo')){
-                delete3DCargo(dragSelectedElement.attr('id'))
-            }
-            else if(dragSelectedElement.attr('class').split(' ').includes('seed')){
-                delete3DSeed()
-            }
-
+            delete3DElement(dragSelectedElement)
             dragSelectedElement.remove()
             event.stopPropagation(); //needed or else delete doesn't work... oh well!
         }
@@ -153,10 +132,10 @@ export function startDrag(event, layerList, minorGridSize) {
             }
         } 
     }
-  }
+}
 
-/** Function for moving draggable elements, while making sure they comply with snapgrid
- * 
+/** 
+ * Function for moving draggable elements, while making sure they comply with snapgrid
  * @param event Event associated with the initiation of a drag
  * @param layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @param selectedElement Element to be dragged
@@ -164,28 +143,7 @@ export function startDrag(event, layerList, minorGridSize) {
  */
 export function drag(event, layerList, selectedElement, minorGridSize) {
 
-    let activeLayer = null
-
-    let drawModeSelector = document.getElementById('palette-type-selector');
-    let drawSlatCargoHandleMode = drawModeSelector.value;
-
-    if(drawSlatCargoHandleMode == 0){
-        activeLayer = getActiveLayer(layerList).fullLayer[1]
-    } else if(drawSlatCargoHandleMode == 1){
-        
-        let topCargoButton = document.getElementById('top-layer-selector')
-        let bottomCargoButton = document.getElementById('bottom-layer-selector')
-        
-        if(topCargoButton.classList.contains('h25-toggle-selected')){
-            activeLayer = getActiveLayer(layerList).fullLayer[3]
-        }
-        else if(bottomCargoButton.classList.contains('h25-toggle-selected')){
-            activeLayer = getActiveLayer(layerList).fullLayer[2]
-        }
-        
-    } else if(drawSlatCargoHandleMode == 2){
-        activeLayer = getActiveLayer(layerList).fullLayer[0]
-    }
+    let activeLayer = getActiveSublayer(layerList)    
 
     if (selectedElement) {
         let point = selectedElement.point(event.clientX, event.clientY) 
@@ -197,14 +155,12 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
         let drawModeSelector = document.getElementById('palette-type-selector');
         let drawSlatCargoHandleMode = drawModeSelector.value;
         
-
-        if(drawSlatCargoHandleMode == 0){
+        if(drawSlatCargoHandleMode == 0){ //Slat Mode!
             if(!isLineOnLine(roundedX, roundedY, activeLayer, minorGridSize, selectedElement)) {
                 let moveOffset = 0.5 * minorGridSize
-
                 let isHorizontal = selectedElement.attr('data-horizontal')
                 
-                if(isHorizontal=='true'){
+                if(isHorizontal=='true'){ //for some reason, converting to string. Not sure why, but this does the job for now
                     selectedElement.move(roundedX-moveOffset, roundedY);
 
                     let slatToMoveId = selectedElement.attr('id')
@@ -238,7 +194,6 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
                     let x3D = roundedX/minorGridSize + 0.5
                     let y3D = roundedY/minorGridSize + 15.5
                     let layerNum = selectedElement.attr('layer')
-
                     move3DSeed(x3D, y3D, layerNum)
                 }
                 else{
@@ -267,11 +222,9 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
     }
 }
 
-
-/** End drag and leave element in its final (snapped) position
- * 
+/**
+ * Function to end dragging
  */
-// Function to end dragging
 export function endDrag() {
     
     console.log("Dragging ended!")
