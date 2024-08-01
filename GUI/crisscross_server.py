@@ -16,19 +16,11 @@ from crisscross.helper_functions import create_dir_if_empty
 from server_helper_functions import (seed_dict_to_array, slat_dict_to_array,
                                      array_to_dict,
                                      cargo_to_inventory, convert_np_to_py,
-                                     break_dict_by_plates,
-                                     format_cargo_dict, handle_dict_to_array,
-                                     zip_folder_to_disk,
-                                     clear_folder_contents)
+                                     clear_folder_contents,
+                                     generate_formatted_orientations,
+                                     generate_design_arrays,
+                                     gen_megastructure)
 
-#For generating handles
-from crisscross.core_functions.megastructures import Megastructure
-from crisscross.plate_mapping import get_plateclass
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_corner)
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize
-from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 
 
 app = Flask(__name__)
@@ -79,17 +71,17 @@ def download_file(filename):
 
 
 @socketio.on('get_inventory')
-def get_inventory(folder_path):
+def get_inventory():
 
     all_inventory_items = []
 
     # Iterate through all .xlsx files in the directory to get inventory items
-    for filename in os.listdir(folder_path):
+    for filename in os.listdir(app.config['USED_CARGO_FOLDER']):
         if filename.endswith('.xlsx'):
             shortened_filename = filename[:-5]
-            file_path = os.path.join(folder_path, shortened_filename)
+            file_path = os.path.join(app.config['USED_CARGO_FOLDER'], shortened_filename)
             # Run getInventory on the current file and extend the results to the all_inventory_items list
-            inventory_items = cargo_to_inventory(file_path, folder_path)
+            inventory_items = cargo_to_inventory(file_path, app.config['USED_CARGO_FOLDER'])
             all_inventory_items.extend(inventory_items)
 
     emit('inventory_sent',all_inventory_items)
@@ -196,47 +188,16 @@ def generate_handles(data):
     handle_configs = data[1]
     handle_rounds = int(data[2])
 
-    layer_interface_orientation = []
-    for orientation in handle_configs.values():
-        layer_interface_orientation.append((int(orientation[0]), int(orientation[1])))
+    seed_array, slat_array, cargo_dict, handle_array = generate_design_arrays({},
+                                                                              crisscross_dict[1],
+                                                                              {},
+                                                                              {},
+                                                                              handle_rounds,
+                                                                              False,
+                                                                              False)
 
-    # Now change this layer_interface_orientation array into the proper format: ie [2, (5, 2), (5, 2), 5]
-    first_orientation = layer_interface_orientation[0][0]
-    last_orientation = layer_interface_orientation[-1][1]
-    middle_orientations = [(layer_interface_orientation[i][1], layer_interface_orientation[i + 1][0])
-                           for i in range(len(layer_interface_orientation) - 1)]
-    formatted_orientations = [first_orientation] + middle_orientations + [last_orientation]
-
-    print(formatted_orientations)
-
-
-
-    slat_array = ()
-    if (crisscross_dict[1]):
-        slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=False)
-
-    # Generate empty handle array
-    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=handle_rounds,
-                                     split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
-                                     group_hamming=None, metric_to_optimize='Universal')
-
-    # Generates plate dictionaries from provided files
-    crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                                    crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-    crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-
-    # prepares the actual full megastructure here
-    crisscross_megastructure = Megastructure(slat_array, formatted_orientations, connection_angle='90')
-    crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates,
-                                                       crisscross_antihandle_y_plates)
     handle_dict = array_to_dict(handle_array)
-
     converted_handle_dict = convert_np_to_py(handle_dict)
-
-    print(converted_handle_dict)
     emit('handles_sent', converted_handle_dict)
 
 @socketio.on('generate_megastructures')
@@ -251,88 +212,28 @@ def generate_megastructure(data):
     generate_graphics = general_configs[1]
     generate_echo = general_configs[2]
 
-    layer_interface_orientation = []
-    for orientation in handle_configs.values():
-        layer_interface_orientation.append( (int(orientation[0]), int(orientation[1])) )
-
-    #Now change this layer_interface_orientation array into the proper format: ie [2, (5, 2), (5, 2), 5]
-    first_orientation = layer_interface_orientation[0][0]
-    last_orientation = layer_interface_orientation[-1][1]
-    middle_orientations = [(layer_interface_orientation[i][1], layer_interface_orientation[i+1][0])
-                           for i in range(len(layer_interface_orientation)-1)]
-    formatted_orientations = [first_orientation] + middle_orientations + [last_orientation]
-
+    formatted_orientations = generate_formatted_orientations(handle_configs)
     print(formatted_orientations)
 
+    seed_array, slat_array, cargo_dict, handle_array = generate_design_arrays(crisscross_dict[0],
+                                                                              crisscross_dict[1],
+                                                                              crisscross_dict[2],
+                                                                              crisscross_dict[3],
+                                                                              10,
+                                                                              old_handles)
 
-    seed_array = np.array([])
-    slat_array = ()
-    cargo_dict = {}
-    handle_array = []
+    crisscross_megastructure = gen_megastructure(seed_array,
+                                                 slat_array,
+                                                 cargo_dict,
+                                                 handle_array,
+                                                 formatted_orientations,
+                                                 generate_graphics,
+                                                 generate_echo,
+                                                 True,
+                                                 app.config['USED_CARGO_FOLDER'],
+                                                 app.config['OUTPUT_FOLDER'],
+                                                 app.config['UPLOAD_FOLDER'])
 
-    if (crisscross_dict[0]):
-        seed_array = seed_dict_to_array(crisscross_dict[0], trim_offset=True, slat_grid_dict=crisscross_dict[1])
-
-    if (crisscross_dict[1]):
-        slat_array = slat_dict_to_array(crisscross_dict[1], trim_offset=True)
-
-    if (crisscross_dict[2]):
-        cargo_dict = format_cargo_dict(crisscross_dict[2], trim=True, reference_slat_dict=crisscross_dict[1])
-
-    if ((crisscross_dict[3]) and (old_handles)):
-        handle_array = handle_dict_to_array(crisscross_dict[3], trim_offset=True, slat_grid_dict=crisscross_dict[1])
-    else:
-        #Generate handle array
-        handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32, max_rounds=5,
-                                         split_sequence_handles=False, universal_hamming=True, layer_hamming=False,
-                                         group_hamming=None, metric_to_optimize='Universal')
-
-    # Generates crisscross handle plate dictionaries from provided files
-    crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                                    crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-    crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-
-    edge_seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-
-    # prepares the actual full megastructure here
-    crisscross_megastructure = Megastructure(slat_array, formatted_orientations, connection_angle='90')
-    crisscross_megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates,
-                                                       crisscross_antihandle_y_plates)
-
-    #Add seeds
-    if (seed_array.size != 0):
-        # Iterate over layers:
-        layer_counter = 0
-        for layer in range(seed_array.shape[2]):
-            if(np.any(seed_array[:,:,layer])):
-                crisscross_megastructure.assign_seed_handles(seed_array[:, :, layer], edge_seed_plate, layer_id=layer_counter + 1)
-
-    # Add cargo
-    if(crisscross_dict[2]):
-        cargo_by_plate = break_dict_by_plates(cargo_dict)
-        for plate, single_plate_cargo in cargo_by_plate.items():
-            if (plate != ''):
-                plate_folder = app.config['USED_CARGO_FOLDER']
-                plate = get_plateclass('GenericPlate', plate, plate_folder)
-                crisscross_megastructure.assign_cargo_handles_with_dict(single_plate_cargo, plate)
-
-
-    core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-    crisscross_megastructure.patch_control_handles(core_plate)
-
-    if(generate_graphics):
-        crisscross_megastructure.create_standard_graphical_report(os.path.join(app.config['OUTPUT_FOLDER'], 'Design Graphics'),
-                                                                  colormap='Set1', cargo_colormap='Paired')
-
-    if(generate_echo):
-        convert_slats_into_echo_commands(crisscross_megastructure.slats, 'crisscross_design_plate',
-                                         app.config['OUTPUT_FOLDER'],'all_echo_commands_with_crisscross_design.csv',
-                                         transfer_volume=100)
-
-    zip_folder_to_disk(app.config['OUTPUT_FOLDER'], os.path.join(app.config['UPLOAD_FOLDER'], 'outputs.zip'))
     emit('megastructure_output_ready_to_download')
 
 

@@ -32,9 +32,9 @@ function updatePlates() {
  * Function to update internal inventory dictionary from cargo plates
  */
 export function updateInventoryItems() {
-    var filepath = "C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates"
+    //var filepath = "C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\used-cargo-plates"
     var socket = io();
-    socket.emit('get_inventory', filepath)
+    socket.emit('get_inventory')
     socket.on('inventory_sent', function(inventory) {
         console.log("Imported inventory!", inventory)
         inventoryData = inventory
