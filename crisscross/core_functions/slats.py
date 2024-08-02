@@ -33,6 +33,12 @@ class Slat:
     Wrapper class to hold all of a slat's handles and related details.
     """
     def __init__(self, ID, layer, slat_coordinates, slat_length=32):
+        """
+        :param ID: Slat unique ID (string)
+        :param layer: Layer position for slat (normally 1 and above, but can set to 0 for special slats such as crossbars)
+        :param slat_coordinates: Exact positions slat occupies on a 2D grid - either a list of tuples or a dict of lists, where the key is the handle number on the slat
+        :param slat_length: Number of handles on the slat
+        """
         self.ID = ID
         self.layer = layer
         self.max_length = slat_length
@@ -42,9 +48,14 @@ class Slat:
         self.slat_position_to_coordinate = {}
         self.slat_coordinate_to_position = {}
         if slat_coordinates != 'N/A':
-            for index, coord in enumerate(slat_coordinates):
-                self.slat_position_to_coordinate[index+1] = tuple(coord)
-                self.slat_coordinate_to_position[tuple(coord)] = index + 1
+            if isinstance(slat_coordinates, dict):
+                for key, coord in slat_coordinates.items():
+                    self.slat_position_to_coordinate[key] = tuple(coord)
+                    self.slat_coordinate_to_position[tuple(coord)] = key
+            else:
+                for index, coord in enumerate(slat_coordinates):
+                    self.slat_position_to_coordinate[index+1] = tuple(coord)
+                    self.slat_coordinate_to_position[tuple(coord)] = index + 1
 
         self.placeholder_list = []
 

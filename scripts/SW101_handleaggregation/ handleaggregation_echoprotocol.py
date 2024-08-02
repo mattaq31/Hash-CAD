@@ -50,7 +50,7 @@ else:
                    HandleArray[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
 # Generates plate dictionaries from provided files - don't change
-CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, CenterSeedPlate = get_standard_plates()
+CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, CenterSeedPlate, CombinedSeedPlate = get_standard_plates()
 
 # Combines handle and slat array into the megastructure
 HandleAggregateMegastructure = Megastructure(SlatArray, [2, (5, 2), (5,2), 5])

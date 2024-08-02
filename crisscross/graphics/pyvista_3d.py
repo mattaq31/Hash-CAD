@@ -52,6 +52,45 @@ def interpret_seed_system(seed_layer_and_array, seed_length, grid_xd, grid_yd, s
         pyvista_plotter.add_mesh(cylinder, color=seed_color)
 
 
+def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap, pyvista_plotter):
+    """
+    Interprets the cargo dict and places cargo stubs in the 3D scene.
+    :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
+    :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
+    Required to generate cargo cylinders.
+    :param grid_xd: The grid x-jump distance
+    :param grid_yd: The grid y-jump distance
+    :param slat_width: The colormap to extract from
+    :param cargo_colormap: Colormap to extract cargo colors from.
+    :param pyvista_plotter: The pyvista plotter object to which cylinders are added
+    :return: N/A
+    """
+    all_cargo = set(cargo_dict.values())
+    cargo_color_values_rgb = {}  # sets the colours of annotation according to the cargo being added
+    for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
+        if cargo_number >= len(mpl.colormaps[cargo_colormap].colors):
+            print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the 3D structure colormap. '
+                             'Recycling other colors for the higher IDs.' % unique_cargo_name)
+            cargo_number = max(int(cargo_number) - len(mpl.colormaps[cargo_colormap].colors), 0)
+        cargo_color_values_rgb[unique_cargo_name] = (mpl.colormaps[cargo_colormap].colors[cargo_number])
+
+    for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
+
+        top_layer_side = layer_interface_orientations[cargo_layer]
+        if isinstance(top_layer_side, tuple):
+            top_layer_side = top_layer_side[0]
+        if top_layer_side == cargo_orientation:
+            top_or_bottom = 1
+        else:
+            top_or_bottom = -1
+
+        transformed_pos = (x_cargo * grid_xd, y_cargo * grid_yd, cargo_layer - 1 + (top_or_bottom * slat_width / 2))
+
+        cylinder = pv.Cylinder(center=transformed_pos, direction=(0, 0, top_or_bottom), radius=slat_width / 2,
+                               height=slat_width)
+        pyvista_plotter.add_mesh(cylinder, color=cargo_color_values_rgb[cargo_value])
+
+
 def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_angle='90', seed_layer_and_array=None,
                              seed_color=(1.0, 0.0, 0.0), cargo_dict=None, layer_interface_orientations=None,
                              cargo_colormap='Dark2', window_size=(2048, 2048), colormap='Set1'):
@@ -88,7 +127,7 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
             continue
 
         pos1 = slat.slat_position_to_coordinate[1]
-        pos2 = slat.slat_position_to_coordinate[32]
+        pos2 = slat.slat_position_to_coordinate[slat.max_length]
 
         layer = slat.layer
         length = slat.max_length
@@ -106,33 +145,13 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
         cylinder = pv.Cylinder(center=center, direction=direction, radius=slat_width/2, height=length)
         plotter.add_mesh(cylinder, color=layer_color)
 
+    # visualizes cargo directly on the lattice
     if cargo_dict is not None and layer_interface_orientations is not None:
-        # sets the colours of annotation according to the cargo being added
-        all_cargo = set(cargo_dict.values())
-        cargo_color_values_rgb = {}
-        for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
-            if cargo_number >= len(mpl.colormaps[cargo_colormap].colors):
-                print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the 3D structure colormap. '
-                                 'Recycling other colors for the higher IDs.' % unique_cargo_name)
-                cargo_number = max(int(cargo_number) - len(mpl.colormaps[cargo_colormap].colors), 0)
-            cargo_color_values_rgb[unique_cargo_name] = (mpl.colormaps[cargo_colormap].colors[cargo_number])
+        interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap,
+                               plotter)
 
-        for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
-
-            top_layer_side = layer_interface_orientations[cargo_layer]
-            if isinstance(top_layer_side, tuple):
-                top_layer_side = top_layer_side[0]
-            if top_layer_side == cargo_orientation:
-                top_or_bottom = 1
-            else:
-                top_or_bottom = -1
-
-            transformed_pos = (x_cargo * grid_xd, y_cargo * grid_yd, cargo_layer - 1 + (top_or_bottom*slat_width/2))
-
-            cylinder = pv.Cylinder(center=transformed_pos, direction=(0, 0, top_or_bottom), radius=slat_width / 2, height=slat_width)
-            plotter.add_mesh(cylinder, color=cargo_color_values_rgb[cargo_value])
-
-    interpret_seed_system(seed_layer_and_array, list(slats.values())[0].max_length/2, grid_xd, grid_yd, seed_color, plotter)
+    if seed_layer_and_array is not None:
+        interpret_seed_system(seed_layer_and_array, list(slats.values())[0].max_length/2, grid_xd, grid_yd, seed_color, plotter)
 
     plotter.add_axes(interactive=True)
 
@@ -140,7 +159,7 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
     plotter.open_movie(os.path.join(save_folder, '3D_design_view.mp4'))
     plotter.show(auto_close=False)
 
-    # Again, it might be of interest to adjust parameters here for different designs
-    path = plotter.generate_orbital_path(n_points=200, shift=0.2, viewup=[0, 1, 0], factor=2.0)
-    plotter.orbit_on_path(path, write_frames=True, viewup=[0, 1, 0], step=0.05)
+    # It might be of interest to adjust parameters here for different designs
+    path = plotter.generate_orbital_path(n_points=200, shift=0.2, viewup=[0, -1, 0], factor=2.0)
+    plotter.orbit_on_path(path, write_frames=True, viewup=[0, -1, 0], step=0.05)
     plotter.close()

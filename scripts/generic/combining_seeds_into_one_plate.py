@@ -1,4 +1,4 @@
-# combines both seeds into one plate, with a more readable format that precisely matches the organisation of the seeds themselves
+# combines both common seeds into one plate, with a more readable format that precisely matches the organisation of the seeds themselves
 from collections import defaultdict
 import pandas as pd
 
@@ -18,10 +18,14 @@ seed_jump_count = 5
 category_count = defaultdict(int)
 
 
+# these convoluted logic pieces are intended to automate placing the seed into the plate in specific human-readable patterns.
+# In this case, the goal was to have the seed occupy 5 columns and 16 rows, mirroring its actual positioning in a megastructure
 def fill_dict(key, plate, name, dict_to_fill, category):
     global all_staple_count, category_count
     description = f'{name} handle for slat position {key[0]}, seed ID {key[2]}-{category_count[(name, key[2])] + 1}'
-    dict_to_fill['Name'].append(f'Oligo{all_staple_count}')
+    standardized_name = f'ID-{key[2]}_h2_position-{key[0]}'
+    # dict_to_fill['Name'].append(f'Oligo{all_staple_count}') # use this to obfuscate name when ordering
+    dict_to_fill['Name'].append(standardized_name)
     dict_to_fill['Sequence'].append(plate.sequences[key])
     dict_to_fill['Description'].append(description)
     dict_to_fill['Category'].append(f'Group-{category}')
@@ -44,6 +48,7 @@ for i in range(0, total_count, seed_jump_count):
 
 new_plate_df = pd.DataFrame.from_dict(new_plate_dict)
 
+# both an IDT order and a more human-readable format generated here
 generate_new_plate_from_slat_handle_df(new_plate_df,
                                        '/Users/matt/Desktop',
                                        'combined_seeds_plate_2d.xlsx',

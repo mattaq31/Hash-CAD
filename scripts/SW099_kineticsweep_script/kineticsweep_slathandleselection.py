@@ -52,7 +52,7 @@ else:
                    HandleArray[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
 # Generates plate dictionaries from provided files - don't change
-CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, CenterSeedPlate = get_standard_plates()
+CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, CenterSeedPlate, CombinedSeedPlate = get_standard_plates()
 
 CargoPlate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 cargo_key = {3: 'antiNelson'}

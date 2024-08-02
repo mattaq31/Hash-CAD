@@ -12,9 +12,14 @@ assembly_handle_folder = join(base_directory, 'assembly_handle_plates')
 cargo_plate_folder = join(base_directory, 'cargo_plates')
 old_format_cargo_plate_folder = join(cargo_plate_folder, 'old_format')
 
-crisscross_h5_handle_plates = ["P3247_SW_handles", "P3248_SW_handles", "P3249_SW_handles",
+crisscross_h5_handle_plates = ["P3533_SW_handles", "P3534_SW_handles", "P3535_SW_handles",
                                "P3250_SW_antihandles", "P3251_CW_antihandles",
                                "P3252_SW_antihandles"]  # first 3 are 'handle' plates, last 3 are 'anti-handle' plates
+
+# new plates now supersede these plates (but contain the same sequences)
+crisscross_h5_outdated_handle_plates = ["P3247_SW_handles", "P3248_SW_handles", "P3249_SW_handles",
+                                        "P3250_SW_antihandles", "P3251_CW_antihandles",
+                                        "P3252_SW_antihandles"]  # first 3 are 'handle' plates, last 3 are 'anti-handle' plates
 
 crisscross_h2_handle_plates = ["P3536_MA_h2_antihandles", "P3537_MA_h2_antihandles", "P3538_MA_h2_antihandles"]
 
@@ -26,6 +31,7 @@ slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, includ
 
 seed_plug_plate_center = 'P2854_CW_seed_plug_center'  # this contains the H2 plug sequences to bind to the seed at the center of the x-slats
 seed_plug_plate_corner = 'P3339_JL_seed_plug_corner'  # this contains another variation of H2 plug sequences - they go to the corner of a set of x-slats
+seed_plug_plate_all = 'P3555_SSW_combined_seeds'  # this contains both seeds in one plate with a human-readable placement system
 
 nelson_quimby_antihandles = 'sw_src005_antiNelsonQuimby_cc6hb_h2handles'  # this contains the full set of h2 handles for antiNelson/Quimby extensions
 h2_biotin_direct = 'P3510_SSW_biotin'  # this contains two core slat sequences with directly biotinylated H2 handles

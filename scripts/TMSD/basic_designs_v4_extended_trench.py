@@ -25,7 +25,7 @@ read_handles_from_file = True
 regenerate_graphics = False
 ################################
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 cargo_key = {3: 'antiNelson'}
 ################################

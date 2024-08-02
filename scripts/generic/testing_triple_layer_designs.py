@@ -21,7 +21,7 @@ handle_array = generate_handle_set_and_optimize(base_array, unique_sequences=32,
 
 # Step 4 - generate dictionary of slats
 
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 
 cargo_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 

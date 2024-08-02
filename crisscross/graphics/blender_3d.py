@@ -314,9 +314,12 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
                               grid_xd=grid_xd, grid_yd=grid_yd)
 
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
-
+        if len(slat.slat_position_to_coordinate) == 0:
+            print(Fore.YELLOW + 'WARNING: Slat %s was ignored from Blender graphical '
+                                'view as it does not have a grid position defined.' % slat_id)
+            continue
         pos1 = slat.slat_position_to_coordinate[1]  # first slat position
-        pos2 = slat.slat_position_to_coordinate[32]  # second slat position
+        pos2 = slat.slat_position_to_coordinate[slat.max_length]  # second slat position
 
         if correct_slat_entrance_direction and animate_slat_group_dict is not None:  # attempts to remove any conflicting animation directions
             pos1, pos2 = check_slat_animation_direction(pos1, pos2, slat_id, slat.layer, slats, animate_slat_group_dict)

@@ -26,7 +26,7 @@ regenerate_graphics = False
 ################################
 # Plate sequences
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 bart_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
 simpsons_plate = get_plateclass('GenericPlate', simpsons_mixplate_antihandles, cargo_plate_folder)

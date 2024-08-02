@@ -86,16 +86,21 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         layer_figures.append((l_fig, l_ax))
 
     for slat_id, slat in slats.items():
-        # TODO: Is there some way to print the slat ID too?
+        # TODO: Is there some way to print the slat ID in the graphic too?
         if len(slat.slat_coordinate_to_position) == 0:
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
                                 'view as it does not have a grid position defined.' % slat_id)
             continue
+
+        if len(slat.slat_coordinate_to_position) != slat.max_length:
+            print(Fore.YELLOW + 'WARNING: Slat %s was ignored from 2D graphical '
+                                'view as it does not seem to have a normal set of grid coordinates.' % slat_id)
+            continue
+
         start_pos = slat.slat_position_to_coordinate[1]
         end_pos = slat.slat_position_to_coordinate[slat.max_length]
 
-        start_pos = physical_point_scale_convert(start_pos, grid_xd,
-                                                 grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
+        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
         layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
@@ -219,6 +224,12 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
                                 'view as it does not have a grid position defined.' % slat_id)
             continue
+
+        if len(slat.slat_coordinate_to_position) != slat.max_length:
+            print(Fore.YELLOW + 'WARNING: Slat %s was ignored from 2D assembly handle '
+                                'view as it does not seem to have a normal set of grid coordinates.' % slat_id)
+            continue
+
         start_pos = slat.slat_position_to_coordinate[1]
         end_pos = slat.slat_position_to_coordinate[slat.max_length]
         start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats

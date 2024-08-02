@@ -38,7 +38,7 @@ class Megastructure:
 
         # reads in all design details from file if available
         if import_design_file is not None:
-            slat_array, handle_array, seed_array, cargo_df, layer_interface_orientations, connection_angle, reversed_slats\
+            slat_array, handle_array, seed_array, cargo_df, layer_interface_orientations, connection_angle, reversed_slats \
                 = self.import_design(import_design_file)
             self.handle_arrays = handle_array
             self.cargo_dict = cargo_df
@@ -357,7 +357,15 @@ class Megastructure:
         slat_count = 0
         slat_groups = []
         complete_slats = set()
-        while slat_count < len(self.slats):  # will loop through the design until all slats have been given a home
+
+        special_slats = []
+        rational_slat_count = len(self.slats)
+        for s_key, s_val in self.slats.items():
+            if s_val.layer < 1 or s_val.layer > self.num_layers:  # these slats can never be rationally identified, and should be animated in last
+                special_slats.append(s_val.ID)
+                rational_slat_count -= 1
+
+        while slat_count < rational_slat_count:  # will loop through the design until all slats have been given a home
             if slat_count == 0:  # first extracts slats that will attach to the seed
                 first_step_slats = set()
                 seed_coords = np.where(self.seed_array[1] > 0)
@@ -391,6 +399,7 @@ class Megastructure:
                 slat_groups.append(next_slat_group)
                 slat_count += len(next_slat_group)
 
+
         slat_id_animation_classification = {}
 
         # final loop to further separate all slats in a group into several sub-groups based on their layer.
@@ -408,6 +417,9 @@ class Megastructure:
                     current_layer = slat[0]
                 slat_id_animation_classification[get_slat_key(*slat)] = group_tracker
             group_tracker += 1
+
+        for s_slat in special_slats:  # adds special slats at the end
+            slat_id_animation_classification[s_slat] = group_tracker
 
         return slat_id_animation_classification
 
@@ -494,7 +506,7 @@ class Megastructure:
             plt.close(l_fig)
 
     def create_graphical_3D_view(self, save_folder, window_size=(2048, 2048), colormap='Set1',
-                                 cargo_colormap='Dark2', seed_color=(1, 0, 0)):
+                                 cargo_colormap='Dark2', seed_color=(1.0, 0.0, 0.0)):
         """
         Creates a 3D video of the megastructure slat design.
         :param save_folder: Folder to save all video to.
@@ -507,8 +519,8 @@ class Megastructure:
         create_graphical_3D_view(self.slat_array, save_folder, slats=self.slats, connection_angle=self.connection_angle,
                                  cargo_dict=self.cargo_dict, cargo_colormap=cargo_colormap,
                                  layer_interface_orientations=self.layer_interface_orientations,
-                                 seed_color=seed_color,
-                                 seed_layer_and_array=self.seed_array, window_size=window_size, colormap=colormap)
+                                 seed_color=seed_color, seed_layer_and_array=self.seed_array,
+                                 window_size=window_size, colormap=colormap)
 
     def create_blender_3D_view(self, save_folder, animate_assembly=False, animation_type='translate',
                                custom_assembly_groups=None, slat_translate_dict=None, minimum_slat_cutoff=15,
@@ -547,7 +559,8 @@ class Megastructure:
                                      seed_color=seed_color, colormap=colormap,
                                      specific_slat_translate_distances=slat_translate_dict)
 
-    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False, generate_3d_video=True,
+    def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
+                                         generate_3d_video=True,
                                          colormap='Dark2', cargo_colormap='Set1', seed_color=(1.0, 0.0, 0.0)):
         """
         Generates entire set of graphical reports for the megastructure design.
@@ -631,11 +644,7 @@ class Megastructure:
             # nomenclature is 'layer ID-top/bottom-H2/H5'
             df.to_excel(writer, sheet_name=f'cargo_layer_{layer}_{position}_h{orientation_list[index]}', index=False,
                         header=False)
-            writer.sheets[f'cargo_layer_{layer}_{position}_h{orientation_list[index]}'].conditional_format(0, 0,
-                                                                                                           df.shape[0],
-                                                                                                           df.shape[
-                                                                                                               1] - 1,
-                                                                                                           excel_conditional_formatting)
+            writer.sheets[f'cargo_layer_{layer}_{position}_h{orientation_list[index]}'].conditional_format(0, 0, df.shape[0], df.shape[1] - 1, excel_conditional_formatting)
 
         # prints out single seed dataframe
         df = pd.DataFrame(self.seed_array[1])

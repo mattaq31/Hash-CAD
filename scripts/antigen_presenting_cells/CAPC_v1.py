@@ -50,7 +50,7 @@ center_seed_array = np.zeros((66, 66))
 center_seed_array[17:33, 14:14+5] = insertion_seed_array
 ########################################
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 octahedron_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
 bart_edna_plate = get_plateclass('GenericPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
