@@ -1,6 +1,7 @@
 import { createGridArray, importHandles, importDesign } from './functions_design_dicts.js';
 import { getHandleLayerDict, clearHandles } from './functions_handles.js';
 import { updateInventoryItems} from './functions_inventory.js';
+import { showNotification } from './functions_socket.js';
 import { getLayerList } from './functions_layers.js'
 import { downloadFile } from './functions_misc.js';
 
@@ -116,16 +117,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     //Design saving & exporting
-    document.getElementById('save-design').addEventListener('click', function(event) {
-        console.log("design to be saved now!")
-        let gridArray = createGridArray(layerList, minorGridSize)
-        socket.emit('design_to_backend_for_download', gridArray);
-    });
+    //document.getElementById('save-design').addEventListener('click', function(event) {
+    //    console.log("design to be saved now!")
+    //    let gridArray = createGridArray(layerList, minorGridSize)
+    //    socket.emit('design_to_backend_for_download', gridArray);
+    //});
 
     //Download saved design
-    socket.on('saved_design_ready_to_download', function(){
-        downloadFile('/download/crisscross_design.npz', 'crisscross_design.npz')
-    })
+    //socket.on('saved_design_ready_to_download', function(){
+    //    downloadFile('/download/crisscross_design.npz', 'crisscross_design.npz')
+    //})
 
 
 
@@ -171,4 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('clear-handles-button').addEventListener('click', function(event){
         clearHandles(layerList)
     })
+
+
+
+
+
+    //Read in console messages from python backend
+    socket.on('console', function(msg) {
+        showNotification(msg.data)
+    });
 })

@@ -236,6 +236,66 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
 }
 
 /** 
+ */
+export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, activeLayerId, minorGridSize, activeLayerColor, shownHandleOpacity, handleMatchCounter, matchGroupNumber, layerList) {
+    
+    let defaultColor = '#808080'; 
+
+    if(/*!isMatcherOnMatcher(roundedX, roundedY, activeCargoLayer)*/ true){
+        const width = minorGridSize * 0.85
+
+        tmpSquare = activeHandleLayer.rect(width, width) // SVG.js uses diameter, not radius
+                                     .move(roundedX - width/2, roundedY - width/2)
+                                     .fill(defaultColor) 
+                                     .stroke(activeLayerColor) 
+                                     .opacity(shownHandleOpacity);
+        
+
+        tmpSquare.attr('data-match-component', 'shape')
+        tmpSquare.attr('data-default-color', defaultColor)
+        tmpSquare.attr('pointer-events', 'none');
+
+        // Adding text (tag) to the cargo
+        let text = activeHandleLayer.text(matchGroupNumber)
+            .attr({ x: roundedX, y: roundedY - width/2, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
+            .attr({'stroke-width': width/40})
+            .font({ size: minorGridSize * 0.4, family: 'Arial', weight: 'bold' , stroke: '#000000'})
+            .fill('#FFFFFF'); // White text
+        text.attr('pointer-events', 'none');
+        text.attr('data-match-component', 'text')
+        
+        // Adjust text size
+        let fontSize = width/2;
+        text.font({ size: fontSize });
+        
+        while (text.length() > width * 0.9) {
+            fontSize *= 0.9;
+            text.font({ size: fontSize });
+            text.attr({ x: roundedX, y: roundedY - 1.25*fontSize, 'dominant-baseline': 'middle', 'text-anchor': 'middle' })
+        }
+    
+        // Group the circle and text
+        let group = activeHandleLayer.group()
+        group.add(tmpSquare).add(text);
+        group.on('pointerdown', function(event) {
+            startDrag(event, layerList, minorGridSize);
+        });
+
+        // Set pointer-events attribute to the group
+        group.attr('pointer-events', 'bounding-box');
+        group.attr('id'  ,  handleMatchCounter    )
+        group.attr('type',  matchGroupNumber )
+        group.attr('layer', activeLayerId   )
+        group.attr('class', "handle-matcher")
+        
+        handleMatchCounter += 1;
+    }
+    return handleMatchCounter;
+}
+
+
+
+/** 
  * Function to show shaddow slat under cursor
  * @param {Number} roundedX X-coordinate of the shaddow slat to be drawn (top LH point)
  * @param {Number} roundedY Y-coordinate of the shaddow slat to be drawn (top LH point)

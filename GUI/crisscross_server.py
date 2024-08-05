@@ -19,7 +19,8 @@ from server_helper_functions import (seed_dict_to_array, slat_dict_to_array,
                                      clear_folder_contents,
                                      generate_formatted_orientations,
                                      generate_design_arrays,
-                                     gen_megastructure)
+                                     gen_megastructure,
+                                     import_megastructure)
 
 
 
@@ -29,13 +30,37 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'  # Directory to save uploaded files
 app.config['OUTPUT_FOLDER'] = 'outputs/'
 app.config['USED_CARGO_FOLDER'] = 'used-cargo-plates/'  # Directory to save uploaded files
-app.config['ALLOWED_EXTENSIONS'] = {'txt', 'npz'}  # Allowed file extensions
+app.config['ALLOWED_EXTENSIONS'] = {'txt', 'npz', 'xlsx'}  # Allowed file extensions
 app.config['PLATE_ALLOWED_EXTENSIONS'] = {'xlsx'}  # Allowed file extensions
 
 socketio = SocketIO(app, max_http_buffer_size=100 * 1024 * 1024) #Set max transfer size 100MB
 
 # Ensure the upload directory exists
 create_dir_if_empty(app.config['UPLOAD_FOLDER'])
+
+
+import sys
+class DualStreamHandler:
+    def __init__(self):
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+
+    def write(self, message):
+        if isinstance(message, bytes):
+            message = message.decode('utf-8')
+        if message and not message.isspace():
+            if not message.endswith('\n'):
+                message += '\n'
+            self._stdout.write(message)
+            self._stdout.flush()
+            socketio.emit('console', {'data': message})
+
+    def flush(self):
+        self._stdout.flush()
+
+# Replace sys.stdout and sys.stderr with the dual handler
+sys.stdout = DualStreamHandler()
+sys.stderr = DualStreamHandler()
 
 def allowed_file(filename):
     """
@@ -98,7 +123,7 @@ def save_file_to_uploads(data):
     :return:
     """
     file = data['file']
-    filename = 'crisscross_design.npz' #secure_filename(file['filename'])
+    filename = 'crisscross_design.xlsx' #'crisscross_design.npz' #secure_filename(file['filename'])
     if file and allowed_file(filename):
         try:
             with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'wb') as f:
@@ -116,6 +141,11 @@ def save_file_to_uploads(data):
     print('Design will be imported')
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     print(crisscross_design_path)
+
+    import_megastructure(crisscross_design_path)
+
+
+    '''
     crisscross_design_file = np.load(crisscross_design_path, allow_pickle=True)
     seed_array = crisscross_design_file['seed_array']
     slat_array = crisscross_design_file['slat_array']
@@ -136,11 +166,16 @@ def save_file_to_uploads(data):
 
     if (not (handle_dict)):
         handle_dict = {}
+    
 
 
-    emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict])
+    emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict])'''
 
 
+
+
+
+'''
 # TODO: make function names more descriptive
 @socketio.on('design_to_backend_for_download')
 def save_crisscross_design(crisscross_dict):
@@ -180,7 +215,7 @@ def save_crisscross_design(crisscross_dict):
              handle_dict=handle_dict)
 
     emit('saved_design_ready_to_download')
-
+'''
 
 @socketio.on('generate_handles')
 def generate_handles(data):

@@ -28,6 +28,15 @@ core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
 
 
 
+def import_megastructure(file):
+    crisscross_megastructure = Megastructure(import_design_file = "C:\\Users\\cmbec\\OneDrive\\Cloud_Documents\\Shih_Lab_2024\\Crisscross-Design\\GUI\\uploads\\crisscross_design.xlsx")
+    imported_seed_array = crisscross_megastructure.seed_array
+    imported_cargo_dict = crisscross_megastructure.cargo_dict
+    imported_slat_array = crisscross_megastructure.slat_array
+    imported_handle_array = crisscross_megastructure.handle_arrays
+
+
+
 def gen_megastructure(seed_array, slat_array, cargo_dict, handle_array, orientations, graphics, echo, save, plate_folder, output_folder, upload_folder):
 
     # prepares the actual full megastructure here

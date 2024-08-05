@@ -161,34 +161,35 @@
                 
 
                 <div id="import-export">
+                    <button id="generate-megastructure-button">Generate Megastructure</button>
+                    <form id="megastructure-generation-config-checkboxes">
+                        <label for="checkbox-old-handles">
+                            <input type="checkbox" id="checkbox-old-handles" name="old-handles" value=1>
+                            Use existing handles
+                        </label>
+                        <label for="checkbox-graphics">
+                            <input type="checkbox" id="checkbox-graphics" name="generate-graphics" value=1>
+                            Generate Graphics
+                        </label>
+                        <label for="checkbox-echo">
+                            <input type="checkbox" id="checkbox-echo" name="generate-echo" value=1 checked>
+                            Generate Echo Commands
+                        </label>
+                    </form>
+
+                    <hr id="import-export-divider">
                     <div id="upload-dialog">
                         <form id="upload-form" method="post" enctype="multipart/form-data">
                             <input id="file-input" type="file" name="file"  required>
-                            <button id="file-submit" type="submit" >Upload</button>
+                            <button id="file-submit" type="submit" >Import Design</button>
                         </form>
                     </div>
 
-                    <hr id="import-export-divider">
-
-                    <button id="save-design">Save & Export Design</button>
+                    
                 </div>
                 
 
-                <button id="generate-megastructure-button">Generate Megastructure</button>
-                <form id="megastructure-generation-config-checkboxes">
-                    <label for="checkbox-old-handles">
-                        <input type="checkbox" id="checkbox-old-handles" name="old-handles" value=1>
-                        Use existing handles
-                    </label>
-                    <label for="checkbox-graphics">
-                        <input type="checkbox" id="checkbox-graphics" name="generate-graphics" value=1>
-                        Generate Graphics
-                    </label>
-                    <label for="checkbox-echo">
-                        <input type="checkbox" id="checkbox-echo" name="generate-echo" value=1 checked>
-                        Generate Echo Commands
-                    </label>
-                </form>
+                
                 
             </div>
 
@@ -246,6 +247,9 @@
         </div>
     
     </div>
+
+    <!-- Console Message Viewer -->
+    <div id="notifications"></div>
 
     <!-- Socket.io basic connection script-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
