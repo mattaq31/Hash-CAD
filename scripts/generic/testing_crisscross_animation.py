@@ -69,7 +69,7 @@ M2 = Megastructure(slat_array, connection_angle='60')
 for rev_slat in range(48, 64):  # this intervention is being done to accommodate the seed plate handles we have available
     M2.slats[f'layer2-slat{rev_slat}'].reverse_direction()
 
-M2.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
+M2.assign_seed_handles(seed_array, seed_plate, layer_id=2)
 
 custom_glider_animation_dict = {}
 
@@ -93,8 +93,11 @@ for slat in groups[8] + groups[9]:
     slat_translate_dict[slat] = 20
 
 # M2.export_design('full_design.xlsx', '/Users/matt/Desktop')
-# M2.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True,
-#                           animation_type='translate',
-#                           camera_spin=True,
-#                           custom_assembly_groups=custom_glider_animation_dict,
-#                           slat_translate_dict=slat_translate_dict)
+M2.create_standard_graphical_report(os.path.join('/Users/matt/Desktop', 'Design Graphics'), colormap='Set1',
+                                             cargo_colormap='Dark2', seed_color=(1.0, 0.0, 0.0))
+
+M2.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True,
+                          animation_type='translate',
+                          camera_spin=True,
+                          custom_assembly_groups=custom_glider_animation_dict,
+                          slat_translate_dict=slat_translate_dict)
