@@ -2,7 +2,7 @@ import { updateHandleLayers, updateHandleLayerButtons, getHandleLayerDict } from
 import { addLayer, getLayerList } from './functions_layers.js'
 import { getFullDrawing } from './functions_drawing.js';
 import { changeCursorEvents} from './functions_misc.js';
-import { delete3DSlatLayer } from './functions_3D.js';
+import { delete3DSlatLayer, recolor3DElement } from './functions_3D.js';
 
 import { hiddenOpacity} from './constants.js'
 import { getVariable, writeVariable } from './variables.js'
@@ -90,6 +90,7 @@ document.addEventListener('layerColorChanged', (event) => {
     layerToChangeSlats.children().forEach(child => {
         child.stroke({ color: layerColor });
         child.attr('data-default-color', layerColor); 
+        recolor3DElement(child, layerColor)
     });
 
     //Change top cargo colors on layer

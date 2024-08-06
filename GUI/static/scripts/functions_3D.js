@@ -347,6 +347,50 @@ export function delete3DSlatLayer(slatLayer){
 
 
 
+function recolor3DSlat(id, newColor){
+    console.log("Slat ID to recolor: ", id)
+
+    let slatToRecolor = scene.getObjectByName('slat-3d:' + id);
+    
+    if (slatToRecolor) {
+        console.log("we have the slat!")
+        slatToRecolor.material.color.set(newColor);
+    }
+}
+
+function recolor3DCargo(id, newColor){
+    console.log("Cargo ID to recolor: ", id)
+
+    let cargoToRecolor = scene.getObjectByName('cargo-3d:' + id);
+    
+    if (cargoToRecolor) {
+        console.log("we have the cargo!")
+        cargoToRecolor.material.color.set(newColor);
+    }
+}
+
+function recolor3DSeed(newColor){
+    let seedToRecolor = scene.getObjectByName('seed-3D');
+    
+    if (seedToRecolor) {
+        console.log("we have the seed!")
+        seedToRecolor.material.color.set(newColor);
+    }
+}
+
+export function recolor3DElement(element, newColor){
+    if(element.attr('class').split(' ').includes('line')){
+        recolor3DSlat(element.attr('id'), newColor)
+    }
+    else if(element.attr('class').split(' ').includes('cargo')){
+        recolor3DCargo(element.attr('id'), newColor)
+    }
+    else if(element.attr('class').split(' ').includes('seed')){
+        recolor3DSeed(newColor)
+    }
+}
+
+
 
 
 /*
