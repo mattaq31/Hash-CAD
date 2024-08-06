@@ -1,5 +1,6 @@
 //Functions
 import { placeSlat, placeCargo, placeSeed, showSlat, getFullDrawing } from './functions_drawing.js';
+import { copyCargo, showCopiedCargo, pasteCargo } from './functions_copypaste.js';
 import { getPanStatus, configurePanzoom } from './functions_panzoom.js'
 import { drawGrid, changePlacementMode } from './functions_misc.js';
 import { getLayerList } from './functions_layers.js'
@@ -35,14 +36,21 @@ SVG.on(document, 'DOMContentLoaded', function() {
         placeRoundedX = Math.round(mousePoints.x/(minorGridSize))*minorGridSize ;
         placeRoundedY = Math.round(mousePoints.y/(minorGridSize))*minorGridSize ;
 
-        let slatCountToPlace = document.getElementById('slatNumber').value
-        showSlat(mousePoints.x, mousePoints.y, fullDrawing, minorGridSize, getVariable("placeHorizontal"), slatCountToPlace)
+        if(getVariable("pasteMode")==true){
+            showCopiedCargo(getVariable("copiedCargo"), placeRoundedX, placeRoundedY, fullDrawing, minorGridSize)
+        }
+        else{
+            let slatCountToPlace = document.getElementById('slatNumber').value
+            showSlat(mousePoints.x, mousePoints.y, fullDrawing, minorGridSize, getVariable("placeHorizontal"), slatCountToPlace)
+        }
     });
 
     // Handle clicks 
     svgcontainer.addEventListener('pointerdown', (event) => {
 
-        if(getPanStatus() == true){
+        let drawMode = document.getElementById('draw-button').classList.contains('draw-erase-select-toggle-selected')
+    
+        if(getPanStatus() == true && drawMode){
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
             if(getVariable("drawSlatCargoHandleMode") == 0){
@@ -81,19 +89,40 @@ SVG.on(document, 'DOMContentLoaded', function() {
                               getVariable("placeHorizontal"), 
                               layerList)
                 }
-                else{
-                    let cargoCounter = placeCargo(placeRoundedX, 
-                                              placeRoundedY, 
-                                              getVariable("activeCargoLayer"), 
-                                              getVariable("activeLayerId"), 
-                                              minorGridSize, 
-                                              getVariable("activeLayerColor"), 
-                                              shownCargoOpacity, 
-                                              getVariable("cargoCounter"), 
-                                              getVariable("selectedCargoId"), 
-                                              layerList, 
-                                              top) 
-                    writeVariable("cargoCounter", cargoCounter)
+                else{ //Cargo placement
+                    if(getVariable("pasteMode") == true){ //Paste cargo that has been copied
+                        let cargoCounter = pasteCargo(getVariable("copiedCargo"), 
+                                                      placeRoundedX,
+                                                      placeRoundedY,
+                                                      getVariable("activeCargoLayer"),
+                                                      getVariable("activeLayerId"), 
+                                                      minorGridSize,
+                                                      getVariable("activeLayerColor"), 
+                                                      shownCargoOpacity,
+                                                      getVariable("cargoCounter"),
+                                                      layerList,
+                                                      top)
+                        writeVariable("cargoCounter", cargoCounter)
+                        writeVariable("pasteMode", false)
+                        let oldShadowCargo = document.getElementById('shadow-copied-cargo')
+                        if(oldShadowCargo){
+                            oldShadowCargo.remove()
+                        }
+                    }
+                    else{ //Place individual cargo
+                        let cargoCounter = placeCargo(placeRoundedX, 
+                            placeRoundedY, 
+                            getVariable("activeCargoLayer"), 
+                            getVariable("activeLayerId"), 
+                            minorGridSize, 
+                            getVariable("activeLayerColor"), 
+                            shownCargoOpacity, 
+                            getVariable("cargoCounter"), 
+                            getVariable("selectedCargoId"), 
+                            layerList, 
+                            top) 
+                        writeVariable("cargoCounter", cargoCounter)
+                    }
                 }
             }
         }        
@@ -195,5 +224,25 @@ document.addEventListener('keyup', (event) => {
             }
         }
         writeVariable("placeHorizontal", false);
+    }
+});
+
+// Copy cargo when ctrl + c is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.ctrlKey && (event.key === 'c')) {
+        console.log("Copy has been started!")
+
+        const topLayerButton = document.getElementById('top-layer-selector')
+        let top = topLayerButton.classList.contains('h25-toggle-selected')
+        let copiedCargo = copyCargo(getLayerList(), top, getVariable("activeLayerId"), minorGridSize)
+        writeVariable("copiedCargo", copiedCargo)
+    }
+});
+
+// Paste cargo when ctrl + v is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.ctrlKey && (event.key === 'v')) {
+        writeVariable("pasteMode", true)
+        console.log("Paste has been started!")
     }
 });

@@ -236,6 +236,68 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
 }
 
 /** 
+ * Function to show shaddow slat under cursor
+ * @param {Number} roundedX X-coordinate of the shaddow slat to be drawn (top LH point)
+ * @param {Number} roundedY Y-coordinate of the shaddow slat to be drawn (top LH point)
+ * @param {SVG.Doc} fullDrawing Full SVG document for the canvas
+ * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles
+ * @param {Boolean} horizontal True if slat should be placed horizontally. False if slat should be placed vertically
+ * @param {Number} numSlats Number of slats to show at once
+ */
+export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizontal, numSlats=1) {
+    let defaultColor = '#808080'; //Grey
+    let tmpLine = null;
+    let group = fullDrawing.group()
+
+    // Remove any existing lines with the id 'cursor-slat'
+    let cursorSlat = document.getElementById('cursor-slat')
+    if(cursorSlat){
+        cursorSlat.remove()
+    }
+
+    let drawModeSelector = document.getElementById('palette-type-selector');
+    let drawSlatCargoHandleMode = drawModeSelector.value;
+
+    //Only show slat if we are in slat mode!
+    if(drawSlatCargoHandleMode == 0){
+        for (let i = 0; i < numSlats; i++) {
+            let xIterator = minorGridSize * i * (!horizontal)
+            let yIterator = minorGridSize * i * horizontal
+    
+            if(horizontal){
+                tmpLine = fullDrawing.line(roundedX - 0.5 * minorGridSize + xIterator, 
+                                           roundedY + yIterator, 
+                                           roundedX + 31.5 * minorGridSize + xIterator, 
+                                           roundedY + yIterator)
+                                     .stroke({ width: 4, color:defaultColor, opacity: 0.33 });       
+            }
+            else{
+                tmpLine = fullDrawing.line(roundedX + xIterator, 
+                                           roundedY - 0.5 * minorGridSize + yIterator, 
+                                           roundedX + xIterator, 
+                                           roundedY + 31.5 * minorGridSize + yIterator)
+                                     .stroke({ width: 4, color:defaultColor, opacity: 0.33 });
+            }
+
+            group.add(tmpLine)
+        }
+    
+        group.attr('id','cursor-slat')
+        group.attr({ 'pointer-events': 'none' })
+    }
+}
+
+
+
+
+
+
+
+
+
+
+//TODO: WiP
+/** 
  */
 export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, activeLayerId, minorGridSize, activeLayerColor, shownHandleOpacity, handleMatchCounter, matchGroupNumber, layerList) {
     
@@ -292,59 +354,3 @@ export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, active
     }
     return handleMatchCounter;
 }
-
-
-
-/** 
- * Function to show shaddow slat under cursor
- * @param {Number} roundedX X-coordinate of the shaddow slat to be drawn (top LH point)
- * @param {Number} roundedY Y-coordinate of the shaddow slat to be drawn (top LH point)
- * @param {SVG.Doc} fullDrawing Full SVG document for the canvas
- * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles
- * @param {Boolean} horizontal True if slat should be placed horizontally. False if slat should be placed vertically
- * @param {Number} numSlats Number of slats to show at once
- */
-export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizontal, numSlats=1) {
-    let defaultColor = '#808080'; //Grey
-    let tmpLine = null;
-    let group = fullDrawing.group()
-
-    // Remove any existing lines with the id 'cursor-slat'
-    let cursorSlat = document.getElementById('cursor-slat')
-    if(cursorSlat){
-        cursorSlat.remove()
-    }
-
-    let drawModeSelector = document.getElementById('palette-type-selector');
-    let drawSlatCargoHandleMode = drawModeSelector.value;
-
-    //Only show slat if we are in slat mode!
-    if(drawSlatCargoHandleMode == 0){
-        for (let i = 0; i < numSlats; i++) {
-            let xIterator = minorGridSize * i * (!horizontal)
-            let yIterator = minorGridSize * i * horizontal
-    
-            if(horizontal){
-                tmpLine = fullDrawing.line(roundedX - 0.5 * minorGridSize + xIterator, 
-                                           roundedY + yIterator, 
-                                           roundedX + 31.5 * minorGridSize + xIterator, 
-                                           roundedY + yIterator)
-                                     .stroke({ width: 4, color:defaultColor, opacity: 0.33 });       
-            }
-            else{
-                tmpLine = fullDrawing.line(roundedX + xIterator, 
-                                           roundedY - 0.5 * minorGridSize + yIterator, 
-                                           roundedX + xIterator, 
-                                           roundedY + 31.5 * minorGridSize + yIterator)
-                                     .stroke({ width: 4, color:defaultColor, opacity: 0.33 });
-            }
-
-            group.add(tmpLine)
-        }
-    
-        group.attr('id','cursor-slat')
-        group.attr({ 'pointer-events': 'none' })
-    }
-}
-
-

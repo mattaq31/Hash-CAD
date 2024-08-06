@@ -122,13 +122,27 @@ export function startDrag(event, layerList, minorGridSize) {
             //check if selected already
             var checkSelected = dragSelectedElement.hasClass("selected")
             if(!checkSelected){
-                dragSelectedElement.attr({stroke: selectedColor})
                 dragSelectedElement.addClass("selected");
+                //Change color
+                if(dragSelectedElement.hasClass("cargo")){
+                    dragSelectedElement.children()[0].attr({stroke: selectedColor})
+                }
+                else{
+                    dragSelectedElement.attr({stroke: selectedColor})
+                }
             }
             else if(checkSelected){
-                let unselectedColor = dragSelectedElement.attr('data-default-color'); 
-                dragSelectedElement.attr({stroke: unselectedColor})
                 dragSelectedElement.removeClass("selected");
+
+                if(dragSelectedElement.hasClass("cargo")){
+                    console.log("drag selected element: ", dragSelectedElement)
+                    let unselectedColor = dragSelectedElement.children()[0].attr('data-default-color')
+                    dragSelectedElement.children()[0].attr({stroke: unselectedColor})
+                }
+                else{
+                    let unselectedColor = dragSelectedElement.attr('data-default-color'); 
+                    dragSelectedElement.attr({stroke: unselectedColor})
+                }                
             }
         } 
     }
