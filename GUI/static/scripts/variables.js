@@ -17,6 +17,9 @@ let cargoCounter = 1;
 let drawSlatCargoHandleMode = 0;    //0: slats, 1: cargo, 2: handles
 var gridStyle = 2;                  //0: none,  1: grid   2: dots
 
+var pasteMode = false; 
+var copiedCargo = null;
+
 //Dictionary for all global variables
 let variables = {
     "activeLayerId" : activeLayerId,
@@ -31,7 +34,9 @@ let variables = {
     "slatCounter": slatCounter,
     "cargoCounter": cargoCounter,
     "drawSlatCargoHandleMode": drawSlatCargoHandleMode,
-    "gridStyle": gridStyle
+    "gridStyle": gridStyle,
+    "pasteMode": pasteMode,
+    "copiedCargo": copiedCargo
 }
 
 /**

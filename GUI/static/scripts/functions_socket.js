@@ -14,6 +14,7 @@ export function showNotification(message) {
     setTimeout(function() {
         // Scroll to the bottom after adding the notification
         notificationsDiv.scrollTop = notificationsDiv.scrollHeight;
+        notificationsDiv.style.pointerEvents = "auto"
 
         notification.classList.add('show');
     }, 100);
@@ -24,6 +25,8 @@ export function showNotification(message) {
         // Remove the element after transition ends
         setTimeout(function() {
             notificationsDiv.removeChild(notification);
+            notificationsDiv.style.pointerEvents = "none"
+
         }, 500);
     }, 5000);
 }
