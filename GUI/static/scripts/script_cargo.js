@@ -1,4 +1,4 @@
-import {updateInventoryItems, populateCargoPalette, renderInventoryTable } from './functions_inventory.js'
+import { updateInventoryItems, populateCargoPalette, renderInventoryTable } from './functions_inventory.js'
 import { changeCursorEvents } from './functions_misc.js'
 
 import { getVariable, writeVariable } from './variables.js'

@@ -1,4 +1,5 @@
 import { getHandleLayerDict, updateHandleLayerButtons, updateHandleLayers } from './functions_handles.js';
+import { populateHandleMatchPalette } from './functions_handle_matching.js';
 import { populateCargoPalette } from './functions_inventory.js';
 import { getVariable } from './variables.js';
 
@@ -39,6 +40,7 @@ export function changePlacementMode(mode, layerList){
         getHandleLayerDict(layerList)
         updateHandleLayers(layerList)
         changeCursorEvents(getVariable("activeHandleLayer"), 'stroke')
+        populateHandleMatchPalette(getVariable("matchGroupNumber"))
     }
 }
 

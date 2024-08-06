@@ -4,6 +4,8 @@ import { getInventoryItemById } from './functions_inventory.js';
 import { place3DSlat, place3DCargo, place3DSeed } from './functions_3D.js';
 import { drawDefaultSeed, drawRotatedSeed } from './functions_seed_path.js';
 
+var historyArray = []
+
 var width = document.getElementById('svg-container').getBoundingClientRect().width
 var height = document.getElementById('svg-container').getBoundingClientRect().height
 var fullDrawing = SVG().addTo('#svg-container').size(width, height)
@@ -53,6 +55,8 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             let xPos3D = (roundedX)/minorGridSize
             let yPos3D = (roundedY)/minorGridSize
             place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter, activeLayerColor, horizontal)
+
+            historyArray.push(tmpLine)
             
             slatCounter += 1;
         }
@@ -79,6 +83,8 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             let xPos3D = (roundedX)/minorGridSize
             let yPos3D = (roundedY)/minorGridSize
             place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter, activeLayerColor, horizontal)
+
+            historyArray.push(tmpLine)
 
             slatCounter += 1;
         }
@@ -167,6 +173,8 @@ export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, 
             group.attr('class', "cargo")
 
             place3DCargo(roundedX / minorGridSize, roundedY / minorGridSize, activeLayerId, selectedCargoId, cargoCounter, top, 0.5)
+
+            historyArray.push(group)
             
             cargoCounter += 1;
         }
@@ -229,8 +237,11 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
 
         place3DSeed(roundedX / minorGridSize, roundedY / minorGridSize, activeLayerId, activeLayerColor, rotated)
 
+        historyArray.push(tmpPath)
+
         if(wasSeedOnCargo(cargoLayer)){
             tmpPath.remove()
+            historyArray.pop()
         }
     }
 }
@@ -288,8 +299,15 @@ export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizon
 }
 
 
-
-
+/**
+ * Function to remove last placed item
+ */
+export function undo(){
+    let oldElement = historyArray.pop()
+    oldElement.remove()
+    //historyArray.slice(-1)[0].remove()
+    //historyArray.pop()
+}
 
 
 
@@ -306,7 +324,7 @@ export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, active
     if(/*!isMatcherOnMatcher(roundedX, roundedY, activeCargoLayer)*/ true){
         const width = minorGridSize * 0.85
 
-        tmpSquare = activeHandleLayer.rect(width, width) // SVG.js uses diameter, not radius
+        let tmpSquare = activeHandleLayer.rect(width, width) // SVG.js uses diameter, not radius
                                      .move(roundedX - width/2, roundedY - width/2)
                                      .fill(defaultColor) 
                                      .stroke(activeLayerColor) 

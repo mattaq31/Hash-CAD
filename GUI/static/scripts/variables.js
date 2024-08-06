@@ -20,6 +20,12 @@ var gridStyle = 2;                  //0: none,  1: grid   2: dots
 var pasteMode = false; 
 var copiedCargo = null;
 
+var matchGroupNumber = 1
+var handleMatchMode = null
+var handleMatchGroup = null;
+var handleMatchCounter = 0
+
+
 //Dictionary for all global variables
 let variables = {
     "activeLayerId" : activeLayerId,
@@ -36,7 +42,11 @@ let variables = {
     "drawSlatCargoHandleMode": drawSlatCargoHandleMode,
     "gridStyle": gridStyle,
     "pasteMode": pasteMode,
-    "copiedCargo": copiedCargo
+    "copiedCargo": copiedCargo,
+    "matchGroupNumber": matchGroupNumber,
+    "handleMatchMode": handleMatchMode,
+    "handleMatchGroup": handleMatchGroup,
+    "handleMatchCounter": handleMatchCounter
 }
 
 /**

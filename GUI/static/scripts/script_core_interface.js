@@ -1,18 +1,20 @@
 //Functions
-import { placeSlat, placeCargo, placeSeed, showSlat, getFullDrawing } from './functions_drawing.js';
+import { placeSlat, placeCargo, placeSeed, showSlat, getFullDrawing, undo, placeHandleMatcher } from './functions_drawing.js';
 import { copyCargo, showCopiedCargo, pasteCargo } from './functions_copypaste.js';
 import { getPanStatus, configurePanzoom } from './functions_panzoom.js'
 import { drawGrid, changePlacementMode } from './functions_misc.js';
 import { getLayerList } from './functions_layers.js'
 
 //Constants & Variables
-import {minorGridSize, majorGridSize, shownOpacity, shownCargoOpacity } from './constants.js'
+import {minorGridSize, majorGridSize, shownOpacity, shownCargoOpacity, shownHandleMatchOpacity } from './constants.js'
 import {getVariable, writeVariable} from './variables.js'
 
 let placeRoundedX = 0;  //Snapped position of mouse (X)
 let placeRoundedY = 0;  //Snapped position of mouse (Y)
 
 SVG.on(document, 'DOMContentLoaded', function() {
+
+    
 
     const svgcontainer = document.getElementById('svg-container')
     var fullDrawing = getFullDrawing()
@@ -124,6 +126,20 @@ SVG.on(document, 'DOMContentLoaded', function() {
                         writeVariable("cargoCounter", cargoCounter)
                     }
                 }
+            }
+            else if(getVariable("drawSlatCargoHandleMode") == 2){
+                let handleMatchCounter = placeHandleMatcher(placeRoundedX,
+                                                            placeRoundedY, 
+                                                            getVariable("activeHandleLayer"), 
+                                                            getVariable("activeLayerId"), 
+                                                            minorGridSize, 
+                                                            getVariable("activeLayerColor"), 
+                                                            shownHandleMatchOpacity, 
+                                                            getVariable("handleMatchCounter"), 
+                                                            getVariable("handleMatchGroup"), 
+                                                            layerList)
+                
+                writeVariable("handleMatchCounter", handleMatchCounter)
             }
         }        
     });
@@ -244,6 +260,14 @@ document.addEventListener('keydown', (event) => {
     if(event.ctrlKey && (event.key === 'v')) {
         writeVariable("pasteMode", true)
         console.log("Paste has been started!")
+    }
+});
+
+// Undo when ctrl + z is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.ctrlKey && (event.key === 'z')) {
+        undo()
+        console.log("Undo")
     }
 });
 
