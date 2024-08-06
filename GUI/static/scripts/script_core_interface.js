@@ -48,9 +48,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
     // Handle clicks 
     svgcontainer.addEventListener('pointerdown', (event) => {
 
-        let drawMode = document.getElementById('draw-button').classList.contains('draw-erase-select-toggle-selected')
+        let eraseMode = document.getElementById('erase-button').classList.contains('draw-erase-select-toggle-selected')
     
-        if(getPanStatus() == true && drawMode){
+        if(getPanStatus() == true && !eraseMode){
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
             if(getVariable("drawSlatCargoHandleMode") == 0){
@@ -244,5 +244,72 @@ document.addEventListener('keydown', (event) => {
     if(event.ctrlKey && (event.key === 'v')) {
         writeVariable("pasteMode", true)
         console.log("Paste has been started!")
+    }
+});
+
+
+// Toggle erase mode when "e" is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.key === 'e') {
+        const eraseButton = document.getElementById('erase-button')
+        eraseButton.click()
+        console.log("Toggled erase mode")
+    }
+});
+
+// Toggle draw mode when "d" is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.key === 'd') {
+        const drawButton = document.getElementById('draw-button')
+        drawButton.click()
+        console.log("Toggled draw mode")
+    }
+});
+
+// Toggle select mode when "s" is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.key === 's') {
+        const selectButton = document.getElementById('select-button')
+        selectButton.click()
+        console.log("Toggled select mode")
+    }
+});
+
+// Toggle slat mode when "S" is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.key === 'S') {
+        const drawModeSelector = document.getElementById('palette-type-selector');
+        drawModeSelector.value = 0
+        drawModeSelector.dispatchEvent(new Event('change'))
+        console.log("Toggled slat mode")
+    }
+});
+
+// Toggle slat mode when "C" is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.key === 'C') {
+        const drawModeSelector = document.getElementById('palette-type-selector');
+        drawModeSelector.value = 1
+        drawModeSelector.dispatchEvent(new Event('change'))
+        console.log("Toggled cargo mode")
+    }
+});
+
+// Toggle slat mode when "H" is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.key === 'H') {
+        const drawModeSelector = document.getElementById('palette-type-selector');
+        drawModeSelector.value = 2
+        drawModeSelector.dispatchEvent(new Event('change'))
+        console.log("Toggled handle mode")
+    }
+});
+
+// Add layer when "+" is pressed
+document.addEventListener('keydown', (event) => {
+    if(event.key === '+') {
+        const addLayerButton = document.getElementById('add-layer');
+        addLayerButton.click()
+        console.log("Added new layer via shortcut")
     }
 });
