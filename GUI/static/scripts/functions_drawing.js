@@ -1,7 +1,7 @@
 import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo, wasSeedOnCargo } from './functions_overlap.js';
 import { startDrag } from './functions_dragging.js';
 import { getInventoryItemById } from './functions_inventory.js';
-import { place3DSlat, place3DCargo, place3DSeed } from './functions_3D.js';
+import { place3DSlat, place3DCargo, place3DSeed, delete3DElement } from './functions_3D.js';
 import { drawDefaultSeed, drawRotatedSeed } from './functions_seed_path.js';
 
 var historyArray = []
@@ -304,6 +304,7 @@ export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizon
  */
 export function undo(){
     let oldElement = historyArray.pop()
+    delete3DElement(oldElement)
     oldElement.remove()
 }
 
