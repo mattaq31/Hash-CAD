@@ -305,8 +305,6 @@ export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizon
 export function undo(){
     let oldElement = historyArray.pop()
     oldElement.remove()
-    //historyArray.slice(-1)[0].remove()
-    //historyArray.pop()
 }
 
 
