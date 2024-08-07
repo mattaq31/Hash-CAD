@@ -456,6 +456,10 @@ class Megastructure:
         :return: N/A
         """
 
+        if self.handle_arrays is None:
+            print(Fore.RED + 'No handle graphics will be generated as no handle arrays have been assigned to the design.')
+            return
+
         create_graphical_assembly_handle_view(self.slat_array, self.handle_arrays,
                                               layer_interface_orientations=self.layer_interface_orientations,
                                               slats=self.slats, save_to_folder=save_to_folder,

@@ -103,7 +103,11 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+        if isinstance(colormap, list):
+            layer_color = colormap[slat.layer - 1]
+        else:
+            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+
         layer_figures[slat.layer - 1][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
                                                  color=layer_color, linewidth=slat_width, zorder=1)
         layer_figures[slat.layer - 1][1][1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
@@ -130,12 +134,18 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         # sets the colours of annotation according to the cargo being added
         all_cargo = set(cargo_dict.values())
         cargo_color_values_rgb = {}
+
+        if isinstance(cargo_colormap, list):
+            cargo_color_list = cargo_colormap
+        else:
+            cargo_color_list = mpl.colormaps[cargo_colormap].colors
+
         for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
-            if cargo_number >= len(mpl.colormaps[cargo_colormap].colors):
+            if cargo_number >= len(cargo_color_list):
                 print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. '
                                  'Recycling other colors for the higher IDs.' % unique_cargo_name)
-                cargo_number = max(int(cargo_number) - len(mpl.colormaps[cargo_colormap].colors), 0)
-            cargo_color_values_rgb[unique_cargo_name] = (mpl.colormaps[cargo_colormap].colors[cargo_number])
+                cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
+            cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
 
         layers_containing_cargo = set()
         for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
@@ -235,7 +245,10 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
         start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+        if isinstance(colormap, list):
+            layer_color = colormap[slat.layer - 1]
+        else:
+            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
 
         if slat.layer == 1:
             plot_positions = [0]
@@ -282,7 +295,13 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
     annotation_x_position = full_x_scale / 2
     for fig_ind, (fig, ax) in enumerate(interface_figures):
         for l_ind, line in enumerate(layer_lines):
-            ax[1].plot(line[0], line[1], color=mpl.colormaps[colormap].colors[l_ind], linewidth=slat_width)
+
+            if isinstance(colormap, list):
+                layer_color = colormap[l_ind]
+            else:
+                layer_color = mpl.colormaps[colormap].colors[l_ind]
+
+            ax[1].plot(line[0], line[1], color=layer_color, linewidth=slat_width)
 
             # extracts interface numbers from megastructure data
             if l_ind == 0:

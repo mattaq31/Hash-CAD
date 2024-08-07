@@ -67,12 +67,18 @@ def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, gr
     """
     all_cargo = set(cargo_dict.values())
     cargo_color_values_rgb = {}  # sets the colours of annotation according to the cargo being added
+
+    if isinstance(cargo_colormap, list):
+        cargo_color_list = cargo_colormap
+    else:
+        cargo_color_list = mpl.colormaps[cargo_colormap].colors
+
     for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
-        if cargo_number >= len(mpl.colormaps[cargo_colormap].colors):
+        if cargo_number >= len(cargo_color_list):
             print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the 3D structure colormap. '
                              'Recycling other colors for the higher IDs.' % unique_cargo_name)
-            cargo_number = max(int(cargo_number) - len(mpl.colormaps[cargo_colormap].colors), 0)
-        cargo_color_values_rgb[unique_cargo_name] = (mpl.colormaps[cargo_colormap].colors[cargo_number])
+            cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
+        cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
 
     for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
 
@@ -131,7 +137,10 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
 
         layer = slat.layer
         length = slat.max_length
-        layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+        if isinstance(colormap, list):
+            layer_color = colormap[layer - 1]
+        else:
+            layer_color = mpl.colormaps[colormap].colors[layer - 1]
 
         # TODO: can we represent the cylinders with the precise dimensions of the real thing i.e. with the 12/6nm extension on either end?
         start_point = (pos1[1] * grid_xd, pos1[0] * grid_yd, layer - 1)

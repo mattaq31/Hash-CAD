@@ -120,12 +120,14 @@ for index, h_array in enumerate([reduced_handle_array, best_array, random_handle
     megastructure.slats['crossbar_slat_2'] = crossbar_slat_2
     megastructure.patch_control_handles(core_plate)
 
+    colormap = ['#1f77b4', '#ff7f0e', '#ffff00']
     if index == 0:
         #  generates the graphical report for just one design, since they are all the same
-        megastructure.create_standard_graphical_report(graphics_folder)
+        megastructure.create_standard_graphical_report(graphics_folder, colormap=colormap)
+        megastructure.create_blender_3D_view(graphics_folder, animate_assembly=True, colormap=colormap)
     else:
         megastructure.create_graphical_assembly_handle_view(save_to_folder=graphics_folder,
-                                                            colormap='Dark2',
+                                                            colormap=colormap,
                                                             instant_view=False)
 
     os.rename(os.path.join(graphics_folder, 'handles_layer_1_2.png'), os.path.join(graphics_folder, f'assembly_handles_{design_names[index]}.png'))

@@ -295,12 +295,18 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         for key, value in animate_slat_group_dict.items():
             if value not in materials:
                 layer_id = slats[key].layer
-                color = mpl.colormaps[colormap].colors[layer_id-1]
+                if isinstance(colormap, list):
+                    color = mpl.colors.to_rgb(colormap[layer_id - 1])
+                else:
+                    color = mpl.colormaps[colormap].colors[layer_id - 1]
                 materials[value] = create_slat_material(color + (1,), f'Material Group {value}, Layer{layer_id}', alpha_animation=True)
     else:
         num_materials = slat_array.shape[2]
         for i in range(num_materials):
-            color = mpl.colormaps[colormap].colors[i]
+            if isinstance(colormap, list):
+                color = mpl.colors.to_rgb(colormap[i])
+            else:
+                color = mpl.colormaps[colormap].colors[i]
             materials[i+1] = create_slat_material(color + (1,), f'Layer {i + 1}', alpha_animation=False)
 
     # prepares variables
