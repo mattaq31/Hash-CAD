@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import numpy as np
 import matplotlib.pyplot as plt
-from colorama import Fore
+from colorama import Fore, Style
 import os
 import matplotlib as mpl
 import pandas as pd
@@ -589,6 +589,8 @@ class Megastructure:
         if generate_3d_video:
             self.create_graphical_3D_view(output_folder, colormap=colormap, cargo_colormap=cargo_colormap,
                                           seed_color=seed_color)
+
+        print(Style.RESET_ALL)
 
     def export_design(self, filename, folder):
         """

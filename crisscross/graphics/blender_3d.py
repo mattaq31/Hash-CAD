@@ -238,7 +238,11 @@ def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, gr
             print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the 3D structure colormap. '
                              'Recycling other colors for the higher IDs.' % unique_cargo_name)
             cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
-        cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
+        if isinstance(cargo_colormap, list):
+            cargo_color_values_rgb[unique_cargo_name] = mpl.colors.to_rgb(cargo_color_list[cargo_number])
+        else:
+            cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
+
         material = create_slat_material(cargo_color_values_rgb[unique_cargo_name] + (1,), f'Seed Material')
         cargo_materials[unique_cargo_name] = material
 
