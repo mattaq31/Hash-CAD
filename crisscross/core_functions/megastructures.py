@@ -650,13 +650,14 @@ class Megastructure:
                         header=False)
             writer.sheets[f'cargo_layer_{layer}_{position}_h{orientation_list[index]}'].conditional_format(0, 0, df.shape[0], df.shape[1] - 1, excel_conditional_formatting)
 
-        # prints out single seed dataframe
-        df = pd.DataFrame(self.seed_array[1])
-        df.to_excel(writer, sheet_name=f'seed_layer_{self.seed_array[0]}', index=False, header=False)
-        writer.sheets[f'seed_layer_{self.seed_array[0]}'].conditional_format(0, 0,
-                                                                             df.shape[0],
-                                                                             df.shape[1] - 1,
-                                                                             excel_conditional_formatting)
+        # prints out single seed dataframe if available
+        if self.seed_array is not None:
+            df = pd.DataFrame(self.seed_array[1])
+            df.to_excel(writer, sheet_name=f'seed_layer_{self.seed_array[0]}', index=False, header=False)
+            writer.sheets[f'seed_layer_{self.seed_array[0]}'].conditional_format(0, 0,
+                                                                                 df.shape[0],
+                                                                                 df.shape[1] - 1,
+                                                                                 excel_conditional_formatting)
 
         # prints out essential metadata required to regenerate design
 
