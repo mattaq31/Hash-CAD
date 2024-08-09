@@ -346,7 +346,11 @@ export function delete3DSlatLayer(slatLayer){
 
 
 
-
+/**
+ * Function to change the color of a particular slat
+ * @param {Number} id ID number of slat to recolor
+ * @param {String} newColor Color to recolor slat to
+ */
 function recolor3DSlat(id, newColor){
     console.log("Slat ID to recolor: ", id)
 
@@ -358,6 +362,11 @@ function recolor3DSlat(id, newColor){
     }
 }
 
+/**
+ * Function to change the color of a particular cargo
+ * @param {Number} id ID number of cargo to recolor
+ * @param {String} newColor Color to recolor cargo to
+ */
 function recolor3DCargo(id, newColor){
     console.log("Cargo ID to recolor: ", id)
 
@@ -369,6 +378,10 @@ function recolor3DCargo(id, newColor){
     }
 }
 
+/**
+ * Function to change the color of a seed
+ * @param {String} newColor Color to recolor seed to
+ */
 function recolor3DSeed(newColor){
     let seedToRecolor = scene.getObjectByName('seed-3D');
     
@@ -378,6 +391,11 @@ function recolor3DSeed(newColor){
     }
 }
 
+/**
+ * Function to change the color of a particular element in 3D
+ * @param {SVG Element} element Element from SVG to recolor
+ * @param {String} newColor Color to recolor element to
+ */
 export function recolor3DElement(element, newColor){
     if(element.attr('class').split(' ').includes('line')){
         recolor3DSlat(element.attr('id'), newColor)
@@ -389,100 +407,3 @@ export function recolor3DElement(element, newColor){
         recolor3DSeed(newColor)
     }
 }
-
-
-
-
-/*
-export function renderMegastructure(slatDict, bottomCargoDict, topCargoDict){
-    scene.remove.apply(scene, scene.children);
-    let slatGeometry = drawSlatGeometry(slatDict)
-    let topCargoGeometry = drawCargoGeometry(topCargoDict, true)
-    let bottomCargoGeometry = drawCargoGeometry(bottomCargoDict, false)
-    populateScene(slatGeometry)
-    populateScene(topCargoGeometry)
-    populateScene(bottomCargoGeometry)
-    renderScene()
-}
-
-export function drawSlatGeometry(slatDict){
-
-    const cylinderMeshes = [];
-
-    //Get unique slat numbers
-    let slatNums = Object.values(slatDict)
-    const uniqueSlatNums = new Set(slatNums);
-
-    const cylinderGeometry = new THREE.CylinderGeometry(0.25, 0.25, 32, 32);
-    const cylinderMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-
-    for (const slatNum of uniqueSlatNums) {
-        let orientation = findSlatStartOrientation(slatDict, slatNum)
-
-        let dictX = orientation[0]
-        let dictY = orientation[1]
-        let layerId = orientation[2]
-        let horizontal = orientation[3]
-
-        const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
-
-        if(horizontal){
-            cylinder.rotation.z = Math.PI / 2; // Rotate 90 degrees around the z-axis to align along the x-axis
-            cylinder.position.set(dictX + 16, dictY, layerId);
-        }
-        else{
-            cylinder.position.set(dictX, dictY + 16, layerId);
-        }
-
-        
-        cylinderMeshes.push(cylinder);
-    }
-
-    return cylinderMeshes
-}
-
-export function drawCargoGeometry(cargoDict, top=true){
-
-    const cargoMeshes = [];
-
-    const sphereGeometry = new THREE.SphereGeometry(0.5)
-    const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-
-    const cubeGeometry = new THREE.BoxGeometry(1,1,1)
-    const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    
-    // Iterate through the dictionary
-    for (const [key, value] of Object.entries(cargoDict)) {
-        
-        let keyArray = key.split(',')
-
-        let dictX   = Number(keyArray[0])
-        let dictY   = Number(keyArray[1])
-        let layerId = keyArray[2]
-
-        let cargoId = value
-        
-        if(top == true){
-            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-            sphere.position.set(dictX, dictY + 0.5, layerId + 0.25)
-
-            cargoMeshes.push(sphere)
-        }
-        else{
-            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.set(dictX, dictY + 0.5, layerId - 0.5)
-
-            cargoMeshes.push(cube)
-        }
-    }
-
-    return cargoMeshes
-}
-
-export function populateScene(geometryArray){
-    for (const slat of geometryArray) {
-        scene.add(slat)
-    }
-
-    
-}*/

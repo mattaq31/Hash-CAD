@@ -14,7 +14,7 @@ import os
 import numpy as np
 from crisscross.helper_functions import create_dir_if_empty
 from server_helper_functions import (seed_dict_to_array, slat_dict_to_array,
-                                     array_to_dict,
+                                     array_to_dict, seed_array_to_dict, cargo_dict_to_formatted,
                                      cargo_to_inventory, convert_np_to_py,
                                      clear_folder_contents,
                                      generate_formatted_orientations,
@@ -142,7 +142,26 @@ def save_file_to_uploads(data):
     crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     print(crisscross_design_path)
 
-    import_megastructure(crisscross_design_path)
+    seed_array, cargo_dict, slat_array, handle_array = import_megastructure(crisscross_design_path)
+
+    seed_dict = {}
+    slat_dict = {}
+    handle_dict = {}
+
+    seed_dict = seed_array_to_dict(seed_array)
+
+    if (slat_array.ndim == 3):
+        slat_dict = array_to_dict(slat_array)
+
+    if (handle_array.ndim == 3):
+        handle_dict = array_to_dict(handle_array)
+
+    if (cargo_dict):
+        cargo_dict = cargo_dict_to_formatted(cargo_dict)
+    else:
+        cargo_dict = {}
+
+    emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict])
 
 
     '''

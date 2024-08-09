@@ -2,8 +2,10 @@
 import { placeSlat, placeCargo, placeSeed, showSlat, getFullDrawing, undo, placeHandleMatcher } from './functions_drawing.js';
 import { copyCargo, showCopiedCargo, pasteCargo } from './functions_copypaste.js';
 import { getPanStatus, configurePanzoom } from './functions_panzoom.js'
+import { showCopiedMatchers, pasteMatchers } from './functions_handle_matching.js';
 import { drawGrid, changePlacementMode } from './functions_misc.js';
 import { getLayerList } from './functions_layers.js'
+
 
 //Constants & Variables
 import {minorGridSize, majorGridSize, shownOpacity, shownCargoOpacity, shownHandleMatchOpacity } from './constants.js'
@@ -40,6 +42,9 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
         if(getVariable("pasteMode")==true){
             showCopiedCargo(getVariable("copiedCargo"), placeRoundedX, placeRoundedY, fullDrawing, minorGridSize)
+        }
+        else if(getVariable("placeMatchers") == true){
+            showCopiedMatchers(getVariable("matcherDict"), placeRoundedX, placeRoundedY, fullDrawing, minorGridSize)        
         }
         else{
             let slatCountToPlace = document.getElementById('slatNumber').value
@@ -128,18 +133,36 @@ SVG.on(document, 'DOMContentLoaded', function() {
                 }
             }
             else if(getVariable("drawSlatCargoHandleMode") == 2){
-                let handleMatchCounter = placeHandleMatcher(placeRoundedX,
-                                                            placeRoundedY, 
-                                                            getVariable("activeHandleLayer"), 
-                                                            getVariable("activeLayerId"), 
-                                                            minorGridSize, 
-                                                            getVariable("activeLayerColor"), 
-                                                            shownHandleMatchOpacity, 
-                                                            getVariable("handleMatchCounter"), 
-                                                            getVariable("handleMatchGroup"), 
-                                                            layerList)
+                if(getVariable("placeMatchers") == true){
+                    writeVariable("placeMatchers", false)
+                    pasteMatchers(getVariable("matcherDict"), 
+                                  getVariable("handleMatchGroup"), 
+                                  placeRoundedX, 
+                                  placeRoundedY, 
+                                  getVariable("activeHandleLayer"), 
+                                  getVariable("activeLayerId"), 
+                                  minorGridSize, 
+                                  getVariable("activeLayerColor"), 
+                                  shownHandleMatchOpacity, 
+                                  layerList)
+
+                }
+                else{
+                    let handleMatchCounter = placeHandleMatcher(placeRoundedX,
+                                                                placeRoundedY, 
+                                                                getVariable("activeHandleLayer"), 
+                                                                getVariable("activeLayerId"), 
+                                                                minorGridSize, 
+                                                                getVariable("activeLayerColor"), 
+                                                                shownHandleMatchOpacity, 
+                                                                getVariable("handleMatchCounter"), 
+                                                                getVariable("handleMatchGroup"), 
+                                                                layerList,
+                                                                true)
+
+                    writeVariable("handleMatchCounter", handleMatchCounter)
+                }
                 
-                writeVariable("handleMatchCounter", handleMatchCounter)
             }
         }        
     });

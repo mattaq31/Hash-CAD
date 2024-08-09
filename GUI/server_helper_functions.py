@@ -34,6 +34,7 @@ def import_megastructure(file):
     imported_cargo_dict = crisscross_megastructure.cargo_dict
     imported_slat_array = crisscross_megastructure.slat_array
     imported_handle_array = crisscross_megastructure.handle_arrays
+    return [imported_seed_array, imported_cargo_dict, imported_slat_array, imported_handle_array]
 
 
 
@@ -204,9 +205,35 @@ def array_to_dict(array):
         for y in range(y_dim):
             for layer in range(layer_dim):
                 entry = array[x, y, layer]
+                if (isinstance(entry, (np.integer, np.floating))):
+                    entry = int(entry)
                 if entry != 0:
                     dict[f'{x},{y},{layer+1}'] = entry
     return dict
+
+def seed_array_to_dict(array):
+    """
+    Converts python array to dictionary for use in javascript.
+    :param array: array of slats or cargos
+    :return: grid dictionary
+    """
+    layer = array[0]
+    seed_array = array[1]
+    # Convert numpy array to a list of dictionaries
+    dict = {}
+    x_dim, y_dim = seed_array.shape
+
+    for x in range(x_dim):
+        for y in range(y_dim):
+            entry = seed_array[x, y]
+            if (isinstance(entry, (np.integer, np.floating))):
+                entry = int(entry)
+            if entry != 0:
+                dict[f'{x},{y},{layer+1}'] = entry
+    return dict
+
+def cargo_dict_to_formatted(dict):
+    return {str(key): value for key, value in dict.items()}
 
 
 # Function to create the acronym

@@ -320,8 +320,11 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, han
 
     // Iterate through the dictionary
     for (const [key, value] of Object.entries(cargoDict)) {
-        
-        let keyArray = key.split(',')
+
+        // Remove all non-numeric characters except commas
+        const cleanedKey = key.replace(/[^\d,]/g, '');
+
+        let keyArray = cleanedKey.split(',')
 
         let dictX   = Number(keyArray[0])
         let dictY   = Number(keyArray[1])
@@ -329,6 +332,8 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, han
         let orientation = Number(keyArray[3])
 
         let cargoId = value
+
+        console.log("Cargo ID: ", cargoId)
 
         while(!layerList.has(layerId)){
             const addLayerButton = document.getElementById('add-layer');

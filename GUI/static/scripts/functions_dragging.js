@@ -1,4 +1,4 @@
-import { isLineOnLine,  isCargoOnCargo } from './functions_overlap.js';
+import { isLineOnLine,  isCargoOnCargo, isMatcherOnMatcher } from './functions_overlap.js';
 import { delete3DElement, move3DSlat, move3DCargo, move3DSeed} from './functions_3D.js';
 
 let dragOffset = { x: 0, y: 0 };    //Offset between mouse position and item position
@@ -231,6 +231,14 @@ export function drag(event, layerList, selectedElement, minorGridSize) {
                     let layerNum = selectedElement.attr('layer')
                     move3DCargo(cargoToMoveId, x3D, y3D, layerNum, true, 0.5)
                 }
+            }
+        }
+        else if(drawSlatCargoHandleMode == 2){ //Handle mode
+            if(!isMatcherOnMatcher(roundedX, roundedY, activeLayer, selectedElement)) {
+                let bbox = selectedElement.bbox();
+                let xOffset = bbox.width / 2
+                let yOffset = bbox.height / 2
+                selectedElement.move(roundedX-xOffset, roundedY-yOffset)
             }
         }
     }

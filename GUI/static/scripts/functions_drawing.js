@@ -1,4 +1,4 @@
-import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo, wasSeedOnCargo } from './functions_overlap.js';
+import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo, wasSeedOnCargo, isMatcherOnMatcher } from './functions_overlap.js';
 import { startDrag } from './functions_dragging.js';
 import { getInventoryItemById } from './functions_inventory.js';
 import { place3DSlat, place3DCargo, place3DSeed, delete3DElement } from './functions_3D.js';
@@ -316,23 +316,42 @@ export function undo(){
 //TODO: WiP
 /** 
  */
-export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, activeLayerId, minorGridSize, activeLayerColor, shownHandleOpacity, handleMatchCounter, matchGroupNumber, layerList) {
+export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, activeLayerId, minorGridSize, activeLayerColor, shownHandleOpacity, handleMatchCounter, matchGroupNumber, layerList, source=true) {
     
     let defaultColor = '#808080'; 
 
-    if(/*!isMatcherOnMatcher(roundedX, roundedY, activeCargoLayer)*/ true){
+    if(!isMatcherOnMatcher(roundedX, roundedY, activeHandleLayer)){
         const width = minorGridSize * 0.85
 
-        let tmpSquare = activeHandleLayer.rect(width, width) // SVG.js uses diameter, not radius
-                                     .move(roundedX - width/2, roundedY - width/2)
-                                     .fill(defaultColor) 
-                                     .stroke(activeLayerColor) 
-                                     .opacity(shownHandleOpacity);
-        
+        let tmpShape = null;
 
-        tmpSquare.attr('data-match-component', 'shape')
-        tmpSquare.attr('data-default-color', defaultColor)
-        tmpSquare.attr('pointer-events', 'none');
+        if(source){
+            let tmpCircle = activeHandleLayer.circle(width) // SVG.js uses diameter, not radius
+                                             .attr({ cx: roundedX, cy: roundedY })
+                                             .fill(defaultColor) 
+                                             .stroke(activeLayerColor) 
+                                             .opacity(shownHandleOpacity);
+
+            tmpCircle.attr('data-match-component', 'shape')
+            tmpCircle.attr('data-default-color', defaultColor)
+            tmpCircle.attr('pointer-events', 'none');
+
+            tmpShape = tmpCircle
+        }
+        else{
+            let tmpSquare = activeHandleLayer.rect(width, width) // SVG.js uses diameter, not radius
+                                             .move(roundedX - width/2, roundedY - width/2)
+                                             .fill(defaultColor) 
+                                             .stroke(activeLayerColor) 
+                                             .opacity(shownHandleOpacity);
+
+            tmpSquare.attr('data-match-component', 'shape')
+            tmpSquare.attr('data-default-color', defaultColor)
+            tmpSquare.attr('pointer-events', 'none');
+
+            tmpShape = tmpSquare
+        }
+        
 
         // Adding text (tag) to the cargo
         let text = activeHandleLayer.text(matchGroupNumber)
@@ -355,7 +374,7 @@ export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, active
     
         // Group the circle and text
         let group = activeHandleLayer.group()
-        group.add(tmpSquare).add(text);
+        group.add(tmpShape).add(text);
         group.on('pointerdown', function(event) {
             startDrag(event, layerList, minorGridSize);
         });
@@ -365,7 +384,14 @@ export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, active
         group.attr('id'  ,  handleMatchCounter    )
         group.attr('type',  matchGroupNumber )
         group.attr('layer', activeLayerId   )
-        group.attr('class', "handle-matcher")
+
+        if(source){
+            group.attr('class', "handle-matcher-source")
+        }
+        else{
+            group.attr('class', "handle-matcher-target")
+        }
+        
         
         handleMatchCounter += 1;
     }

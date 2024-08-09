@@ -180,3 +180,25 @@ export function wasSeedOnCargo(layer){
         return onOther
     });
 }
+
+
+export function isMatcherOnMatcher(x, y, layer, selectedPoint = false){
+    const matchers = layer.find('.handle-matcher-source');
+    return matchers.some(matcher => {
+      
+        //Check if overlapping with any lines in general
+        const bbox = matcher.bbox();
+        let onOther = (x >= bbox.x && x <= bbox.x2 && y >= bbox.y && y <= bbox.y2)
+
+        //Check if overlapping with itself
+        let onItself = false
+        if(selectedPoint){
+            const selfBbox = selectedPoint.bbox();
+            onItself = (x >= selfBbox.x && x <= selfBbox.x2 && y >= selfBbox.y && y <= selfBbox.y2)
+        }
+      
+        return (
+            (onOther && (!onItself))
+        );
+    });
+}

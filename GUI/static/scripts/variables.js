@@ -25,6 +25,9 @@ var handleMatchMode = null
 var handleMatchGroup = null;
 var handleMatchCounter = 0
 
+let placeMatchers = false
+let matcherDict = null
+
 
 //Dictionary for all global variables
 let variables = {
@@ -46,7 +49,9 @@ let variables = {
     "matchGroupNumber": matchGroupNumber,
     "handleMatchMode": handleMatchMode,
     "handleMatchGroup": handleMatchGroup,
-    "handleMatchCounter": handleMatchCounter
+    "handleMatchCounter": handleMatchCounter,
+    "placeMatchers": placeMatchers,
+    "matcherDict": matcherDict
 }
 
 /**
