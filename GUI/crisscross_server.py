@@ -148,7 +148,8 @@ def save_file_to_uploads(data):
     slat_dict = {}
     handle_dict = {}
 
-    seed_dict = seed_array_to_dict(seed_array)
+    if (seed_array):
+        seed_dict = seed_array_to_dict(seed_array)
 
     if (slat_array.ndim == 3):
         slat_dict = array_to_dict(slat_array)

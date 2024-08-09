@@ -229,7 +229,7 @@ def seed_array_to_dict(array):
             if (isinstance(entry, (np.integer, np.floating))):
                 entry = int(entry)
             if entry != 0:
-                dict[f'{x},{y},{layer+1}'] = entry
+                dict[f'{x},{y},{layer}'] = entry
     return dict
 
 def cargo_dict_to_formatted(dict):

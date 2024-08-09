@@ -1,6 +1,6 @@
 import { willVertBeOnLine, willHorzBeOnLine, isCargoOnCargo, wasSeedOnCargo, isMatcherOnMatcher } from './functions_overlap.js';
 import { startDrag } from './functions_dragging.js';
-import { getInventoryItemById } from './functions_inventory.js';
+import { getInventoryItemById, getInventoryItemByName } from './functions_inventory.js';
 import { place3DSlat, place3DCargo, place3DSeed, delete3DElement } from './functions_3D.js';
 import { drawDefaultSeed, drawRotatedSeed } from './functions_seed_path.js';
 
@@ -110,7 +110,11 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
  */
 export function placeCargo(roundedX, roundedY, activeCargoLayer, activeLayerId, minorGridSize, activeLayerColor, shownCargoOpacity, cargoCounter, selectedCargoId, layerList, top=true) {
     
-    const cargoItem = getInventoryItemById(selectedCargoId);
+    let cargoItem = getInventoryItemById(selectedCargoId);
+    if(!cargoItem){
+        cargoItem = getInventoryItemByName(selectedCargoId)
+    }
+
     let defaultColor = activeLayerColor; 
 
     if(cargoItem){

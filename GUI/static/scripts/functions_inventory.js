@@ -50,6 +50,10 @@ export function getInventoryItemById(id) {
     return inventoryData.find(item => item.id === id);
 }
 
+export function getInventoryItemByName(name){
+    return inventoryData.find(item => item.name === name);
+}
+
 /**
  * Function to adjust SVG.text element size to fit within radius size
  * @param {SVG.text} text Text to scale

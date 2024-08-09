@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { getInventoryItemById } from './functions_inventory.js';
+import { getInventoryItemById, getInventoryItemByName } from './functions_inventory.js';
 import { generateSeedPoints3D } from './functions_seed_path.js'
 
 const right3DPanel = document.getElementById('right-3D-panel');
@@ -129,7 +129,11 @@ export function place3DSlat(x, y, layerNum, id, layerColor,  horizontal, radius 
  */
 export function place3DCargo(x, y, layerNum, id, cargoCounter, top, radius=0.5) {
 
-    const cargoItem = getInventoryItemById(id);
+    let cargoItem = getInventoryItemById(id);
+    if(!cargoItem){
+        cargoItem = getInventoryItemByName(id)
+    }
+
 
     const sphereGeometry = new THREE.SphereGeometry(radius)
     const sphereMaterial = new THREE.MeshStandardMaterial({ color: cargoItem.color });
