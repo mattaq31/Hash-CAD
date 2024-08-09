@@ -269,9 +269,11 @@ export function findSlatStartOrientation(slatDict, slatNum){
  * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
  * @param {Number} shownOpacity Opacity at which slats should be drawn when shown - default
+ * @param {Number} offsetX Offset from upper LH corner of canvas with which to import the slats
+ * @param {Number} offsetY Offset from upper LH corner of canvas with which to import the slats
  * @returns {number} Slat counter after all slats have been placed
  */
-function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
+function importSlats(slatDict, layerList, minorGridSize, shownOpacity, offsetX=0, offsetY=0){
 
     //Get unique slat numbers
     let slatNums = Object.values(slatDict)
@@ -294,8 +296,8 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
         let fullLayer = layerList.get(layerId);
         let activeSlatLayer = fullLayer[1]
 
-        let placeX = dictX * minorGridSize
-        let placeY = dictY * minorGridSize
+        let placeX = dictX * minorGridSize + offsetX
+        let placeY = dictY * minorGridSize + offsetY
 
         let activeLayerColor = fullLayer[4] //fullLayer[4] store the layer color! '#ff0000'
 
@@ -312,9 +314,11 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity){
  * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
  * @param {Number} shownCargoOpacity Opacity at which cargo should be drawn when shown - default.
  * @param {Map} handleOrientations Map of handle orientations by layer
+ * @param {Number} offsetX Offset from upper LH corner of canvas with which to import the cargo
+ * @param {Number} offsetY Offset from upper LH corner of canvas with which to import the cargo
  * @returns {Number} Cargo counter after all cargo is placed
  */
-function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations){
+function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations, offsetX=0, offsetY=0){
     //Now add new cargo:
     let cargoCounter = 1;
 
@@ -353,8 +357,8 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, han
             top = false
         }
 
-        let placeX = dictX * minorGridSize
-        let placeY = dictY * minorGridSize
+        let placeX = dictX * minorGridSize + offsetX
+        let placeY = dictY * minorGridSize + offsetY
 
         let activeLayerColor = fullLayer[4]
 
@@ -370,8 +374,10 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, han
  * @param {Map} handleDict Handle dictionary describing handle IDs by locations (x, y, layer)
  * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @param {Number} offsetX Offset from upper LH corner of canvas with which to import the handles
+ * @param {Number} offsetY Offset from upper LH corner of canvas with which to import the handles
  */
-export function importHandles(handleDict, layerList, minorGridSize){
+export function importHandles(handleDict, layerList, minorGridSize, offsetX=0, offsetY=0){
 
     //First, clear old handles!
     layerList.forEach((layer, layerIndex) => {
@@ -386,7 +392,7 @@ export function importHandles(handleDict, layerList, minorGridSize){
         
         let keyArray = key.split(',')
 
-        let dictX   = Number(keyArray[0])
+        let dictX   = Number(keyArray[0]) 
         let dictY   = Number(keyArray[1])
         let layerId = keyArray[2]
 
@@ -395,8 +401,8 @@ export function importHandles(handleDict, layerList, minorGridSize){
         let fullLayer = layerList.get(layerId);
         let activeHandleLayer = fullLayer[0]
 
-        let placeX = dictX * minorGridSize
-        let placeY = dictY * minorGridSize
+        let placeX = dictX * minorGridSize + offsetX
+        let placeY = dictY * minorGridSize + offsetY
 
         placeHandle(placeX, placeY, activeHandleLayer, minorGridSize, handleId)
     }
@@ -407,8 +413,10 @@ export function importHandles(handleDict, layerList, minorGridSize){
  * @param {Map} seedDict Seed dictionary describing seed by locations (x, y, layer)
  * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles. 
+ * @param {Number} offsetX Offset from upper LH corner of canvas with which to import the seed
+ * @param {Number} offsetY Offset from upper LH corner of canvas with which to import the seed
  */
-function importSeed(seedDict, layerList, minorGridSize){
+function importSeed(seedDict, layerList, minorGridSize, offsetX=0, offsetY=0){
 
     let seedKeys = Object.keys(seedDict)
     let minX = Infinity
@@ -420,8 +428,8 @@ function importSeed(seedDict, layerList, minorGridSize){
     for (const key of seedKeys){
         let keyArray = key.split(',')
 
-        let dictX   = Number(keyArray[0])
-        let dictY   = Number(keyArray[1])
+        let dictX   = Number(keyArray[0]) 
+        let dictY   = Number(keyArray[1]) 
         let layer = keyArray[2]
 
         if (dictX < minX){
@@ -448,8 +456,8 @@ function importSeed(seedDict, layerList, minorGridSize){
     let horizontal = !(Boolean(width > height))
     console.log("Horizontal? ", horizontal, "With width, height of ", width, height)
 
-    let placeX = minX * minorGridSize
-    let placeY = minY * minorGridSize
+    let placeX = minX * minorGridSize + offsetX
+    let placeY = minY * minorGridSize + offsetY
 
     while(!layerList.has(layerId)){
         const addLayerButton = document.getElementById('add-layer');
@@ -477,21 +485,21 @@ function importSeed(seedDict, layerList, minorGridSize){
  * @param {number} shownCargoOpacity Opacity at which cargo should be drawn when shown - default.
  * @returns {Array} Array of [slatCounter, cargoCounter]
  */
-export function importDesign(seedDict, slatDict, cargoDict, handleDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity){
+export function importDesign(seedDict, slatDict, cargoDict, handleDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity, offsetX=0, offsetY=0){
 
     removeAllLayers()
     
-    let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity)
+    let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity, offsetX, offsetY)
 
     if(Object.keys(seedDict).length != 0){
-        importSeed(seedDict, layerList, minorGridSize)
+        importSeed(seedDict, layerList, minorGridSize, offsetX, offsetY)
     }
 
     let handleOrientations = getHandleLayerDict(layerList)
-    let cargoCounter = importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations)
+    let cargoCounter = importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations, offsetX, offsetY)
 
     if(Object.keys(handleDict).length != 0){
-        importHandles(handleDict, layerList, minorGridSize)
+        importHandles(handleDict, layerList, minorGridSize, offsetX, offsetY)
     }
 
     return [slatCounter, cargoCounter];

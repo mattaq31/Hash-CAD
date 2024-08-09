@@ -4,6 +4,7 @@ import { updateInventoryItems} from './functions_inventory.js';
 import { showNotification } from './functions_socket.js';
 import { getLayerList } from './functions_layers.js'
 import { downloadFile } from './functions_misc.js';
+import { getFullDrawing } from './functions_drawing.js';
 
 import { writeVariable } from './variables.js';
 import {minorGridSize, shownOpacity, shownCargoOpacity } from './constants.js'
@@ -56,6 +57,18 @@ document.addEventListener('DOMContentLoaded', () => {
     //Import design after file upload
     socket.on('design_imported', function(data) {
         console.log("Imported design!", data)
+
+        let offset = getFullDrawing().point(0,0);
+
+        let offsetX = Math.round(offset.x/(minorGridSize))*minorGridSize ;
+        let offsetY = Math.round(offset.y/(minorGridSize))*minorGridSize ;
+
+        
+        
+
+
+        console.log(getFullDrawing(), offset, offset.x, offset.y)
+
         let seedDict = data[0]
         let slatDict = data[1]
         let cargoDict = data[2]
@@ -63,7 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let slatCounter, cargoCounter = importDesign(seedDict, slatDict, 
                                                      cargoDict, handleDict, 
                                                      layerList, minorGridSize, 
-                                                     shownOpacity, shownCargoOpacity)
+                                                     shownOpacity, shownCargoOpacity,
+                                                     offsetX, offsetY)
         writeVariable("slatCounter", slatCounter)
         writeVariable("cargoCounter", cargoCounter)
     });
