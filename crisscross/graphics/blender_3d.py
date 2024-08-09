@@ -211,6 +211,66 @@ def check_slat_animation_direction(start_point, end_point, current_slat_id, curr
     return end_point, start_point
 
 
+def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap):
+    """
+    TODO: add an animation to deposit cargo at the end of the video
+    Interprets the cargo dict and places cargo stubs in the 3D scene.
+    :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
+    :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
+    Required to generate cargo cylinders.
+    :param grid_xd: The grid x-jump distance
+    :param grid_yd: The grid y-jump distance
+    :param slat_width: The colormap to extract from
+    :param cargo_colormap: Colormap to extract cargo colors from.
+    :return: N/A
+    """
+    all_cargo = set(cargo_dict.values())
+    cargo_color_values_rgb = {}  # sets the colours of annotation according to the cargo being added
+    cargo_materials = {}  # Blender materials associated with each color
+
+    if isinstance(cargo_colormap, list):
+        cargo_color_list = cargo_colormap
+    else:
+        cargo_color_list = mpl.colormaps[cargo_colormap].colors
+
+    for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
+        if cargo_number >= len(cargo_color_list):
+            print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the 3D structure colormap. '
+                             'Recycling other colors for the higher IDs.' % unique_cargo_name)
+            cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
+        if isinstance(cargo_colormap, list):
+            cargo_color_values_rgb[unique_cargo_name] = mpl.colors.to_rgb(cargo_color_list[cargo_number])
+        else:
+            cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
+
+        material = create_slat_material(cargo_color_values_rgb[unique_cargo_name] + (1,), f'Seed Material')
+        cargo_materials[unique_cargo_name] = material
+
+    for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
+
+        top_layer_side = layer_interface_orientations[cargo_layer]
+        if isinstance(top_layer_side, tuple):
+            top_layer_side = top_layer_side[0]
+        if top_layer_side == cargo_orientation:
+            top_or_bottom = 1
+        else:
+            top_or_bottom = -1
+
+        transformed_pos = (x_cargo * grid_xd, y_cargo * grid_yd, cargo_layer - 1 + (top_or_bottom * slat_width / 2))
+
+        up = mathutils.Vector((0, 0, 1))
+        rotation = up.rotation_difference(up).to_euler()
+
+        bpy.ops.mesh.primitive_cylinder_add(location=transformed_pos,
+                                            radius=slat_width / 2,
+                                            rotation=rotation,
+                                            depth=slat_width)
+
+        bpy.context.object.name = 'cargo-%s' % cargo_value
+        bpy.ops.object.shade_smooth()
+        bpy.context.object.data.materials.append(cargo_materials[cargo_value])
+
+
 def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid_xd, grid_yd):
     """
     Interprets the seed array and places seed cylinders in the Blender scene.
@@ -256,9 +316,10 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
                                  animate_delay_frames=40, connection_angle='90', seed_layer_and_array=None,
                                  seed_color=(1, 0, 0), camera_spin=False, animation_type='translate',
                                  specific_slat_translate_distances=None, correct_slat_entrance_direction=True,
-                                 colormap='Set1'):
+                                 colormap='Set1', cargo_colormap='Dark2', cargo_dict=None,
+                                 layer_interface_orientations=None):
     """
-    Creates a 3D video of a megastructure slat design. TODO: add cargo to this view too.
+    Creates a 3D video of a megastructure slat design.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
     :param save_folder: Folder to save all video to.
     :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
@@ -275,6 +336,10 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     :param correct_slat_entrance_direction: If set to true, will attempt to correct the slat entrance animation to
     always start from a place that is supported.
     :param colormap: Colormap to extract layer colors from
+    :param cargo_colormap: Colormap to extract cargo colors from.
+    :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
+    :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
+    Required to generate cargo cylinders.
     :return: N/A
     """
     if not bpy_available:
@@ -318,6 +383,10 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         seed_material = create_slat_material(seed_color + (1,), f'Seed Material')
         interpret_seed_system(seed_layer_and_array, seed_material, seed_length=list(slats.values())[0].max_length/2,
                               grid_xd=grid_xd, grid_yd=grid_yd)
+
+    # visualizes cargo directly on the lattice
+    if cargo_dict is not None and layer_interface_orientations is not None:
+        interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap)
 
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
         if len(slat.slat_position_to_coordinate) == 0:

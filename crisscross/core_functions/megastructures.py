@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import numpy as np
 import matplotlib.pyplot as plt
-from colorama import Fore
+from colorama import Fore, Style
 import os
 import matplotlib as mpl
 import pandas as pd
@@ -529,7 +529,7 @@ class Megastructure:
     def create_blender_3D_view(self, save_folder, animate_assembly=False, animation_type='translate',
                                custom_assembly_groups=None, slat_translate_dict=None, minimum_slat_cutoff=15,
                                camera_spin=False, correct_slat_entrance_direction=True, colormap='Set1',
-                               seed_color=(1, 0, 0)):
+                               cargo_colormap='Dark2', seed_color=(1, 0, 0)):
         """
         Creates a 3D model of the megastructure slat design as a Blender file.
         :param save_folder: Folder to save all video to.
@@ -543,6 +543,7 @@ class Megastructure:
         :param correct_slat_entrance_direction: If set to true, will attempt to correct the slat entrance animation to
         always start from a place that is supported.
         :param colormap: Colormap to extract layer colors from
+        :param cargo_colormap: Colormap to extract cargo colors from
         :param seed_color: Color of the seed in the design.
         :return: N/A
         """
@@ -560,7 +561,9 @@ class Megastructure:
                                      connection_angle=self.connection_angle,
                                      animation_type=animation_type, camera_spin=camera_spin,
                                      correct_slat_entrance_direction=correct_slat_entrance_direction,
-                                     seed_color=seed_color, colormap=colormap,
+                                     seed_color=seed_color, colormap=colormap, cargo_colormap=cargo_colormap,
+                                     layer_interface_orientations=self.layer_interface_orientations,
+                                     cargo_dict=self.cargo_dict,
                                      specific_slat_translate_distances=slat_translate_dict)
 
     def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
@@ -586,6 +589,8 @@ class Megastructure:
         if generate_3d_video:
             self.create_graphical_3D_view(output_folder, colormap=colormap, cargo_colormap=cargo_colormap,
                                           seed_color=seed_color)
+
+        print(Style.RESET_ALL)
 
     def export_design(self, filename, folder):
         """
@@ -650,13 +655,14 @@ class Megastructure:
                         header=False)
             writer.sheets[f'cargo_layer_{layer}_{position}_h{orientation_list[index]}'].conditional_format(0, 0, df.shape[0], df.shape[1] - 1, excel_conditional_formatting)
 
-        # prints out single seed dataframe
-        df = pd.DataFrame(self.seed_array[1])
-        df.to_excel(writer, sheet_name=f'seed_layer_{self.seed_array[0]}', index=False, header=False)
-        writer.sheets[f'seed_layer_{self.seed_array[0]}'].conditional_format(0, 0,
-                                                                             df.shape[0],
-                                                                             df.shape[1] - 1,
-                                                                             excel_conditional_formatting)
+        # prints out single seed dataframe if available
+        if self.seed_array is not None:
+            df = pd.DataFrame(self.seed_array[1])
+            df.to_excel(writer, sheet_name=f'seed_layer_{self.seed_array[0]}', index=False, header=False)
+            writer.sheets[f'seed_layer_{self.seed_array[0]}'].conditional_format(0, 0,
+                                                                                 df.shape[0],
+                                                                                 df.shape[1] - 1,
+                                                                                 excel_conditional_formatting)
 
         # prints out essential metadata required to regenerate design
 
