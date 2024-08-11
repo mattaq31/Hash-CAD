@@ -241,6 +241,7 @@ def generate_handle_set_and_optimize(base_array, unique_sequences=32, slat_lengt
                 best_hamming = hamming_dict[metric_to_optimize]
                 best_array = np.copy(handle_array)
             pbar.update(1)
-            pbar.set_postfix(**hamming_dict)
+            pbar.set_postfix({**{f'Current best {metric_to_optimize}': best_hamming}, **hamming_dict})
+
     print('Optimization complete - final best hamming distance: %s' % best_hamming)
     return best_array
