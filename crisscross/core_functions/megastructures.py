@@ -695,11 +695,15 @@ class Megastructure:
 
         # preparing and reading in slat/handle arrays
         slat_array = np.zeros((design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], layer_count))
-        handle_array = np.zeros(
-            (design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], layer_count - 1))
+        handle_array_available = any('handle' in string for string in list(design_df.keys()))
+
+        if handle_array_available:
+            handle_array = np.zeros((design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], layer_count - 1))
+        else:
+            handle_array = None
         for i in range(layer_count):
             slat_array[..., i] = design_df['slat_layer_%s' % (i + 1)].values
-            if i != layer_count - 1:
+            if i != layer_count - 1 and handle_array_available:
                 handle_array[..., i] = design_df['handle_interface_%s' % (i + 1)].values
 
         # reading in cargo arrays and transferring to a dictionary

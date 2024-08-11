@@ -78,6 +78,6 @@ nelson_mega.patch_control_handles(core_plate)
 nelson_mega.create_standard_graphical_report(os.path.join(design_folder, 'Fluoro Graphics'))
 
 convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', design_folder,
-                                 'all_echo_commands_with_nelson_handles.csv', transfer_volume=100)
+                                 'all_echo_commands_with_nelson_handles.csv', default_transfer_volume=100)
 
 print(Fore.GREEN + 'Design exported to Echo commands successfully.')

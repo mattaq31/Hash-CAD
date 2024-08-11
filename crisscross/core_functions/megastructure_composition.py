@@ -1,70 +1,97 @@
 import pandas as pd
 import os
 from colorama import Fore
-from crisscross.helper_functions.plate_constants import plate96
+from crisscross.helper_functions.plate_constants import plate96, plate384, plate96_center_pattern
 
 
+# TODO: prepare visualization to help identify wells post generation
 def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_folder, output_filename,
-                                     transfer_volume=75, source_plate_type='384PP_AQ_BP',
-                                     specific_plate_wells=None, unique_transfer_volume_for_plates=None):
+                                     default_transfer_volume=75, source_plate_type='384PP_AQ_BP', output_empty_wells=False,
+                                     manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
+                                     output_plate_size='96', center_only_well_pattern=False):
     """
     Converts a dictionary of slats into an echo liquid handler command list for all handles provided.
     :param slat_dict: Dictionary of slat objects
     :param destination_plate_name: The name of the design's destination output plate
     :param output_folder: The output folder to save the file to
     :param output_filename: The name of the output file
-    :param transfer_volume: The transfer volume for each handle (either a single integer, or a list of integers for each individual slat)
+    :param default_transfer_volume: The transfer volume for each handle (either a single integer, or a list of integers for each individual slat)
     :param source_plate_type: The physical plate type in use
-    :param specific_plate_wells: The specific output wells to use for each slat (if not provided, the script will automatically assign wells)
+    :param output_empty_wells: Outputs an empty row for a well if a handle is only a placeholder
+    :param manual_plate_well_assignments: The specific output wells to use for each slat (if not provided, the script will automatically assign wells)
     :param unique_transfer_volume_for_plates: Dictionary assigning a special transfer volume for certain plates (supersedes all other settings)
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 
     # echo command prep
-    complete_list = []
+    output_command_list = []
+    output_well_list = []
+    output_plate_num_list = []
 
-    if len(slat_dict) > len(plate96):
-        print(Fore.BLUE + 'Too many slats for one plate, splitting into multiple plates.')
+    if output_plate_size == '96':
+        plate_format = plate96
+        if center_only_well_pattern:  # wells only in the center of the plate to make it easier to add lids
+            plate_format = plate96_center_pattern
+    elif output_plate_size == '384':
+        plate_format = plate384
+        if center_only_well_pattern:
+            raise NotImplementedError('Center only well pattern is not available for 384 well output plates.')
+    else:
+        raise ValueError('Invalid plate size provided')
 
-    for index, (_, slat) in enumerate(slat_dict.items()):
-        sel_plate_name = destination_plate_name
-        if specific_plate_wells:  # TODO: this probably won't work if there are multiple plates
-            well = specific_plate_wells[index]
-        else:
-            if index // len(plate96) > 0:
-                sel_plate_name = destination_plate_name + '_%s' % ((index // len(plate96)) + 1)
-                well = plate96[index % len(plate96)]
+    # prepares the exact output wells and plates for the slat dictionary provided
+    if manual_plate_well_assignments is None:
+        if len(slat_dict) > len(plate_format):
+            print(Fore.BLUE + 'Too many slats for one plate, splitting into multiple plates.')
+        for index, (_, slat) in enumerate(slat_dict.items()):
+            if index // len(plate_format) > 0:
+                well = plate_format[index % len(plate_format)]
+                plate_num = index // len(plate_format) + 1
             else:
-                well = plate96[index]
+                well = plate_format[index]
+                plate_num = 1
 
-        if isinstance(transfer_volume, list):
-            tv = transfer_volume[index]
-        else:
-            tv = transfer_volume
+            output_well_list.append(well)
+            output_plate_num_list.append(plate_num)
+    else:
+        if len(manual_plate_well_assignments) != len(slat_dict):
+            raise ValueError('The well count provided does not match the number of slats in the output dictionary.')
+        for index, (slat_name, slat) in enumerate(slat_dict.items()):
+            plate_num, well = manual_plate_well_assignments[slat_name]
+            output_well_list.append(well)
+            output_plate_num_list.append(plate_num)
 
-        for h2_num, h2 in slat.get_sorted_handles('h2'):
-            if 'plate' not in h2:
-                raise RuntimeError(f'The design provided has an incomplete slat: {slat.ID}')
+    # runs through all the handles for each slats and outputs the plate and well for both the input and output
+    for index, (slat_name, slat) in enumerate(slat_dict.items()):
+        slat_h2_data = slat.get_sorted_handles('h2')
+        slat_h5_data = slat.get_sorted_handles('h5')
+        for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data, ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
+            if 'plate' not in handle_data:
+                if output_empty_wells:  # this is the case where a placeholder handle is used (no plate available).
+                    #  If the user indicates they want to manually add in these handles,
+                    #  this will output placeholders for the specific wells that need manual handling.
+                    output_command_list.append([slat_name + '_%s_staple_%s' % (handle_side, handle_num),
+                                                'MANUAL TRANSFER', 'MANUAL TRANSFER',
+                                                output_well_list[index], default_transfer_volume,
+                                                f'{destination_plate_name}_{output_plate_num_list[index]}',
+                                                'MANUAL TRANSFER'])
+                    continue
+                else:
+                    raise RuntimeError(f'The design provided has an incomplete slat: {slat_name} (slat ID {slat.ID})')
 
-            if unique_transfer_volume_for_plates is not None and h2['plate'] in unique_transfer_volume_for_plates:
-                handle_specific_vol = unique_transfer_volume_for_plates[h2['plate']]
+            # certain plates will need different input volumes if they have different handle concentrations
+            if unique_transfer_volume_for_plates is not None and handle_data['plate'] in unique_transfer_volume_for_plates:
+                handle_specific_vol = unique_transfer_volume_for_plates[handle_data['plate']]
             else:
-                handle_specific_vol = tv
-            complete_list.append([slat.ID + '_h2_staple_%s' % h2_num, h2['plate'], h2['well'],
-                                  well, handle_specific_vol, sel_plate_name, source_plate_type])
+                handle_specific_vol = default_transfer_volume
 
-        for h5_num, h5 in slat.get_sorted_handles('h5'):
-            if 'plate' not in h5:
-                raise RuntimeError(f'The design provided has an incomplete slat: {slat.ID}')
+            output_command_list.append([slat_name + '_%s_staple_%s' % (handle_side, handle_num),
+                                        handle_data['plate'], handle_data['well'],
+                                        output_well_list[index], handle_specific_vol,
+                                        f'{destination_plate_name}_{output_plate_num_list[index]}',
+                                        source_plate_type])
 
-            if unique_transfer_volume_for_plates is not None and h5['plate'] in unique_transfer_volume_for_plates:
-                handle_specific_vol = unique_transfer_volume_for_plates[h5['plate']]
-            else:
-                handle_specific_vol = tv
-            complete_list.append([slat.ID + '_h5_staple_%s' % h5_num, h5['plate'], h5['well'],
-                                  well, handle_specific_vol, sel_plate_name, source_plate_type])
-
-    combined_df = pd.DataFrame(complete_list, columns=['Component', 'Source Plate Name', 'Source Well',
+    combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                        'Destination Well', 'Transfer Volume',
                                                        'Destination Plate Name', 'Source Plate Type'])
 

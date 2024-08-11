@@ -49,8 +49,7 @@ def generate_random_slat_handles(base_array, unique_sequences=32):
     handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1))
     handle_array = np.random.randint(1, unique_sequences + 1, size=handle_array.shape)
     for i in range(handle_array.shape[2]):
-        handle_array[np.any(base_array[..., i:i + 2] == 0,
-                            axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
+        handle_array[np.any(base_array[..., i:i + 2] == 0, axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
     return handle_array
 
 

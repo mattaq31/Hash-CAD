@@ -170,7 +170,7 @@ specific_plate_wells = plate96[0:32] + plate96[36:36 + 24] + plate96[60:60 + 8] 
 
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',
-                                 specific_plate_wells=specific_plate_wells)
+                                 manual_plate_well_assignments=specific_plate_wells)
 
 ####### PLOTTING VISUALIZATION
 

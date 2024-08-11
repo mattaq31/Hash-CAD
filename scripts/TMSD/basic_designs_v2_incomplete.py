@@ -183,8 +183,8 @@ all_transfer_volumes = [75] * (32+24) + [150] * (8 +9 + 2)
 
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',
-                                 transfer_volume=all_transfer_volumes,
-                                 specific_plate_wells=specific_plate_wells)
+                                 default_transfer_volume=all_transfer_volumes,
+                                 manual_plate_well_assignments=specific_plate_wells)
 
 ####### PLOTTING VISUALIZATION
 

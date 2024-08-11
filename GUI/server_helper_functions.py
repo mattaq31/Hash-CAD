@@ -76,7 +76,7 @@ def gen_megastructure(seed_array, slat_array, cargo_dict, handle_array, orientat
     if(echo):
         convert_slats_into_echo_commands(crisscross_megastructure.slats, 'crisscross_design_plate',
                                          output_folder,'all_echo_commands_with_crisscross_design.csv',
-                                         transfer_volume=100)
+                                         default_transfer_volume=100)
 
     if(save):
         zip_folder_to_disk(output_folder, os.path.join(upload_folder, 'outputs.zip'))

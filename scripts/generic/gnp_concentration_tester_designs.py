@@ -101,7 +101,7 @@ for key, slat in megastructure.slats.items():
 
 convert_slats_into_echo_commands(nucx_slats, 'gnp_replacement_plate',
                                  output_folder, 'nucx_only_echo_commands_bart_handles.csv',
-                                 specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
+                                 manual_plate_well_assignments=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10'])
 
 ########################################
@@ -129,7 +129,7 @@ for key, slat in megastructure_nelson.slats.items():
 
 convert_slats_into_echo_commands(nucx_slats_nelson, 'gnp_replacement_plate',
                                  output_folder, 'nucx_only_echo_commands_nelson_handles.csv',
-                                 specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
+                                 manual_plate_well_assignments=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10'])
 
 combined_slats = {}
@@ -145,7 +145,7 @@ for key, val in nucx_slats_nelson.items():
 # combined protocol for both designs
 convert_slats_into_echo_commands(combined_slats, 'gnp_replacement_plate',
                                  output_folder, 'nucx_only_echo_commands_both_designs.csv',
-                                 specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
+                                 manual_plate_well_assignments=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10',
                                                        'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10',
                                                        'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10'])

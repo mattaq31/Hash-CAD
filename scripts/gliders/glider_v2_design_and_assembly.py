@@ -180,7 +180,7 @@ nelson_mega.create_standard_graphical_report(os.path.join(output_folder, 'Design
 print(Fore.GREEN + 'Design exported to Echo commands successfully.')
 
 convert_slats_into_echo_commands(nelson_mega.slats, 'glider_plate', output_folder,
-                                 'all_echo_commands.csv', transfer_volume=100)
+                                 'all_echo_commands.csv', default_transfer_volume=100)
 
 # prepares the actual full megastructure here
 nelson_mega_2 = Megastructure(slat_array, None, connection_angle='60')
@@ -197,6 +197,6 @@ nelson_mega_2.create_standard_graphical_report(os.path.join(output_folder, 'Desi
                                                cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))
 
 convert_slats_into_echo_commands(nelson_mega_2.slats, 'glider_plate', output_folder,
-                                 'all_echo_commands_with_src007.csv', transfer_volume=100)
+                                 'all_echo_commands_with_src007.csv', default_transfer_volume=100)
 
 print(Fore.GREEN + 'Alternative plate mapping design exported to Echo commands successfully.')

@@ -61,7 +61,7 @@ HandleAggregateMegastructure.patch_control_handles(CorePlate)
 
 # Exports design to echo format csv file for production
 convert_slats_into_echo_commands(HandleAggregateMegastructure.slats, 'handleaggregation', DesignFolder, 'all_echo_commands.csv',
-                                 transfer_volume=100)
+                                 default_transfer_volume=100)
 
 # Filter out placeholder slats (anything above #25)
 WantedSlats = ["-slat{}_".format(x) for x in list(np.arange(1,25+1,1))]

@@ -119,10 +119,16 @@ for i in range(8):
     full_slat_dict['KNOCK-IN INCUMBENT STRAND %s' % (17 + i)] = incumbent
 
 specific_plate_wells = plate96[0:8] + plate96[12:12 + 8]  # different groups are split into different rows for convenience
+specific_plate_numbers = [1] * 16
+
+manual_assignments = {}
+for slat_num, slat in enumerate(full_slat_dict.values()):
+    manual_assignments[slat.ID] = (specific_plate_numbers[slat_num], specific_plate_wells[slat_num])
+
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
-                                 output_folder, 'all_echo_commands.csv',
-                                 transfer_volume=150,
-                                 specific_plate_wells=specific_plate_wells)
+                                 output_folder, 'all_echo_commands_test.csv',
+                                 default_transfer_volume=150,
+                                 manual_plate_well_assignments=manual_assignments)
 print(Fore.GREEN + 'Design complete, no errors found.')
 
 ####### PLOTTING VISUALIZATION

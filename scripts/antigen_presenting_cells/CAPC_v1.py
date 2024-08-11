@@ -29,12 +29,6 @@ if read_handles_from_file:
         np.float32)
     handle_array = handle_array[..., np.newaxis]
 
-    unique_slats_per_layer = []
-    for i in range(slat_array.shape[2]):
-        slat_ids = np.unique(slat_array[:, :, i])
-        slat_ids = slat_ids[slat_ids != 0]
-        unique_slats_per_layer.append(slat_ids)
-
     result = multi_rule_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:

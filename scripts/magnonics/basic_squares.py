@@ -129,14 +129,14 @@ for index, h_array in enumerate([reduced_handle_array, best_array, random_handle
         megastructure.create_graphical_assembly_handle_view(save_to_folder=graphics_folder,
                                                             colormap=colormap,
                                                             instant_view=False)
-
+    
     os.rename(os.path.join(graphics_folder, 'handles_layer_1_2.png'), os.path.join(graphics_folder, f'assembly_handles_{design_names[index]}.png'))
 
     specific_plate_wells = plate96[0:32] + plate96[36:36+32] + plate96[72:74]  # different groups are split into different rows for convenience
 
     convert_slats_into_echo_commands(slat_dict=megastructure.slats,
                                      destination_plate_name='magnonics_square_plate',
-                                     specific_plate_wells=specific_plate_wells, transfer_volume=75,
+                                     manual_plate_well_assignments=specific_plate_wells, default_transfer_volume=75,
                                      output_folder=echo_folder,
                                      unique_transfer_volume_for_plates={'P3518_MA': int(75*(500/200))},
                                      output_filename=f'echo_commands_dbl_crossbar_{design_names[index]}_v2.csv')

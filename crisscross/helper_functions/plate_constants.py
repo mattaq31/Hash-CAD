@@ -5,6 +5,7 @@ from os.path import join
 
 plate96 = [x + str(y) for x, y in product(ascii_uppercase[:8], range(1, 12 + 1))]
 plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1))]
+plate96_center_pattern = [x + str(y) for x, y in product(ascii_uppercase[:8], range(3, 10 + 1))]
 
 base_directory = os.path.abspath(join(__file__, os.path.pardir, os.path.pardir, os.path.pardir))
 core_plate_folder = join(base_directory, 'core_plates')

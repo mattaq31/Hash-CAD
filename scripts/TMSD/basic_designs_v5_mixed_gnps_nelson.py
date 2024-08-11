@@ -212,8 +212,8 @@ all_transfer_volumes = [75] * (32 + 24) + [150] * (8 + 5)
 
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',
-                                 transfer_volume=all_transfer_volumes,
-                                 specific_plate_wells=specific_plate_wells)
+                                 default_transfer_volume=all_transfer_volumes,
+                                 manual_plate_well_assignments=specific_plate_wells)
 
 extension_slats = {}
 for slat_key in ['INCUMBENT STRAND 1', 'INCUMBENT STRAND 2-16', 'INVADER 2-16', 'INCUMBENT STRAND 2-24', 'INVADER 2-24']:
@@ -221,7 +221,7 @@ for slat_key in ['INCUMBENT STRAND 1', 'INCUMBENT STRAND 2-16', 'INVADER 2-16', 
 
 convert_slats_into_echo_commands(extension_slats, 'tmsd_test_plate',
                                  output_folder, 'specific_extension_echo_commands.csv',
-                                 transfer_volume=150)
+                                 default_transfer_volume=150)
 
 print(Fore.GREEN + 'Design complete, no errors found.')
 
