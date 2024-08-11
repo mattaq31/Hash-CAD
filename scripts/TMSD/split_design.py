@@ -6,7 +6,8 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats, generate_patterned_square_cco
 from crisscross.core_functions.hamming_functions import generate_random_slat_handles, generate_handle_set_and_optimize
 from crisscross.core_functions.slats import get_slat_key
-from crisscross.plate_mapping import get_standard_plates
+from crisscross.helper_functions.plate_constants import octahedron_patterning_v1, cargo_plate_folder
+from crisscross.plate_mapping import get_standard_plates, get_plateclass
 
 ########################################
 # script setup
@@ -16,6 +17,7 @@ design_file = 'slat_sketch_with_handles.xlsx'
 updated_design_file = 'slat_sketch_with_handles_v2.xlsx'
 update_handles = False
 core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
+crossbar_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
 
 ########################################
 # Actual megastructure
@@ -40,8 +42,8 @@ for y, x in zip(block_coords[0], block_coords[1]):
     sel_slat.placeholder_list.remove(f'handle-{slat_posn}-h2')
 
 M1.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, seed_plate],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed'])
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, seed_plate, crossbar_plate],
+    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo'])
 M1.patch_control_handles(control_plate=core_plate)
 
 convert_slats_into_echo_commands(slat_dict=M1.slats,
@@ -49,11 +51,12 @@ convert_slats_into_echo_commands(slat_dict=M1.slats,
                                  default_transfer_volume=150,
                                  output_folder=design_folder,
                                  center_only_well_pattern=True,
-                                 output_empty_wells=True,
-                                 output_filename=f'echo_complete_design.csv')
+                                 output_filename=f'echo_complete_design_with_dbl_anchors.csv')
 
-M1.create_standard_graphical_report(os.path.join(design_folder, 'Design Graphics'), colormap='Set1', generate_3d_video=False,
-                                    cargo_colormap=['#FFFF00', '#66ff00'], seed_color=(1.0, 1.0, 0.0))
+M1.create_standard_graphical_report(os.path.join(design_folder, 'Design Graphics With Anchors'), colormap='Set1',
+                                    cargo_colormap='Dark2',
+                                    generate_3d_video=True,
+                                    seed_color=(1.0, 1.0, 0.0))
 
 custom_animation_dict = {}
 
@@ -67,9 +70,9 @@ for order, group in enumerate(groups):
     for slat in group:
         custom_animation_dict[slat] = order
 
-M1.create_blender_3D_view(os.path.join(design_folder, 'Design Graphics'), colormap='Set1',
+M1.create_blender_3D_view(os.path.join(design_folder, 'Design Graphics With Anchors'), colormap='Set1',
                           seed_color=(1.0, 1.0, 0.0),
-                          cargo_colormap=['#FFFF00', '#66ff00'],
+                          cargo_colormap='Dark2',
                           animate_assembly=True,
                           animation_type='translate',
                           custom_assembly_groups=custom_animation_dict,

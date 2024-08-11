@@ -130,7 +130,7 @@ class Megastructure:
                         continue
                     if sel_plates is None:  # no plate supplied, so a placeholder is defined instead
                         self.slats[key].set_placeholder_handle(slat_position_index + 1, slat_side,
-                                                               descriptor='Placeholder-Assembly-%s' % handle_val)
+                                                               descriptor='Placeholder|Assembly|%s' % handle_val)
                     else:  # extracts the sequence and plate well for the specific position requested
                         self.slats[key].set_handle(slat_position_index + 1, slat_side,
                                                    sel_plates.get_sequence(slat_position_index + 1, slat_side,
@@ -183,7 +183,7 @@ class Megastructure:
                                          descriptor='Seed Handle, Plate %s' % seed_plate.get_plate_name())
             else:
                 selected_slat.set_placeholder_handle(slat_position, bottom_slat_side,
-                                                     descriptor='Placeholder-Seed-%s' % seed_value)
+                                                     descriptor='Placeholder|Seed|%s' % seed_value)
 
         if len(seed_coords[0]) == 0:
             print((Fore.RED + 'WARNING: No seed handles were set - is your seed pattern array correct?'))
@@ -224,7 +224,7 @@ class Megastructure:
                                              cargo_plate.get_plate_name(), cargo_value))
             else:
                 selected_slat.set_placeholder_handle(slat_position, handle_orientation,
-                                                     descriptor='Placeholder-Cargo-%s' % cargo_value)
+                                                     descriptor='Placeholder|Cargo|%s' % cargo_value)
         self.cargo_dict = {**self.cargo_dict, **cargo_dict}
 
     def convert_cargo_array_into_cargo_dict(self, cargo_array, cargo_keymap, layer, handle_orientation=None):
@@ -296,9 +296,8 @@ class Megastructure:
                 else:
                     cargo_value = slat.H5_handles[handle]['descriptor']
 
-                cargo_type = cargo_value.split('-')[
-                    1]  # the placeholder name is always defined with the same pattern of -s
-                cargo_id = cargo_value.split('-')[-1]
+                cargo_type = cargo_value.split('|')[1]  # the placeholder name is always defined with the same pattern of -s
+                cargo_id = cargo_value.split('|')[-1]
                 if cargo_id.isnumeric():
                     cargo_id = int(cargo_id)
 
@@ -714,8 +713,7 @@ class Megastructure:
                 layer = int(key.split('_')[2])
                 orientation = int(key.split('_')[4][-1])
                 cargo_array = design_df[key].values
-                cargo_coords = np.where(
-                    cargo_array != 0)  # only extracts a value if there is cargo present, reducing clutter
+                cargo_coords = np.where(cargo_array != 0)  # only extracts a value if there is cargo present, reducing clutter
                 for y, x in zip(cargo_coords[0], cargo_coords[1]):
                     cargo_dict[((y, x), layer, orientation)] = cargo_array[y, x]
             if 'seed' in key:
