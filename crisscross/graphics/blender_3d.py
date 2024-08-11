@@ -1,4 +1,3 @@
-# TODO: This file is still a work-in-progress
 import importlib
 from colorama import Fore
 import os
@@ -120,7 +119,7 @@ def set_slat_wipe_in_animation(frame_start, frame_end, slat_id, slat_cylinder, s
 
 
 def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_center, slat_rotation, slat_length,
-                                 extension_length=2):
+                                 extension_length=2.0):
     """
     Sets up a translation-based entry animation for a slat
     :param frame_start: The frame from which to start the animation
@@ -170,7 +169,7 @@ def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_cen
     slat_cylinder.data.materials[0].keyframe_insert(data_path="blend_method", frame=1)
 
     slat_cylinder.data.materials[0].blend_method = 'OPAQUE'  # turn off alpha blend
-    slat_cylinder.data.materials[0].keyframe_insert(data_path="blend_method", frame=frame_end)
+    slat_cylinder.data.materials[0].keyframe_insert(data_path="blend_method", frame=frame_start+5)
 
     # turn off slat entirely before the animation to ensure it doesn't interfere with the
     # other objects (due to alpha blend)
@@ -211,10 +210,10 @@ def check_slat_animation_direction(start_point, end_point, current_slat_id, curr
     return end_point, start_point
 
 
-def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap):
+def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap,
+                           frame_start=0, frame_end=0):
     """
-    TODO: add an animation to deposit cargo at the end of the video
-    Interprets the cargo dict and places cargo stubs in the 3D scene.
+    Interprets the cargo dict and places cargo stubs in the 3D scene, along with an animation if requested.
     :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
     :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
     Required to generate cargo cylinders.
@@ -222,6 +221,8 @@ def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, gr
     :param grid_yd: The grid y-jump distance
     :param slat_width: The colormap to extract from
     :param cargo_colormap: Colormap to extract cargo colors from.
+    :param frame_start: Animation start frame
+    :param frame_end: Animation end frame.  If frame_start=frame_end, no animation will be added.
     :return: N/A
     """
     all_cargo = set(cargo_dict.values())
@@ -260,15 +261,23 @@ def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, gr
 
         up = mathutils.Vector((0, 0, 1))
         rotation = up.rotation_difference(up).to_euler()
+        if top_or_bottom == -1:  # 180 degree rotation for the animation if the cargo is on the bottom side
+            rotation.x = math.pi
 
         bpy.ops.mesh.primitive_cylinder_add(location=transformed_pos,
                                             radius=slat_width / 2,
                                             rotation=rotation,
                                             depth=slat_width)
 
+        cargo_cylinder = bpy.context.active_object
         bpy.context.object.name = 'cargo-%s' % cargo_value
         bpy.ops.object.shade_smooth()
         bpy.context.object.data.materials.append(cargo_materials[cargo_value])
+
+        # animates in the cargo at the end of the design assembly if requested
+        if frame_start != frame_end:
+            set_slat_translate_animation(frame_start, frame_end, cargo_cylinder, transformed_pos, rotation, slat_width,
+                                         extension_length=2.5)
 
 
 def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid_xd, grid_yd):
@@ -316,8 +325,8 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
                                  animate_delay_frames=40, connection_angle='90', seed_layer_and_array=None,
                                  seed_color=(1, 0, 0), camera_spin=False, animation_type='translate',
                                  specific_slat_translate_distances=None, correct_slat_entrance_direction=True,
-                                 colormap='Set1', cargo_colormap='Dark2', cargo_dict=None,
-                                 layer_interface_orientations=None):
+                                 colormap='Set1', cargo_colormap='Dark2', cargo_dict=None, slat_flip_list=None,
+                                 layer_interface_orientations=None, include_bottom_light=False):
     """
     Creates a 3D video of a megastructure slat design.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
@@ -338,8 +347,11 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     :param colormap: Colormap to extract layer colors from
     :param cargo_colormap: Colormap to extract cargo colors from.
     :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
+    :param slat_flip_list: List of slat IDs - if a slat is in this list, its animation direction will be flipped.
+      This cannot be used in conjunction with the correct_slat_entrance_direction parameter.
     :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
     Required to generate cargo cylinders.
+    :param include_bottom_light: Set to True to include a light source at the bottom of the design.
     :return: N/A
     """
     if not bpy_available:
@@ -384,10 +396,6 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         interpret_seed_system(seed_layer_and_array, seed_material, seed_length=list(slats.values())[0].max_length/2,
                               grid_xd=grid_xd, grid_yd=grid_yd)
 
-    # visualizes cargo directly on the lattice
-    if cargo_dict is not None and layer_interface_orientations is not None:
-        interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap)
-
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
         if len(slat.slat_position_to_coordinate) == 0:
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from Blender graphical '
@@ -396,7 +404,10 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         pos1 = slat.slat_position_to_coordinate[1]  # first slat position
         pos2 = slat.slat_position_to_coordinate[slat.max_length]  # second slat position
 
-        if correct_slat_entrance_direction and animate_slat_group_dict is not None:  # attempts to remove any conflicting animation directions
+        # direction adjusters
+        if slat_flip_list is not None and slat_id in slat_flip_list:
+            pos1, pos2 = pos2, pos1
+        elif correct_slat_entrance_direction and animate_slat_group_dict is not None:  # attempts to remove any conflicting animation directions
             pos1, pos2 = check_slat_animation_direction(pos1, pos2, slat_id, slat.layer, slats, animate_slat_group_dict)
 
         layer = slat.layer
@@ -449,6 +460,18 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
             else:
                 raise RuntimeError('Animation type not recognized.')
 
+    # visualizes cargo directly on the lattice
+    if cargo_dict is not None and layer_interface_orientations is not None:
+        if animate_slat_group_dict is not None:
+            max_frame += animate_delay_frames
+            frame_start = max_frame - animate_delay_frames
+            frame_end = max_frame
+        else:
+            frame_start = max_frame
+            frame_end = max_frame
+        interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width,
+                               cargo_colormap, frame_start=frame_start, frame_end=frame_end)
+
     if animate_slat_group_dict is not None:
         bpy.context.scene.frame_end = max_frame
 
@@ -465,6 +488,17 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
 
     # Point the area light at the center of the design
     look_at(area_light, mathutils.Vector((design_widths[0]/2, design_widths[1]/2, design_height/2)))
+
+    if include_bottom_light:
+        # Create and position a second area light to illuminate the whole model from the bottom too
+        bpy.ops.object.light_add(type='AREA', location=(design_widths[0]/2, design_widths[1]/2, design_height - 20))
+        area_light = bpy.context.object
+        area_light.name = "Main Crisscross Spotlight"
+        area_light.data.energy = 40000
+        area_light.data.size = max(design_widths) * 1.5
+
+        # Point the area light at the center of the design
+        look_at(area_light, mathutils.Vector((design_widths[0]/2, design_widths[1]/2, design_height/2)))
 
     # Create a camera with a wide enough view to encompass the entire design
     bpy.ops.object.camera_add(location=(design_widths[0]/2, -10, design_height + 45))

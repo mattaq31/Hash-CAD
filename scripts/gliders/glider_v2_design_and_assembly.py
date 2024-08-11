@@ -193,10 +193,40 @@ nelson_mega_2.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
 nelson_mega_2.assign_cargo_handles_with_array(cargo_array_0, cargo_key, simpsons_plate, layer=1, handle_orientation=2)
 nelson_mega_2.assign_cargo_handles_with_array(cargo_array_1, cargo_key, simpsons_plate, layer=2, handle_orientation=2)
 nelson_mega_2.patch_control_handles(core_plate)
+
 nelson_mega_2.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics Mega 2'), colormap='Set1',
                                                cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))
 
 convert_slats_into_echo_commands(nelson_mega_2.slats, 'glider_plate', output_folder,
                                  'all_echo_commands_with_src007.csv', default_transfer_volume=100)
+
+custom_glider_animation_dict = {}
+
+groups = [['layer2-slat%s' % x for x in range(48, 64)],
+          ['layer3-slat%s' % x for x in range(96, 128)],
+          ['layer2-slat%s' % x for x in range(32, 48)],
+          ['layer4-slat%s' % x for x in range(160, 177)],
+          ['layer3-slat%s' % x for x in range(128, 144)],
+          ['layer2-slat%s' % x for x in range(64, 96)],
+          ['layer3-slat%s' % x for x in range(144, 160)],
+          ['layer4-slat%s' % x for x in range(177, 192)],
+          ['layer1-slat%s' % x for x in range(1, 17)],
+          ['layer1-slat%s' % x for x in range(17, 32)],
+          ]
+for order, group in enumerate(groups):
+    for slat in group:
+        custom_glider_animation_dict[slat] = order
+
+slat_translate_dict = {}
+for slat in groups[8] + groups[9]:
+    slat_translate_dict[slat] = 20
+
+nelson_mega_2.create_blender_3D_view(os.path.join(output_folder, 'Design Graphics Mega 2'),
+                                     animate_assembly=True,
+                                     animation_type='translate',
+                                     camera_spin=False,
+                                     custom_assembly_groups=custom_glider_animation_dict,
+                                     slat_translate_dict=slat_translate_dict,
+                                     include_bottom_light=True)
 
 print(Fore.GREEN + 'Alternative plate mapping design exported to Echo commands successfully.')

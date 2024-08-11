@@ -39,4 +39,4 @@ M1.create_blender_3D_view('/Users/matt/Desktop', colormap='Set1',
                           cargo_colormap=['#FFFF00', '#66ff00'],
                           animate_assembly=True,
                           animation_type='translate',
-                          camera_spin=True)
+                          camera_spin=False)

@@ -528,7 +528,8 @@ class Megastructure:
     def create_blender_3D_view(self, save_folder, animate_assembly=False, animation_type='translate',
                                custom_assembly_groups=None, slat_translate_dict=None, minimum_slat_cutoff=15,
                                camera_spin=False, correct_slat_entrance_direction=True, colormap='Set1',
-                               cargo_colormap='Dark2', seed_color=(1, 0, 0)):
+                               cargo_colormap='Dark2', slat_flip_list=None, seed_color=(1, 0, 0),
+                               include_bottom_light=False):
         """
         Creates a 3D model of the megastructure slat design as a Blender file.
         :param save_folder: Folder to save all video to.
@@ -543,7 +544,10 @@ class Megastructure:
         always start from a place that is supported.
         :param colormap: Colormap to extract layer colors from
         :param cargo_colormap: Colormap to extract cargo colors from
+        :param slat_flip_list: List of slat IDs - if a slat is in this list, its animation direction will be flipped.
+        This cannot be used in conjunction with the correct_slat_entrance_direction parameter.
         :param seed_color: Color of the seed in the design.
+        :param include_bottom_light: Set to true to add a light source at the bottom of the design.
         :return: N/A
         """
         if animate_assembly:
@@ -563,7 +567,9 @@ class Megastructure:
                                      seed_color=seed_color, colormap=colormap, cargo_colormap=cargo_colormap,
                                      layer_interface_orientations=self.layer_interface_orientations,
                                      cargo_dict=self.cargo_dict,
-                                     specific_slat_translate_distances=slat_translate_dict)
+                                     slat_flip_list=slat_flip_list,
+                                     specific_slat_translate_distances=slat_translate_dict,
+                                     include_bottom_light=include_bottom_light)
 
     def create_standard_graphical_report(self, output_folder, draw_individual_slat_reports=False,
                                          generate_3d_video=True,
