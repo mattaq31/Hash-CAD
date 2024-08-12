@@ -378,7 +378,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
                     color = mpl.colormaps[colormap].colors[layer_id - 1]
                 materials[value] = create_slat_material(color + (1,), f'Material Group {value}, Layer{layer_id}', alpha_animation=True)
     else:
-        num_materials = slat_array.shape[2]
+        num_materials = slat_array.shape[2] # TODO: this does not work with crossbars
         for i in range(num_materials):
             if isinstance(colormap, list):
                 color = mpl.colors.to_rgb(colormap[i])
@@ -438,7 +438,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         # sets the cylinder's name, makes sure the shading is smooth, and sets the material
         bpy.context.object.name = slat_id
         bpy.ops.object.shade_smooth()
-        if animation_type != 'translate':
+        if animation_type != 'translate' or animate_slat_group_dict is None:
             bpy.context.object.data.materials.append(materials[layer])
         elif animation_type == 'translate' and animate_slat_group_dict is not None:
             bpy.context.object.data.materials.append(materials[animate_slat_group_dict[slat_id]])
