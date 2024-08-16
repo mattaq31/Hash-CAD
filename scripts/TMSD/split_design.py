@@ -79,7 +79,7 @@ else:
                                    core_plate.get_sequence(j + 1, 5, 0),
                                    core_plate.get_well(j + 1, 5, 0),
                                    core_plate.get_plate_name(j + 1, 5, 0))
-            invader_set[f'Invader {i + 1}, matching slat {incumbent_slat_id_list[i]}'] = invader
+            invader_set[f'Invader {i + 1} matching slat {incumbent_slat_id_list[i]}'] = invader
 
         convert_slats_into_echo_commands(slat_dict={**M1.slats, **invader_set},
                                          destination_plate_name='split_tmsd_plate',

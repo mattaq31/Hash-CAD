@@ -85,6 +85,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             else:
                 handle_specific_vol = default_transfer_volume
 
+            if ',' in slat_name:
+                raise RuntimeError('Slat names cannot contain commas - this will cause issues with the echo csv  file.')
             output_command_list.append([slat_name + '_%s_staple_%s' % (handle_side, handle_num),
                                         handle_data['plate'], handle_data['well'],
                                         output_well_list[index], handle_specific_vol,
