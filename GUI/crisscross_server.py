@@ -164,78 +164,10 @@ def save_file_to_uploads(data):
 
     emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict])
 
-
-    '''
-    crisscross_design_file = np.load(crisscross_design_path, allow_pickle=True)
-    seed_array = crisscross_design_file['seed_array']
-    slat_array = crisscross_design_file['slat_array']
-    cargo_dict = crisscross_design_file['cargo_dict'].item()
-    handle_dict = crisscross_design_file['handle_dict'].item()
-
-    seed_dict = {}
-    slat_dict = {}
-
-    if(seed_array.ndim == 3):
-        seed_dict = array_to_dict(seed_array)
-
-    if(slat_array.ndim == 3):
-        slat_dict = array_to_dict(slat_array)
-
-    if(not(cargo_dict)):
-        cargo_dict = {}
-
-    if (not (handle_dict)):
-        handle_dict = {}
-    
-
-
-    emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict])'''
+    #TODO: Add import of handle configs
 
 
 
-
-
-'''
-# TODO: make function names more descriptive
-@socketio.on('design_to_backend_for_download')
-def save_crisscross_design(crisscross_dict):
-    """
-    TODO: fill in
-    :param crisscross_dict:
-    :return:
-    """
-    print('Design has been saved')
-    # TODO: consider saving file in a human-readable format like toml
-    seed_array = ()
-    slat_array = ()
-    cargo_dict = {}
-    handle_dict = {}
-
-    if (crisscross_dict[0]):
-        seed_array = seed_dict_to_array(crisscross_dict[0])
-
-    if(crisscross_dict[1]):
-        slat_array = slat_dict_to_array(crisscross_dict[1])
-
-    if (crisscross_dict[2]):
-        cargo_dict = crisscross_dict[2]
-
-    if (crisscross_dict[3]):
-        handle_dict = crisscross_dict[3]
-
-
-
-    crisscross_design_path = os.path.join(app.config['UPLOAD_FOLDER'], 'crisscross_design.npz')
-
-    # Save the arrays to a .npz file (including multiple numpy arrays!)
-    np.savez(crisscross_design_path,
-             seed_array=np.array(seed_array),
-             slat_array=np.array(slat_array),
-             cargo_dict=cargo_dict,
-             handle_dict=handle_dict)
-
-    emit('saved_design_ready_to_download')
-'''
 
 @socketio.on('generate_handles')
 def generate_handles(data):

@@ -54,7 +54,14 @@ export function changePlacementMode(mode, layerList){
  * @param {Number} minorSize The snapping grid size. Corresponds to the distance between two handles. 
  * @returns {SVG.G} SVG group element containing grid
  */
-export function drawGrid(gridGroup, width, height, style, majorSize, minorSize) {
+export function drawGrid(gridGroup, width, height, style, majorSize, minorSize, diagAngle=45) {
+
+    //Calculate appropriate scaling terms for x and y distances
+    let minorSizeX = minorSize * Math.sin(diagAngle * (Math.PI / 180)) //0.86602540378
+    let majorSizeX = majorSize * Math.sin(diagAngle * (Math.PI / 180)) //0.86602540378
+    let minorSizeY = minorSize * Math.cos(diagAngle * (Math.PI / 180)) //0.5
+    let majorSizeY = majorSize * Math.cos(diagAngle * (Math.PI / 180)) //0.5
+    
     
     //First reset grid:
     gridGroup.clear()
@@ -63,35 +70,35 @@ export function drawGrid(gridGroup, width, height, style, majorSize, minorSize) 
     if(style != 0){
         // Draw vertical lines
         //Minor
-        for (var x = 0; x < width; x += minorSize) {
+        for (var x = 0; x < width; x += minorSizeX ) {
             let tmpLine = gridGroup.line(x, 0, x, height).stroke({ width: 0.5, color:'#000'})
             if(style == 2){
-                tmpLine.stroke({dasharray:`${minorSize*0.1},${minorSize*0.9}`, dashoffset:`${minorSize*0.05}`})
+                tmpLine.stroke({dasharray:`${minorSizeX*0.1},${minorSizeY - minorSizeX*0.1}`, dashoffset:`${minorSizeX*0.05}`})
             }
         }
 
         //Major
-        for (var x = 0; x < width; x += majorSize) {
+        for (var x = 0; x < width; x += majorSizeX ) {
             let tmpLine = gridGroup.line(x, 0, x, height).stroke({ width: 1, color:'#000' })
             if(style == 2){
-                tmpLine.stroke({dasharray:`${majorSize*0.05},${majorSize*0.95}`, dashoffset:`${majorSize*0.025}`})
+                tmpLine.stroke({dasharray:`${majorSizeX*0.05},${majorSizeY - majorSizeX*0.05}`, dashoffset:`${majorSizeX*0.025}`})
             }
         }
 
         // Draw horizontal lines
         //Minor
-        for (var y = 0; y < height; y += minorSize) {
+        for (var y = 0; y < height; y += minorSizeY ) {
             let tmpLine = gridGroup.line(0, y, width, y).stroke({ width: 0.5, color:'#000'})
             if(style == 2){
-                tmpLine.stroke({dasharray:`${minorSize*0.1},${minorSize*0.9}`, dashoffset:`${minorSize*0.05}`})
+                tmpLine.stroke({dasharray:`${minorSizeX*0.1},${minorSizeX*0.9}`, dashoffset:`${minorSizeX*0.05}`})
             }
         }
 
         //Major
-        for (var y = 0; y < height; y += majorSize) {
+        for (var y = 0; y < height; y += majorSizeY ) {
             let tmpLine = gridGroup.line(0, y, width, y).stroke({ width: 1, color:'#000' })
             if(style == 2){
-                tmpLine.stroke({dasharray:`${majorSize*0.05},${majorSize*0.95}`, dashoffset:`${majorSize*0.025}`})
+                tmpLine.stroke({dasharray:`${majorSizeX*0.05},${majorSizeX*0.95}`, dashoffset:`${majorSizeX*0.025 }`})
             }
         }
     }
@@ -137,5 +144,7 @@ export function downloadFile(url, filename) {
             console.error('There has been a problem with your fetch operation:', error);
         });
 }
+
+
 
 
