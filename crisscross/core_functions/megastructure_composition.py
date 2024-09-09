@@ -57,7 +57,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         if len(manual_plate_well_assignments) != len(slat_dict):
             raise ValueError('The well count provided does not match the number of slats in the output dictionary.')
         for index, (slat_name, slat) in enumerate(slat_dict.items()):
-            plate_num, well = manual_plate_well_assignments[slat_name]
+            #plate_num, well = manual_plate_well_assignments[slat_name] 
+            plate_num, well = manual_plate_well_assignments[index] 
             output_well_list.append(well)
             output_plate_num_list.append(plate_num)
 
