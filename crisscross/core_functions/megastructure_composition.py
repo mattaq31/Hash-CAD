@@ -18,8 +18,11 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param default_transfer_volume: The transfer volume for each handle (either a single integer, or a list of integers for each individual slat)
     :param source_plate_type: The physical plate type in use
     :param output_empty_wells: Outputs an empty row for a well if a handle is only a placeholder
-    :param manual_plate_well_assignments: The specific output wells to use for each slat (if not provided, the script will automatically assign wells)
+    :param manual_plate_well_assignments: The specific output wells to use for each slat (if not provided, the script will automatically assign wells).
+    This can be either a list of tuples (plate number, well name) or a dictionary of tuples.
     :param unique_transfer_volume_for_plates: Dictionary assigning a special transfer volume for certain plates (supersedes all other settings)
+    :param output_plate_size: Either '96' or '384' for the output plate size
+    :param center_only_well_pattern: Set to true to force output wells to be in the center of the plate.  This is only available for 96-well plates.
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 
@@ -57,8 +60,12 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         if len(manual_plate_well_assignments) != len(slat_dict):
             raise ValueError('The well count provided does not match the number of slats in the output dictionary.')
         for index, (slat_name, slat) in enumerate(slat_dict.items()):
-            #plate_num, well = manual_plate_well_assignments[slat_name] 
-            plate_num, well = manual_plate_well_assignments[index] 
+            if isinstance(manual_plate_well_assignments, dict):
+                plate_num, well = manual_plate_well_assignments[slat_name]
+            elif isinstance(manual_plate_well_assignments, list):
+                plate_num, well = manual_plate_well_assignments[index]
+            else:
+                raise ValueError('Invalid manual_plate_well_assignments format provided (needs to be a list or dict).')
             output_well_list.append(well)
             output_plate_num_list.append(plate_num)
 

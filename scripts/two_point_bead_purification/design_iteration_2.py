@@ -33,7 +33,7 @@ best_array_file = '/Users/stellawang/HMS Dropbox/Siyuan Wang/crisscross_team/Cri
 ########################################
 # Plate sequences
 core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
-double_purification_plate = get_plateclass('GenericPlate', seed_slat_purification_handles, cargo_plate_folder)
+double_purification_plate = get_plateclass('HybridPlate', seed_slat_purification_handles, cargo_plate_folder)
 ########################################
 # Shape generation and crisscross handle optimisation
 slat_array, _ = generate_standard_square_slats(32)
