@@ -322,7 +322,7 @@ class Megastructure:
                             well = plate.get_well(handle, orientation, cargo_id)
                             name = plate.get_plate_name(handle, orientation, cargo_id)
                             slat.update_placeholder_handle(handle, orientation, sequence, well, name,
-                                                           descriptor=f'{cargo_type}-{cargo_id}')
+                                                           descriptor=f'{cargo_type}-{cargo_id}-{name}')
             if len(slat.placeholder_list) > 0:
                 print(Fore.RED + f'WARNING: Placeholder handles on slat {key} still remain after patching.')
 
