@@ -261,31 +261,17 @@ SVG.on(document, 'DOMContentLoaded', function() {
 // Toggle horizontal slat mode when ALT is pressed
 document.addEventListener('keydown', (event) => {
     if( event.key === 'Alt') {
-        if(getVariable("placeHorizontal") == false){
-            // Remove any existing cursor slats with the id 'cursor-slat'
-            let cursorSlat = document.getElementById('cursor-slat')
-            if(cursorSlat){
-                cursorSlat.remove()
-            }
+        let cursorSlat = document.getElementById('cursor-slat')
+        if(cursorSlat){
+            cursorSlat.remove()
         }
         event.preventDefault();
-        writeVariable("placeHorizontal", true);
+        writeVariable("placeHorizontal", !getVariable("placeHorizontal"))
     }
 });
 
-// Toggle vertical slat mode when ALT is not pressed
-document.addEventListener('keyup', (event) => {
-    if( event.key === 'Alt') {
-        if(getVariable("placeHorizontal") == true){
-            // Remove any existing cursor slats with the id 'cursor-slat'
-            let cursorSlat = document.getElementById('cursor-slat')
-            if(cursorSlat){
-                cursorSlat.remove()
-            }
-        }
-        writeVariable("placeHorizontal", false);
-    }
-});
+
+
 
 // Copy cargo when ctrl + c is pressed
 document.addEventListener('keydown', (event) => {
