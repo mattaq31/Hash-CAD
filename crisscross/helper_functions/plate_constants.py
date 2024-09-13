@@ -30,6 +30,8 @@ crisscross_not_ordered_h2_handle_plates = ["PX1_MA_h2_handles", "PX2_MA_h2_handl
 seed_core = 'sw_src001_seedcore'  # this contains all the seed sequences, including the socket sequences
 slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, including the control sequences (no handle)
 
+seed_slat_purification_handles = "sw_src004_polyAgridiron" # this contains toehold-polyA extensions on gridiron seed staples for attachment to polyT beads and toehold-3letter code sequences for slat attachment to beads
+
 seed_plug_plate_center = 'P2854_CW_seed_plug_center'  # this contains the H2 plug sequences to bind to the seed at the center of the x-slats
 seed_plug_plate_corner = 'P3339_JL_seed_plug_corner'  # this contains another variation of H2 plug sequences - they go to the corner of a set of x-slats
 seed_plug_plate_all = 'P3555_SSW_combined_seeds'  # this contains both seeds in one plate with a human-readable placement system
