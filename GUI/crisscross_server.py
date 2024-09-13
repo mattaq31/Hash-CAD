@@ -206,7 +206,7 @@ def generate_megastructure(data):
                                                                               crisscross_dict[1],
                                                                               crisscross_dict[2],
                                                                               crisscross_dict[3],
-                                                                              10,
+                                                                              100,
                                                                               old_handles)
 
     crisscross_megastructure = gen_megastructure(seed_array,

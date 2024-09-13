@@ -210,7 +210,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         blankButton.classList.remove('grid-dots-blank-toggle-selected')
 
         writeVariable("gridStyle", 1);
-        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize)
+        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize, getVariable("gridAngle"))
     })
 
     dotsButton.addEventListener('click', (event)=>{
@@ -219,7 +219,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         blankButton.classList.remove('grid-dots-blank-toggle-selected')
 
         writeVariable("gridStyle", 2);
-        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize)
+        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize, getVariable("gridAngle"))
     })
 
     blankButton.addEventListener('click', (event)=>{
@@ -228,7 +228,28 @@ SVG.on(document, 'DOMContentLoaded', function() {
         dotsButton.classList.remove('grid-dots-blank-toggle-selected')
 
         writeVariable("gridStyle", 0);
-        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize)
+        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize, getVariable("gridAngle"))
+    })
+
+    //Change grid angle
+    const grid60Button = document.getElementById('button-60')
+    const grid90Button = document.getElementById('button-90')
+    grid90Button.classList.add('grid-angle-toggle-selected')
+
+    grid60Button.addEventListener('click', (event)=>{
+        grid60Button.classList.add('grid-angle-toggle-selected')
+        grid90Button.classList.remove('grid-angle-toggle-selected')
+
+        writeVariable("gridAngle", 60)
+        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize, getVariable("gridAngle"))
+    })
+
+    grid90Button.addEventListener('click', (event)=>{
+        grid90Button.classList.add('grid-angle-toggle-selected')
+        grid60Button.classList.remove('grid-angle-toggle-selected')
+
+        writeVariable("gridAngle", 45)
+        drawGrid(drawGridLayer, width, height, getVariable("gridStyle"), majorGridSize, minorGridSize, getVariable("gridAngle"))
     })
 });
 

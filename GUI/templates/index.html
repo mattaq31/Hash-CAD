@@ -51,7 +51,6 @@
                 <div class="config">
                     <div class="mode">
                         <h4 class="centeredText">Mode</h4>
-                       <!-- TODO: These three radio buttons are not aligned  -->
                         <div class="edit-mode-selector">
                             <button id="draw-button" class="mode-selector-button" name="Draw">
                                 <img src="{{url_for('static', filename='icons/pencil.png')}}" alt="Pencil Image" style="width: 25px; height: 25px;">
@@ -78,6 +77,18 @@
                                 <img src="{{url_for('static', filename='icons/emptygrid.png')}}" alt="Empty Grid Image" style="width: 25px; height: 25px;">
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <div class="settings">
+                    <div class="angle-settings">
+                        <h4>Angle</h4>
+                        <button id="button-60" class="angle-selector-button" name="Sixty">
+                            <p>60 Deg</p>
+                        </button>
+                        <button id="button-90" class="angle-selector-button" name="Ninety">
+                            <p>90 Deg</p>
+                        </button>
                     </div>
                 </div>
 

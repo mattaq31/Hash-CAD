@@ -430,3 +430,8 @@ canvas {
     align-items:center;
     gap: 10px;
 }
+
+
+.grid-angle-toggle-selected {
+    background-color:greenyellow
+}

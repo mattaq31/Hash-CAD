@@ -61,6 +61,13 @@ export function drawGrid(gridGroup, width, height, style, majorSize, minorSize, 
     let majorSizeX = majorSize * Math.sin(diagAngle * (Math.PI / 180)) //0.86602540378
     let minorSizeY = minorSize * Math.cos(diagAngle * (Math.PI / 180)) //0.5
     let majorSizeY = majorSize * Math.cos(diagAngle * (Math.PI / 180)) //0.5
+
+    if(diagAngle == 45){
+        minorSizeX = minorSize
+        majorSizeX = majorSize
+        minorSizeY = minorSize
+        majorSizeY = majorSize
+    }
     
     
     //First reset grid:
