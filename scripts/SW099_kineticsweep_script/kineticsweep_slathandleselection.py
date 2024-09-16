@@ -2,9 +2,9 @@ import pandas as pd
 import os
 import numpy as np
 
-from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
 from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
@@ -42,7 +42,7 @@ if ReadHandlesFromFile:  # this is to re-load a pre-computed handle array and sa
         except FileNotFoundError:
             raise RuntimeError("No handle array file was found. Switch 'HandlesFromFile' flag to False and try again.")
 
-    result = multi_rule_hamming(SlatArray, HandleArray)
+    result = multirule_precise_hamming(SlatArray, HandleArray)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 
 else:
@@ -52,7 +52,7 @@ else:
                    HandleArray[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
 # Generates plate dictionaries from provided files - don't change
-CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, CenterSeedPlate = get_standard_plates()
+CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, CenterSeedPlate, CombinedSeedPlate = get_standard_plates()
 
 CargoPlate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 cargo_key = {3: 'antiNelson'}
@@ -67,7 +67,7 @@ KineticMegastructure.assign_seed_handles(SeedArray, CenterSeedPlate, layer_id=1)
 
 # Prepare the cargo layer, map cargo handle ids, and assign to array
 CargoArray = DesignDF[CargoLayer].values
-KineticMegastructure.assign_cargo_handles_with_array(CargoArray, CargoPlate, cargo_key, layer='top')
+KineticMegastructure.assign_cargo_handles_with_array(CargoArray, cargo_key, CargoPlate, layer='top')
 
 # Patch up missing controls
 KineticMegastructure.patch_control_handles(CorePlate)

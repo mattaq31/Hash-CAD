@@ -1,10 +1,10 @@
 import os
 import numpy as np
 
-from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import read_design_from_excel
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from capc_pattern_generator import capc_pattern_generator
 
@@ -29,13 +29,7 @@ if read_handles_from_file:
         np.float32)
     handle_array = handle_array[..., np.newaxis]
 
-    unique_slats_per_layer = []
-    for i in range(slat_array.shape[2]):
-        slat_ids = np.unique(slat_array[:, :, i])
-        slat_ids = slat_ids[slat_ids != 0]
-        unique_slats_per_layer.append(slat_ids)
-
-    result = multi_rule_hamming(slat_array, handle_array)
+    result = multirule_precise_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=150)
@@ -50,45 +44,77 @@ center_seed_array = np.zeros((66, 66))
 center_seed_array[17:33, 14:14+5] = insertion_seed_array
 ########################################
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 octahedron_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
 bart_edna_plate = get_plateclass('GenericPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
 cargo_key = {3: 'antiNelson', 1: 'antiBart', 2: 'antiEdna'}
 ########################################
+# Preparing animation order for slats
+# have to prepare these manually as the stagger is screwing up with the automatic detection system.
+# The animation direction detector is also being turned off due to this issue.
+# TODO: changing the direction of the slats so that they don't phase through other slats is still required for this kind of design.
+custom_glider_animation_dict = {}
+
+groups = [['layer1-slat%s' % x for x in range(98, 114)],
+          ['layer2-slat%s' % x for x in range(17, 33)],
+          ['layer1-slat%s' % x for x in range(130, 156)],
+          ['layer2-slat%s' % x for x in range(33, 49)],
+          ['layer1-slat%s' % x for x in range(162, 177)],
+          ['layer2-slat%s' % x for x in range(82, 98)],
+          ['layer1-slat%s' % x for x in range(177, 194)],
+          ['layer2-slat%s' % x for x in range(66, 82)],
+          ['layer1-slat%s' % x for x in range(146, 162)],
+          ['layer2-slat%s' % x for x in range(50, 67)],
+          ['layer1-slat%s' % x for x in range(114, 130)],
+          ['layer2-slat%s' % x for x in range(1, 17)],
+          ]
+for order, group in enumerate(groups):
+    for slat in group:
+        custom_glider_animation_dict[slat] = order
+
+########################################
 
 M1_peripheral_dispersed = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
 M1_peripheral_dispersed.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M1_peripheral_dispersed.assign_seed_handles(center_seed_array, center_seed_plate)
-M1_peripheral_dispersed.assign_cargo_handles_with_array(cargo_array_pd, bart_edna_plate, cargo_key, layer='top')
+M1_peripheral_dispersed.assign_cargo_handles_with_array(cargo_array_pd, cargo_key, bart_edna_plate, layer='top')
 M1_peripheral_dispersed.patch_control_handles(core_plate)
-M1_peripheral_dispersed.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_peripheral_dispersed'),
-                                                         colormap='Dark2')
 
-M2_peripheral_bordered = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M2_peripheral_bordered.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
-M2_peripheral_bordered.assign_seed_handles(center_seed_array, center_seed_plate)
-M2_peripheral_bordered.assign_cargo_handles_with_array(cargo_array_pb, bart_edna_plate, cargo_key, layer='top')
-M2_peripheral_bordered.patch_control_handles(core_plate)
-M2_peripheral_bordered.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_peripheral_bordered'), colormap='Dark2')
+M1_peripheral_dispersed.export_design('full_design.xlsx', design_folder)
 
-M3_centre_bordered = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M3_centre_bordered.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
-M3_centre_bordered.assign_seed_handles(center_seed_array, center_seed_plate)
-M3_centre_bordered.assign_cargo_handles_with_array(cargo_array_cb, bart_edna_plate, cargo_key, layer='top')
-M3_centre_bordered.patch_control_handles(core_plate)
-M3_centre_bordered.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_central_bordered'), colormap='Dark2')
+# M1_peripheral_dispersed.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_peripheral_dispersed'),
+#                                                          colormap='Dark2')
+# M1_peripheral_dispersed.create_blender_3D_view(os.path.join(design_folder, 'design_graphics_peripheral_dispersed'), # I probably need to define the slats for each group manually...
+#                                                custom_assembly_groups=custom_glider_animation_dict,
+#                                                correct_slat_entrance_direction=False,
+#                                                animate_assembly=True, animation_type='translate')
 
-M4_centre_dispersed = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M4_centre_dispersed.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
-M4_centre_dispersed.assign_seed_handles(center_seed_array, center_seed_plate)
-M4_centre_dispersed.assign_cargo_handles_with_array(cargo_array_cd, bart_edna_plate, cargo_key, layer='top')
-M4_centre_dispersed.patch_control_handles(core_plate)
-M4_centre_dispersed.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_central_dispersed'), colormap='Dark2')
 
-M5_random = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M5_random.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
-M5_random.assign_seed_handles(center_seed_array, center_seed_plate)
-M5_random.assign_cargo_handles_with_array(cargo_array_rand, bart_edna_plate, cargo_key, layer='top')
-M5_random.patch_control_handles(core_plate)
-M5_random.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_random_patterning'), colormap='Dark2')
+# M2_peripheral_bordered = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
+# M2_peripheral_bordered.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+# M2_peripheral_bordered.assign_seed_handles(center_seed_array, center_seed_plate)
+# M2_peripheral_bordered.assign_cargo_handles_with_array(cargo_array_pb, bart_edna_plate, cargo_key, layer='top')
+# M2_peripheral_bordered.patch_control_handles(core_plate)
+# M2_peripheral_bordered.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_peripheral_bordered'), colormap='Dark2')
+#
+# M3_centre_bordered = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
+# M3_centre_bordered.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+# M3_centre_bordered.assign_seed_handles(center_seed_array, center_seed_plate)
+# M3_centre_bordered.assign_cargo_handles_with_array(cargo_array_cb, bart_edna_plate, cargo_key, layer='top')
+# M3_centre_bordered.patch_control_handles(core_plate)
+# M3_centre_bordered.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_central_bordered'), colormap='Dark2')
+#
+# M4_centre_dispersed = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
+# M4_centre_dispersed.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+# M4_centre_dispersed.assign_seed_handles(center_seed_array, center_seed_plate)
+# M4_centre_dispersed.assign_cargo_handles_with_array(cargo_array_cd, bart_edna_plate, cargo_key, layer='top')
+# M4_centre_dispersed.patch_control_handles(core_plate)
+# M4_centre_dispersed.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_central_dispersed'), colormap='Dark2')
+#
+# M5_random = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
+# M5_random.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+# M5_random.assign_seed_handles(center_seed_array, center_seed_plate)
+# M5_random.assign_cargo_handles_with_array(cargo_array_rand, bart_edna_plate, cargo_key, layer='top')
+# M5_random.patch_control_handles(core_plate)
+# M5_random.create_standard_graphical_report(os.path.join(design_folder, 'design_graphics_random_patterning'), colormap='Dark2')

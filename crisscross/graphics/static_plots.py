@@ -38,7 +38,7 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
                                slats=None, seed_array=None,
                                cargo_dict=None, save_to_folder=None, instant_view=True,
                                slat_width=4, connection_angle='90',
-                               colormap='Set1',
+                               colormap='Set1', seed_color='black',
                                cargo_colormap='Set1'):
     """
     Creates a graphical view of all slats in the assembled design, including cargo and seed handles.
@@ -54,6 +54,7 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
     :param slat_width: The width to use for the slat lines.
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
     :param colormap: The colormap to sample from for each additional layer.
+    :param seed_color: The color to use for the seed handles.
     :param cargo_colormap: The colormap to sample from for each cargo type.
     :return: N/A
     """
@@ -85,19 +86,28 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         layer_figures.append((l_fig, l_ax))
 
     for slat_id, slat in slats.items():
-        # TODO: Is there some way to print the slat ID too?
+        # TODO: Is there some way to print the slat ID in the graphic too?
         if len(slat.slat_coordinate_to_position) == 0:
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
                                 'view as it does not have a grid position defined.' % slat_id)
             continue
+
+        if len(slat.slat_coordinate_to_position) != slat.max_length:
+            print(Fore.YELLOW + 'WARNING: Slat %s was ignored from 2D graphical '
+                                'view as it does not seem to have a normal set of grid coordinates.' % slat_id)
+            continue
+
         start_pos = slat.slat_position_to_coordinate[1]
         end_pos = slat.slat_position_to_coordinate[slat.max_length]
 
-        start_pos = physical_point_scale_convert(start_pos, grid_xd,
-                                                 grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
+        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+        if isinstance(colormap, list):
+            layer_color = colormap[slat.layer - 1]
+        else:
+            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+
         layer_figures[slat.layer - 1][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
                                                  color=layer_color, linewidth=slat_width, zorder=1)
         layer_figures[slat.layer - 1][1][1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
@@ -113,23 +123,29 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         seed_layer = seed_array[0]
         seed_plot_points = np.where(seed_array[1] > 0)
         transformed_spp = [seed_plot_points[0] * grid_yd, seed_plot_points[1] * grid_xd]
-        layer_figures[seed_layer - 1][1][1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100,
+        layer_figures[seed_layer - 1][1][1].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100,
                                                     zorder=10)
-        global_ax[0].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
+        global_ax[0].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100, alpha=0.5,
                              zorder=seed_layer)
-        global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color='black', s=100, alpha=0.5,
+        global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100, alpha=0.5,
                              zorder=num_layers - seed_layer)
 
     if cargo_dict is not None:
         # sets the colours of annotation according to the cargo being added
         all_cargo = set(cargo_dict.values())
         cargo_color_values_rgb = {}
+
+        if isinstance(cargo_colormap, list):
+            cargo_color_list = cargo_colormap
+        else:
+            cargo_color_list = mpl.colormaps[cargo_colormap].colors
+
         for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
-            if cargo_number >= len(mpl.colormaps[cargo_colormap].colors):
+            if cargo_number >= len(cargo_color_list):
                 print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. '
                                  'Recycling other colors for the higher IDs.' % unique_cargo_name)
-                cargo_number = max(int(cargo_number) - len(mpl.colormaps[cargo_colormap].colors), 0)
-            cargo_color_values_rgb[unique_cargo_name] = (mpl.colormaps[cargo_colormap].colors[cargo_number])
+                cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
+            cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
 
         layers_containing_cargo = set()
         for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
@@ -218,13 +234,21 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
                                 'view as it does not have a grid position defined.' % slat_id)
             continue
+
+        if len(slat.slat_coordinate_to_position) != slat.max_length:
+            print(Fore.YELLOW + 'WARNING: Slat %s was ignored from 2D assembly handle '
+                                'view as it does not seem to have a normal set of grid coordinates.' % slat_id)
+            continue
+
         start_pos = slat.slat_position_to_coordinate[1]
         end_pos = slat.slat_position_to_coordinate[slat.max_length]
-        start_pos = physical_point_scale_convert(start_pos, grid_xd,
-                                                 grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
+        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+        if isinstance(colormap, list):
+            layer_color = colormap[slat.layer - 1]
+        else:
+            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
 
         if slat.layer == 1:
             plot_positions = [0]
@@ -271,7 +295,13 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
     annotation_x_position = full_x_scale / 2
     for fig_ind, (fig, ax) in enumerate(interface_figures):
         for l_ind, line in enumerate(layer_lines):
-            ax[1].plot(line[0], line[1], color=mpl.colormaps[colormap].colors[l_ind], linewidth=slat_width)
+
+            if isinstance(colormap, list):
+                layer_color = colormap[l_ind]
+            else:
+                layer_color = mpl.colormaps[colormap].colors[l_ind]
+
+            ax[1].plot(line[0], line[1], color=layer_color, linewidth=slat_width)
 
             # extracts interface numbers from megastructure data
             if l_ind == 0:

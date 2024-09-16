@@ -1,7 +1,6 @@
 from crisscross.plate_mapping import BasePlate
 import pandas as pd
 import os
-import numpy as np
 
 
 class GenericPlate(BasePlate):

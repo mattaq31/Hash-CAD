@@ -7,7 +7,8 @@ from matplotlib.patches import Rectangle
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.slats import Slat
 
 from crisscross.helper_functions import create_dir_if_empty
@@ -23,7 +24,7 @@ np.random.seed(8)
 read_handles_from_file = True
 ########################################
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 cargo_key = {3: 'antiNelson'}
 ########################################
@@ -44,7 +45,7 @@ if read_handles_from_file:
     handle_array = np.loadtxt(os.path.join(output_folder, 'optimized_handle_array.csv'), delimiter=',').astype(
         np.float32)
     handle_array = handle_array[..., np.newaxis]
-    result = multi_rule_hamming(slat_array, handle_array)
+    result = multirule_precise_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=150)
@@ -85,7 +86,7 @@ M_inv.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 # adds 16 Nelson handles to allow attachment of fluorescent strands (they are attached to the H2 side of the incumbent strand)
 cargo_array = np.zeros(padded_slat_array.shape[0:2])
 cargo_array[4:20, slat_invader_placement] = 3
-M_inv.assign_cargo_handles_with_array(cargo_array, nelson_plate, cargo_key,2, handle_orientation=2)
+M_inv.assign_cargo_handles_with_array(cargo_array, cargo_key, nelson_plate, 2, handle_orientation=2)
 M_inv.patch_control_handles(core_plate)
 
 # The actual invader for this design is simply the actual control y-slat, so a copy will be made here
@@ -170,7 +171,7 @@ specific_plate_wells = plate96[0:32] + plate96[36:36 + 24] + plate96[60:60 + 8] 
 
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
                                  output_folder, 'all_echo_commands.csv',
-                                 specific_plate_wells=specific_plate_wells)
+                                 manual_plate_well_assignments=specific_plate_wells)
 
 ####### PLOTTING VISUALIZATION
 

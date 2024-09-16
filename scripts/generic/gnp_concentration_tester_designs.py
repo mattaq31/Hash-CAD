@@ -4,7 +4,8 @@ import os
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
 from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
@@ -44,7 +45,7 @@ cargo_names = {**cargo_names, **crossbar_anti_names, **crossbar_names}
 
 ########################################
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, edge_seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 cargo_key = {3: 'antiNelson'}
 ########################################
@@ -57,7 +58,7 @@ if read_handles_from_file:
     handle_array = np.loadtxt(os.path.join(output_folder, 'stella_handle_array.csv'), delimiter=',').astype(
         np.float32)
     handle_array = handle_array[..., np.newaxis]
-    result = multi_rule_hamming(slat_array, handle_array)
+    result = multirule_precise_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=2)
@@ -88,7 +89,7 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 megastructure = Megastructure(slat_array)
 megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(corner_seed_array, edge_seed_plate)
-megastructure.assign_cargo_handles_with_array(cargo_pattern, nelson_plate, cargo_key, layer='bottom')
+megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_key, nelson_plate, layer='bottom')
 megastructure.patch_control_handles(core_plate)
 
 convert_slats_into_echo_commands(megastructure.slats, 'gnp_replacement_plate',
@@ -101,7 +102,7 @@ for key, slat in megastructure.slats.items():
 
 convert_slats_into_echo_commands(nucx_slats, 'gnp_replacement_plate',
                                  output_folder, 'nucx_only_echo_commands_bart_handles.csv',
-                                 specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
+                                 manual_plate_well_assignments=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10'])
 
 ########################################
@@ -117,7 +118,7 @@ for i in range(16):
 megastructure_nelson = Megastructure(slat_array)
 megastructure_nelson.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure_nelson.assign_seed_handles(corner_seed_array, edge_seed_plate)
-megastructure_nelson.assign_cargo_handles_with_array(cargo_pattern, nelson_plate, cargo_key, layer='bottom')
+megastructure_nelson.assign_cargo_handles_with_array(cargo_pattern, cargo_key, nelson_plate, layer='bottom')
 megastructure_nelson.patch_control_handles(core_plate)
 
 convert_slats_into_echo_commands(megastructure_nelson.slats, 'gnp_replacement_plate',
@@ -129,7 +130,7 @@ for key, slat in megastructure_nelson.slats.items():
 
 convert_slats_into_echo_commands(nucx_slats_nelson, 'gnp_replacement_plate',
                                  output_folder, 'nucx_only_echo_commands_nelson_handles.csv',
-                                 specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
+                                 manual_plate_well_assignments=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10'])
 
 combined_slats = {}
@@ -145,7 +146,7 @@ for key, val in nucx_slats_nelson.items():
 # combined protocol for both designs
 convert_slats_into_echo_commands(combined_slats, 'gnp_replacement_plate',
                                  output_folder, 'nucx_only_echo_commands_both_designs.csv',
-                                 specific_plate_wells=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
+                                 manual_plate_well_assignments=['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10',
                                                        'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10',
                                                        'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10',
                                                        'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10'])

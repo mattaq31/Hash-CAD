@@ -19,7 +19,7 @@ body{
     gap: 20px;
     align-items:stretch;
     width: 100vw;
-    height: 100vh;
+    height: 88vh;
 }
 
 .left-panel {
@@ -56,6 +56,7 @@ body{
     height: calc(5*100vh);
     width: calc(5*100vw);
     background-color: white;
+    cursor: crosshair;
 }
 
 .config {
@@ -334,3 +335,98 @@ canvas {
     background-color:greenyellow
 }
 
+
+
+#handle-configuration{
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+    margin: 10px;
+}
+
+
+#handle-iteration-number{
+    flex-basis: 20%;
+}
+
+#handle-iteration-number-label{
+    flex-basis: 80%;
+    text-align: center;
+    margin: 0px;
+}
+
+#handle-buttons{
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin: 10px;
+}
+
+#generate-handles-button{
+    flex-basis: 100%;
+}
+
+#clear-handles-button{
+    flex-basis: 100%;
+}
+
+
+#megastructure-generation-config-checkboxes{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 0px;
+    margin-top: 20px;
+    gap: 0px;
+    padding: 0px;
+}
+
+
+
+#seed-mode-selector{
+    margin: 5px;
+    width: 50%
+}
+
+
+.mode-selector-button{
+    width: 40px;
+    height: 40px;
+}
+
+
+
+
+#notifications {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 300px;
+    height: 100vh;
+    z-index: 10000; /* Ensure it overlaps other elements */
+    overflow-x: hidden; 
+    overflow-y: auto;
+}
+.notification {
+    background-color: #333;
+    color: #fff;
+    padding: 15px;
+    margin-top: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+.notification.show {
+    opacity: 1;
+}
+
+#handle-match-options {
+    display: flex;
+    flex-flow:wrap;
+    padding: 10px;
+    align-items:center;
+    gap: 10px;
+}

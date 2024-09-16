@@ -8,7 +8,8 @@ from colorama import Fore
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import (cargo_plate_folder, nelson_quimby_antihandles,
@@ -26,7 +27,7 @@ regenerate_graphics = False
 ################################
 # Plate sequences
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 bart_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
 simpsons_plate = get_plateclass('GenericPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
@@ -48,7 +49,7 @@ if read_handles_from_file:
     handle_array = np.loadtxt(os.path.join(output_folder, 'optimized_handle_array.csv'), delimiter=',').astype(
         np.float32)
     handle_array = handle_array[..., np.newaxis]
-    result = multi_rule_hamming(slat_array, handle_array)
+    result = multirule_precise_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=150)
@@ -119,10 +120,16 @@ for i in range(8):
     full_slat_dict['KNOCK-IN INCUMBENT STRAND %s' % (17 + i)] = incumbent
 
 specific_plate_wells = plate96[0:8] + plate96[12:12 + 8]  # different groups are split into different rows for convenience
+specific_plate_numbers = [1] * 16
+
+manual_assignments = {}
+for slat_num, slat in enumerate(full_slat_dict.values()):
+    manual_assignments[slat.ID] = (specific_plate_numbers[slat_num], specific_plate_wells[slat_num])
+
 convert_slats_into_echo_commands(full_slat_dict, 'tmsd_test_plate',
-                                 output_folder, 'all_echo_commands.csv',
-                                 transfer_volume=150,
-                                 specific_plate_wells=specific_plate_wells)
+                                 output_folder, 'all_echo_commands_test.csv',
+                                 default_transfer_volume=150,
+                                 manual_plate_well_assignments=manual_assignments)
 print(Fore.GREEN + 'Design complete, no errors found.')
 
 ####### PLOTTING VISUALIZATION

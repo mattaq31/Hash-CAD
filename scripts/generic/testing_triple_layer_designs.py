@@ -1,7 +1,7 @@
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import read_design_from_excel
 import numpy as np
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from crisscross.helper_functions.plate_constants import nelson_quimby_antihandles, cargo_plate_folder
 
@@ -21,7 +21,7 @@ handle_array = generate_handle_set_and_optimize(base_array, unique_sequences=32,
 
 # Step 4 - generate dictionary of slats
 
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 
 cargo_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 
@@ -33,7 +33,7 @@ standard_seed_array = np.arange(16) + 1
 standard_seed_array = np.pad(standard_seed_array[:, np.newaxis], ((0, 0), (4, 0)), mode='edge')
 seed_array[17:33, 1:6] = standard_seed_array
 megastructure.assign_seed_handles(seed_array, seed_plate)
-megastructure.assign_cargo_handles_with_array(cargo_array, cargo_plate, cargo_key, layer='bottom')
+megastructure.assign_cargo_handles_with_array(cargo_array, cargo_key, cargo_plate, layer='bottom')
 
 megastructure.patch_control_handles(core_plate)
 megastructure.create_graphical_slat_view(instant_view=True)

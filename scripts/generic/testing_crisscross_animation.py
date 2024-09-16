@@ -4,7 +4,8 @@ import pandas as pd
 
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 ########################################
@@ -16,7 +17,7 @@ np.random.seed(8)
 read_handles_from_file = True
 ########################################
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, edge_seed_plate, center_seed_plate = get_standard_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
 nelson_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 cargo_key = {3: 'antiNelson'}
 ########################################
@@ -29,7 +30,7 @@ slat_array, unique_slats_per_layer = generate_standard_square_slats(32)  # stand
 if read_handles_from_file:
     handle_array = np.loadtxt(os.path.join(template_folder, 'optimized_handle_array.csv'), delimiter=',').astype(np.float32)
     handle_array = handle_array[..., np.newaxis]
-    result = multi_rule_hamming(slat_array, handle_array)
+    result = multirule_precise_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=150)
@@ -69,7 +70,7 @@ M2 = Megastructure(slat_array, connection_angle='60')
 for rev_slat in range(48, 64):  # this intervention is being done to accommodate the seed plate handles we have available
     M2.slats[f'layer2-slat{rev_slat}'].reverse_direction()
 
-M2.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
+M2.assign_seed_handles(seed_array, seed_plate, layer_id=2)
 
 custom_glider_animation_dict = {}
 
@@ -91,6 +92,10 @@ for order, group in enumerate(groups):
 slat_translate_dict = {}
 for slat in groups[8] + groups[9]:
     slat_translate_dict[slat] = 20
+
+# M2.export_design('full_design.xlsx', '/Users/matt/Desktop')
+M2.create_standard_graphical_report(os.path.join('/Users/matt/Desktop', 'Design Graphics'), colormap='Set1',
+                                             cargo_colormap='Dark2', seed_color=(1.0, 0.0, 0.0))
 
 M2.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True,
                           animation_type='translate',
