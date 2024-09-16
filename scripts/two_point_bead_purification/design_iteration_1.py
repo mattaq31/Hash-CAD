@@ -2,16 +2,11 @@
 import copy
 
 import numpy as np
-import pandas as pd
 import os
 
-from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
-from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
-from crisscross.core_functions.slat_design import generate_standard_square_slats, \
-    attach_cargo_handles_to_core_sequences
+from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import (octahedron_patterning_v1, cargo_plate_folder)
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
@@ -34,7 +29,7 @@ crossbar_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_
 slat_array, _ = generate_standard_square_slats(32)
 # read in handles
 handle_array = np.load(os.path.join(output_folder, 'true_mighty_29_square.npy'))
-result = multi_rule_hamming(slat_array, handle_array)
+result = multirule_precise_hamming(slat_array, handle_array)
 print('Hamming distance from file-loaded design: %s' % result['Universal'])
 
 anchor_placement_array_lhs = np.zeros((32, 32))  # sequences will be placed on either end of the final set of slats
@@ -75,7 +70,9 @@ for design in ['p1_anchors_inner', 'p32_anchors_inner', 'p1_anchors_outer', 'p32
                                                       cargo_key={1: anchor_name},
                                                       layer='bottom')
     all_megas[design].patch_control_handles(core_plate)
-    # all_megas[design].create_standard_graphical_report(os.path.join(output_folder, design), colormap='Set1', cargo_colormap='Dark2')
+    if design == 'p32_anchors_inner':
+        # all_megas[design].create_standard_graphical_report(os.path.join(output_folder, 'quick_viz'), colormap='Set1', cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))
+        all_megas[design].create_blender_3D_view(os.path.join(output_folder, 'quick_viz'), colormap='Set1', cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0), include_bottom_light=True)
 
 M_base.patch_control_handles(core_plate)
 
@@ -90,21 +87,21 @@ for design, mega in all_megas.items():
             full_slat_dict[f'{design}-layer1-slat{i}'] = all_megas[design].slats[f'layer1-slat{i}']
 
 
-convert_slats_into_echo_commands(slat_dict=M_base.slats,
-                                 destination_plate_name='double_purification_plate',
-                                 default_transfer_volume=150,
-                                 unique_transfer_volume_for_plates={'P3518_MA': int(150*(500/200))},
-                                 output_folder=echo_folder,
-                                 center_only_well_pattern=True,
-                                 output_empty_wells=True,
-                                 output_filename=f'echo_complete_29_design_no_modifications.csv')
-
-convert_slats_into_echo_commands(slat_dict=full_slat_dict,
-                                 destination_plate_name='double_purification_plate',
-                                 default_transfer_volume=150,
-                                 unique_transfer_volume_for_plates={'P3518_MA': int(150*(500/200))},
-                                 output_folder=echo_folder,
-                                 center_only_well_pattern=True,
-                                 output_empty_wells=True,
-                                 output_filename=f'echo_complete_dbl_purification_anchors.csv')
+# convert_slats_into_echo_commands(slat_dict=M_base.slats,
+#                                  destination_plate_name='double_purification_plate',
+#                                  default_transfer_volume=150,
+#                                  unique_transfer_volume_for_plates={'P3518_MA': int(150*(500/200))},
+#                                  output_folder=echo_folder,
+#                                  center_only_well_pattern=True,
+#                                  output_empty_wells=True,
+#                                  output_filename=f'echo_complete_29_design_no_modifications.csv')
+#
+# convert_slats_into_echo_commands(slat_dict=full_slat_dict,
+#                                  destination_plate_name='double_purification_plate',
+#                                  default_transfer_volume=150,
+#                                  unique_transfer_volume_for_plates={'P3518_MA': int(150*(500/200))},
+#                                  output_folder=echo_folder,
+#                                  center_only_well_pattern=True,
+#                                  output_empty_wells=True,
+#                                  output_filename=f'echo_complete_dbl_purification_anchors.csv')
 

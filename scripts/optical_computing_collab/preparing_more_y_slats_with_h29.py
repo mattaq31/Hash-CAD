@@ -4,7 +4,7 @@ import os
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats, generate_patterned_square_cco
-from crisscross.core_functions.hamming_functions import multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import octahedron_patterning_v1, cargo_plate_folder, simpsons_mixplate_antihandles
@@ -44,11 +44,11 @@ handle_array = np.load(os.path.join(hamming_folder, handle_array_file))
 old_handle_array = np.loadtxt(os.path.join(hamming_folder, old_handle_array_file), delimiter=',').astype(np.float32)
 old_handle_array = old_handle_array[..., np.newaxis]
 
-optimized_hamming_results = multi_rule_hamming(slat_array, handle_array, request_substitute_risk_score=True)
+optimized_hamming_results = multirule_precise_hamming(slat_array, handle_array, request_substitute_risk_score=True)
 print('Hamming distance from optimized array: %s, Duplication Risk: %s' % (
 optimized_hamming_results['Universal'], optimized_hamming_results['Substitute Risk']))
 
-old_hamming_results = multi_rule_hamming(slat_array, old_handle_array, request_substitute_risk_score=True)
+old_hamming_results = multirule_precise_hamming(slat_array, old_handle_array, request_substitute_risk_score=True)
 print('Hamming distance from old array: %s, Duplication Risk: %s' % (
 old_hamming_results['Universal'], old_hamming_results['Substitute Risk']))
 ########################################

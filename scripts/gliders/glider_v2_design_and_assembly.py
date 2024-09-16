@@ -5,7 +5,8 @@ from colorama import Fore
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
 from crisscross.helper_functions.plate_constants import cargo_plate_folder, simpsons_mixplate_antihandles, \
@@ -128,7 +129,7 @@ if read_handles_from_file:  # this is to re-load a pre-computed handle array and
         handle_array[..., i] = np.loadtxt(os.path.join(output_folder, 'optimized_handle_array_layer_%s.csv' % (i + 1)),
                                           delimiter=',').astype(np.float32)
 
-    result = multi_rule_hamming(slat_array, handle_array)
+    result = multirule_precise_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, max_rounds=400, layer_hamming=True)

@@ -4,10 +4,9 @@ import numpy as np
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.plate_mapping import get_plateclass, get_standard_plates
-
-from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
+from crisscross.plate_mapping import get_standard_plates
 
 DesignFolder = "/Users/stellawang/Dropbox (HMS)/crisscross_team/Crisscross Designs/SW101_handleaggregation"
 #DesignFolder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/SW101_handleaggregation'
@@ -40,7 +39,7 @@ if ReadHandlesFromFile:  # this is to re-load a pre-computed handle array and sa
         except FileNotFoundError:
             raise RuntimeError("No handle array file was found. Switch 'HandlesFromFile' flag to False and try again.")
 
-    result = multi_rule_hamming(SlatArray, HandleArray)
+    result = multirule_precise_hamming(SlatArray, HandleArray)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 
 else:

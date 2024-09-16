@@ -1,5 +1,4 @@
 import numpy as np
-import os
 
 import os
 import zipfile
@@ -10,7 +9,7 @@ from crisscross.plate_mapping import get_plateclass
 from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
                                                          crisscross_h2_handle_plates, assembly_handle_folder,
                                                          seed_plug_plate_corner)
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 
 
