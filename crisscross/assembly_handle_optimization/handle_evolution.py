@@ -119,13 +119,15 @@ def evolve_handles_from_slat_array(slat_array,
     """
     Generates an optimal handle array from a slat array using an evolutionary algorithm
     and a physics-informed partition score.
+    WARNING: Make sure to use the "if __name__ == '__main__':" block to run this function in a script.
+    Otherwise, the spawned processes will cause a recursion error.
     :param slat_array: The basis slat array for which a handle set needs to be found
     :param early_hamming_stop: If this hamming distance is achieved, the evolution will stop early
     :param evolution_generations: Number of generations to consider before stopping
     :param evolution_population: Number of handle arrays to mutate in each generation
-    :param process_count: Number of threads to use for hamming multiprocessing
+    :param process_count: Number of threads to use for hamming multiprocessing (if set to default, will use 67% of available cores)
     :param generational_survivors: Number of surviving candidate arrays that persist through each generation
-    :param mutation_rate: Probability of an individual handle being mutated in each generation TODO: update this description
+    :param mutation_rate: Probability of an individual eligible handle being mutated after selection
     :param slat_length: Slat length in terms of number of handles
     :param unique_handle_sequences: Handle library length
     :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
