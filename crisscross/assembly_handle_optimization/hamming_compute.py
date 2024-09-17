@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import product
 from collections import defaultdict, OrderedDict
+import time
 
 
 def extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer):
@@ -92,6 +93,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
                               report_worst_slat_combinations=True,
                               per_layer_check=False,
                               specific_slat_groups=None,
+                              request_substitute_risk_score=False,
                               slat_length=32):
     """
     Given a slat and handle array, this function computes the hamming distance of all handle/antihandle combinations provided.
@@ -104,6 +106,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     :param per_layer_check: Set to true to provide a hamming score for the individual layers of the design (i.e. the interface between each layer)
     :param specific_slat_groups: Provide a dictionary, where the key is a group name and the value is a list of tuples containing the layer and slat ID of the slats in the group for which the specific hamming distance is being requested.
     :param slat_length: The length of a single slat (must be an integer)
+    :param request_substitute_risk_score: Set to true to provide a measure of the largest amount of handle duplication between slats of the same type (handle or antihandle)
     :return: Dictionary of scores (or slat layer/handle IDS for the worst slat combinations)
      for each of the slat combinations requested from the design
     """
@@ -162,7 +165,17 @@ def multirule_oneshot_hamming(slat_array, handle_array,
         score_dict['Worst combinations handle IDs'] = hallofshamehandles
         score_dict['Worst combinations antihandle IDs'] = hallofshameantihandles
 
-    # TODO: add substitute risk score
+    # this computes the risk that two slats are identical i.e. the risk that one slat could replace another in the wrong place if it has enough complementary handles
+    # for now, no special index validation is provided for this feature.
+    if request_substitute_risk_score:
+        duplicate_results = []
+        for combo_dict in [handle_dict, antihandle_dict]:
+            duplicate_results.append(oneshot_hamming_compute(combo_dict, combo_dict, slat_length))
+        global_min = np.inf
+        for sim_list in duplicate_results:
+            num_handles = sim_list.shape[0]
+            global_min = np.min([np.min(sim_list[np.eye(num_handles)==0,:]), global_min])  # ignores diagonal i.e. slat self-comparisons
+        score_dict['Substitute Risk'] = np.int64(global_min)
 
     return score_dict
 
@@ -184,8 +197,7 @@ def precise_hamming_compute(handle_dict, antihandle_dict, valid_product_indices,
     combination_matrix_1 = np.zeros((total_combos, slat_length))
     combination_matrix_2 = np.zeros((total_combos, slat_length))
     valid_combo_index = 0
-    for i, ((hk, handle_slat), (ahk, antihandle_slat)) in enumerate(
-            product(handle_dict.items(), antihandle_dict.items())):
+    for i, ((hk, handle_slat), (ahk, antihandle_slat)) in enumerate(product(handle_dict.items(), antihandle_dict.items())):
         if valid_product_indices[i]:
             for j in range(slat_length):
                 # 4 combinations:
@@ -263,7 +275,6 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
     # this computes the risk that two slats are identical i.e. the risk that one slat could replace another in the wrong place if it has enough complementary handles
     # for now, no special index validation is provided for this feature.
     if request_substitute_risk_score:
-
         duplicate_results = []
         for bag in [bag_of_slat_handles, bag_of_slat_antihandles]:
             duplicate_product_indices = []
@@ -274,10 +285,10 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
                     duplicate_product_indices.append(True)
             duplicate_results.append(precise_hamming_compute(bag, bag, duplicate_product_indices, slat_length))
 
-        global_min = 32
+        global_min = np.inf
         for sim_list in duplicate_results:
             global_min = np.min([np.min(sim_list), global_min])
-        score_dict['Substitute Risk'] = global_min
+        score_dict['Substitute Risk'] = np.int64(global_min)
 
     # the individual scores for the components requested are computed here
     if universal_check:
