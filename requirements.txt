@@ -4,3 +4,6 @@ matplotlib
 openpyxl
 xlsxwriter
 tqdm
+click
+rich-click
+toml

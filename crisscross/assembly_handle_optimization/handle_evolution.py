@@ -1,14 +1,18 @@
 import os
+from collections import defaultdict
+import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import multiprocessing
 import time
 import matplotlib.ticker as ticker
+from colorama import Fore
 
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, multirule_precise_hamming
 from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.assembly_handle_optimization import generate_random_slat_handles, generate_layer_split_handles
+from crisscross.helper_functions import save_list_dict_to_file
 
 
 def mutate_handle_arrays(slat_array, candidate_handle_arrays,
@@ -114,7 +118,7 @@ def evolve_handles_from_slat_array(slat_array,
                                    slat_length=32,
                                    unique_handle_sequences=32,
                                    split_sequence_handles=False,
-                                   plot_directory=None,
+                                   log_tracking_directory=None,
                                    random_seed=8):
     """
     Generates an optimal handle array from a slat array using an evolutionary algorithm
@@ -131,7 +135,7 @@ def evolve_handles_from_slat_array(slat_array,
     :param slat_length: Slat length in terms of number of handles
     :param unique_handle_sequences: Handle library length
     :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
-    :param plot_directory: Set to a directory to export plots of the optimization process (optional)
+    :param log_tracking_directory: Set to a directory to export plots and metrics during the optimization process (optional)
     :param random_seed: Random seed to use to ensure consistency
     :return: The final optimized handle array for the supplied slat array.
     """
@@ -153,12 +157,16 @@ def evolve_handles_from_slat_array(slat_array,
     hallofshame_handle_values = []
     hallofshame_antihandle_values = []
 
-    if plot_directory:
-        fig_name = os.path.join(plot_directory, 'hamming_evolution_tracking.pdf')
-        physical_score_tracker = []
-        hamming_plot_tracker = []
-        duplicate_risk_tracker = []
-        multiprocess_time_tracker = []
+
+    if log_tracking_directory:
+        fig_name = os.path.join(log_tracking_directory, 'hamming_evolution_tracking.pdf')
+        metric_tracker = defaultdict(list)
+        excel_conditional_formatting = {'type': '3_color_scale',
+                                        'criteria': '<>',
+                                        'min_color': "#63BE7B",  # Green
+                                        'mid_color': "#FFEB84",  # Yellow
+                                        'max_color': "#F8696B",  # Red
+                                        'value': 0}
 
     if process_count:
         num_processes = process_count
@@ -166,9 +174,11 @@ def evolve_handles_from_slat_array(slat_array,
         # if no exact count specified, use 67 percent of the cores available on the computer as a reasonable load
         num_processes = max(1, int(multiprocessing.cpu_count() / 1.5))
 
+    print(Fore.BLUE + f'Will be using {num_processes} core(s) for the handle array evolution.' + Fore.RESET)
+
     # This is the main game/evolution loop where generations are created, evaluated, and mutated
     with tqdm(total=evolution_generations, desc='Evolution Progress') as pbar:
-        for _ in range(evolution_generations):
+        for generation in range(evolution_generations):
             #### first step: analyze handle array population individual by individual and gather reports of the scores
             # and the bad handles of each
 
@@ -199,19 +209,23 @@ def evolve_handles_from_slat_array(slat_array,
             # Get the largest elements using the sorted indices
             best_physical_scores = physical_scores[sorted_indices_of_largest_scores]
 
-            if plot_directory:
-                hamming_plot_tracker.append(max_hamming_value_of_population)
-
+            if log_tracking_directory:
+                metric_tracker['Best Hamming'].append(max_hamming_value_of_population)
                 # All other metrics should match the specific handle array that has the best hamming distance
-                physical_score_tracker.append(-physical_scores[np.argmax(hammings)])
-                duplicate_risk_tracker.append(duplicate_risk_scores[np.argmax(hammings)])
-
-                multiprocess_time_tracker.append(multiprocess_time)
+                metric_tracker['Corresponding Physics-Based Score'].append(-physical_scores[np.argmax(hammings)])
+                metric_tracker['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmax(hammings)])
+                metric_tracker['Hamming Compute Time'].append(multiprocess_time)
 
                 fig, ax = plt.subplots(4, 1, figsize=(10, 10))
 
-                for ind, (name, data) in enumerate(zip(['Candidate with Best Hamming Distance', 'Corresponding Physics-Based Partition Score', 'Corresponding Duplication Risk Score', 'Hamming Compute Time (s)'],
-                                                       [hamming_plot_tracker, physical_score_tracker, duplicate_risk_tracker, multiprocess_time_tracker])):
+                # TODO: optimize here
+                for ind, (name, data) in enumerate(zip(['Candidate with Best Hamming Distance',
+                                                        'Corresponding Physics-Based Partition Score',
+                                                        'Corresponding Duplication Risk Score', 'Hamming Compute Time (s)'],
+                                                       [metric_tracker['Best Hamming'],
+                                                        metric_tracker['Corresponding Physics-Based Score'],
+                                                        metric_tracker['Corresponding Duplicate Risk Score'],
+                                                        metric_tracker['Hamming Compute Time']])):
                     ax[ind].plot(data, linestyle='--', marker='o')
                     ax[ind].set_xlabel('Iteration')
                     ax[ind].set_ylabel('Measurement')
@@ -223,10 +237,29 @@ def evolve_handles_from_slat_array(slat_array,
                 plt.savefig(fig_name)
                 plt.close(fig)
 
-            pbar.update(1)
-            pbar.set_postfix({f'Current best hamming score': max_hamming_value_of_population,
-                              'Time for hamming calculation': multiprocess_time,
-                              'Best physics partition scores': best_physical_scores})
+                # saves the metrics to a csv file for downstream analysis/plotting
+                save_list_dict_to_file(log_tracking_directory, 'metrics.csv', metric_tracker)
+
+                # saves the best handle array to an excel file for downstream analysis
+                if generation % 10 == 0 or generation == evolution_generations-1 or max_hamming_value_of_population >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
+                    intermediate_best_array = candidate_handle_arrays[np.argmax(hammings)]
+                    writer = pd.ExcelWriter(
+                        os.path.join(log_tracking_directory, f'best_handle_array_generation_{generation}.xlsx'),
+                        engine='xlsxwriter')
+
+                    # prints out slat dataframes in standard format
+                    for layer_index in range(intermediate_best_array.shape[-1]):
+                        df = pd.DataFrame(intermediate_best_array[..., layer_index])
+                        df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
+                        # Apply conditional formatting for easy color-based identification
+                        writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],df.shape[1] - 1, excel_conditional_formatting)
+                    writer.close()
+
+
+                pbar.update(1)
+                pbar.set_postfix({f'Current best hamming score': max_hamming_value_of_population,
+                                  'Time for hamming calculation': multiprocess_time,
+                                  'Best physics partition scores': best_physical_scores})
 
             if early_hamming_stop and max_hamming_value_of_population >= early_hamming_stop:
                 break
@@ -257,9 +290,10 @@ if __name__ == '__main__':
                                                 early_hamming_stop=28, evolution_population=300,
                                                 generational_survivors=5,
                                                 mutation_rate=0.03,
+                                                process_count=1,
                                                 evolution_generations=200,
                                                 split_sequence_handles=False,
-                                                plot_directory='/Users/matt/Desktop')
+                                                log_tracking_directory='/Users/matt/Desktop')
 
     print ('New Results:')
     print(multirule_oneshot_hamming(slat_array, ergebnüsse, per_layer_check=True, report_worst_slat_combinations=False, request_substitute_risk_score=True))
