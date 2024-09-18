@@ -38,20 +38,20 @@ def index_converter(ind, images_per_row, double_indexing=True):
 
 def save_list_dict_to_file(output_folder, filename, lists_dict, selected_data=None, append=True):
     """
-    Saves a dictionary of lists to a file. TODO: finish docstring
-    :param output_folder:
-    :param filename:
-    :param lists_dict:
-    :param selected_data:
-    :param append:
-    :return:
+    Saves a dictionary of lists to an excel file.
+    :param output_folder: Folder to save final file
+    :param filename: Name of the file to save
+    :param lists_dict: Dictionary of lists.  Each key will become a column header, while the data will be saved in rows.
+      Each list must have the same length.
+    :param selected_data: Optional list of specific indices to save.  If None, all data will be saved.
+    :param append: Set to true to append to an existing file if this is available.
+    :return: N/A
     """
 
     true_filename = os.path.join(output_folder, filename)
-
     pd_data = pd.DataFrame.from_dict(lists_dict)
 
-    if selected_data is not None and os.path.isfile(true_filename):
+    if selected_data is not None and os.path.isfile(true_filename):  # only save specific rows instead of the whole list
         if type(selected_data) == int:
             selected_data = [selected_data]
         pd_data = pd_data.loc[selected_data]

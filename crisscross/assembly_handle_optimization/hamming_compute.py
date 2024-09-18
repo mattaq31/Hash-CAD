@@ -1,7 +1,6 @@
 import numpy as np
 from itertools import product
 from collections import defaultdict, OrderedDict
-import time
 
 
 def extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer):
@@ -57,23 +56,24 @@ def oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length):
 
     # Generate every possible shift and reversed shift of the handle sequences -
     # the goal is to simulate every possible physical interaction between two slats
-    # The total length will be 4 * the slat length
+    # The total length will be 4 * the slat length - 2 (two states are repeated)
     # The operations are repeated for all handles in the input array
-    shifted_handles = np.zeros((handles.shape[0], 4 * slat_length, slat_length), dtype=np.uint8)
+    shifted_handles = np.zeros((handles.shape[0], (4 * slat_length)-2, slat_length), dtype=np.uint16)
 
     for i in range(slat_length):
         # Normal shifts
         shifted_handles[:, i, i:] = handles[:, :slat_length - i]
-        shifted_handles[:, slat_length + i, :slat_length - i] = handles[:, i:]
+        if i != 0: # skip the first one as it repeats the normal slat
+            shifted_handles[:, slat_length + i - 1, :slat_length - i] = handles[:, i:] # index has a -1 due to the skipped first combination
         # Reversed shifts
-        shifted_handles[:, 2 * slat_length + i, i:] = flippedhandles[:, :slat_length - i]
-        shifted_handles[:, 3 * slat_length + i, :slat_length - i] = flippedhandles[:, i:]
-        # TODO: if some more speedup is required, note that the above generates the same unmodified handle sequence 4 times due to the indexing system - perhaps these could be removed.
+        shifted_handles[:, 2 * slat_length + i - 1, i:] = flippedhandles[:, :slat_length - i]
+        if i != 0:  # skip the first one as it repeats the normal reversed slat
+            shifted_handles[:, 3 * slat_length + i - 2, :slat_length - i] = flippedhandles[:, i:] # index has a -2 due to the two skipped combinations at this point
 
     # The antihandles should simply be tiled to generate the same number of sequences as the handles, shifts are not needed
     antihandles = np.array(list(antihandle_dict.values()))
     num_antihandles = antihandles.shape[0]
-    tiled_antihandles = np.tile(antihandles[:, np.newaxis, :], (1, 4 * slat_length, 1))
+    tiled_antihandles = np.tile(antihandles[:, np.newaxis, :], (1, (4 * slat_length) - 2, 1))
 
     # tiles all the handle and antihandles into a large 4D array containing:
         # all combinations of handles with antihandles (dimensions 1 and 2)
@@ -111,7 +111,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
      for each of the slat combinations requested from the design
     """
 
-    slat_array = np.array(slat_array, dtype=np.uint16) # converts to int to reduce memory usage  TODO: ensure this is an int in the first place
+    slat_array = np.array(slat_array, dtype=np.uint16) # converts to int to reduce memory usage
     handle_array = np.array(handle_array, dtype=np.uint16)
 
     # identifies all slats in design, creating a list of slat IDs for each layer
@@ -194,8 +194,8 @@ def precise_hamming_compute(handle_dict, antihandle_dict, valid_product_indices,
     """
     single_combo = 4 * slat_length
     total_combos = single_combo * sum(valid_product_indices)
-    combination_matrix_1 = np.zeros((total_combos, slat_length))
-    combination_matrix_2 = np.zeros((total_combos, slat_length))
+    combination_matrix_1 = np.zeros((total_combos, slat_length), dtype=np.uint16)
+    combination_matrix_2 = np.zeros((total_combos, slat_length), dtype=np.uint16)
     valid_combo_index = 0
     for i, ((hk, handle_slat), (ahk, antihandle_slat)) in enumerate(product(handle_dict.items(), antihandle_dict.items())):
         if valid_product_indices[i]:
@@ -206,7 +206,7 @@ def precise_hamming_compute(handle_dict, antihandle_dict, valid_product_indices,
                 # 3. X vs Y, rotation to the left, reversed X
                 # 4. X vs Y, rotation to the right, reversed X
                 # All rotations padded with zeros (already in array)
-                # TODO: could this be sped up even further?
+
                 combination_matrix_1[(valid_combo_index * single_combo) + j, :slat_length - j] = handle_slat[j:]
                 combination_matrix_1[(valid_combo_index * single_combo) + slat_length + j, j:] = handle_slat[:slat_length - j]
                 combination_matrix_1[(valid_combo_index * single_combo) + (2 * slat_length) + j, :slat_length - j] = handle_slat[::-1][j:]
@@ -233,6 +233,9 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
     :param request_substitute_risk_score: Set to true to provide a measure of the largest amount of handle duplication between slats of the same type (handle or antihandle)
     :return: Dictionary of scores for each of the aspects requested from the design
     """
+
+    slat_array = np.array(slat_array, dtype=np.uint16) # converts to int to reduce memory usage
+    handle_array = np.array(handle_array, dtype=np.uint16)
 
     # identifies all slats in design
     unique_slats_per_layer = []

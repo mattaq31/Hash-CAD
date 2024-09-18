@@ -137,7 +137,8 @@ def evolve_handles_from_slat_array(slat_array,
     :param unique_handle_sequences: Handle library length
     :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
     :param log_tracking_directory: Set to a directory to export plots and metrics during the optimization process (optional)
-    :param progress_bar_update_iterations: Number of iterations before progress bar is updated - useful for server output files (optional)
+    :param progress_bar_update_iterations: Number of iterations before progress bar is updated
+    - useful for server output files, but does not seem to work consistently on every system (optional)
     :param random_seed: Random seed to use to ensure consistency
     :return: The final optimized handle array for the supplied slat array.
     """
@@ -180,7 +181,7 @@ def evolve_handles_from_slat_array(slat_array,
 
     # This is the main game/evolution loop where generations are created, evaluated, and mutated
     with tqdm(total=evolution_generations, desc='Evolution Progress', miniters=progress_bar_update_iterations) as pbar:
-        for generation in range(evolution_generations):
+        for generation in range(1, evolution_generations+1):
             #### first step: analyze handle array population individual by individual and gather reports of the scores
             # and the bad handles of each
 
@@ -217,6 +218,7 @@ def evolve_handles_from_slat_array(slat_array,
                 metric_tracker['Corresponding Physics-Based Score'].append(-physical_scores[np.argmax(hammings)])
                 metric_tracker['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmax(hammings)])
                 metric_tracker['Hamming Compute Time'].append(multiprocess_time)
+                metric_tracker['Generation'].append(generation)
 
                 fig, ax = plt.subplots(4, 1, figsize=(10, 10))
 
@@ -239,11 +241,11 @@ def evolve_handles_from_slat_array(slat_array,
                 plt.savefig(fig_name)
                 plt.close(fig)
 
-                # saves the metrics to a csv file for downstream analysis/plotting
-                save_list_dict_to_file(log_tracking_directory, 'metrics.csv', metric_tracker)
+                # saves the metrics to a csv file for downstream analysis/plotting (will append data if the file already exists)
+                save_list_dict_to_file(log_tracking_directory, 'metrics.csv', metric_tracker, selected_data=generation-1 if generation > 1 else None)
 
                 # saves the best handle array to an excel file for downstream analysis
-                if generation % 10 == 0 or generation == evolution_generations-1 or max_hamming_value_of_population >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
+                if generation % 10 == 0 or generation == evolution_generations or max_hamming_value_of_population >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
                     intermediate_best_array = candidate_handle_arrays[np.argmax(hammings)]
                     writer = pd.ExcelWriter(
                         os.path.join(log_tracking_directory, f'best_handle_array_generation_{generation}.xlsx'),
@@ -275,7 +277,6 @@ def evolve_handles_from_slat_array(slat_array,
                                                            mutation_rate=mutation_rate,
                                                            split_sequence_handles=split_sequence_handles)
 
-
     return candidate_handle_arrays[np.argmax(hammings)] # returns the best array in terms of hamming distance (which might not necessarily match the physics-based score)
 
 
@@ -289,11 +290,11 @@ if __name__ == '__main__':
     print(multirule_precise_hamming(slat_array, handle_array, per_layer_check=True, request_substitute_risk_score=True))
 
     ergebnüsse = evolve_handles_from_slat_array(slat_array, unique_handle_sequences=32,
-                                                early_hamming_stop=28, evolution_population=300,
+                                                early_hamming_stop=28, evolution_population=30,
                                                 generational_survivors=5,
                                                 mutation_rate=0.03,
                                                 process_count=1,
-                                                evolution_generations=200,
+                                                evolution_generations=4,
                                                 split_sequence_handles=False,
                                                 progress_bar_update_iterations=2,
                                                 log_tracking_directory='/Users/matt/Desktop')
