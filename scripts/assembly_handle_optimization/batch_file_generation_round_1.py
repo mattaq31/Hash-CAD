@@ -31,13 +31,12 @@ evolution_parameters = {
     'unique_handle_sequences': 32,
     'split_sequence_handles': False,
     'random_seed': 8,
-    'plot_directory': ''
 }
 
 design_1 = 'basic_square.xlsx'
 
 for library_count in range(16, 64):
-    server_experiment_folder = os.path.join(server_base_folder, f'base_square_{library_count}_handle_library')
+    server_experiment_folder = os.path.join(server_base_folder, f'experiment_folders/base_square_{library_count}_handle_library')
     server_design_folder = os.path.join(server_base_folder, 'slat_designs')
     server_toml_file = os.path.join(server_experiment_folder, 'evolution_config.toml')
     output_folder = os.path.join(batch_file_folder, f'base_square_{library_count}_handle_library')
@@ -52,7 +51,7 @@ for library_count in range(16, 64):
 
     slurm_batch = create_o2_slurm_file(**slurm_parameters, command=f'handle_evolve -c {server_toml_file}')
 
-    with open(os.path.join(output_folder, 'slurm_call.sh'), 'w') as f:  # writes batch file out for use
+    with open(os.path.join(output_folder, 'server_call.sh'), 'w') as f:  # writes batch file out for use
         for line in slurm_batch:
             f.write(line)
-    
+
