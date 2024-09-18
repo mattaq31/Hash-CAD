@@ -17,7 +17,7 @@ create_dir_if_empty(design_folder, batch_file_folder)
 slurm_parameters = {
     'num_cpus': 20,
     'memory': 16,
-    'time_length': 24,
+    'time_length': 11,
 }
 
 evolution_parameters = {
@@ -30,6 +30,7 @@ evolution_parameters = {
     'slat_length': 32,
     'unique_handle_sequences': 32,
     'split_sequence_handles': False,
+    'progress_bar_update_iterations': 10,
     'random_seed': 8,
 }
 
@@ -45,6 +46,7 @@ for library_count in range(16, 64):
     evolution_parameters['unique_handle_sequences'] = library_count
     evolution_parameters['log_tracking_directory'] = server_experiment_folder
     evolution_parameters['slat_array'] = os.path.join(server_design_folder, design_1)
+
 
     with open(os.path.join(output_folder, 'evolution_config.toml'), "w") as f:
         toml.dump(evolution_parameters, f)

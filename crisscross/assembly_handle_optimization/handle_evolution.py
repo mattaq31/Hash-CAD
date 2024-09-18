@@ -119,7 +119,7 @@ def evolve_handles_from_slat_array(slat_array,
                                    unique_handle_sequences=32,
                                    split_sequence_handles=False,
                                    log_tracking_directory=None,
-                                   progress_bar_update_time=None,
+                                   progress_bar_update_iterations=None,
                                    random_seed=8):
     """
     Generates an optimal handle array from a slat array using an evolutionary algorithm
@@ -137,18 +137,12 @@ def evolve_handles_from_slat_array(slat_array,
     :param unique_handle_sequences: Handle library length
     :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
     :param log_tracking_directory: Set to a directory to export plots and metrics during the optimization process (optional)
-    :param progress_bar_update_time: Time interval for updating the progress bar (optional)
+    :param progress_bar_update_iterations: Number of iterations before progress bar is updated - useful for server output files (optional)
     :param random_seed: Random seed to use to ensure consistency
     :return: The final optimized handle array for the supplied slat array.
     """
 
     np.random.seed(random_seed)
-    if progress_bar_update_time:
-        mininterval = progress_bar_update_time
-        maxinterval = progress_bar_update_time
-    else:
-        mininterval = 0.1
-        maxinterval = 10
 
     # initiate population of handle arrays
     candidate_handle_arrays = []
@@ -185,7 +179,7 @@ def evolve_handles_from_slat_array(slat_array,
     print(Fore.BLUE + f'Will be using {num_processes} core(s) for the handle array evolution.' + Fore.RESET)
 
     # This is the main game/evolution loop where generations are created, evaluated, and mutated
-    with tqdm(total=evolution_generations, desc='Evolution Progress', mininterval=mininterval, maxinterval=maxinterval) as pbar:
+    with tqdm(total=evolution_generations, desc='Evolution Progress', miniters=progress_bar_update_iterations) as pbar:
         for generation in range(evolution_generations):
             #### first step: analyze handle array population individual by individual and gather reports of the scores
             # and the bad handles of each
@@ -267,7 +261,7 @@ def evolve_handles_from_slat_array(slat_array,
                 pbar.update(1)
                 pbar.set_postfix({f'Current best hamming score': max_hamming_value_of_population,
                                   'Time for hamming calculation': multiprocess_time,
-                                  'Best physics partition scores': best_physical_scores})
+                                  'Best physics partition scores': best_physical_scores}, refresh=False)
 
             if early_hamming_stop and max_hamming_value_of_population >= early_hamming_stop:
                 break
@@ -301,6 +295,7 @@ if __name__ == '__main__':
                                                 process_count=1,
                                                 evolution_generations=200,
                                                 split_sequence_handles=False,
+                                                progress_bar_update_iterations=2,
                                                 log_tracking_directory='/Users/matt/Desktop')
 
     print ('New Results:')
