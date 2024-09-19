@@ -220,32 +220,34 @@ def evolve_handles_from_slat_array(slat_array,
                 metric_tracker['Hamming Compute Time'].append(multiprocess_time)
                 metric_tracker['Generation'].append(generation)
 
-                fig, ax = plt.subplots(4, 1, figsize=(10, 10))
-
-                # TODO: optimize here
-                for ind, (name, data) in enumerate(zip(['Candidate with Best Hamming Distance',
-                                                        'Corresponding Physics-Based Partition Score',
-                                                        'Corresponding Duplication Risk Score', 'Hamming Compute Time (s)'],
-                                                       [metric_tracker['Best Hamming'],
-                                                        metric_tracker['Corresponding Physics-Based Score'],
-                                                        metric_tracker['Corresponding Duplicate Risk Score'],
-                                                        metric_tracker['Hamming Compute Time']])):
-                    ax[ind].plot(data, linestyle='--', marker='o')
-                    ax[ind].set_xlabel('Iteration')
-                    ax[ind].set_ylabel('Measurement')
-                    ax[ind].set_title(name)
-                    ax[ind].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-
-                ax[1].set_yscale('log')
-                plt.tight_layout()
-                plt.savefig(fig_name)
-                plt.close(fig)
-
                 # saves the metrics to a csv file for downstream analysis/plotting (will append data if the file already exists)
                 save_list_dict_to_file(log_tracking_directory, 'metrics.csv', metric_tracker, selected_data=generation-1 if generation > 1 else None)
 
                 # saves the best handle array to an excel file for downstream analysis
                 if generation % 10 == 0 or generation == evolution_generations or max_hamming_value_of_population >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
+
+                    fig, ax = plt.subplots(4, 1, figsize=(10, 10))
+
+                    # TODO: optimize here
+                    for ind, (name, data) in enumerate(zip(['Candidate with Best Hamming Distance',
+                                                            'Corresponding Physics-Based Partition Score',
+                                                            'Corresponding Duplication Risk Score',
+                                                            'Hamming Compute Time (s)'],
+                                                           [metric_tracker['Best Hamming'],
+                                                            metric_tracker['Corresponding Physics-Based Score'],
+                                                            metric_tracker['Corresponding Duplicate Risk Score'],
+                                                            metric_tracker['Hamming Compute Time']])):
+                        ax[ind].plot(data, linestyle='--', marker='o')
+                        ax[ind].set_xlabel('Iteration')
+                        ax[ind].set_ylabel('Measurement')
+                        ax[ind].set_title(name)
+                        ax[ind].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+                    ax[1].set_yscale('log')
+                    plt.tight_layout()
+                    plt.savefig(fig_name)
+                    plt.close(fig)
+
                     intermediate_best_array = candidate_handle_arrays[np.argmax(hammings)]
                     writer = pd.ExcelWriter(
                         os.path.join(log_tracking_directory, f'best_handle_array_generation_{generation}.xlsx'),
@@ -258,7 +260,6 @@ def evolve_handles_from_slat_array(slat_array,
                         # Apply conditional formatting for easy color-based identification
                         writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],df.shape[1] - 1, excel_conditional_formatting)
                     writer.close()
-
 
                 pbar.update(1)
                 pbar.set_postfix({f'Current best hamming score': max_hamming_value_of_population,
@@ -294,7 +295,7 @@ if __name__ == '__main__':
                                                 generational_survivors=5,
                                                 mutation_rate=0.03,
                                                 process_count=1,
-                                                evolution_generations=4,
+                                                evolution_generations=1,
                                                 split_sequence_handles=False,
                                                 progress_bar_update_iterations=2,
                                                 log_tracking_directory='/Users/matt/Desktop')
@@ -302,3 +303,4 @@ if __name__ == '__main__':
     print ('New Results:')
     print(multirule_oneshot_hamming(slat_array, ergebnüsse, per_layer_check=True, report_worst_slat_combinations=False, request_substitute_risk_score=True))
     print(multirule_precise_hamming(slat_array, ergebnüsse, per_layer_check=True, request_substitute_risk_score=True))
+
