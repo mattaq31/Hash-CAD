@@ -4,7 +4,8 @@ import pandas as pd
 
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 ########################################
@@ -29,7 +30,7 @@ slat_array, unique_slats_per_layer = generate_standard_square_slats(32)  # stand
 if read_handles_from_file:
     handle_array = np.loadtxt(os.path.join(template_folder, 'optimized_handle_array.csv'), delimiter=',').astype(np.float32)
     handle_array = handle_array[..., np.newaxis]
-    result = multi_rule_hamming(slat_array, handle_array)
+    result = multirule_precise_hamming(slat_array, handle_array)
     print('Hamming distance from file-loaded design: %s' % result['Universal'])
 else:
     handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, min_hamming=29, max_rounds=150)

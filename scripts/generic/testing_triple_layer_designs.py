@@ -1,7 +1,7 @@
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import read_design_from_excel
 import numpy as np
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from crisscross.helper_functions.plate_constants import nelson_quimby_antihandles, cargo_plate_folder
 

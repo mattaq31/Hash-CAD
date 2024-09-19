@@ -6,7 +6,8 @@ import os
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import octahedron_patterning_v1, cargo_plate_folder, plate96
@@ -47,14 +48,14 @@ slat_array, _ = generate_standard_square_slats(32)
 reduced_handle_array = np.load(os.path.join(hamming_folder, reduced_handle_array_file))
 best_array = np.load(os.path.join(hamming_folder, best_array_file))
 
-optimized_hamming_results = multi_rule_hamming(slat_array, best_array, request_substitute_risk_score=True)
-reduced_handle_set_hamming_results = multi_rule_hamming(slat_array, reduced_handle_array, request_substitute_risk_score=True)
+optimized_hamming_results = multirule_precise_hamming(slat_array, best_array, request_substitute_risk_score=True)
+reduced_handle_set_hamming_results = multirule_precise_hamming(slat_array, reduced_handle_array, request_substitute_risk_score=True)
 print('Hamming distance from optimized array: %s, Duplication Risk: %s' % (optimized_hamming_results['Universal'], optimized_hamming_results['Substitute Risk']))
 print('Hamming distance from reduced-handle array: %s, Duplication Risk: %s' % (reduced_handle_set_hamming_results['Universal'], reduced_handle_set_hamming_results['Substitute Risk']))
 
 if read_randomised_handle_from_file:
     random_handle_array = np.load(os.path.join(hamming_folder, handle_array_file))
-    result = multi_rule_hamming(slat_array, random_handle_array, request_substitute_risk_score=True)
+    result = multirule_precise_hamming(slat_array, random_handle_array, request_substitute_risk_score=True)
     print('Hamming distance from file-loaded random design: %s, Duplication Risk: %s' % (result['Universal'], result['Substitute Risk']))
 else:
     random_handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, split_sequence_handles=True, max_rounds=optim_rounds)

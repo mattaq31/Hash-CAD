@@ -4,8 +4,8 @@ import numpy as np
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.hamming_functions import generate_handle_set_and_optimize, multi_rule_hamming
-from crisscross.plate_mapping import get_plateclass, get_standard_plates
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.plate_mapping import get_standard_plates
 
 #===== Main 4 units =====#
 
@@ -33,7 +33,7 @@ for i in range(SlatArray.shape[-1]-1):
     except KeyError:
         raise RuntimeError("No handle array file was found. Use the other script to generate one.")
 
-result = multi_rule_hamming(SlatArray, HandleArray)
+result = multirule_precise_hamming(SlatArray, HandleArray)
 print('Hamming distance from file-loaded design: %s' % result['Universal']) ### Why did this report 26? Should be much lower
         
 # Generates plate dictionaries from provided files - don't change
@@ -80,7 +80,7 @@ for i in range(SlatArrayExtras.shape[-1]-1):
     except KeyError:
         raise RuntimeError("No handle array file was found. Use the other script to generate one.")
 
-resultExtra = multi_rule_hamming(SlatArrayExtras, HandleArrayExtras)
+resultExtra = multirule_precise_hamming(SlatArrayExtras, HandleArrayExtras)
 print('Hamming distance from file-loaded design: %s' % resultExtra['Universal']) 
 
 # Combines handle and slat array into the megastructure
