@@ -21,7 +21,7 @@ def handle_evolve(config_file):
     for i, key in enumerate(design_df.keys()):
         if 'slat_layer_' in key:
             total_layers += 1
-        
+
     slat_array = np.zeros((design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], total_layers))
     for i, key in enumerate(design_df.keys()):
         if 'slat_layer_' not in key:
