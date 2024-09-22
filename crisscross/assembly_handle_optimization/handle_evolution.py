@@ -18,7 +18,8 @@ from crisscross.helper_functions import save_list_dict_to_file
 def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                          hallofshame_handles, hallofshame_antihandles,
                          best_score_indices, unique_sequences=32,
-                         mutation_rate=1.0, split_sequence_handles=False):
+                         mutation_rate=1.0, mutation_type_probabilities=(0.425, 0.425, 0.15),
+                         split_sequence_handles=False):
     """
     Mutates (randomizes handles) a set of candidate arrays into a new generation,
     while retaining the best scoring arrays  from the previous generation.
@@ -29,6 +30,8 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
     :param best_score_indices: The indices of the best scoring arrays from the previous generation
     :param unique_sequences: Total length of handle library available
     :param mutation_rate: If a handle is selected for mutation, the probability that it will be changed
+    :param mutation_type_probabilities: Probability of selecting a specific mutation type for a target handle/antihandle
+    (either handle, antihandle or mixed mutations)
     :param split_sequence_handles: Set to true if the handle library needs to be split between subsequent layers
     :return: New generation of handle arrays to be screened
     """
@@ -60,7 +63,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         pick = np.random.randint(0, parent_array_count)
         mother = parent_handle_arrays[pick].copy()
         random_choice = np.random.choice(['mutate handles', 'mutate antihandles', 'mutate anywhere'],
-                                         p=[0.425, 0.425, 0.15]) # TODO: do we want these to be customizable?
+                                         p=mutation_type_probabilities)
 
         if random_choice == 'mutate handles':
 
@@ -117,6 +120,7 @@ def evolve_handles_from_slat_array(slat_array,
                                    mutation_rate=0.0025,
                                    slat_length=32,
                                    unique_handle_sequences=32,
+                                   mutation_type_probabilities=(0.425, 0.425, 0.15),
                                    split_sequence_handles=False,
                                    log_tracking_directory=None,
                                    progress_bar_update_iterations=None,
@@ -135,6 +139,8 @@ def evolve_handles_from_slat_array(slat_array,
     :param mutation_rate: Probability of an individual eligible handle being mutated after selection
     :param slat_length: Slat length in terms of number of handles
     :param unique_handle_sequences: Handle library length
+    :param mutation_type_probabilities: Probability of selecting a specific mutation type for a target handle/antihandle
+    (either handle, antihandle or mixed mutations)
     :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
     :param log_tracking_directory: Set to a directory to export plots and metrics during the optimization process (optional)
     :param progress_bar_update_iterations: Number of iterations before progress bar is updated
@@ -276,6 +282,7 @@ def evolve_handles_from_slat_array(slat_array,
                                                            best_score_indices=indices_of_largest_scores,
                                                            unique_sequences=unique_handle_sequences,
                                                            mutation_rate=mutation_rate,
+                                                           mutation_type_probabilities=mutation_type_probabilities,
                                                            split_sequence_handles=split_sequence_handles)
 
     return candidate_handle_arrays[np.argmax(hammings)] # returns the best array in terms of hamming distance (which might not necessarily match the physics-based score)
@@ -291,7 +298,7 @@ if __name__ == '__main__':
     print(multirule_precise_hamming(slat_array, handle_array, per_layer_check=True, request_substitute_risk_score=True))
 
     ergebnüsse = evolve_handles_from_slat_array(slat_array, unique_handle_sequences=32,
-                                                early_hamming_stop=28, evolution_population=30,
+                                                early_hamming_stop=28, evolution_population=300,
                                                 generational_survivors=5,
                                                 mutation_rate=0.03,
                                                 process_count=1,
