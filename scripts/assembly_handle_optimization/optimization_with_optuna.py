@@ -20,6 +20,7 @@ def optuna_optim(trial):
         'handle_antihandle_probability': handle_antihandle_probability,
         'evolution_population': evolution_population,
         'generational_survivors': generational_survivors,
+        'mutation_probabilities': mutation_probabilities,
         'mutation_rate': mutation_rate,
     }
 
