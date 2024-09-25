@@ -8,11 +8,19 @@ import multiprocessing
 import time
 import matplotlib.ticker as ticker
 from colorama import Fore
+import importlib
 
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, multirule_precise_hamming
 from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.assembly_handle_optimization import generate_random_slat_handles, generate_layer_split_handles
 from crisscross.helper_functions import save_list_dict_to_file
+
+optuna_spec = importlib.util.find_spec("optuna")  # only imports optuna if this is available
+if optuna_spec is not None:
+    import optuna
+    optuna_available = True
+else:
+    optuna_available = False
 
 
 def mutate_handle_arrays(slat_array, candidate_handle_arrays,
@@ -124,7 +132,8 @@ def evolve_handles_from_slat_array(slat_array,
                                    split_sequence_handles=False,
                                    log_tracking_directory=None,
                                    progress_bar_update_iterations=None,
-                                   random_seed=8):
+                                   random_seed=8,
+                                   optuna_optimization_trial=None):
     """
     Generates an optimal handle array from a slat array using an evolutionary algorithm
     and a physics-informed partition score.
@@ -146,6 +155,7 @@ def evolve_handles_from_slat_array(slat_array,
     :param progress_bar_update_iterations: Number of iterations before progress bar is updated
     - useful for server output files, but does not seem to work consistently on every system (optional)
     :param random_seed: Random seed to use to ensure consistency
+    :param optuna_optimization_trial: If running an optuna optimization, this is the trial object to report the score to
     :return: The final optimized handle array for the supplied slat array.
     """
 
@@ -230,7 +240,7 @@ def evolve_handles_from_slat_array(slat_array,
                 save_list_dict_to_file(log_tracking_directory, 'metrics.csv', metric_tracker, selected_data=generation-1 if generation > 1 else None)
 
                 # saves the best handle array to an excel file for downstream analysis
-                if generation % 10 == 0 or generation == evolution_generations or max_hamming_value_of_population >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
+                if generation % 20 == 0 or generation == evolution_generations or max_hamming_value_of_population >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
 
                     fig, ax = plt.subplots(4, 1, figsize=(10, 10))
 
@@ -266,6 +276,17 @@ def evolve_handles_from_slat_array(slat_array,
                         # Apply conditional formatting for easy color-based identification
                         writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],df.shape[1] - 1, excel_conditional_formatting)
                     writer.close()
+
+                if optuna_optimization_trial:
+                    if not optuna_available:
+                        raise ImportError('Optuna is not available on this system.')
+                    optuna_optimization_trial.report(physical_scores[np.argmax(hammings)], generation)
+
+                    # Optuna can 'prune' i.e. stop a trial early if it thinks the trajectory is already very slow
+                    if optuna_optimization_trial.should_prune():
+                        with open(os.path.join(log_tracking_directory, 'trial_pruned.txt'), 'w') as f:
+                            f.write(f'Trial was pruned at generation {generation}')
+                        raise optuna.TrialPruned()
 
                 pbar.update(1)
                 pbar.set_postfix({f'Current best hamming score': max_hamming_value_of_population,

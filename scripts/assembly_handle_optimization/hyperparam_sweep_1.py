@@ -52,7 +52,7 @@ for mutation_rate in np.arange(0.01, 1.0, 0.05):
     output_folder = os.path.join(batch_file_folder, group_name, exp_name)
     create_dir_if_empty(output_folder)
 
-    exp_params['mutation_rate'] = mutation_rate
+    exp_params['mutation_rate'] = float(mutation_rate)
     exp_params['log_tracking_directory'] = server_experiment_folder
 
     with open(os.path.join(output_folder, 'evolution_config.toml'), "w") as f:
@@ -122,7 +122,7 @@ for survivors in range(3, 20, 3):
 
 # MUTATION TYPES
 group_name = 'mutation_types'
-for index, ratios in enumerate([(0.0, 0.0, 1.0), (0.5, 0.5, 0), (0.8, 0.0, 0.2), (0.1, 0.1, 0.8), (0.25, 0.25, 0.5)]):
+for index, ratios in enumerate([(0.0, 0.0, 1.0), (0.5, 0.5, 0.0), (0.8, 0.0, 0.2), (0.1, 0.1, 0.8), (0.25, 0.25, 0.5)]):
     exp_name = f'base_square_mutation_type_ratio_{index+1}'
     exp_params = copy.copy(default_evolution_params)
     server_experiment_folder = os.path.join(server_base_folder, 'experiment_folders', group_name, exp_name)
