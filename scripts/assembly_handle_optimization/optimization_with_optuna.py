@@ -1,7 +1,7 @@
 import os
 import toml
 
-experiment_folder = '/Users/matt/Desktop/experiment_folders'
+experiment_folder = '/home/maa2818/hamming_optimization_experiments/experiment_folders/optuna_hyperparam_v1'
 
 def optuna_optim(trial):
 
