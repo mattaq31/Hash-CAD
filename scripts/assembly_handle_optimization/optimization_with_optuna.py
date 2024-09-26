@@ -64,5 +64,5 @@ if __name__ == '__main__':
 
     for i in range(100):
         study.optimize(optuna_optim, n_trials=10, gc_after_trial=True)
-        with open(os.path.join(experiment_folder, f'study_trial_{(i*10) + 10}.pkl', 'wb')) as f:
+        with open(os.path.join(experiment_folder, f'study_trial_{(i*10) + 10}.pkl'), 'wb') as f:
             pickle.dump(study, f)
