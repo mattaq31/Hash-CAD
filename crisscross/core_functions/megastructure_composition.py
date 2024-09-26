@@ -6,8 +6,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch
 from string import ascii_uppercase
 from collections import Counter
+import platform
 
-plt.rcParams.update({'font.sans-serif': 'Helvetica'})  # consistent figure formatting
+# consistent figure formatting between mac, windows and linux
+if platform.system() == 'Darwin':
+    plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+elif platform.system() == 'Windows':
+    plt.rcParams.update({'font.sans-serif': 'Arial'})
+else:
+    plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
 
 
 def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder, save_file,
@@ -16,14 +23,15 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
     Prepares a visualization of the output plates for the user to be able to verify the design
     (or print out and use in the lab).
     :param output_well_descriptor_dict: Dictionary where key = (plate_number, well), and the value is a list with:
-    [slat_name, [category counts [control, assembly, seed, cargo, undefined]
-    for all 32 handles on H2 side e.g. 0 10 22 0 0], [same for H5 side]]
+    [slat_name, [category for all 32 handles on H2 side e.g. 0 2 3 4 0], [same for H5 side]], where the categories are:
+    0 = control, 1 = assembly, 2 = seed, 3 = cargo, 4 = undefined
     :param plate_size: Either 96 or 384
     :param save_folder: Output folder
     :param save_file: Output filename
     :param plate_display_aspect_ratio: Aspect ratio to use for figure display - default matches true plate dimensions
     :param slat_display_format: Set to 'pie' to output an occupancy pie chart for each well,
-    or 'barcode' to output a barcode showing the category of each individual handle
+    'barcode' to output a barcode showing the category of each individual handle, or
+    'stacked_barcode' for a more detailed view
     :return: N/A
     """
 
@@ -72,35 +80,78 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
                     type_counts_h5 = [type_counts_h5[i] for i in range(5)]
 
                     ax.pie(type_counts_h2 + type_counts_h5, center=(x, y),
-                           colors=['k', 'r', 'g', 'b', 'm'], radius=0.3)
-                    ax.plot([x - 0.3, x + 0.3], [y, y], linewidth=1.0, c='y')  # just a dividing line to make two side distinction more obvious
+                           colors=['k', 'r', 'g', 'b', 'm'], radius=0.3) # pie radius 0.3 - occupies full view
+
+                    ax.text(x - 0.4, y + 0.2, 'H2', ha='center', va='center', fontsize=6)
+                    ax.text(x - 0.4, y - 0.2, 'H5', ha='center', va='center', fontsize=6)
+
+                    # adds identifying slat name
+                    ax.text(x, y - 0.39, pool_details[0], ha='center', va='center', fontsize=8)
                 elif slat_display_format == 'barcode':
                     for pool_ind, pool in enumerate(pool_details[::-1][:2]):
                         for handle_ind, handle in enumerate(pool):
-                            square = Rectangle((x-0.3+(handle_ind*0.01875), y-((1-pool_ind)*0.3)),
+                            # slat positions identified with barcode rectangles
+                            # 0.3 = full width, 0.15 = half height, 0.01875 = 1/32 of width
+                            square = Rectangle((x-0.3+(handle_ind*0.01875), y-((1-pool_ind)*0.15)),
                                                0.01875,
-                                               0.3,
+                                               0.15,
                                                linewidth=0.001,
                                                edgecolor=standard_colors[handle],
                                                facecolor=standard_colors[handle])
                             ax.add_patch(square)
+                    # slightly tweaked text positioning for better visualization
+                    ax.text(x - 0.4, y + 0.2, 'H2', ha='center', va='center', fontsize=6)
+                    ax.text(x - 0.4, y - 0.2, 'H5', ha='center', va='center', fontsize=6)
+                    ax.text(x - 0.35, y - 0.075, '1', ha='center', va='center', fontsize=4)
+                    ax.text(x + 0.35, y - 0.075, '32', ha='center', va='center', fontsize=4)
+                    # adds identifying slat name
+                    ax.text(x, y - 0.37, pool_details[0], ha='center', va='center', fontsize=8)
+                elif slat_display_format == 'stacked_barcode':
+                    for pool_ind, pool in enumerate(pool_details[::-1][:2]):
+                        for handle_ind, handle in enumerate(pool):
+                            x_offset = handle_ind % 16
+                            y_offset = (handle_ind // 16) + (2*pool_ind)
+                            # slat positions identified with barcode rectangles - 16 per row (4 rows total)
+                            # 0.3 = full width, 0.1125 = half height, 0.0375 = 1/16 of width
+                            square = Rectangle((x-0.3+(x_offset*0.0375), y-(0.225 - y_offset*0.1125)),
+                                               0.0375,
+                                               0.1125,
+                                               linewidth=0.01,
+                                               edgecolor='w', # to allow for easy counting of positions
+                                               facecolor=standard_colors[handle])
+                            ax.add_patch(square)
+                    # customized annotations for this particular view
+                    ax.text(x - 0.35, y - 0.16875, '1', ha='center', va='center', fontsize=4)
+                    ax.text(x + 0.35, y - 0.16875, '16', ha='center', va='center', fontsize=4)
+                    ax.text(x - 0.35, y - 0.05625, '17', ha='center', va='center', fontsize=4)
+                    ax.text(x + 0.35, y - 0.05625, '32', ha='center', va='center', fontsize=4)
+                    ax.text(x, y + 0.3, 'H2', ha='center', va='center', fontsize=6)
+                    ax.text(x, y - 0.275, 'H5', ha='center', va='center', fontsize=6)
+                    # adds identifying slat name
+                    ax.text(x, y - 0.41, pool_details[0], ha='center', va='center', fontsize=8)
                 else:
                     raise RuntimeError('Invalid slat_display_format provided.')
 
-                # adds identifying text details - offsets are hard-coded but seem to work for both 96 and 384 well plates
-                ax.text(x, y - 0.39, pool_details[0], ha='center', va='center', fontsize=8)
-                ax.text(x - 0.4, y + 0.2, 'H2', ha='center', va='center', fontsize=6)
-                ax.text(x - 0.4, y - 0.2, 'H5', ha='center', va='center', fontsize=6)
+                # just a dividing line to make two side distinction more obvious
+                ax.plot([x - 0.3, x + 0.3], [y, y], linewidth=1.0, c='y')
+
             else:
-                # empty well
+                # empty wells
                 if slat_display_format == 'pie':
                     circle = Circle((x, y), radius=0.3, fill=None)
                     ax.add_patch(circle)
                 elif slat_display_format == 'barcode':
-                    square = Rectangle((x - 0.3, y - 0.3),
+                    square = Rectangle((x - 0.3, y - 0.15),
                                        0.6,
+                                       0.3,
+                                       facecolor='none',
+                                       edgecolor='k')
+                    ax.add_patch(square)
+                elif slat_display_format == 'stacked_barcode':
+                    square = Rectangle((x - 0.3, y - 0.225),
                                        0.6,
-                                       fill=False,
+                                       0.45,
+                                       facecolor='none',
                                        edgecolor='k')
                     ax.add_patch(square)
 
@@ -116,6 +167,12 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
         ax.tick_params(axis='x', which='both', length=0)
         ax.xaxis.tick_top()
 
+        # deletes the axis spines
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+
         if len(output_well_descriptor_dict) > 0:
             # legend creation
             labels = ['Control Handles', 'Assembly Handles', 'Seed Handles', 'Cargo Handles', 'Undefined']
@@ -127,7 +184,7 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
         else:
             print(Fore.RED + f'Seems like plate {plate_number} has no operations assigned to it.' + Fore.RESET)
 
-        # sets limits according to number of rows/cols.  Y-axis is inverted to make it easier for compatibilty with different plate types
+        # sets limits according to number of rows/cols.  Y-axis is inverted to make it easier for compatibility with different plate types
         ax.set_xlim(0, row_divider)
         ax.set_ylim(total_row_letters, -0.1)
         plt.tight_layout()
@@ -140,7 +197,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                      output_empty_wells=False,
                                      manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
                                      output_plate_size='96', center_only_well_pattern=False,
-                                     generate_plate_visualization=True, plate_viz_type='barcode'):
+                                     generate_plate_visualization=True, plate_viz_type='stacked_barcode'):
     """
     Converts a dictionary of slats into an echo liquid handler command list for all handles provided.
     :param slat_dict: Dictionary of slat objects
@@ -156,7 +213,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param output_plate_size: Either '96' or '384' for the output plate size
     :param center_only_well_pattern: Set to true to force output wells to be in the center of the plate.  This is only available for 96-well plates.
     :param generate_plate_visualization: Set to true to generate a graphic showing the postions and contents of each well in the output plates
-    :param plate_viz_type: Set to 'barcode' to show a barcode of the handle types in each well, or 'pie' to show a pie chart of the handle types
+    :param plate_viz_type: Set to 'barcode' to show a barcode of the handle types in each well,
+    'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 
@@ -267,6 +325,6 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     if generate_plate_visualization:
         visualize_output_plates(output_well_descriptor_dict, output_plate_size, output_folder,
                                 output_filename.split('.')[0],
-                                slat_display_format='barcode')  # prepares a visualization of the output plates
+                                slat_display_format=plate_viz_type)  # prepares a visualization of the output plates
 
     return combined_df

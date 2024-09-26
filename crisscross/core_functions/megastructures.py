@@ -8,6 +8,7 @@ import os
 import matplotlib as mpl
 import pandas as pd
 import ast
+import platform
 
 from crisscross.core_functions.slats import get_slat_key, convert_slat_array_into_slat_objects
 from crisscross.helper_functions import create_dir_if_empty
@@ -16,8 +17,13 @@ from crisscross.graphics.static_plots import create_graphical_slat_view, create_
 from crisscross.graphics.pyvista_3d import create_graphical_3D_view
 from crisscross.graphics.blender_3d import create_graphical_3D_view_bpy
 
-plt.rcParams.update({'font.sans-serif': 'Helvetica'})  # consistent figure formatting
-
+# consistent figure formatting between mac, windows and linux
+if platform.system() == 'Darwin':
+    plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+elif platform.system() == 'Windows':
+    plt.rcParams.update({'font.sans-serif': 'Arial'})
+else:
+    plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
 
 class Megastructure:
     """
