@@ -100,6 +100,17 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     Scores for individual components, such as specific slat groups, can also be requested.
     Note: This function is our current fastest implementation. Due to its optimization, it cannot be instructed to
     compute lesser combinations of slats in the design - it will compute all hamming results at once.
+
+    Implementation comment:  Requesting the similarity score requires that more hamming combinations are computed.
+    This will of course slow down the function by a factor of 3 (approx).  We tried to reduce this speed loss by
+    combining the handles and antihandles into a duplicate array, which computes the following combinations:
+    - handle vs handle
+    - antihandle vs antihandle
+    - handle vs antihandle (duplicated twice)
+    However, the end result was a minor slowdown rather than speed increase.  We suspect that the additional computations
+    forced by the duplicated handle vs antihandle combination outweights the speed increase by computing the arrays all in one go.
+    It might be possible to improve this further, but we do not think the solution is obvious (or potentially worth the time investment).
+
     :param slat_array: Array of XxYxZ dimensions, where X and Y are the dimensions of the design and Z is the number of layers in the design
     :param handle_array: Array of XxYxZ-1 dimensions containing the IDs of all the handles in the design
     :param report_worst_slat_combinations: Set to true to provide the IDs of the worst handle/antihandle slat combinations
@@ -123,6 +134,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
 
     # extract all slats and compute full hamming distance here
     handle_dict, antihandle_dict = extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer)
+
     hamming_results = oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length)
 
     score_dict = {}
