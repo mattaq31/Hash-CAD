@@ -32,7 +32,17 @@ export function getFullDrawing(){
  * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  * @returns {Boolean} Number of slats placed so far, after the slat has been drawn
  */
-export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, slatCounter, horizontal, layerList) {
+export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, minorGridSize, activeLayerColor, shownOpacity, slatCounter, horizontal, layerList, angle=30) {
+    let horizontalLength = Math.cos(angle * Math.PI / 180) * 33 * minorGridSize
+    let verticalLength = Math.sin(angle * Math.PI / 180) * 33 * minorGridSize
+    //Check for overlap!
+    let defaultColor = activeLayerColor;
+    /*
+    let tmpLine = activeSlatLayer.line(roundedX, roundedY, roundedX + horizontalLength, roundedY + verticalLength)
+                                 .stroke({width: 4, color:defaultColor, opacity: shownOpacity})
+    */
+
+    
     if(!horizontal){
         if(!willVertBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
             let defaultColor = activeLayerColor; 
@@ -91,6 +101,7 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
     }
 
     return slatCounter;
+    
 }
 
 /** 
