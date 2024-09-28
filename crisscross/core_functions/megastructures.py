@@ -462,7 +462,7 @@ class Megastructure:
         """
 
         if self.handle_arrays is None:
-            print(Fore.RED + 'No handle graphics will be generated as no handle arrays have been assigned to the design.')
+            print(Fore.RED + 'No handle graphics will be generated as no handle arrays have been assigned to the design.' + Fore.RESET)
             return
 
         create_graphical_assembly_handle_view(self.slat_array, self.handle_arrays,
@@ -631,12 +631,13 @@ class Megastructure:
                                                                               excel_conditional_formatting)
 
         # prints out handle dataframes
-        for layer_index in range(self.handle_arrays.shape[-1]):
-            df = pd.DataFrame(self.handle_arrays[..., layer_index])
-            df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
-            # Apply conditional formatting
-            writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0], df.shape[1] - 1,
-                                                                                    excel_conditional_formatting)
+        if self.handle_arrays is not None:
+            for layer_index in range(self.handle_arrays.shape[-1]):
+                df = pd.DataFrame(self.handle_arrays[..., layer_index])
+                df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
+                # Apply conditional formatting
+                writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0], df.shape[1] - 1,
+                                                                                        excel_conditional_formatting)
 
         # prepares and sorts cargo dataframes
         cargo_dfs = []
@@ -676,7 +677,6 @@ class Megastructure:
                                                                                  excel_conditional_formatting)
 
         # prints out essential metadata required to regenerate design
-
         reversed_slats = []
         for slat in self.slats.values():
             if slat.reversed_slat:

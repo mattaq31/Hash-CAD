@@ -32,6 +32,9 @@ def generate_handle_set_and_optimize(base_array, unique_sequences=32, slat_lengt
                     handle_array = generate_layer_split_handles(base_array, unique_sequences)
                 else:
                     handle_array = generate_random_slat_handles(base_array, unique_sequences)
+                if np.sum(handle_array) == 0:
+                    print('No handle optimization conducted as no handle positions were found in the slat array provided.')
+                    return handle_array
                 best_array = np.copy(handle_array)
             else:
                 if split_sequence_handles:

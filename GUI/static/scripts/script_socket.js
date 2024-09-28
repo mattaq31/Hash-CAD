@@ -9,7 +9,7 @@ import { getFullDrawing } from './functions_drawing.js';
 import { writeVariable } from './variables.js';
 import {minorGridSize, shownOpacity, shownCargoOpacity } from './constants.js'
 
-var socket = io();
+var socket = io('/crisscross');
 
 document.addEventListener('DOMContentLoaded', () => {
     let layerList = getLayerList()
@@ -155,12 +155,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let checkboxEcho = document.getElementById('checkbox-echo').checked;
 
         let generalConfigs = [checkboxOldHandles, checkboxGraphics, checkboxEcho]
+        console.log('generating megastructure now...');
 
         socket.emit('generate_megastructures', [gridArray, handleConfigs, generalConfigs])
     })
 
     //Download generated megastructure
     socket.on('megastructure_output_ready_to_download', function(){
+        console.log('obtained megastructure file');
         downloadFile('/download/outputs.zip', 'outputs.zip')
     })
 
@@ -186,10 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('clear-handles-button').addEventListener('click', function(event){
         clearHandles(layerList)
     })
-
-
-
-
 
     //Read in console messages from python backend
     socket.on('console', function(msg) {

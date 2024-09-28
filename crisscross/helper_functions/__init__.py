@@ -1,4 +1,7 @@
 import os
+import zipfile
+
+import numpy as np
 import pandas as pd
 
 dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
@@ -16,11 +19,48 @@ def create_dir_if_empty(*directories):
     """
     Creates a directory if it doesn't exist.
     :param directories: Single filepath or list of filepaths.
-    :return: None
+    :return: N/A
     """
     for directory in directories:
         if not os.path.exists(directory):
             os.makedirs(directory)
+
+
+def clear_folder_contents(root_folder):
+    """
+    Deletes all files in selected folder.
+    :param root_folder: Folder within which all files should be deleted.
+    :return: N/A
+    """
+    for dirpath, dirnames, filenames in os.walk(root_folder, topdown=False):
+        # Remove files
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+            os.remove(file_path)
+
+
+def zip_folder_to_disk(folder_path, output_zip_path):
+    """
+    Zips a folder into a zip file.
+    :param folder_path: Location of the folder to be zipped.
+    :param output_zip_path: New zip file location.
+    :return: N/A
+    """
+    try:
+        # Create a ZipFile object with the output path
+        with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Walk the directory tree
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    # Create the full path to the file
+                    file_path = os.path.join(root, file)
+                    # Create a relative path inside the zip
+                    arcname = os.path.relpath(file_path, folder_path)
+                    # Write the file to the zip
+                    zipf.write(file_path, arcname=arcname)
+        print(f"ZIP file created successfully: {output_zip_path}")
+    except Exception as e:
+        print(f"An error occurred while zipping files: {e}")
 
 
 def index_converter(ind, images_per_row, double_indexing=True):
@@ -61,3 +101,22 @@ def save_list_dict_to_file(output_folder, filename, lists_dict, selected_data=No
 
     pd_data.to_csv(true_filename, mode='a' if append else 'w', header=not append, index=False)
 
+
+def convert_np_to_py(data):
+    """
+    Converts numpy data types to python data types.  Only works on integers, floats and ndarrays.
+    :param data: Numpy data, dictionary of numpy data or list of numpy data
+    :return: Updated data
+    """
+    if isinstance(data, dict):
+        return {key: convert_np_to_py(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [convert_np_to_py(element) for element in data]
+    elif isinstance(data, np.integer):
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+    elif isinstance(data, np.ndarray):
+        return data.tolist()
+    else:
+        return data

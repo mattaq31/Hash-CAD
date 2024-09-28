@@ -1,11 +1,5 @@
 // Sample inventory data
-let inventoryData = [
-    {id: "default_GFP", name: "Green Fluorescent Protein", tag: "GFP", color: "#00FF00", plate: "", details: [[],[]]},
-    {id: "default_RFP", name: "Red Fluorescent Protein", tag: "RFP", color: "#FF0000", plate: "", details: [[],[]]},
-    {id: "default_AB1", name: "Antibody 1", tag: "Ab1", color: "#0000FF", plate: "", details: [[],[]]},
-    {id: "default_AB2", name: "Antibody 2", tag: "Ab2", color: "#FFFF00", plate: "", details: [[],[]]},
-    {id: "default_DH", name: "Dummy Handle", tag: "DH", color: "#FF00FF", plate: "", details: [[],[]]}
-];
+let inventoryData = [];
 
 /**
  * Function to update cargo plates from python backend
@@ -32,7 +26,7 @@ function updatePlates() {
  * Function to update internal inventory dictionary from cargo plates
  */
 export function updateInventoryItems() {
-    var socket = io();
+    var socket = io('/crisscross');
     socket.emit('get_inventory')
     socket.on('inventory_sent', function(inventory) {
         console.log("Imported inventory!", inventory)

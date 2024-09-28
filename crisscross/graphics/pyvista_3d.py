@@ -10,6 +10,7 @@ from crisscross.helper_functions.slat_salient_quantities import connection_angle
 pyvista_spec = importlib.util.find_spec("pyvista")  # only imports pyvista if this is available
 if pyvista_spec is not None:
     import pyvista as pv
+    pv.OFF_SCREEN = True # Enables off-screen rendering (to allow graphics generation when not using the main thread)
     pyvista_available = True
 else:
     pyvista_available = False
@@ -117,7 +118,7 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
     :return: N/A
     """
     if not pyvista_available:
-        print(Fore.RED + 'Pyvista not installed.  3D graphical views cannot be created.')
+        print(Fore.RED + 'Pyvista not installed.  3D graphical views cannot be created.' + Fore.RESET)
         return
 
     if slats is None:
@@ -128,8 +129,8 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
 
     for slat_id, slat in slats.items():  # Z-height is set to 1 here, could be interested in changing in some cases
         if len(slat.slat_position_to_coordinate) == 0:
-            print(Fore.YELLOW + 'WARNING: Slat %s was ignored from 3D graphical '
-                                'view as it does not have a grid position defined.' % slat_id)
+            print(Fore.YELLOW + f'WARNING: Slat {slat_id} was ignored from 3D graphical '
+                                'view as it does not have a grid position defined.' + Fore.RESET)
             continue
 
         pos1 = slat.slat_position_to_coordinate[1]
