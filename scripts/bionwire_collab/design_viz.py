@@ -38,12 +38,12 @@ M_DT = Megastructure(import_design_file=os.path.join(design_folder, 'double_tren
 M_X = Megastructure(import_design_file=os.path.join(design_folder, 'trench_x.xlsx'))
 M_Y = Megastructure(import_design_file=os.path.join(design_folder, 'trench_y.xlsx'))
 
-# M_DT.create_standard_graphical_report(os.path.join(design_folder, 'Design_XY'), colormap='Set1',
-#                                       seed_color=(1.0, 1.0, 0.0))
-# M_X.create_standard_graphical_report(os.path.join(design_folder, 'Design_X'), colormap='Set1',
-#                                      seed_color=(1.0, 1.0, 0.0))
-# M_Y.create_standard_graphical_report(os.path.join(design_folder, 'Design_Y'), colormap='Set1',
-#                                      seed_color=(1.0, 1.0, 0.0))
+M_DT.create_standard_graphical_report(os.path.join(design_folder, 'Design_XY'), colormap='Set1',
+                                      seed_color=(1.0, 1.0, 0.0))
+M_X.create_standard_graphical_report(os.path.join(design_folder, 'Design_X'), colormap='Set1',
+                                     seed_color=(1.0, 1.0, 0.0))
+M_Y.create_standard_graphical_report(os.path.join(design_folder, 'Design_Y'), colormap='Set1',
+                                     seed_color=(1.0, 1.0, 0.0))
 
 M_DT.create_blender_3D_view(os.path.join(design_folder, 'Design_XY'), colormap='Set1',
                             animate_assembly=True,

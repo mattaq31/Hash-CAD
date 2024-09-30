@@ -25,7 +25,8 @@ if __name__ == '__main__':
     socketio_instance = SocketIO(app, max_http_buffer_size=100 * 1024 * 1024)  # Set max transfer size 100MB
 
     # Ensure the upload directory exists
-    create_dir_if_empty(app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], app.config['USER_PLATE_FOLDER'])
+    create_dir_if_empty(app.config['UPLOAD_FOLDER'], app.config['ZIP_FOLDER'],
+                        app.config['USER_PLATE_FOLDER'], app.config['OUTPUT_FOLDER'])
 
     with app.app_context():
         from GUI.backend_functions.routing_and_sockets import SocketNamespace

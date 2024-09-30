@@ -226,7 +226,7 @@ def package_and_export_megastructure(data):
                                                                                                cargo_dict,
                                                                                                handle_dict)
 
-    if use_display_handles:
+    if not use_display_handles:
         handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32,
                                                         # TODO: we will want to adjust most of these options at some point
                                                         # TODO: we also need to integrate user options and evolutionary system
