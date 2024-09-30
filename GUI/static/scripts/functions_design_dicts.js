@@ -1,5 +1,6 @@
 import {placeCargo, placeSlat, placeHandle, placeSeed} from './functions_drawing.js'
-import {getHandleLayerDict} from './functions_handles.js'
+import {getHandleLayerDict, setHandleLayerInterfacesFromDict} from './functions_handles.js'
+import {addLayer} from "./functions_layers.js";
 
 /** 
  * Converts coordinates into a (string) key for the dictionary of slats/cargo/handles
@@ -231,7 +232,7 @@ export function findSlatStartOrientation(slatDict, slatNum){
 
     for (const [key, value] of Object.entries(slatDict)) {
         
-        if(value == slatNum){
+        if(value === slatNum){
             let keyArray = key.split(',')
             let tmpX = Number(keyArray[0])
             let tmpY = Number(keyArray[1])
@@ -253,10 +254,10 @@ export function findSlatStartOrientation(slatDict, slatNum){
         }
     }
 
-    if(minY == maxY){
+    if(minY === maxY){
         horizontal = true
     }
-    else if(minX == maxX){
+    else if(minX === maxX){
         horizontal = false; 
     }
 
@@ -289,8 +290,7 @@ function importSlats(slatDict, layerList, minorGridSize, shownOpacity, offsetX=0
         let horizontal = orientation[3]
 
         while(!layerList.has(layerId)){
-            const addLayerButton = document.getElementById('add-layer');
-            addLayerButton.click();
+            addLayer();
         }
 
         let fullLayer = layerList.get(layerId);
@@ -348,7 +348,7 @@ function importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, han
         let activeCargoLayer = null
 
         let top = true;
-        if(handleOrientations[layerId][0] == orientation){
+        if(parseInt(handleOrientations[layerId][0]) === orientation){
             activeCargoLayer = fullLayer[3]
             top = true
         }
@@ -485,24 +485,28 @@ function importSeed(seedDict, layerList, minorGridSize, offsetX=0, offsetY=0){
  * @param {number} shownCargoOpacity Opacity at which cargo should be drawn when shown - default.
  * @returns {Array} Array of [slatCounter, cargoCounter]
  */
-export function importDesign(seedDict, slatDict, cargoDict, handleDict, layerList, minorGridSize, shownOpacity, shownCargoOpacity, offsetX=0, offsetY=0){
+export function importDesign(seedDict, slatDict, cargoDict, handleDict, handleInterfaces,
+                             layerList, minorGridSize, shownOpacity,
+                             shownCargoOpacity, offsetX=0, offsetY=0){
 
     removeAllLayers()
-    
+
     let slatCounter = importSlats(slatDict, layerList, minorGridSize, shownOpacity, offsetX, offsetY)
 
-    if(Object.keys(seedDict).length != 0){
+    setHandleLayerInterfacesFromDict(handleInterfaces, layerList);
+
+    if(Object.keys(seedDict).length !== 0){
         importSeed(seedDict, layerList, minorGridSize, offsetX, offsetY)
     }
 
     let handleOrientations = getHandleLayerDict(layerList)
     let cargoCounter = importCargo(cargoDict, layerList, minorGridSize, shownCargoOpacity, handleOrientations, offsetX, offsetY)
 
-    if(Object.keys(handleDict).length != 0){
+    if(Object.keys(handleDict).length !== 0){
         importHandles(handleDict, layerList, minorGridSize, offsetX, offsetY)
     }
 
-    return [slatCounter, cargoCounter];
+    return [slatCounter, cargoCounter]
 }
 
 

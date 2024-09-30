@@ -31,7 +31,7 @@ export function updateInventoryItems() {
     socket.on('inventory_sent', function(inventory) {
         console.log("Imported inventory!", inventory)
         inventoryData = inventory
-        updatePlates()
+        updatePlates();
     });
 }
 

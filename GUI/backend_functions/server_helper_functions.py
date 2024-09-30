@@ -1,9 +1,7 @@
 import numpy as np
-import os
 
 # For generating handles
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.plate_mapping import get_plateclass
 from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 
 
@@ -18,11 +16,21 @@ def extract_min_max_slat_coords(slat_dict):
     max_y = max(int(key.split(',')[1]) for key in slat_dict.keys()) + 1
     min_x = min(int(key.split(',')[0]) for key in slat_dict.keys())
     min_y = min(int(key.split(',')[1]) for key in slat_dict.keys())
-    max_layer = max(int(key.split(',')[2]) for key in slat_dict.keys()) + 1
+    max_layer = max(int(key.split(',')[2]) for key in slat_dict.keys())
     return {'min_x': min_x, 'min_y': min_y, 'max_x': max_x, 'max_y': max_y, 'max_layer': max_layer}
 
 def combine_megastructure_arrays(seed_array, slat_array, cargo_dict, handle_array, orientations):
-
+    """
+    Given a set of design arrays, combine them all together into a single Megastructure.  Plates  are not considered
+    at this point.
+    :param seed_array: 3D array containing seed(s) position.  Provide an empty array if no seed has been defined.
+    :param slat_array: Base 3D array containing slat positions.
+    :param cargo_dict: Dictionary containing the positions and identities of cargo in the design.
+    :param handle_array: Array containing the handle IDs corresponding to the slat array.  Provide an array filled with
+    zeros if no handles have been defined.
+    :param orientations: The handle orientations (2,5) of the design.
+    :return: Complete megastructure class.
+    """
     crisscross_megastructure = Megastructure(slat_array, orientations, connection_angle='90')
 
     if np.sum(handle_array) != 0:
@@ -43,7 +51,16 @@ def combine_megastructure_arrays(seed_array, slat_array, cargo_dict, handle_arra
 
 
 def convert_design_dictionaries_into_arrays(seed_dict=None, slat_dict=None, cargo_dict=None, handle_dict=None,
-                                            handle_rounds=10, use_old_handles=False, trim_arrays=True):
+                                            trim_arrays=True):
+    """
+    Converts frontend JS dictionaries into arrays for use with the Megastructure class.
+    :param seed_dict: TODO: fill in and separate handle definition away from here
+    :param slat_dict:
+    :param cargo_dict:
+    :param handle_dict:
+    :param trim_arrays:
+    :return:
+    """
     seed_array = np.array([])
     slat_array = ()
     cargo_dict_formatted = {}
@@ -62,18 +79,12 @@ def convert_design_dictionaries_into_arrays(seed_dict=None, slat_dict=None, carg
         slat_array = positional_dict_to_array(slat_dict, coord_extremities)
 
     if cargo_dict:
-        cargo_dict_formatted = format_cargo_dict(cargo_dict, coord_extremities)
+        cargo_dict_formatted = convert_frontend_cargo_dict_to_megastructure_dict(cargo_dict, coord_extremities)
 
-    if handle_dict and use_old_handles:
-        handle_array = positional_dict_to_array(handle_dict, coord_extremities)
+    if handle_dict:
+        handle_array = positional_dict_to_array(handle_dict, {**coord_extremities, **{'max_layer': coord_extremities['max_layer'] - 1}})
     else:
-        # Generate handle array
-        handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32,
-                                                        # TODO: we will want to adjust most of these options at some point
-                                                        max_rounds=handle_rounds,
-                                                        split_sequence_handles=False, universal_hamming=True,
-                                                        layer_hamming=False,
-                                                        group_hamming=None, metric_to_optimize='Universal')
+        handle_array = np.zeros((slat_array.shape[0], slat_array.shape[1], slat_array.shape[2] - 1))
 
     return seed_array, slat_array, cargo_dict_formatted, handle_array
 
@@ -83,12 +94,13 @@ def convert_dict_handle_orientations_to_string(handle_configs):
     Converts dict-based handle configurations into the format required by the Megastructure class.
     :param handle_configs: Dictionary of handle configs TODO: add description
     :return: string-formatted handle configs for Megastructure class
+    TODO: make converting between systems easier!
     """
 
     # first extract all the values from the dictionary
     layer_interface_orientation = []
     for orientation in handle_configs.values():
-        layer_interface_orientation.append((int(orientation[0]), int(orientation[1])))
+        layer_interface_orientation.append((int(orientation[1]), int(orientation[0])))
 
     # then change the layer_interface_orientation array into the proper format: ie [2, (5, 2), (5, 2), 5]
     first_orientation = layer_interface_orientation[0][0]
@@ -119,7 +131,7 @@ def positional_dict_to_array(position_dict, slat_extremities=None):
         max_y = max(int(key.split(',')[1]) for key in position_dict.keys()) + 1
         min_x = 0
         min_y = 0
-        max_layer = max(int(key.split(',')[2]) for key in position_dict.keys()) + 1
+        max_layer = max(int(key.split(',')[2]) for key in position_dict.keys())
 
     # Initialize the array
     array = np.zeros((max_x - min_x, max_y - min_y, max_layer))
@@ -172,12 +184,40 @@ def positional_2d_array_and_layer_to_dict(array, layer):
     return dict
 
 
-def cargo_dict_to_formatted(dict):
-    return {str(key): value for key, value in dict.items()}
+def convert_frontend_cargo_dict_to_megastructure_dict(cargo_dict, coord_extremities=None):
+    """
+    Converts a frontend JS cargo dict into a format compatible with the Megastructure class.
+    :param cargo_dict: JS cargo dictionary.
+    :param coord_extremities: Canvas extremities to help reduce array size (optional).
+    :return: Update cargo dictionary that can be fed directly to a Megastructure.
+    """
+    formatted_dict = {}
+    min_x = 0
+    min_y = 0
+
+    if coord_extremities is not None:
+        min_x = coord_extremities['min_x']
+        min_y = coord_extremities['min_y']
+
+    for key, value in cargo_dict.items():
+        parts = key.split(',')
+        x = int(parts[0]) - min_x
+        y = int(parts[1]) - min_y
+        layer = int(parts[2])
+        orientation = int(parts[3])
+
+        converted_key = ((x, y), layer, orientation)
+        formatted_dict[converted_key] = value
+
+    return formatted_dict
 
 
-# Function to create the acronym
-def create_acronym(word):
+def create_cargo_acronym(word):
+    """
+    Convenience function to help reduce the size of cargo names for display purposes.
+    :param word: Cargo name (in-full).
+    :return: Shortened version of the cargo name.
+    """
     vowels = 'aeiouAEIOU'
 
     # Check if the word contains 'mer-'
@@ -199,75 +239,39 @@ def create_acronym(word):
     return acronym
 
 
-def cargo_to_inventory(cargo_plate_filepath, cargo_plate_folder):
-    plate = get_plateclass('GenericPlate', os.path.basename(cargo_plate_filepath), cargo_plate_folder)
+def cargo_to_inventory(cargo_plate, plate_filename):
+    """
+    Converts the standard plate class into a dictionary system compatible with the frontend's plate inventory system.
+    :param cargo_plate: The plate class object containing the cargo sequences.
+    :param plate_filename: Plate ID or filename.
+    :return: Dictionary of attributes for provided plate
+    """
 
     # Extract unique cargo name values
-    unique_cargo_names = list({key[2] for key in plate.sequences.keys()})
+    unique_cargo_names = list({key[2] for key in cargo_plate.sequences.keys()})
 
     # Create the list of elements with the specified format
     inventory = []
-    hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500'];
+    hexColors = ['#ff0000', '#9dd1eb', '#ffff00', '#ff69b4', '#008000', '#ffa500']
     for name in unique_cargo_names:
         h2_compatibility_arr = []
         for i in range(1, 33):
-            if (i, 2, name) in plate.sequences:
+            if (i, 2, name) in cargo_plate.sequences:
                 h2_compatibility_arr.append(i)
 
         h5_compatibility_arr = []
         for i in range(1, 33):
-            if (i, 5, name) in plate.sequences:
+            if (i, 5, name) in cargo_plate.sequences:
                 h5_compatibility_arr.append(i)
 
         element = {
-            "id": str(name) + "-plate:" + os.path.basename(cargo_plate_filepath),
+            "id": str(name),
             "name": name,
-            "tag": create_acronym(name),
+            "tag": create_cargo_acronym(name),
             "color": hexColors[len(inventory) % 6],
-            "plate": os.path.basename(cargo_plate_filepath),
+            "plate": plate_filename,
             "details": [h2_compatibility_arr, h5_compatibility_arr]
         }
         inventory.append(element)
 
     return inventory
-
-
-def break_dict_by_plates(dict):
-    # Initialize the new dictionary to hold separate dictionaries for each <PLATE>
-    separated_dicts = {}
-
-    # Iterate through the original dictionary
-    for key, value in dict.items():
-        # Extract the <PLATE> value
-        plate = value.split('-plate:')[1]
-
-        # Initialize the dictionary for this <PLATE> if it doesn't already exist
-        if plate not in separated_dicts:
-            separated_dicts[plate] = {}
-
-        # Add the entry to the appropriate dictionary
-        separated_dicts[plate][key] = value.split('-plate:')[0]
-
-    return separated_dicts
-
-
-def format_cargo_dict(cargo_dict, coord_extremities=None):
-    formatted_dict = {}
-    min_x = 0
-    min_y = 0
-
-    if coord_extremities is not None:
-        min_x = coord_extremities['min_x']
-        min_y = coord_extremities['min_y']
-
-    for key, value in cargo_dict.items():
-        parts = key.split(',')
-        x = int(parts[0]) - min_x
-        y = int(parts[1]) - min_y
-        layer = int(parts[2])
-        orientation = int(parts[3])
-
-        converted_key = ((x, y), layer, orientation)
-        formatted_dict[converted_key] = value
-
-    return formatted_dict

@@ -22,7 +22,7 @@ export function addLayer() {
 
     console.log("Layerlist: ", layerList)
 
-    if(layerList.children.length == 0){
+    if(layerList.children.length === 0){
         layerId = 1
     }
     else{

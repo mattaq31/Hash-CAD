@@ -1,13 +1,13 @@
-import { createGridArray, importHandles, importDesign } from './functions_design_dicts.js';
-import { getHandleLayerDict, clearHandles } from './functions_handles.js';
-import { updateInventoryItems} from './functions_inventory.js';
-import { showNotification } from './functions_socket.js';
-import { getLayerList } from './functions_layers.js'
-import { downloadFile } from './functions_misc.js';
-import { getFullDrawing } from './functions_drawing.js';
+import {createGridArray, importHandles, importDesign} from './functions_design_dicts.js';
+import {getHandleLayerDict, clearHandles} from './functions_handles.js';
+import {updateInventoryItems} from './functions_inventory.js';
+import {showNotification} from './functions_socket.js';
+import {getLayerList} from './functions_layers.js'
+import {downloadFile} from './functions_misc.js';
+import {getFullDrawing} from './functions_drawing.js';
 
-import { writeVariable } from './variables.js';
-import {minorGridSize, shownOpacity, shownCargoOpacity } from './constants.js'
+import {writeVariable} from './variables.js';
+import {minorGridSize, shownOpacity, shownCargoOpacity} from './constants.js'
 
 var socket = io('/crisscross');
 
@@ -16,12 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     //Design import via file upload
     let uploadForm = document.getElementById('upload-form')
-    uploadForm.addEventListener('submit', function(event){
+    uploadForm.addEventListener('submit', function (event) {
         console.log("Upload form submitted!")
 
         // Prevent the default form submission
-        event.preventDefault(); 
-        
+        event.preventDefault();
+
         //Get file input
         var fileInput = document.getElementById('file-input');
         if (fileInput.files.length == 0) {
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         //Setup file reader
         var reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             var data = {
                 'file': {
                     'filename': file.name,
@@ -50,22 +50,18 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     //Respond to design file upload
-    socket.on('upload_response', function(data) {
+    socket.on('upload_response', function (data) {
         console.log(data.message)
     });
 
     //Import design after file upload
-    socket.on('design_imported', function(data) {
+    socket.on('design_imported', function (data) {
         console.log("Imported design!", data)
 
-        let offset = getFullDrawing().point(0,0);
+        let offset = getFullDrawing().point(0, 0);
 
-        let offsetX = Math.round(offset.x/(minorGridSize))*minorGridSize ;
-        let offsetY = Math.round(offset.y/(minorGridSize))*minorGridSize ;
-
-        
-        
-
+        let offsetX = Math.round(offset.x / (minorGridSize)) * minorGridSize;
+        let offsetY = Math.round(offset.y / (minorGridSize)) * minorGridSize;
 
         console.log(getFullDrawing(), offset, offset.x, offset.y)
 
@@ -73,27 +69,28 @@ document.addEventListener('DOMContentLoaded', () => {
         let slatDict = data[1]
         let cargoDict = data[2]
         let handleDict = data[3]
-        let slatCounter, cargoCounter = importDesign(seedDict, slatDict, 
-                                                     cargoDict, handleDict, 
-                                                     layerList, minorGridSize, 
-                                                     shownOpacity, shownCargoOpacity,
-                                                     offsetX, offsetY)
+        let handleInterfaces = data[4]
+
+        let slatCounter, cargoCounter = importDesign(seedDict, slatDict,
+            cargoDict, handleDict,
+            handleInterfaces,
+            layerList, minorGridSize,
+            shownOpacity, shownCargoOpacity,
+            offsetX, offsetY)
         writeVariable("slatCounter", slatCounter)
         writeVariable("cargoCounter", cargoCounter)
     });
 
 
-
-
     //Plate file uploading
     let plateUploadForm = document.getElementById('plate-upload-form')
-    plateUploadForm.addEventListener('submit', function(event) {
+    plateUploadForm.addEventListener('submit', function (event) {
         console.log("Plate upload form submitted!")
 
         //Prevent the default form submission
-        event.preventDefault(); 
+        event.preventDefault();
 
-        //Get file inpus
+        //Get file inputs
         var fileInput = document.getElementById('plate-file-input');
         if (fileInput.files.length == 0) {
             console.log("No file selected.")
@@ -105,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             //Setup file reader
             var reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 var data = {
                     'file': {
                         'filename': file.name,
@@ -122,31 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     //Respond to plate file upload
-    socket.on('plate_upload_response', function(data) {
+    socket.on('plate_upload_response', function (data) {
         console.log(data.message)
         updateInventoryItems();
     });
 
-
-
-
-    //Design saving & exporting
-    //document.getElementById('save-design').addEventListener('click', function(event) {
-    //    console.log("design to be saved now!")
-    //    let gridArray = createGridArray(layerList, minorGridSize)
-    //    socket.emit('design_to_backend_for_download', gridArray);
-    //});
-
-    //Download saved design
-    //socket.on('saved_design_ready_to_download', function(){
-    //    downloadFile('/download/crisscross_design.npz', 'crisscross_design.npz')
-    //})
-
-
-
-
     //Megastructure generation
-    document.getElementById('generate-megastructure-button').addEventListener('click',function(event){
+    document.getElementById('generate-megastructure-button').addEventListener('click', function (event) {
         let gridArray = createGridArray(layerList, minorGridSize)
         let handleConfigs = getHandleLayerDict(layerList)
 
@@ -161,16 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     //Download generated megastructure
-    socket.on('megastructure_output_ready_to_download', function(){
+    socket.on('megastructure_output_ready_to_download', function () {
         console.log('obtained megastructure file');
         downloadFile('/download/outputs.zip', 'outputs.zip')
     })
 
-
-    
-
     //Handle generation
-    document.getElementById('generate-handles-button').addEventListener('click',function(event){
+    document.getElementById('generate-handles-button').addEventListener('click', function (event) {
         let gridArray = createGridArray(layerList, minorGridSize)
         let handleConfigs = getHandleLayerDict(layerList)
         let handleIterations = document.getElementById('handle-iteration-number').value
@@ -179,18 +155,21 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     //Import newly generated handles
-    socket.on('handles_sent', function(handleDict){
+    socket.on('handles_sent', function (data) {
+        let handleDict = data[0]
+        let hamming = data[1]
         console.log('handles have been generated and recieved:', handleDict)
         importHandles(handleDict, layerList, minorGridSize)
+        document.getElementById('handleHammingIndicator').innerText = "Achieved Hamming distance: " + hamming.toString()
     })
 
     //Clear old handles
-    document.getElementById('clear-handles-button').addEventListener('click', function(event){
+    document.getElementById('clear-handles-button').addEventListener('click', function (event) {
         clearHandles(layerList)
     })
 
     //Read in console messages from python backend
-    socket.on('console', function(msg) {
+    socket.on('console', function (msg) {
         showNotification(msg.data)
     });
 })

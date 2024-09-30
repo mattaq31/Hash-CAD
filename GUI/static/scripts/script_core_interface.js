@@ -170,7 +170,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
     // Change drawing mode
     const drawModeSelector = document.getElementById('palette-type-selector');
     drawModeSelector.addEventListener('change', function () {
-        writeVariable("drawSlatCargoHandleMode", drawModeSelector.value);
+        writeVariable("drawSlatCargoHandleMode", parseInt(drawModeSelector.value));
         changePlacementMode(getVariable("drawSlatCargoHandleMode"), layerList)
     });
 

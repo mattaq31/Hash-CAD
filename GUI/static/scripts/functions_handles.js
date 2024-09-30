@@ -190,6 +190,33 @@ export function getHandleLayerDict(layerList){
     return handleConfigDict
 }
 
+// TODO: look into whether this function (and the one above) can be streamlined
+export function setHandleLayerInterfacesFromDict(handleConfigDict, layerList){
+    const handleLayerViewer = document.getElementById('handle-layers')
+    const layerChildren = handleLayerViewer.children
+    const childrenArray = Array.from(layerChildren);
+
+    let layerIndex = 0
+
+    layerList.forEach((layer, layerId) => {
+        var layerElement = childrenArray[layerIndex]
+        var topSelector = findFirstNonPElement(layerElement).firstChild
+        var bottomSelector = findLastNonPElement(layerElement).firstChild
+
+        if (topSelector && bottomSelector) {
+            var topH2H5 = handleConfigDict[layerId][0];
+            var bottomH2H5 = handleConfigDict[layerId][1];
+            topSelector.value = topH2H5;
+            bottomSelector.value = bottomH2H5;
+        }
+        else {
+            console.log(`Could not find suitable elements for layer ${layerId}.`);
+        }
+        layerIndex += 1
+    })
+}
+
+
 /**
  * Function to update the cargo layer selectors with proper H2/H5 labels
  * @param {Map} layerList List/Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items

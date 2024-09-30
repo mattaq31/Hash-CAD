@@ -22,11 +22,11 @@ export function changePlacementMode(mode, layerList){
     changeCursorEvents(getVariable("activeBottomCargoLayer"), 'none')
     changeCursorEvents(getVariable("activeHandleLayer"),      'none')
 
-    if(mode == 0){ //Slat mode
+    if(mode === 0){ //Slat mode
         slatPalette.style.display = 'block'
         changeCursorEvents(getVariable("activeSlatLayer"), 'stroke')
     }
-    else if (mode == 1) { // Cargo mode
+    else if (mode === 1) { // Cargo mode
         cargoPalette.style.display = 'block';
         populateCargoPalette(); 
         getHandleLayerDict(layerList)
@@ -35,7 +35,7 @@ export function changePlacementMode(mode, layerList){
             changeCursorEvents(getVariable("activeCargoLayer"), 'bounding-box')
         }
     } 
-    else if(mode == 2){ //Handle mode
+    else if(mode === 2){ //Handle mode
         handlePalette.style.display = 'block'
         getHandleLayerDict(layerList)
         updateHandleLayers(layerList)

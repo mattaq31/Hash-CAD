@@ -1,7 +1,12 @@
 from crisscross.core_functions.plate_handling import read_dna_plate_mapping
-from crisscross.helper_functions.plate_constants import sanitize_plate_map, base_directory, slat_core, \
-    core_plate_folder, crisscross_h5_handle_plates, assembly_handle_folder, crisscross_h2_handle_plates, \
-    seed_plug_plate_corner, seed_plug_plate_center, seed_plug_plate_all
+from crisscross.helper_functions.plate_constants import (sanitize_plate_map, base_directory, slat_core, \
+                                                         core_plate_folder, crisscross_h5_handle_plates,
+                                                         assembly_handle_folder, crisscross_h2_handle_plates, \
+                                                         seed_plug_plate_corner, seed_plug_plate_center,
+                                                         seed_plug_plate_all, cargo_plate_folder,
+                                                         nelson_quimby_antihandles,
+                                                         octahedron_patterning_v1,
+                                                         simpsons_mixplate_antihandles, seed_slat_purification_handles)
 import os
 import ast
 from pydoc import locate
@@ -92,3 +97,15 @@ def get_standard_plates():
     combined_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all, core_plate_folder)
 
     return core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate
+
+
+def get_cargo_plates():
+    """
+    Generates standard cargo plates used commonly in most designs.
+    """
+    src_007 = get_plateclass('GenericPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
+    src_005 = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
+    src_004 = get_plateclass('HybridPlate', seed_slat_purification_handles, cargo_plate_folder)
+    P3518 = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
+
+    return src_004, src_005, src_007, P3518

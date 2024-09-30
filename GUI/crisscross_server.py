@@ -15,9 +15,9 @@ if __name__ == '__main__':
                 static_folder=os.path.join(base_directory, 'GUI', 'static'))
 
     app.config['UPLOAD_FOLDER'] = os.path.join(base_directory, 'GUI', 'temp_files', 'uploads')  # Directory to save uploaded files
-    app.config['OUTPUT_FOLDER'] = os.path.join(base_directory, 'GUI', 'temp_files',  'design_outputs')
-    app.config['PLATE_FOLDER'] = os.path.join(base_directory, 'GUI', 'temp_files',  'plates') # Directory to save uploaded files
-    app.config['ZIP_FOLDER'] = os.path.join(base_directory, 'GUI', 'temp_files',  'zip_outputs') # Directory to save uploaded files
+    app.config['OUTPUT_FOLDER'] = os.path.join(base_directory, 'GUI', 'temp_files',  'design_outputs') # Directory to save script outputs
+    app.config['USER_PLATE_FOLDER'] = os.path.join(base_directory, 'GUI', 'temp_files',  'plates') # Directory to save uploaded plates
+    app.config['ZIP_FOLDER'] = os.path.join(base_directory, 'GUI', 'temp_files',  'zip_outputs') # Directory to export zip files
 
     app.config['ALLOWED_EXTENSIONS'] = {'txt', 'npz', 'xlsx'}  # Allowed file extensions
     app.config['PLATE_ALLOWED_EXTENSIONS'] = {'xlsx'}  # Allowed file extensions
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     socketio_instance = SocketIO(app, max_http_buffer_size=100 * 1024 * 1024)  # Set max transfer size 100MB
 
     # Ensure the upload directory exists
-    create_dir_if_empty(app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], app.config['PLATE_FOLDER'])
+    create_dir_if_empty(app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], app.config['USER_PLATE_FOLDER'])
 
     with app.app_context():
         from GUI.backend_functions.routing_and_sockets import SocketNamespace

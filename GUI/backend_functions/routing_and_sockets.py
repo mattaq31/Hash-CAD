@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from flask import current_app as app
 from flask import render_template, send_file
 from flask_socketio import Namespace, emit
@@ -5,15 +7,16 @@ from werkzeug.utils import secure_filename
 
 from GUI.backend_functions.server_helper_functions import (positional_3d_array_to_dict,
                                                            positional_2d_array_and_layer_to_dict,
-                                                           cargo_dict_to_formatted,
                                                            cargo_to_inventory,
                                                            convert_dict_handle_orientations_to_string,
                                                            convert_design_dictionaries_into_arrays,
                                                            combine_megastructure_arrays)
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
+from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.helper_functions import clear_folder_contents, convert_np_to_py, zip_folder_to_disk
-from crisscross.plate_mapping import get_standard_plates
+from crisscross.plate_mapping import get_standard_plates, get_plateclass, get_cargo_plates
 
 import matplotlib
 import os
@@ -95,17 +98,22 @@ def get_inventory():
     """
     Gets all inventory items from the used cargo folder and sends them to the client.
     """
-    # TODO: also connect the above with 'pre-made' plates from the server defaults
     all_inventory_items = []
 
     # Iterate through all .xlsx files in the directory to get inventory items
-    for filename in os.listdir(app.config['PLATE_FOLDER']):
+    for filename in os.listdir(app.config['USER_PLATE_FOLDER']):
         if filename.endswith('.xlsx'):
             shortened_filename = filename[:-5]
-            file_path = os.path.join(app.config['PLATE_FOLDER'], shortened_filename)
             # Run getInventory on the current file and extend the results to the all_inventory_items list
-            inventory_items = cargo_to_inventory(file_path, app.config['PLATE_FOLDER'])
+            plate = get_plateclass('GenericPlate', shortened_filename, app.config['USER_PLATE_FOLDER'])
+            inventory_items = cargo_to_inventory(plate, shortened_filename)
             all_inventory_items.extend(inventory_items)
+
+    standard_cargo_plates = get_cargo_plates()
+
+    for plate in standard_cargo_plates:
+        inventory_items = cargo_to_inventory(plate, plate.get_plate_name())
+        all_inventory_items.extend(inventory_items)
 
     emit('inventory_sent', all_inventory_items)
 
@@ -149,29 +157,50 @@ def upload_and_import_design(data):
         handle_dict = positional_3d_array_to_dict(crisscross_megastructure.handle_arrays)
 
     if crisscross_megastructure.cargo_dict is not None:
-        cargo_dict = cargo_dict_to_formatted(crisscross_megastructure.cargo_dict)
+        cargo_dict = {str(key): value for key, value in crisscross_megastructure.cargo_dict.items()}
 
-    emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict])
+    # TODO: this converts the handle orientations into a dictionary that can be sent to the frontend
+    # TODO: This mismatch between the two systems is annoying - we should standardize the system
+    interface_orientations = crisscross_megastructure.layer_interface_orientations
+    handle_orientation_dict = defaultdict(list)
+    handle_orientation_dict['1'] = [str(interface_orientations[0])]
+    for ind, l in enumerate(interface_orientations[1:-1]):
+        handle_orientation_dict[str(ind + 1)].append(str(l[0]))
+        handle_orientation_dict[str(ind + 2)].append(str(l[1]))
+    handle_orientation_dict[str(len(interface_orientations)-1)].append (str(interface_orientations[-1]))
 
-    # TODO: Add import of handle configs
+    # reverses order as frontend has different system....
+    for key, val in handle_orientation_dict.items():
+        handle_orientation_dict[key] = val[::-1]
+
+    emit('design_imported', [seed_dict, slat_dict, cargo_dict, handle_dict, handle_orientation_dict])
 
 
 def generate_handles(data):
     crisscross_dict = data[0]
-    handle_configs = data[1]
     handle_rounds = int(data[2])
 
-    seed_array, slat_array, cargo_dict, handle_array = convert_design_dictionaries_into_arrays({},
-                                                                                               crisscross_dict[1],
-                                                                                               {},
-                                                                                               {},
-                                                                                               handle_rounds,
-                                                                                               False,
-                                                                                               False)
+    _, slat_array, _, handle_array = convert_design_dictionaries_into_arrays({},
+                                                                             crisscross_dict[1],
+                                                                             {},
+                                                                             {},
+                                                                             False)
+    # Generate handle array
+    handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32,
+                                                    # TODO: we will want to adjust most of these options at some point
+                                                    # TODO: we also need to integrate user options and evolutionary system
+                                                    max_rounds=handle_rounds,
+                                                    split_sequence_handles=False, universal_hamming=True,
+                                                    layer_hamming=False,
+                                                    group_hamming=None, metric_to_optimize='Universal')
+
+    final_hamming = multirule_oneshot_hamming(slat_array, handle_array, per_layer_check=False,
+                                              report_worst_slat_combinations=False,
+                                              request_substitute_risk_score=False)['Universal']
 
     handle_dict = positional_3d_array_to_dict(handle_array)
     converted_handle_dict = convert_np_to_py(handle_dict)
-    emit('handles_sent', converted_handle_dict)
+    emit('handles_sent', [converted_handle_dict, int(final_hamming)])
 
 
 def package_and_export_megastructure(data):
@@ -195,9 +224,16 @@ def package_and_export_megastructure(data):
     seed_array, slat_array, cargo_dict, handle_array = convert_design_dictionaries_into_arrays(seed_dict,
                                                                                                slat_dict,
                                                                                                cargo_dict,
-                                                                                               handle_dict,
-                                                                                               100, # TODO: make this user-selectable and add evolution system...
-                                                                                               use_display_handles)
+                                                                                               handle_dict)
+
+    if use_display_handles:
+        handle_array = generate_handle_set_and_optimize(slat_array, unique_sequences=32, slat_length=32,
+                                                        # TODO: we will want to adjust most of these options at some point
+                                                        # TODO: we also need to integrate user options and evolutionary system
+                                                        max_rounds=10,
+                                                        split_sequence_handles=False, universal_hamming=True,
+                                                        layer_hamming=False,
+                                                        group_hamming=None, metric_to_optimize='Universal')
 
     megastructure = combine_megastructure_arrays(seed_array, slat_array, cargo_dict, handle_array,
                                                  formatted_layer_handle_orientations)
@@ -209,18 +245,38 @@ def package_and_export_megastructure(data):
             gen_3d = True
         megastructure.create_standard_graphical_report(os.path.join(app.config['OUTPUT_FOLDER'], 'Design Graphics'),
                                                        generate_3d_video=gen_3d, colormap='Set1',
-                                                       cargo_colormap='Paired')
+                                                       cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))
         # TODO: cannot generate 3D graphics on mac os due to threading issues....
 
     if generate_echo:
+        # TODO: these plates should probably persist and not have to be re-read everytime...
         core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
+
+        # patch main items
         megastructure.patch_placeholder_handles(
             [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate],
             ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed'])
+
+        # patch cargo
+        cargo_plate_list = []
+        for filename in os.listdir(app.config['USER_PLATE_FOLDER']):
+            if filename.endswith('.xlsx'):
+                shortened_filename = filename[:-5]
+                # Run getInventory on the current file and extend the results to the all_inventory_items list
+                cargo_plate_list.append(get_plateclass('GenericPlate', shortened_filename, app.config['USER_PLATE_FOLDER']))
+
+        standard_cargo_plates = get_cargo_plates()
+        cargo_plate_list.extend(list(standard_cargo_plates))
+
+        megastructure.patch_placeholder_handles(cargo_plate_list, ['Cargo']*len(cargo_plate_list))
+
+        # final control handle patch
         megastructure.patch_control_handles(core_plate)
+
         convert_slats_into_echo_commands(megastructure.slats, 'crisscross_design_plate',
                                          app.config['OUTPUT_FOLDER'], 'all_echo_commands_with_crisscross_design.csv',
-                                         default_transfer_volume=100)
+                                         center_only_well_pattern=True,
+                                         default_transfer_volume=150)
 
     megastructure.export_design('full_design.xlsx', app.config['OUTPUT_FOLDER'])
 
@@ -239,7 +295,7 @@ def save_file_to_plate_folder(data):
     filename = secure_filename(file['filename'])
     if file and plate_allowed_file(filename):
         try:
-            with open(os.path.join(app.config['PLATE_FOLDER'], filename), 'wb') as f:
+            with open(os.path.join(app.config['USER_PLATE_FOLDER'], filename), 'wb') as f:
                 f.write(file['data'])
             emit('plate_upload_response', {'message': f'File {filename} successfully uploaded'})
             print(f'File {filename} successfully uploaded')
@@ -252,7 +308,11 @@ def save_file_to_plate_folder(data):
 
 
 def list_plates():
-    files = os.listdir(app.config['PLATE_FOLDER'])
+    """
+    TODO: discover what this does
+    :return:
+    """
+    files = os.listdir(app.config['USER_PLATE_FOLDER'])
     emit('list_plates_response', files)
 
 

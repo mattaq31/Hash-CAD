@@ -219,7 +219,7 @@ export function placeHandle(roundedX, roundedY, activeHandleLayer, minorGridSize
  * @param {Number} activeLayerId ID of the selected layer
  * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles
  * @param {String} activeLayerColor Color of the active layer
- * @param {Boolean} rotated True if the the seed should be placed vertically. False if horizontally. 
+ * @param {Boolean} rotated True if the seed should be placed vertically. False if horizontally.
  * @param {Map} layerList Dictionary of layers, indexed by layerIds, and containing the SVG.js layer group items
  */
 export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGridSize, activeLayerColor, rotated, layerList) {
@@ -227,7 +227,7 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
     const rows = 5;
 
     //Only draw if no other seeds:
-    if(document.querySelectorAll('.seed').length == 0){
+    if(document.querySelectorAll('.seed').length === 0){
         let pathString = ``
         
         if(rotated){
@@ -262,9 +262,9 @@ export function placeSeed(roundedX, roundedY, cargoLayer, activeLayerId, minorGr
 }
 
 /** 
- * Function to show shaddow slat under cursor
- * @param {Number} roundedX X-coordinate of the shaddow slat to be drawn (top LH point)
- * @param {Number} roundedY Y-coordinate of the shaddow slat to be drawn (top LH point)
+ * Function to show shadow slat under cursor
+ * @param {Number} roundedX X-coordinate of the shadow slat to be drawn (top LH point)
+ * @param {Number} roundedY Y-coordinate of the shadow slat to be drawn (top LH point)
  * @param {SVG.Doc} fullDrawing Full SVG document for the canvas
  * @param {Number} minorGridSize The snapping grid size. Corresponds to the distance between two handles
  * @param {Boolean} horizontal True if slat should be placed horizontally. False if slat should be placed vertically
@@ -282,10 +282,10 @@ export function showSlat(roundedX, roundedY, fullDrawing, minorGridSize, horizon
     }
 
     let drawModeSelector = document.getElementById('palette-type-selector');
-    let drawSlatCargoHandleMode = drawModeSelector.value;
+    let drawSlatCargoHandleMode = parseInt(drawModeSelector.value);
 
     //Only show slat if we are in slat mode!
-    if(drawSlatCargoHandleMode == 0){
+    if(drawSlatCargoHandleMode === 0){
         for (let i = 0; i < numSlats; i++) {
             let xIterator = minorGridSize * i * (!horizontal)
             let yIterator = minorGridSize * i * horizontal
@@ -322,11 +322,6 @@ export function undo(){
     delete3DElement(oldElement)
     oldElement.remove()
 }
-
-
-
-
-
 
 //TODO: WiP
 /** 
@@ -366,7 +361,6 @@ export function placeHandleMatcher(roundedX, roundedY, activeHandleLayer, active
 
             tmpShape = tmpSquare
         }
-        
 
         // Adding text (tag) to the cargo
         let text = activeHandleLayer.text(matchGroupNumber)

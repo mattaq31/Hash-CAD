@@ -9,7 +9,7 @@ import { minorGridSize } from "./constants.js";
 const handleMatchOptions = document.getElementById('handle-match-options');
 handleMatchOptions.addEventListener('click', function(event) {
     if (event.target.classList.contains('handle-match-option')) {
-        if(event.target.dataset.source == 'true'){
+        if(event.target.dataset.source === 'true'){
             console.log("Selected handle match group: Source", event.target.dataset.id)
             writeVariable("handleMatchMode", 'source')
             writeVariable("handleMatchGroup", event.target.dataset.id)
@@ -25,7 +25,7 @@ handleMatchOptions.addEventListener('click', function(event) {
             console.log(sourceMatchDict)
         }
     }
-    else if(event.target.dataset.id == "add-handle-match-group"){
+    else if(event.target.dataset.id === "add-handle-match-group"){
         writeVariable("matchGroupNumber", 1 + getVariable("matchGroupNumber"))
         populateHandleMatchPalette(getVariable("matchGroupNumber"))
     }

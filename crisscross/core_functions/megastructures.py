@@ -329,6 +329,8 @@ class Megastructure:
                             name = plate.get_plate_name(handle, orientation, cargo_id)
                             slat.update_placeholder_handle(handle, orientation, sequence, well, name,
                                                            descriptor=f'{cargo_type}-{cargo_id}-{name}')
+                            break # handle found - some plates might have multiple cargo handles with the same type
+
             if len(slat.placeholder_list) > 0:
                 print(Fore.RED + f'WARNING: Placeholder handles on slat {key} still remain after patching.')
 
@@ -727,7 +729,7 @@ class Megastructure:
                 cargo_array = design_df[key].values
                 cargo_coords = np.where(cargo_array != 0)  # only extracts a value if there is cargo present, reducing clutter
                 for y, x in zip(cargo_coords[0], cargo_coords[1]):
-                    cargo_dict[((y, x), layer, orientation)] = cargo_array[y, x]
+                    cargo_dict[((int(y), int(x)), layer, orientation)] = cargo_array[y, x]
             if 'seed' in key:
                 layer = int(key.split('_')[-1])
                 seed_array = (layer, design_df[key].values)

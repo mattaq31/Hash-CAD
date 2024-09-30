@@ -51,7 +51,7 @@ cargoOptions.addEventListener('click', function(event) {
         writeVariable("selectedCargoId", event.target.dataset.id);
         console.log("Selected cargo ID: " + getVariable("selectedCargoId"));
     }
-    else if(event.target.id == 'cargo-editor'){
+    else if(event.target.id === 'cargo-editor'){
         let modal = document.getElementById('cargoInventoryModal')
         modal.style.display = "block";
         renderInventoryTable();
