@@ -16,7 +16,7 @@ let cargoCounter = 1;
 
 let drawSlatCargoHandleMode = 0;    //0: slats, 1: cargo, 2: handles
 var gridStyle = 2;                  //0: none,  1: grid   2: dots
-var gridAngle = 90;
+var gridAngle = 45;
 
 var pasteMode = false; 
 var copiedCargo = null;
@@ -28,6 +28,8 @@ var handleMatchCounter = 0
 
 let placeMatchers = false
 let matcherDict = null
+
+let slatAngle = 90
 
 
 //Dictionary for all global variables
@@ -53,7 +55,8 @@ let variables = {
     "handleMatchCounter": handleMatchCounter,
     "placeMatchers": placeMatchers,
     "matcherDict": matcherDict,
-    "gridAngle": gridAngle
+    "gridAngle": gridAngle,
+    "slatAngle": slatAngle
 }
 
 /**

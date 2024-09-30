@@ -36,9 +36,20 @@ SVG.on(document, 'DOMContentLoaded', function() {
     svgcontainer.addEventListener('mousemove', (event) => {
         let selectedElement = event.target.instance;
         let mousePoints = selectedElement.point(event.clientX, event.clientY);
-        
-        placeRoundedX = Math.round(mousePoints.x/(minorGridSize))*minorGridSize ;
-        placeRoundedY = Math.round(mousePoints.y/(minorGridSize))*minorGridSize ;
+
+        let horizontalLength = Math.cos(60 * Math.PI / 180) * minorGridSize
+        let verticalLength = Math.sin(60 * Math.PI / 180) * minorGridSize
+
+        if(45 === parseInt(getVariable("gridAngle"))){
+            placeRoundedX = Math.round(mousePoints.x/(minorGridSize))*minorGridSize ;
+            placeRoundedY = Math.round(mousePoints.y/(minorGridSize))*minorGridSize ;
+        }
+        else{
+            placeRoundedX = Math.round(mousePoints.x/(verticalLength))*verticalLength ;
+            placeRoundedY = Math.round(mousePoints.y/(2 * horizontalLength))* 2 * horizontalLength;
+        }
+
+
 
         if(getVariable("pasteMode")==true){
             showCopiedCargo(getVariable("copiedCargo"), placeRoundedX, placeRoundedY, fullDrawing, minorGridSize)
@@ -76,7 +87,8 @@ SVG.on(document, 'DOMContentLoaded', function() {
                                                 shownOpacity, 
                                                 getVariable("slatCounter"), 
                                                 getVariable("placeHorizontal"), 
-                                                layerList)
+                                                layerList,
+                                                getVariable("slatAngle"))
 
                     writeVariable("slatCounter", slatCounter)
                 }
@@ -267,6 +279,29 @@ document.addEventListener('keydown', (event) => {
         }
         event.preventDefault();
         writeVariable("placeHorizontal", !getVariable("placeHorizontal"))
+
+        let currentGridAngle = parseInt(getVariable("gridAngle"))
+        let oldSlatAngle = parseInt(getVariable("slatAngle"))
+
+        if(currentGridAngle === 45){
+            if(oldSlatAngle === 0){
+                writeVariable("slatAngle", 90)
+            }
+            else{
+                writeVariable("slatAngle", 0)
+            }
+        }
+        else if(currentGridAngle === 60){
+            if(oldSlatAngle === 90){
+                writeVariable("slatAngle", 30)
+            }
+            else if(oldSlatAngle === 30){
+                writeVariable("slatAngle", 150)
+            }
+            else{
+                writeVariable("slatAngle", 90)
+            }
+        }
     }
 });
 

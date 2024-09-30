@@ -37,12 +37,30 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
     let verticalLength = Math.sin(angle * Math.PI / 180) * 33 * minorGridSize
     //Check for overlap!
     let defaultColor = activeLayerColor;
-    /*
+
     let tmpLine = activeSlatLayer.line(roundedX, roundedY, roundedX + horizontalLength, roundedY + verticalLength)
                                  .stroke({width: 4, color:defaultColor, opacity: shownOpacity})
-    */
+    tmpLine.attr('id', slatCounter)
+    tmpLine.attr('layer', activeLayerId)
+    tmpLine.attr('class',"line")
+    tmpLine.attr({ 'pointer-events': 'stroke' })
+    tmpLine.attr('data-default-color', defaultColor);
 
-    
+    //Adding draggability:
+    tmpLine.on('pointerdown', function(event) {
+        startDrag(event, layerList, minorGridSize);
+    });
+
+    let xPos3D = (roundedX)/minorGridSize
+    let yPos3D = (roundedY)/minorGridSize
+    place3DSlat(xPos3D, yPos3D, activeLayerId, slatCounter, activeLayerColor, horizontal)
+
+    historyArray.push(tmpLine)
+
+    slatCounter += 1;
+
+
+    /*
     if(!horizontal){
         if(!willVertBeOnLine(roundedX, roundedY, activeSlatLayer, minorGridSize, 32)) {
             let defaultColor = activeLayerColor; 
@@ -99,6 +117,7 @@ export function placeSlat(roundedX, roundedY, activeSlatLayer, activeLayerId, mi
             slatCounter += 1;
         }
     }
+    */
 
     return slatCounter;
     
