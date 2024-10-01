@@ -51,7 +51,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
     parent_handle_arrays = [candidate_handle_arrays[i] for i in best_score_indices]
 
     # these are the combinations that had the worst scores in the previous generation
-    parent_hallofshame_handles = [hallofshame_handles[i]for i in best_score_indices]
+    parent_hallofshame_handles = [hallofshame_handles[i] for i in best_score_indices]
     parent_hallofshame_antihandles = [hallofshame_antihandles[i] for i in best_score_indices]
 
     # number of arrays to generate
@@ -173,9 +173,6 @@ def evolve_handles_from_slat_array(slat_array,
     physical_scores = np.zeros(evolution_population)  # initialize the score variable which will be used as the phenotype for the selection.
     hammings = np.zeros(evolution_population)
     duplicate_risk_scores = np.zeros(evolution_population)
-    hallofshame_handle_values = []
-    hallofshame_antihandle_values = []
-
 
     if log_tracking_directory:
         fig_name = os.path.join(log_tracking_directory, 'hamming_evolution_tracking.pdf')
@@ -198,15 +195,16 @@ def evolve_handles_from_slat_array(slat_array,
     # This is the main game/evolution loop where generations are created, evaluated, and mutated
     with tqdm(total=evolution_generations, desc='Evolution Progress', miniters=progress_bar_update_iterations) as pbar:
         for generation in range(1, evolution_generations+1):
+
+            hallofshame_handle_values = []
+            hallofshame_antihandle_values = []
             #### first step: analyze handle array population individual by individual and gather reports of the scores
             # and the bad handles of each
-
             # multiprocessing will be used to speed up overall computation and parallelize the hamming distance calculations
             # refer to the multirule_oneshot_hamming function for details on input arguments
             multiprocess_start = time.time()
             with multiprocessing.Pool(processes=num_processes) as pool:
                 results = pool.starmap(multirule_oneshot_hamming, [(slat_array, candidate_handle_arrays[j], True, True, None, True, slat_length) for j in range(evolution_population)])
-
             multiprocess_time = time.time() - multiprocess_start
 
             # Unpack and store results from multiprocessing
@@ -318,12 +316,13 @@ if __name__ == '__main__':
     print(multirule_oneshot_hamming(slat_array, handle_array, per_layer_check=True, report_worst_slat_combinations=False, request_substitute_risk_score=True))
     print(multirule_precise_hamming(slat_array, handle_array, per_layer_check=True, request_substitute_risk_score=True))
 
+
     ergebnüsse = evolve_handles_from_slat_array(slat_array, unique_handle_sequences=32,
-                                                early_hamming_stop=28, evolution_population=300,
-                                                generational_survivors=5,
-                                                mutation_rate=0.03,
-                                                process_count=1,
-                                                evolution_generations=1,
+                                                early_hamming_stop=29, evolution_population=300,
+                                                generational_survivors=2,
+                                                mutation_rate=0.014,
+                                                process_count=10,
+                                                evolution_generations=100,
                                                 split_sequence_handles=False,
                                                 progress_bar_update_iterations=2,
                                                 log_tracking_directory='/Users/matt/Desktop')
