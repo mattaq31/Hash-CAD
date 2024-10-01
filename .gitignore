@@ -138,3 +138,6 @@ scratch/*
 # GUI node modules
 /GUI/node_modules
 /GUI/temp_files
+/GUI/outputs
+/GUI/uploads
+/GUI/used-cargo-plates
