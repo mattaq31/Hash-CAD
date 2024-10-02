@@ -16,8 +16,6 @@ let placeRoundedY = 0;  //Snapped position of mouse (Y)
 
 SVG.on(document, 'DOMContentLoaded', function() {
 
-    
-
     const svgcontainer = document.getElementById('svg-container')
     var fullDrawing = getFullDrawing()
     var layerList = getLayerList()
@@ -34,11 +32,15 @@ SVG.on(document, 'DOMContentLoaded', function() {
 
     // Track mouse over svgcontainer
     svgcontainer.addEventListener('mousemove', (event) => {
-        let selectedElement = event.target.instance;
-        let mousePoints = selectedElement.point(event.clientX, event.clientY);
-        
-        placeRoundedX = Math.round(mousePoints.x/(minorGridSize))*minorGridSize ;
-        placeRoundedY = Math.round(mousePoints.y/(minorGridSize))*minorGridSize ;
+
+        // this particular code attempts to deal with the weird scaling issues seen in Safari.
+        // Some issues still remain with scaling, panning and zooming in Safari.
+        const rect = svgcontainer.getBoundingClientRect();
+        const scale = getComputedStyle(svgcontainer).transform.match(/matrix\((.+)\)/)[1].split(', ')[0];
+        const scaled_x = (event.clientX - rect.left) / scale;
+        const scaled_y = (event.clientY - rect.top) / scale;
+        placeRoundedX = Math.round(scaled_x/(minorGridSize))*minorGridSize ;
+        placeRoundedY = Math.round(scaled_y/(minorGridSize))*minorGridSize ;
 
         if(getVariable("pasteMode")==true){
             showCopiedCargo(getVariable("copiedCargo"), placeRoundedX, placeRoundedY, fullDrawing, minorGridSize)
@@ -48,7 +50,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
         }
         else{
             let slatCountToPlace = document.getElementById('slatNumber').value
-            showSlat(mousePoints.x, mousePoints.y, fullDrawing, minorGridSize, getVariable("placeHorizontal"), slatCountToPlace)
+            showSlat(scaled_x, scaled_y, fullDrawing, minorGridSize, getVariable("placeHorizontal"), slatCountToPlace)
         }
     });
 
@@ -56,7 +58,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
     svgcontainer.addEventListener('pointerdown', (event) => {
 
         let eraseMode = document.getElementById('erase-button').classList.contains('draw-erase-select-toggle-selected')
-    
+
         if(getPanStatus() == true && !eraseMode){
             console.log(`Rounded mouse position - X: ${placeRoundedX}, Y: ${placeRoundedY}`);
 
@@ -67,7 +69,7 @@ SVG.on(document, 'DOMContentLoaded', function() {
                     let yIterator = minorGridSize * i * getVariable("placeHorizontal")
 
                     //Place slat
-                    let slatCounter = placeSlat(placeRoundedX + xIterator, 
+                    let slatCounter = placeSlat(placeRoundedX + xIterator,
                                                 placeRoundedY + yIterator, 
                                                 getVariable("activeSlatLayer"), 
                                                 getVariable("activeLayerId"), 
