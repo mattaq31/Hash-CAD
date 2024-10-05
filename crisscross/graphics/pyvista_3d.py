@@ -163,11 +163,10 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
     if seed_layer_and_array is not None:
         interpret_seed_system(seed_layer_and_array, list(slats.values())[0].max_length/2, grid_xd, grid_yd, seed_color, plotter)
 
-    plotter.add_axes(interactive=True)
+    plotter.add_axes(interactive=False)
 
     # Open a movie file
     plotter.open_movie(os.path.join(save_folder, '3D_design_view.mp4'))
-    plotter.show(auto_close=False)
 
     # It might be of interest to adjust parameters here for different designs
     path = plotter.generate_orbital_path(n_points=200, shift=0.2, viewup=[0, -1, 0], factor=2.0)
