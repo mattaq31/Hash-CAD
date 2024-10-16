@@ -10,6 +10,7 @@ from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.plate_constants import octahedron_patterning_v1, cargo_plate_folder, simpsons_mixplate_antihandles
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
+
 ########################################
 # script setup
 base_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_aug_2024'
@@ -110,6 +111,8 @@ megastructure.slats['crossbar_slat_1'] = crossbar_slat_1
 megastructure.slats['crossbar_slat_2'] = crossbar_slat_2
 
 megastructure.patch_control_handles(core_plate)
+
+megastructure.export_design('full_design.xlsx', base_folder)
 
 colormap = ['#1f77b4', '#ff7f0e', '#ffff00']
 if regen_graphics:

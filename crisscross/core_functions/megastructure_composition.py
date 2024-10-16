@@ -193,7 +193,8 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
 
 
 def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_folder, output_filename,
-                                     default_transfer_volume=75, source_plate_type='384PP_AQ_BP',
+                                     default_transfer_volume=75, transfer_volume_multiplier_for_slats=None,
+                                     source_plate_type='384PP_AQ_BP',
                                      output_empty_wells=False,
                                      manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
                                      output_plate_size='96', center_only_well_pattern=False,
@@ -204,7 +205,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param destination_plate_name: The name of the design's destination output plate
     :param output_folder: The output folder to save the file to
     :param output_filename: The name of the output file
-    :param default_transfer_volume: The transfer volume for each handle (either a single integer, or a list of integers for each individual slat)
+    :param default_transfer_volume: The default transfer volume for each handle
+    :param transfer_volume_multiplier_for_slats: Dictionary assigning a special transfer multiplier for specified slats (will be applied to all special plate volumes too)
     :param source_plate_type: The physical plate type in use
     :param output_empty_wells: Outputs an empty row for a well if a handle is only a placeholder
     :param manual_plate_well_assignments: The specific output wells to use for each slat (if not provided, the script will automatically assign wells).
@@ -212,7 +214,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param unique_transfer_volume_for_plates: Dictionary assigning a special transfer volume for certain plates (supersedes all other settings)
     :param output_plate_size: Either '96' or '384' for the output plate size
     :param center_only_well_pattern: Set to true to force output wells to be in the center of the plate.  This is only available for 96-well plates.
-    :param generate_plate_visualization: Set to true to generate a graphic showing the postions and contents of each well in the output plates
+    :param generate_plate_visualization: Set to true to generate a graphic showing the positions and contents of each well in the output plates
     :param plate_viz_type: Set to 'barcode' to show a barcode of the handle types in each well,
     'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
     :return: Pandas dataframe corresponding to output ech handler command list
@@ -266,6 +268,10 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     for index, (slat_name, slat) in enumerate(slat_dict.items()):
         slat_h2_data = slat.get_sorted_handles('h2')
         slat_h5_data = slat.get_sorted_handles('h5')
+        if slat_name in transfer_volume_multiplier_for_slats:
+            slat_multiplier = transfer_volume_multiplier_for_slats[slat_name]
+        else:
+            slat_multiplier = 1
         for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data,
                                                           ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
             if 'plate' not in handle_data:
@@ -274,7 +280,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                     #  this will output placeholders for the specific wells that need manual handling.
                     output_command_list.append([slat_name + '_%s_staple_%s' % (handle_side, handle_num),
                                                 'MANUAL TRANSFER', 'MANUAL TRANSFER',
-                                                output_well_list[index], default_transfer_volume,
+                                                output_well_list[index], default_transfer_volume*slat_multiplier,
                                                 f'{destination_plate_name}_{output_plate_num_list[index]}',
                                                 'MANUAL TRANSFER'])
                     continue
@@ -284,9 +290,9 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             # certain plates will need different input volumes if they have different handle concentrations
             if unique_transfer_volume_for_plates is not None and handle_data[
                 'plate'] in unique_transfer_volume_for_plates:
-                handle_specific_vol = unique_transfer_volume_for_plates[handle_data['plate']]
+                handle_specific_vol = unique_transfer_volume_for_plates[handle_data['plate']]*slat_multiplier
             else:
-                handle_specific_vol = default_transfer_volume
+                handle_specific_vol = default_transfer_volume*slat_multiplier
 
             if ',' in slat_name:
                 raise RuntimeError('Slat names cannot contain commas - this will cause issues with the echo csv  file.')
