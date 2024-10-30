@@ -143,7 +143,28 @@ def multirule_oneshot_hamming(slat_array, handle_array,
 
     # calculate hamming distance in the case that we are only considering a partial area, which requires editing slat handles in non-considered regions to be "0"
     if partial_area_score:
-        print("Need to implement partial area Hamming calculation.")
+        hamming_results_partial = {}
+        for group_key, slat_dict in partial_area_score.items():
+            handle_dict_partial = OrderedDict()
+            antihandle_dict_partial = OrderedDict()
+            
+            for (slat_layer, slat_ID), full_slat_handles in handle_dict.items():
+                try:
+                    slat_inclusion = slat_dict["handles"][(slat_layer, slat_ID)]
+                    partial_slat_handles = np.array([x if y else 0 for x,y in zip(full_slat_handles, slat_inclusion)], dtype=np.uint16)
+                    handle_dict_partial[(slat_layer, slat_ID)] = partial_slat_handles
+                except KeyError: # Not included - leave in all slats but filter out at the end using indices
+                    handle_dict_partial[(slat_layer, slat_ID)] = full_slat_handles
+
+            for (slat_layer, slat_ID), full_slat_antihandles in antihandle_dict.items():
+                try:
+                    slat_inclusion = slat_dict["antihandles"][(slat_layer, slat_ID)]
+                    partial_slat_antihandles = np.array([x if y else 0 for x,y in zip(full_slat_antihandles, slat_inclusion)], dtype=np.uint16)
+                    antihandle_dict_partial[(slat_layer, slat_ID)] = partial_slat_antihandles
+                except KeyError: # Not included - leave in all slats but filter out at the end using indices
+                    antihandle_dict_partial[(slat_layer, slat_ID)] = full_slat_antihandles
+
+            hamming_results_partial[group_key] = oneshot_hamming_compute(handle_dict_partial, antihandle_dict_partial, slat_length)
 
     score_dict = {}
     handle_ordered_list = list(handle_dict.keys())
@@ -196,6 +217,15 @@ def multirule_oneshot_hamming(slat_array, handle_array,
             num_handles = sim_list.shape[0]
             global_min = np.min([np.min(sim_list[np.eye(num_handles)==0,:]), global_min])  # ignores diagonal i.e. slat self-comparisons
         score_dict['Substitute Risk'] = np.int64(global_min)
+
+    # if a specific region was requested, filter for just the slats that were considered rather than all slats
+    if partial_area_score:
+        handle_ordered_list_partial = list(handle_dict_partial.keys())
+        antihandle_ordered_list_partial = list(antihandle_dict_partial.keys())
+        for group_key, slat_dict in partial_area_score.items():
+            handle_matrix_indices = np.array([handle_ordered_list_partial.index((x,y)) for x,y in slat_dict["handles"].keys()], dtype=np.uint16)
+            antihandle_matrix_indices = np.array([antihandle_ordered_list_partial.index((x,y)) for x,y in slat_dict["antihandles"].keys()], dtype=np.uint16)
+            score_dict[group_key] = np.min([hamming_results_partial[group_key][hID, ahID, :] for hID, ahID in product(handle_matrix_indices, antihandle_matrix_indices)])
 
     return score_dict
 
@@ -311,18 +341,22 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
                     slat_inclusion = slat_dict["handles"][(slat_layer, slat_ID)]
                     partial_slat_handles = np.array([x if y else 0 for x,y in zip(full_slat_handles, slat_inclusion)], dtype=np.uint16)
                     bag_of_slat_handles_partial[(slat_layer, slat_ID)] = partial_slat_handles
-                except KeyError: # Not included - leave in all slats but filter out at the end using indices
-                    bag_of_slat_handles_partial[(slat_layer, slat_ID)] = full_slat_handles
+                except KeyError: # Not included - leave it out
+                    continue
+                    #bag_of_slat_handles_partial[(slat_layer, slat_ID)] = full_slat_handles
 
             for (slat_layer, slat_ID), full_slat_antihandles in bag_of_slat_antihandles.items():
                 try:
                     slat_inclusion = slat_dict["antihandles"][(slat_layer, slat_ID)]
                     partial_slat_antihandles = np.array([x if y else 0 for x,y in zip(full_slat_antihandles, slat_inclusion)], dtype=np.uint16)
                     bag_of_slat_antihandles_partial[(slat_layer, slat_ID)] = partial_slat_antihandles
-                except KeyError: # Not included - leave in all slats but filter out at the end using indices
-                    bag_of_slat_antihandles_partial[(slat_layer, slat_ID)] = full_slat_antihandles
+                except KeyError: # Not included - leave it out
+                    continue
+                    #bag_of_slat_antihandles_partial[(slat_layer, slat_ID)] = full_slat_antihandles
 
-            hamming_results_partial[group_key] = precise_hamming_compute(bag_of_slat_handles_partial, bag_of_slat_antihandles_partial, valid_product_indices, slat_length)
+                # Filters out the selection here - everything listed is included
+            valid_product_indices_partial = [True for _ in product(bag_of_slat_handles_partial, bag_of_slat_antihandles_partial)] 
+            hamming_results_partial[group_key] = precise_hamming_compute(bag_of_slat_handles_partial, bag_of_slat_antihandles_partial, valid_product_indices_partial, slat_length)
     
     # this computes the risk that two slats are identical i.e. the risk that one slat could replace another in the wrong place if it has enough complementary handles
     # for now, no special index validation is provided for this feature.
@@ -353,8 +387,8 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
             score_dict[group_key] = np.min(hamming_results[indices])
     if partial_area_score:
         for group_key, slat_dict in partial_area_score.items():
-            selected_indices = np.array([(x,y) for x,y in slat_dict["handles"].keys()] + [(x,y) for x,y in slat_dict["antihandles"].keys()], dtype=np.uint16)
-            score_dict[group_key] = np.min(hamming_results_partial[group_key][selected_indices])
+            #selected_indices = np.array([(x,y) for x,y in slat_dict["handles"].keys()] + [(x,y) for x,y in slat_dict["antihandles"].keys()], dtype=np.uint16)
+            score_dict[group_key] = np.min(hamming_results_partial[group_key])
 
     return score_dict
 

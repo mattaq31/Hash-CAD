@@ -11,6 +11,8 @@ from crisscross.plate_mapping import get_standard_plates, get_cargo_plates
 # Repurpose H29 for repeating unit assembly, maximizing the Hamming distance of the exposed 16x16 growing region against the 32x16 new set of slats
 # Note: when creating slat/handle arrays with xlsx, pad everything with 0 that doesn't have a slat or handle, but is otherwise occupied in another layer
 
+### TODO: Check through different handle usages again with fixed hamming compute!
+
 DesignFolder = "/Users/stellawang/HMS Dropbox/Siyuan Wang/crisscross_team/Crisscross Designs/SW111_large_repeating_units"
 LayerListPrefix = "slat_layer_" 
 SeedLayer = "seed_layer"
@@ -167,7 +169,7 @@ for i, DesignFile in enumerate(DesignFiles):
     # Generate csv file for each set of sequences, combine them later (add volume to the echo command generating funtion)
     # Filter out only the slats we need
     FilteredSlats = {key: slat for key, slat in MyMegastructure.slats.items() if slat.layer in FileSpecificInfoDict[DesignFile]["Export Slat Layers"]}
-    convert_slats_into_echo_commands(FilteredSlats, DesignFile[:-9], DesignFolder, DesignFile[:-9] + "_echo.csv",
+    convert_slats_into_echo_commands(FilteredSlats, FileSpecificInfoDict[DesignFile]["Destination Plate"], DesignFolder, DesignFile[:-9] + "_echo.csv",
                                      unique_transfer_volume_for_plates={'sw_src004': int(100*(500/200))},
                                      default_transfer_volume=FileSpecificInfoDict[DesignFile]["Transfer Volume"],
                                      manual_plate_well_assignments=FileSpecificInfoDict[DesignFile]["Specific Wells"])
