@@ -94,7 +94,8 @@ def multirule_oneshot_hamming(slat_array, handle_array,
                               per_layer_check=False,
                               specific_slat_groups=None,
                               request_substitute_risk_score=False,
-                              slat_length=32):
+                              slat_length=32,
+                              partial_area_score=False):
     """
     Given a slat and handle array, this function computes the hamming distance of all handle/antihandle combinations provided.
     Scores for individual components, such as specific slat groups, can also be requested.
@@ -118,6 +119,9 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     :param specific_slat_groups: Provide a dictionary, where the key is a group name and the value is a list of tuples containing the layer and slat ID of the slats in the group for which the specific hamming distance is being requested.
     :param slat_length: The length of a single slat (must be an integer)
     :param request_substitute_risk_score: Set to true to provide a measure of the largest amount of handle duplication between slats of the same type (handle or antihandle)
+    :param partial_area_score: Calculates Hamming distance and substitution risk among a subset of provided slats when only considering a subset of the handles.
+    Provide a dictionary with key as a group name and the values as dictionarys with keys "handle" and "antihandle".
+    The corresponding values are dictionaries, where the key is a tuple like so (slat layer, slat ID) and the value is a list of TRUE/FALSE depending on whether that position's handle is included.
     :return: Dictionary of scores (or slat layer/handle IDS for the worst slat combinations)
      for each of the slat combinations requested from the design
     """
@@ -136,6 +140,10 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     handle_dict, antihandle_dict = extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer)
 
     hamming_results = oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length)
+
+    # calculate hamming distance in the case that we are only considering a partial area, which requires editing slat handles in non-considered regions to be "0"
+    if partial_area_score:
+        print("Need to implement partial area Hamming calculation.")
 
     score_dict = {}
     handle_ordered_list = list(handle_dict.keys())
@@ -230,7 +238,7 @@ def precise_hamming_compute(handle_dict, antihandle_dict, valid_product_indices,
 
 
 def multirule_precise_hamming(slat_array, handle_array, universal_check=True, per_layer_check=False,
-                              specific_slat_groups=None, slat_length=32, request_substitute_risk_score=False):
+                              specific_slat_groups=None, slat_length=32, request_substitute_risk_score=False, partial_area_score=False):
     """
     Given a slat and handle array, this function computes the hamming distance of all handle/antihandle combinations provided.
     Scores for individual components, such as specific slat groups, can also be requested.
@@ -243,6 +251,10 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
     :param specific_slat_groups: Provide a dictionary, where the key is a group name and the value is a list of tuples containing the layer and slat ID of the slats in the group for which the specific hamming distance is being requested.
     :param slat_length: The length of a single slat (must be an integer)
     :param request_substitute_risk_score: Set to true to provide a measure of the largest amount of handle duplication between slats of the same type (handle or antihandle)
+    :param partial_area_score: Calculates Hamming distance and substitution risk among a subset of provided slats when only considering a subset of the handles.
+    Provide a dictionary with key as a group name and the values as dictionarys with keys "handle" and "antihandle".
+    The corresponding values are dictionaries, where the key is a tuple like so (slat layer, slat ID) and the value is a list of TRUE/FALSE depending on whether that position's handle is included.
+    }
     :return: Dictionary of scores for each of the aspects requested from the design
     """
 
@@ -287,6 +299,31 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
     hamming_results = precise_hamming_compute(bag_of_slat_handles, bag_of_slat_antihandles, valid_product_indices, slat_length)
     score_dict = {}
 
+    # calculate hamming distance in the case that we are only considering a partial area, which requires editing slat handles in non-considered regions to be "0"
+    if partial_area_score:
+        hamming_results_partial = {}
+        for group_key, slat_dict in partial_area_score.items():
+            bag_of_slat_handles_partial = OrderedDict()
+            bag_of_slat_antihandles_partial = OrderedDict()
+            
+            for (slat_layer, slat_ID), full_slat_handles in bag_of_slat_handles.items():
+                try:
+                    slat_inclusion = slat_dict["handles"][(slat_layer, slat_ID)]
+                    partial_slat_handles = np.array([x if y else 0 for x,y in zip(full_slat_handles, slat_inclusion)], dtype=np.uint16)
+                    bag_of_slat_handles_partial[(slat_layer, slat_ID)] = partial_slat_handles
+                except KeyError: # Not included - leave in all slats but filter out at the end using indices
+                    bag_of_slat_handles_partial[(slat_layer, slat_ID)] = full_slat_handles
+
+            for (slat_layer, slat_ID), full_slat_antihandles in bag_of_slat_antihandles.items():
+                try:
+                    slat_inclusion = slat_dict["antihandles"][(slat_layer, slat_ID)]
+                    partial_slat_antihandles = np.array([x if y else 0 for x,y in zip(full_slat_antihandles, slat_inclusion)], dtype=np.uint16)
+                    bag_of_slat_antihandles_partial[(slat_layer, slat_ID)] = partial_slat_antihandles
+                except KeyError: # Not included - leave in all slats but filter out at the end using indices
+                    bag_of_slat_antihandles_partial[(slat_layer, slat_ID)] = full_slat_antihandles
+
+            hamming_results_partial[group_key] = precise_hamming_compute(bag_of_slat_handles_partial, bag_of_slat_antihandles_partial, valid_product_indices, slat_length)
+    
     # this computes the risk that two slats are identical i.e. the risk that one slat could replace another in the wrong place if it has enough complementary handles
     # for now, no special index validation is provided for this feature.
     if request_substitute_risk_score:
@@ -314,6 +351,10 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
     if specific_slat_groups:
         for group_key, indices in group_indices.items():
             score_dict[group_key] = np.min(hamming_results[indices])
+    if partial_area_score:
+        for group_key, slat_dict in partial_area_score.items():
+            selected_indices = np.array([(x,y) for x,y in slat_dict["handles"].keys()] + [(x,y) for x,y in slat_dict["antihandles"].keys()], dtype=np.uint16)
+            score_dict[group_key] = np.min(hamming_results_partial[group_key][selected_indices])
 
     return score_dict
 

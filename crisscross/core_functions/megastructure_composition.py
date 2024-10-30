@@ -268,7 +268,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     for index, (slat_name, slat) in enumerate(slat_dict.items()):
         slat_h2_data = slat.get_sorted_handles('h2')
         slat_h5_data = slat.get_sorted_handles('h5')
-        if slat_name in transfer_volume_multiplier_for_slats:
+        # SW: transfer_volume_multiplier_for_slats gives an error if it's None - can't iterate through
+        if transfer_volume_multiplier_for_slats and slat_name in transfer_volume_multiplier_for_slats:
             slat_multiplier = transfer_volume_multiplier_for_slats[slat_name]
         else:
             slat_multiplier = 1
