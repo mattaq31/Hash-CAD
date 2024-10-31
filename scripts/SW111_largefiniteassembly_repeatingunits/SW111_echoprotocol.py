@@ -11,8 +11,6 @@ from crisscross.plate_mapping import get_standard_plates, get_cargo_plates
 # Repurpose H29 for repeating unit assembly, maximizing the Hamming distance of the exposed 16x16 growing region against the 32x16 new set of slats
 # Note: when creating slat/handle arrays with xlsx, pad everything with 0 that doesn't have a slat or handle, but is otherwise occupied in another layer
 
-### TODO: Check through different handle usages again with fixed hamming compute!
-
 DesignFolder = "/Users/stellawang/HMS Dropbox/Siyuan Wang/crisscross_team/Crisscross Designs/SW111_large_repeating_units"
 LayerListPrefix = "slat_layer_" 
 SeedLayer = "seed_layer"
