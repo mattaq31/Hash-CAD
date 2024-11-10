@@ -6,6 +6,7 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
+from crisscross.helper_functions.plate_constants import plate96_center_pattern
 from crisscross.plate_mapping import get_standard_plates, get_cargo_plates
 
 ########## CONFIG
@@ -65,9 +66,11 @@ for i in range(32):
     staple_recycling_slat.set_handle(i + 1, 5, seq, well, plate, descriptor='Empty')
 ########## ECHO EXPORT
 
-x_only_slats = {key: slat for key, slat in megastructure.slats.items() if slat.layer == 1}
+precise_well_placement = plate96_center_pattern
+precise_well_placement.append('H11')
+full_well_placement = [(1, well) for well in precise_well_placement]
 
-convert_slats_into_echo_commands(slat_dict={**x_only_slats, **{'staple_recycling_slat': staple_recycling_slat}},
+convert_slats_into_echo_commands(slat_dict={**megastructure.slats, **{'staple_recycling_slat': staple_recycling_slat}},
                                  destination_plate_name='octa_double_purif_plate',
                                  unique_transfer_volume_for_plates={'sw_src007': int(150 * (500 / 200)),
                                                                     'sw_src004': int(150 * (500 / 200)),
@@ -75,7 +78,7 @@ convert_slats_into_echo_commands(slat_dict={**x_only_slats, **{'staple_recycling
                                  default_transfer_volume=150,
                                  transfer_volume_multiplier_for_slats={'staple_recycling_slat': 2},
                                  output_folder=echo_folder,
-                                 center_only_well_pattern=True,
+                                 manual_plate_well_assignments=full_well_placement,
                                  plate_viz_type='barcode',
                                  output_filename=f'columbia_pattern_2_step_purif_echo.csv')
 
@@ -84,3 +87,30 @@ if regen_graphics:
     megastructure.create_standard_graphical_report(os.path.join(experiment_folder, 'graphics'))
 if export_design:
     megastructure.export_design('full_design.xlsx', experiment_folder)
+
+########## Side-Check for MW
+all_handle_seqs = []
+all_handle_mws = []
+handle_mix_volume = 15
+handle_mix_conc = 7462.686567
+base_mws = {'A': 313.2, 'C': 289.2, 'G': 329.2, 'T': 304.2}
+
+for handle in staple_recycling_slat.H2_handles.values():
+    all_handle_seqs.append(handle['sequence'])
+for handle in staple_recycling_slat.H5_handles.values():
+    all_handle_seqs.append(handle['sequence'])
+
+for handle in all_handle_seqs:
+    mw = 0
+    for base in handle:
+        mw += base_mws[base.upper()]
+    all_handle_mws.append(mw)
+
+all_handle_nmoles = []
+all_handle_ngs = []
+for mw in all_handle_mws:
+    nmoles = handle_mix_volume * handle_mix_conc * 1e-6
+    all_handle_nmoles.append(nmoles)
+    all_handle_ngs.append(nmoles * mw/handle_mix_volume)
+
+print('Expected nanodrop conc (ng/ul,  ssDNA):', sum(all_handle_ngs))

@@ -54,10 +54,10 @@ def peripheral_clusters(pattern_array, total_cd3_antigens, cd28='border'):
         horizontal_side = cd3_stripes + (cd3_stripes - 1)
 
     if cd28 == 'border':
-        corner_xs = [4, 63 - horizontal_side - 2, 34 - int((horizontal_side+2)/2), 34 - int((horizontal_side+2)/2)]
+        corner_xs = [3, 63 - horizontal_side - 2, 33 - int((horizontal_side+2)/2), 33 - int((horizontal_side+2)/2)]
     else:
-        corner_xs = [4, 63 - horizontal_side, 34 - int(horizontal_side/2), 34 - int(horizontal_side/2)]
-    corner_ys = [34 - int(vertical_side / 2), 34 - int(vertical_side / 2), 4, 63 - vertical_side]
+        corner_xs = [3, 63 - horizontal_side, 33 - int(horizontal_side/2), 33 - int(horizontal_side/2)]
+    corner_ys = [33 - int(vertical_side / 2), 33 - int(vertical_side / 2), 3, 63 - vertical_side]
 
     for start_pos_x, start_pos_y in zip(corner_xs, corner_ys):
         square_position_tracker = 0

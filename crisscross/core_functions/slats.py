@@ -164,5 +164,23 @@ class Slat:
         else:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')
 
+    def get_molecular_weight(self):
+        """
+        Calculates the molecular weight of the slat, based on the handles assigned.
+        :return: Molecular weight of the slat (in Da)
+        """
+        total_bases = 0
 
+        if len(self.H2_handles) < self.max_length or len(self.H5_handles) < self.max_length:
+            raise RuntimeError('Not all handles have been assigned on the slat and so the MW cannot be calculated yet.')
+
+        for handle in self.H2_handles.values():
+            total_bases += len(handle['sequence'])
+        for handle in self.H5_handles.values():
+            total_bases += len(handle['sequence'])
+
+        total_bases += 8064 # incorporating scaffold length
+        total_bases += 5329 # incorporating length of core staples
+
+        return total_bases * 327  # 327 Da per base (on average)
 

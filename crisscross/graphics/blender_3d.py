@@ -244,7 +244,7 @@ def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, gr
         else:
             cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
 
-        material = create_slat_material(cargo_color_values_rgb[unique_cargo_name] + (1,), f'Seed Material')
+        material = create_slat_material(cargo_color_values_rgb[unique_cargo_name] + (1,), f'Cargo Material')
         cargo_materials[unique_cargo_name] = material
 
     for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():

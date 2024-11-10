@@ -68,3 +68,4 @@ M2.create_blender_3D_view(os.path.join(design_folder, 'visualization/peripheral'
                           custom_assembly_groups=custom_animation_dict,
                           animation_type='translate',
                           camera_spin=True)
+

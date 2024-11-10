@@ -240,7 +240,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     # prepares the exact output wells and plates for the slat dictionary provided
     if manual_plate_well_assignments is None:
         if len(slat_dict) > len(plate_format):
-            print(Fore.BLUE + 'Too many slats for one plate, splitting into multiple plates.')
+            print(Fore.BLUE + 'Too many slats for one plate, splitting into multiple plates.' + Fore.RESET)
         for index, (_, slat) in enumerate(slat_dict.items()):
             if index // len(plate_format) > 0:
                 well = plate_format[index % len(plate_format)]
@@ -268,11 +268,12 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     for index, (slat_name, slat) in enumerate(slat_dict.items()):
         slat_h2_data = slat.get_sorted_handles('h2')
         slat_h5_data = slat.get_sorted_handles('h5')
-        # SW: transfer_volume_multiplier_for_slats gives an error if it's None - can't iterate through
-        if transfer_volume_multiplier_for_slats and slat_name in transfer_volume_multiplier_for_slats:
+
+        if transfer_volume_multiplier_for_slats is not None and slat_name in transfer_volume_multiplier_for_slats:
             slat_multiplier = transfer_volume_multiplier_for_slats[slat_name]
         else:
             slat_multiplier = 1
+
         for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data,
                                                           ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
             if 'plate' not in handle_data:
@@ -320,8 +321,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                     else:  # control handles
                         handle_types += [0]
             all_handle_types.append(handle_types)
-        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [
-                                                                                                   slat_name] + all_handle_types
+        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [slat_name] + all_handle_types
 
     combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                              'Destination Well', 'Transfer Volume',
