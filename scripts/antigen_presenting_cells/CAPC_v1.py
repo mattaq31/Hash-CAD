@@ -56,6 +56,7 @@ if generate_lab_helpers:
                                 default_staple_volume=150,
                                 default_staple_concentration=500,
                                 echo_sheet=None if not generate_echo else echo_sheet,
+                                peg_groups_per_layer=4,
                                 unique_transfer_volume_plates={'sw_src007': int(150 * (500 / 200))})
 ########################################
 # REPORTS

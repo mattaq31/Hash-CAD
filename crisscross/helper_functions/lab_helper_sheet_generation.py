@@ -1,9 +1,10 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import numpy as np
 from openpyxl import Workbook
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
 import string
+
 
 uppercase_alphabet = string.ascii_uppercase
 red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -185,7 +186,7 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
     ws = wb.create_sheet("PEG Purification")
 
     layer_groups = defaultdict(list)
-    full_data_groups = defaultdict(dict)
+    full_data_groups = OrderedDict()
 
     for slat in slat_dict.values():
         if slat.ID not in layer_groups[slat.layer]:
@@ -199,7 +200,7 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
             start_point = 0
             number_jump = len(slats) // groups_per_layer
             for i in range(1, groups_per_layer+1):
-                full_data_groups[f'L{layer}-G{(i//groups_per_layer)+1}'] = {'IDs': slats[start_point:start_point+number_jump]}
+                full_data_groups[f'L{layer}-G{i}'] = {'IDs': slats[start_point:start_point+number_jump]}
                 start_point += number_jump
 
     # Titles and formatting
@@ -261,7 +262,7 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
         # block 3 - resuspension calculations
         full_data_groups[group][f'{column}18'] = 100
         ws[f'{column}18'].fill = blue_fill
-        full_data_groups[group][f'{column}19'] = f"=(({column}7/{column}4)/{column}18)*1000"
+        full_data_groups[group][f'{column}19'] = f"=ROUND((({column}7/{column}4)/{column}18)*1000,1)"
         full_data_groups[group][f'{column}20'] = f"=({column}18 * {column}4)/1000"
         rule = CellIsRule(operator='greaterThan', formula=[f'{max_slat_concentration_uM}'], fill=red_fill)
         ws.conditional_formatting.add(f'{column}20', rule)
