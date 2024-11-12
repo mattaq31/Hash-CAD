@@ -177,7 +177,7 @@ def prepare_master_mix_sheet(slat_dict, default_staple_volume=150, default_stapl
     return wb
 
 def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_concentration_uM=2, workbook=None,
-                                   echo_sheet=None):
+                                   echo_sheet=None, special_slat_groups=None):
     if workbook is not None:
         wb = workbook
     else:
@@ -202,6 +202,14 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
             for i in range(1, groups_per_layer+1):
                 full_data_groups[f'L{layer}-G{i}'] = {'IDs': slats[start_point:start_point+number_jump]}
                 start_point += number_jump
+
+    if special_slat_groups is not None:
+        for special_group, slats in special_slat_groups.items():
+            for slat in slats:
+                for standard_group in full_data_groups:
+                    if slat in full_data_groups[standard_group]['IDs']:
+                        full_data_groups[standard_group]['IDs'].remove(slat)
+            full_data_groups[special_group] = {'IDs': slats}
 
     # Titles and formatting
     ws['A1'] = 'PEG Purification'
@@ -367,7 +375,8 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, default_staple_volume=
                                 peg_groups_per_layer=2,
                                 echo_sheet=None,
                                 max_slat_concentration_uM=2,
-                                unique_transfer_volume_plates=None):
+                                unique_transfer_volume_plates=None,
+                                special_slat_groups=None):
     """
     TODO: FILL DOCSTRINGS
     :param slat_dict:
@@ -386,5 +395,6 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, default_staple_volume=
 
     prepare_master_mix_sheet(slat_dict, default_staple_volume, default_staple_concentration,
                              unique_transfer_volume_plates, wb)
-    prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, wb, echo_sheet=echo_sheet)
+    prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, wb,
+                                   echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)
     wb.save(save_filepath)

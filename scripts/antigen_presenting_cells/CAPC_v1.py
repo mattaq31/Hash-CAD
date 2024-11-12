@@ -34,16 +34,18 @@ cargo_array_pd = capc_pattern_generator('peripheral_dispersed', total_cd3_antige
 M1.assign_cargo_handles_with_array(cargo_array_pd, cargo_key={1: 'antiBart', 2: 'antiEdna'}, layer='top')
 
 M1.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, src_007],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo'])
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, src_007, src_004],
+    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
 M1.patch_control_handles(core_plate)
 ########################################
 # ECHO
+
+special_vol_plates = {'sw_src007': int(150 * (500 / 200)), 'sw_src004': int(150 * (500 / 200))}
+
 if generate_echo:
     echo_sheet = convert_slats_into_echo_commands(slat_dict=M1.slats,
                                                   destination_plate_name='capc_plate',
-                                                  unique_transfer_volume_for_plates={
-                                                      'sw_src007': int(150 * (500 / 200))},
+                                                  unique_transfer_volume_for_plates=special_vol_plates,
                                                   default_transfer_volume=150,
                                                   output_folder=echo_folder,
                                                   center_only_well_pattern=True,
@@ -51,13 +53,18 @@ if generate_echo:
                                                   output_filename=f'capc_echo_base_commands.csv')
 ########################################
 # LAB PROCESSING
+
+special_groups = {'Horizontal-Trench': ['layer1-slat119', 'layer1-slat120', 'layer1-slat183', 'layer1-slat184'],
+                  'Vertical-Trench': ['layer2-slat59', 'layer2-slat60', 'layer2-slat26', 'layer2-slat27']}
+
 if generate_lab_helpers:
     prepare_all_standard_sheets(M1.slats, os.path.join(lab_helper_folder, f'{experiment_name}_standard_helpers.xlsx'),
                                 default_staple_volume=150,
                                 default_staple_concentration=500,
                                 echo_sheet=None if not generate_echo else echo_sheet,
                                 peg_groups_per_layer=4,
-                                unique_transfer_volume_plates={'sw_src007': int(150 * (500 / 200))})
+                                special_slat_groups=special_groups,
+                                unique_transfer_volume_plates=special_vol_plates)
 ########################################
 # REPORTS
 if compute_hamming:
