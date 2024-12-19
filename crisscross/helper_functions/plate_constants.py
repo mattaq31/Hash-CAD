@@ -1,18 +1,20 @@
 from itertools import product
 from string import ascii_uppercase
-import os
 from os.path import join
+from crisscross.helper_functions import base_directory
 
 plate96 = [x + str(y) for x, y in product(ascii_uppercase[:8], range(1, 12 + 1))]
 plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1))]
 plate96_center_pattern = [x + str(y) for x, y in product(ascii_uppercase[:8], range(3, 10 + 1))]
 
-base_directory = os.path.abspath(join(__file__, os.path.pardir, os.path.pardir, os.path.pardir))
 core_plate_folder = join(base_directory, 'core_plates')
 assembly_handle_folder = join(base_directory, 'assembly_handle_plates')
 cargo_plate_folder = join(base_directory, 'cargo_plates')
 old_format_cargo_plate_folder = join(cargo_plate_folder, 'old_format')
 
+# ASSEMBLY HANDLE PLATES
+
+# V1 - ORIGINAL
 crisscross_h5_handle_plates = ["P3533_SW_handles", "P3534_SW_handles", "P3535_SW_handles",
                                "P3250_SW_antihandles", "P3251_CW_antihandles",
                                "P3252_SW_antihandles"]  # first 3 are 'handle' plates, last 3 are 'anti-handle' plates
@@ -26,6 +28,14 @@ crisscross_h2_handle_plates = ["P3536_MA_h2_antihandles", "P3537_MA_h2_antihandl
 
 # These have not been ordered in order to save on extra DNA expenses.
 crisscross_not_ordered_h2_handle_plates = ["PX1_MA_h2_handles", "PX2_MA_h2_handles", "PX3_MA_h2_handles"]
+
+# V2 - Katzi Seqs
+
+cckz_h5_handle_plates = ['P3601_FK_H5_handles_S1A', 'P3602_FK_H5_handles_S1B', 'P3603_FK_H5_handles_S1C']
+cckz_h2_antihandle_plates = ['P3604_FK_H2_antihandles_S1A', 'P3605_FK_H2_antihandles_S1B', 'P3606_FK_H2_antihandles_S1C']
+
+
+# SEED, CORE AND CARGO PLATES
 
 seed_core = 'sw_src001_seedcore'  # this contains all the seed sequences, including the socket sequences
 slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, including the control sequences (no handle)
