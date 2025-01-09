@@ -6,7 +6,8 @@ from crisscross.helper_functions.plate_constants import (sanitize_plate_map, bas
                                                          seed_plug_plate_all, cargo_plate_folder,
                                                          nelson_quimby_antihandles,
                                                          octahedron_patterning_v1,
-                                                         simpsons_mixplate_antihandles, seed_slat_purification_handles)
+                                                         simpsons_mixplate_antihandles, seed_slat_purification_handles,
+                                                         cckz_h5_handle_plates, cckz_h2_antihandle_plates)
 import os
 import ast
 from pydoc import locate
@@ -80,23 +81,35 @@ def get_plateclass(name, plate_name, plate_folder, **kwargs):
     return locate(available_plate_loaders[name])(plate_name, plate_folder, **kwargs)
 
 
-def get_standard_plates():
+def get_standard_plates(handle_library_v2=False):
     """
     Generates standard plates used commonly in most designs.
     """
     core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-    crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
-                                                    crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
-    crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
-                                                crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+
+    if handle_library_v2:
+        crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
+                                                        cckz_h2_antihandle_plates,
+                                                        assembly_handle_folder, plate_slat_sides=[2, 2, 2])
+
+        crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
+                                                    cckz_h5_handle_plates,
+                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+    else:
+        crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
+                                                        crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
+                                                        assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+
+        crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
+                                                    crisscross_h5_handle_plates[0:3],
+                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5])
 
     seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
     center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
     combined_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all, core_plate_folder)
 
-    return core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate
+    return (core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate,
+            combined_seed_plate)
 
 
 def get_cargo_plates():

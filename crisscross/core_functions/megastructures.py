@@ -144,10 +144,8 @@ class Megastructure:
                                                    sel_plates.get_well(slat_position_index + 1, slat_side, handle_val),
                                                    sel_plates.get_plate_name(slat_position_index + 1, slat_side,
                                                                              handle_val),
-                                                   descriptor='Ass. Handle %s, Plate %s' % (handle_val,
-                                                                                            sel_plates.get_plate_name(
-                                                                                                slat_position_index + 1,
-                                                                                                slat_side, handle_val)))
+                                                   # TODO: update descriptor here to also include handle/antihandle info
+                                                   descriptor='Ass. Handle %s, Plate %s' % (handle_val, sel_plates.get_plate_name(slat_position_index + 1, slat_side, handle_val)))
 
     def assign_seed_handles(self, seed_array, seed_plate=None, layer_id=1):
         """

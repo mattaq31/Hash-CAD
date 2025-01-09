@@ -211,6 +211,14 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
                         full_data_groups[standard_group]['IDs'].remove(slat)
             full_data_groups[special_group] = {'IDs': slats}
 
+    # cleaning up empty groups
+    keys_to_remove = []
+    for position, group in enumerate(full_data_groups.keys()):
+        if len(full_data_groups[group]['IDs']) == 0:  # this means that all slats in this group were moved to a special group and so this group is now empty
+            keys_to_remove.append(group)
+    for key in keys_to_remove:
+        del full_data_groups[key]
+
     # Titles and formatting
     ws['A1'] = 'PEG Purification'
     ws['A1'].font = Font(bold=True)

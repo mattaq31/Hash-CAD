@@ -290,8 +290,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                     raise RuntimeError(f'The design provided has an incomplete slat: {slat_name} (slat ID {slat.ID})')
 
             # certain plates will need different input volumes if they have different handle concentrations
-            if unique_transfer_volume_for_plates is not None and handle_data[
-                'plate'] in unique_transfer_volume_for_plates:
+            if unique_transfer_volume_for_plates is not None and handle_data['plate'] in unique_transfer_volume_for_plates:
                 handle_specific_vol = unique_transfer_volume_for_plates[handle_data['plate']]*slat_multiplier
             else:
                 handle_specific_vol = default_transfer_volume*slat_multiplier
