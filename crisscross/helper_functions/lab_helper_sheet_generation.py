@@ -56,22 +56,31 @@ def adjust_column_width(ws):
         ws.column_dimensions[column_letter].width = adjusted_width
 
 
-def prepare_master_mix_sheet(slat_dict, default_staple_volume=150, default_staple_concentration=500,
+def prepare_master_mix_sheet(slat_dict, echo_sheet=None, default_staple_volume=150, default_staple_concentration=500,
                              unique_transfer_volume_plates=None, workbook=None):
 
     slat_count = len(slat_dict)
     min_slat_concentration = np.inf
 
     # calculate the minimum handle concentration for each slat (from the echo pools)
-    for slat in slat_dict.values():
-        total_handle_mix_volume = 0
-        for handle in list(slat.H2_handles.values()) + list(slat.H5_handles.values()):
-            if handle['plate'] in unique_transfer_volume_plates:
-                total_handle_mix_volume += unique_transfer_volume_plates[handle['plate']]
-            else:
-                total_handle_mix_volume += default_staple_volume
-        slat_concentration_nM = 1000 * (default_staple_concentration*default_staple_volume) / total_handle_mix_volume
-        min_slat_concentration = min(min_slat_concentration, slat_concentration_nM)
+
+    # preference is to use echo sheet for calculation if available (as this has exceptions applied which won't be apparent in the slat dictionary)
+    if echo_sheet is not None:
+        for slat_name in slat_dict.keys():
+            echo_indices = echo_sheet[echo_sheet['Component'].str.contains(fr"{slat_name}_h\d_", na=False)].index
+            total_handle_mix_volume = sum(echo_sheet.loc[echo_indices]['Transfer Volume'].values)
+            slat_concentration_nM = 1000 * (default_staple_concentration*default_staple_volume) / total_handle_mix_volume
+            min_slat_concentration = min(min_slat_concentration, slat_concentration_nM)
+    else:
+        for slat in slat_dict.values():
+            total_handle_mix_volume = 0
+            for handle in list(slat.H2_handles.values()) + list(slat.H5_handles.values()):
+                if handle['plate'] in unique_transfer_volume_plates:
+                    total_handle_mix_volume += unique_transfer_volume_plates[handle['plate']]
+                else:
+                    total_handle_mix_volume += default_staple_volume
+            slat_concentration_nM = 1000 * (default_staple_concentration*default_staple_volume) / total_handle_mix_volume
+            min_slat_concentration = min(min_slat_concentration, slat_concentration_nM)
 
     if workbook is not None:
         wb = workbook
@@ -95,7 +104,7 @@ def prepare_master_mix_sheet(slat_dict, default_staple_volume=150, default_stapl
     # Standard concentration values
     ws['B1'] = 'Stock Concentration'
     ws['B2'] = round(min_slat_concentration, 1)
-    ws['B3'] = 184.2
+    ws['B3'] = 1062
     ws['B4'] = 3937
     ws['B5'] = 10
     ws['B6'] = 1000
@@ -367,7 +376,7 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
             ws[f'B{indexer}'] = id
             # if echo data available, can also point towards the exact plate wells
             if echo_sheet is not None:
-                echo_index = echo_sheet[echo_sheet['Component'].str.contains(id, na=False)].index[0]
+                echo_index = echo_sheet[echo_sheet['Component'].str.contains(fr"{id}_h\d_", na=False)].index[0]
                 ws[f'C{indexer}'] = echo_sheet.loc[echo_index]['Destination Well']
                 ws[f'D{indexer}'] = echo_sheet.loc[echo_index]['Destination Plate Name']
             indexer += 1
@@ -401,7 +410,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, default_staple_volume=
     wb = Workbook()
     wb.remove(wb["Sheet"])
 
-    prepare_master_mix_sheet(slat_dict, default_staple_volume, default_staple_concentration,
+    prepare_master_mix_sheet(slat_dict, echo_sheet, default_staple_volume, default_staple_concentration,
                              unique_transfer_volume_plates, wb)
     prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, wb,
                                    echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)

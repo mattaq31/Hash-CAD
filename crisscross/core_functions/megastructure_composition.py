@@ -1,3 +1,5 @@
+import copy
+
 import pandas as pd
 import os
 from colorama import Fore
@@ -16,6 +18,24 @@ elif platform.system() == 'Windows':
 else:
     plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
 
+
+def apply_well_exceptions(complete_echo_df):
+    """
+    Some wells in certain plates have concentrations that differ from the rest in the plate,
+    either due to a lab mistake or some other design consideration.  This function applies
+    fixes to the specific wells we have identified, if found in the design.
+    :param complete_echo_df: The full echo dataframe
+    :return: Same echo dataframe with patches applied
+    """
+    fixed_df = copy.copy(complete_echo_df)
+    exception_wells = {('P3601_MA', 'N19'): 2,
+                       ('P3601_MA', 'N22'): 2,
+                       ('P3601_MA', 'N24'): 2} # key is the well affected, while value is the multiple that needs to be applied to the related volume
+
+    for (plate, well), multiplier in exception_wells.items():
+        fixed_df.loc[(fixed_df['Source Plate Name'] == plate) & (fixed_df['Source Well'] == well), 'Transfer Volume'] *= multiplier
+
+    return fixed_df
 
 def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder, save_file,
                             slat_display_format='pie', plate_display_aspect_ratio=1.495):
@@ -325,6 +345,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                              'Destination Well', 'Transfer Volume',
                                                              'Destination Plate Name', 'Source Plate Type'])
+    combined_df = apply_well_exceptions(combined_df)
 
     combined_df.to_csv(os.path.join(output_folder, output_filename), index=False)
 

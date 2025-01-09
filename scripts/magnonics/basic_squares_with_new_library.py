@@ -165,7 +165,7 @@ for index, design in enumerate(design_names):
     specific_plate_wells = [(1, w) for w in specific_plate_wells]
 
     echo_sheet = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
-                                     destination_plate_name='design_plate',
+                                     destination_plate_name=f'{design}_plate',
                                      default_transfer_volume=150,
                                      output_folder=echo_folder,
                                      unique_transfer_volume_for_plates=special_vol_plates,
@@ -182,4 +182,3 @@ for index, design in enumerate(design_names):
                                 peg_groups_per_layer=2,
                                 special_slat_groups=special_groups,
                                 unique_transfer_volume_plates=special_vol_plates)
-
