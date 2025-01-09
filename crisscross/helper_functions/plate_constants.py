@@ -31,8 +31,8 @@ crisscross_not_ordered_h2_handle_plates = ["PX1_MA_h2_handles", "PX2_MA_h2_handl
 
 # V2 - Katzi Seqs
 
-cckz_h5_handle_plates = ['P3601_FK_H5_handles_S1A', 'P3602_FK_H5_handles_S1B', 'P3603_FK_H5_handles_S1C']
-cckz_h2_antihandle_plates = ['P3604_FK_H2_antihandles_S1A', 'P3605_FK_H2_antihandles_S1B', 'P3606_FK_H2_antihandles_S1C']
+cckz_h5_handle_plates = ['P3601_MA_H5_handles_S1A', 'P3602_MA_H5_handles_S1B', 'P3603_MA_H5_handles_S1C']
+cckz_h2_antihandle_plates = ['P3604_MA_H2_antihandles_S1A', 'P3605_MA_H2_antihandles_S1B', 'P3606_MA_H2_antihandles_S1C']
 
 
 # SEED, CORE AND CARGO PLATES

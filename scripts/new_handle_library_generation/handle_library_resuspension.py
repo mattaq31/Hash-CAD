@@ -76,7 +76,7 @@ if averaging_method:
 # this way, we will never have low-concentration wells but we will have several wells with a higher concentration
 # we are fine with the higher concentration since all staples are added in excess.
 
-cutoff_nmole_value = 9.5 # anything less than this value will be resuspended to the minimum nmole value
+cutoff_nmole_value = 9 # anything less than this value will be resuspended to the minimum nmole value
 
 for plate in plate_targets:
     nmole_values = spec_df[spec_df['Plate Name'] == plate]['nmoles'].values
