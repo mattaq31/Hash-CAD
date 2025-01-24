@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
@@ -82,10 +83,10 @@ FileSpecificInfoDict["alphabet_design_H29.xlsx"] = {"interfaces": [2, (5, 2), 5]
                                                     "Export Slat Layers":[1,2],
                                                     "Specific Wells": EightByEightWellsFlat, 
                                                     "Destination Plate":"alphabet_design"}
-FileSpecificInfoDict["end2xpure_design_H29.xlsx"] = {"interfaces": [2, (5, 2), 5],
+FileSpecificInfoDict["end2xpure_design_H29.xlsx"] = {"interfaces": [2, (5, 5), 2],
                                                      "Transfer Volume": 100, 
                                                      "Seed": False,
-                                                     "Export Slat Layers":[1],
+                                                     "Export Slat Layers":[2],
                                                      "Specific Wells": EightByEightWellsFlat[:16],
                                                      "Destination Plate":"start_and_end"}
 FileSpecificInfoDict["startdual_design_H29.xlsx"] = {"interfaces": [2, (5, 2), 5], 
@@ -156,7 +157,7 @@ for i, DesignFile in enumerate(DesignFiles):
     
     if CargoLayer in DesignDF.keys():
         CargoArray = DesignDF[CargoLayer].values
-        MyMegastructure.assign_cargo_handles_with_array(CargoArray, doublepure_key, layer='bottom')
+        MyMegastructure.assign_cargo_handles_with_array(CargoArray, doublepure_key, layer='top')
     
     # Convert labels and handles into actual wells from source plates (patching)
     MyMegastructure.patch_placeholder_handles([CrisscrossHandleXPlates, CrisscrossAntihandleYPlates, CombinedSeedPlate, src004], \

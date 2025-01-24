@@ -7,7 +7,7 @@ from crisscross.helper_functions.plate_constants import (sanitize_plate_map, bas
                                                          nelson_quimby_antihandles,
                                                          octahedron_patterning_v1,
                                                          simpsons_mixplate_antihandles, seed_slat_purification_handles,
-                                                         cckz_h5_handle_plates, cckz_h2_antihandle_plates)
+                                                         cckz_h5_handle_plates, cckz_h2_antihandle_plates, cnt_patterning)
 import os
 import ast
 from pydoc import locate
@@ -120,5 +120,5 @@ def get_cargo_plates():
     src_005 = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
     src_004 = get_plateclass('HybridPlate', seed_slat_purification_handles, cargo_plate_folder)
     P3518 = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
-
-    return src_004, src_005, src_007, P3518
+    P3510 = get_plateclass('GenericPlate', cnt_patterning, cargo_plate_folder)
+    return src_004, src_005, src_007, P3518, P3510

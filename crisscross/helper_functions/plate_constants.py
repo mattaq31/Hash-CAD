@@ -47,7 +47,7 @@ seed_plug_plate_corner = 'P3339_JL_seed_plug_corner'  # this contains another va
 seed_plug_plate_all = 'P3555_SSW_combined_seeds'  # this contains both seeds in one plate with a human-readable placement system
 
 nelson_quimby_antihandles = 'sw_src005_antiNelsonQuimby_cc6hb_h2handles'  # this contains the full set of h2 handles for antiNelson/Quimby extensions
-h2_biotin_direct = 'P3510_SSW_biotin'  # this contains two core slat sequences with directly biotinylated H2 handles
+cnt_patterning = 'P3510_SSW_cnt_patterning'  # this contains h2, h5, and h1 extensions and DNA PAINT sequences for U Fribourg collab with CNT placement
 octahedron_patterning_v1 = 'P3518_MA_octahedron_patterning_v1'  # this contains the H2 sequences for the octahedron patterning (diagonal) and H2/H5 strands for cross-bar binding
 simpsons_mixplate_antihandles = 'sw_src007_nelson_quimby_bart_edna'  # this contains a variety of Bart, Edna, Nelson and Quimby handles for both H2 and H5
 

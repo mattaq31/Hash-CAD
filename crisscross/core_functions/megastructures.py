@@ -271,8 +271,8 @@ class Megastructure:
         """
         Assigns cargo handles to the megastructure slats based on the cargo array provided.
         :param cargo_array: 2D array containing cargo IDs (must match plate provided).
-        :param cargo_plate: Plate class with sequences to draw from.  If not provided, a placeholder will be assigned instead.
         :param cargo_key: Dictionary mapping cargo IDs to cargo unique names for proper identification.
+        :param cargo_plate: Plate class with sequences to draw from.  If not provided, a placeholder will be assigned instead.
         :param layer: Either 'top' or 'bottom', or the exact layer ID required.
         :param handle_orientation: If a middle layer is specified,
         then the handle orientation must be provided since there are always two options available.

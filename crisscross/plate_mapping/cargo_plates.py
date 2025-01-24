@@ -34,7 +34,10 @@ class GenericPlate(BasePlate):
                 continue
 
             int_string = ''.join(ch for ch in position_str if ch.isdigit())
-            key = (int(int_string), 5 if 'h5' in pattern else 2, cargo)
+            #key = (int(int_string), 5 if 'h5' in pattern else 2, cargo)
+
+            orientation_str = pattern.split('_')[self.name_encoding['side']]
+            key = (int(int_string), int(orientation_str[-1]), cargo) # to accommodate non h2/h5 cargo
 
             self.wells[key] = well
             self.sequences[key] = seq
