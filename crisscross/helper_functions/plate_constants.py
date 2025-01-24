@@ -45,6 +45,7 @@ seed_slat_purification_handles = "sw_src004_polyAgridiron" # this contains toeho
 seed_plug_plate_center = 'P2854_CW_seed_plug_center'  # this contains the H2 plug sequences to bind to the seed at the center of the x-slats
 seed_plug_plate_corner = 'P3339_JL_seed_plug_corner'  # this contains another variation of H2 plug sequences - they go to the corner of a set of x-slats
 seed_plug_plate_all = 'P3555_SSW_combined_seeds'  # this contains both seeds in one plate with a human-readable placement system
+seed_plug_plate_center_8064 = 'P3621_SSW_seed_plug_center_8064'  # this contains the H2 plug sequences to bind to the new p8064 seed at the center of the x-slats
 
 nelson_quimby_antihandles = 'sw_src005_antiNelsonQuimby_cc6hb_h2handles'  # this contains the full set of h2 handles for antiNelson/Quimby extensions
 cnt_patterning = 'P3510_SSW_cnt_patterning'  # this contains h2, h5, and h1 extensions and DNA PAINT sequences for U Fribourg collab with CNT placement

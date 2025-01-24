@@ -6,6 +6,9 @@ import pandas as pd
 
 dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
+base_directory = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir, os.path.pardir))
+hamming_cache = os.path.join(base_directory, 'assembly_handle_optimization','hamming_cache')
+
 def revcom(sequence):
     """
     Reverse complements a DNA sequence.
@@ -120,3 +123,5 @@ def convert_np_to_py(data):
         return data.tolist()
     else:
         return data
+
+create_dir_if_empty(hamming_cache)

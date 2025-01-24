@@ -71,7 +71,7 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
 
 
 def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_row_by_column=None,
-                                           data_type='2d_excel', plate_size=384, scramble_names=False):
+                                           data_type='2d_excel', plate_size=384, plate_name=None, scramble_names=False):
     """
     Generates a new plate from a dataframe containing sequences, names and notes, then saves it to file.
     TODO: make faster and more elegant.
@@ -81,6 +81,7 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
     :param restart_row_by_column: Set this to a column name to restart the row number when the value changes.
     :param data_type: Either 2d_excel (2d output array) or IDT_order (for IDT order form).
     :param plate_size: 96 or 384
+    :param plate_name: Name of the plate (used for IDT order form)
     :param scramble_names: If true, scrubs all identifiable names when preparing an IDT order output
     :return: final dataframe that's saved to file
     """
@@ -142,7 +143,7 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
             output_df['Name'] = ['OLIGO' + str(i) for i in range(len(output_df))]
 
         with pd.ExcelWriter(os.path.join(folder, filename)) as writer:
-            output_df.to_excel(writer, sheet_name='IDT Order', index=False)
+            output_df.to_excel(writer, sheet_name=plate_name if plate_name is not None else 'IDT Order', index=False)
         return output_df
     else:
         raise ValueError('Invalid data type for plate input')

@@ -1,8 +1,6 @@
 import copy
 from itertools import product
 
-from fontTools.varLib.iup import iup_delta
-
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping import get_plateclass
@@ -46,7 +44,7 @@ core_h5_sequences = [core_plate.sequences[i + 1, 5, 0] for i in range(32)]
 slat_side_labels = ['H5', 'H2']
 handle_type_labels = ['handles', 'antihandles']
 post_nominal = 'FK_CCV2'
-plate_number_start = 3601
+plate_number_start = 4000
 seq_set_size = 32
 set_count = len(new_handles) // seq_set_size
 plate_size = len(plate384)
@@ -78,7 +76,7 @@ for helix_side, handle_type in all_plate_combos:
                 plate_name = f'P{plate_number_start}_FK_{helix_side}_{handle_type}_S{set + 1}{ascii_uppercase[plate_number_start - orig_plate_start]}'
 
                 # william won't be ordering these first
-                if set == 1 or (helix_side == 'H5' and handle_type == 'antihandles') or (helix_side == 'H2' and handle_type == 'handles'):
+                if (helix_side == 'H5' and handle_type == 'antihandles') or (helix_side == 'H2' and handle_type == 'handles'):
                     plate_name = plate_name.replace(plate_name.split('_')[0], 'PNOT-ORDERED')
 
                 # actual sequence composed of core handle, tt and the library 7-mer
@@ -109,9 +107,9 @@ for key, val in new_plates.items():
                                            data_type='2d_excel')
     if 'NOT-ORDERED' not in key:
         generate_new_plate_from_slat_handle_df(plate, '/Users/matt/Desktop/new_plates', 'IDT_ORDER_%s.xlsx' % key,
-                                               data_type='IDT_order')
+                                               data_type='IDT_order', plate_name = key.split('_')[0])
         generate_new_plate_from_slat_handle_df(plate, '/Users/matt/Desktop/new_plates', 'IDT_ORDER_SCRAMBLED_%s.xlsx' % key,
-                                               data_type='IDT_order', scramble_names=True)
+                                               data_type='IDT_order', scramble_names=True, plate_name = key.split('_')[0])
 
 # quickly checks to see if dataframe integrity is maintained with plate loading system
 crisscross_handle_plates = get_plateclass('CrisscrossHandlePlates',
