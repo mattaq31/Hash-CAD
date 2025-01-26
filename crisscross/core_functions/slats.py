@@ -182,5 +182,9 @@ class Slat:
         total_bases += 8064 # incorporating scaffold length
         total_bases += 5329 # incorporating length of core staples
 
-        return total_bases * 327  # 327 Da per base (on average)
+        # Note: this calculates the molecular weight assuming individual deoxyribonucleotide monophosphates
+        # - it adds an extra 18.015 g/mol for all but one base, so this value is about 6% higher than the correct value
+        # Ideally we would calculate the exact molecular weight given the sequence, but this correction is good enough for now
+
+        return total_bases * 327 - (total_bases-1) * 18.015  # 327 Da per base (on average)
 

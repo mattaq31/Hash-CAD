@@ -4,6 +4,7 @@ from openpyxl import Workbook
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
 import string
+import math
 
 
 uppercase_alphabet = string.ascii_uppercase
@@ -57,7 +58,7 @@ def adjust_column_width(ws):
 
 
 def prepare_master_mix_sheet(slat_dict, echo_sheet=None, default_staple_volume=150, default_staple_concentration=500,
-                             unique_transfer_volume_plates=None, workbook=None):
+                             default_reaction_volume=50, unique_transfer_volume_plates=None, workbook=None):
 
     slat_count = len(slat_dict)
     min_slat_concentration = np.inf
@@ -127,7 +128,12 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, default_staple_volume=1
     ws['D5'] = "=round(C5*D$8/B5,2)"
     ws['D6'] = "=round(C6*D$8/B6,2)"
     ws['D7'] = '=D8-sum(D2:D6)'
-    ws['D8'] = 50
+    if default_reaction_volume == "max":
+        # selects the max reaction volume that reduces staple pool waste, assuming echo transfers only 75% of expected
+        # 0.75 * total femtomoles of slats (based on min conc)/reaction final conc (500 nM), rounded down to the nearest multiple of 5
+        ws['D8'] = math.floor(0.75 * min_slat_concentration * total_handle_mix_volume/ws['C2'].value/5/1000) * 5
+    else:
+        ws['D8'] = default_reaction_volume # simplest solution: user decides, defaults to 50 µL
     ws['D9'] = '=D8*C3/1000'
 
     ws['F2'].fill = red_fill
@@ -185,8 +191,8 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, default_staple_volume=1
 
     return wb
 
-def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_concentration_uM=2, workbook=None,
-                                   echo_sheet=None, special_slat_groups=None):
+def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_concentration_uM=2, default_reaction_volume=50, 
+                                   workbook=None, echo_sheet=None, special_slat_groups=None):
     if workbook is not None:
         wb = workbook
     else:
@@ -270,7 +276,11 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
         column = uppercase_alphabet[position+1]
         # block 1 - slat counts and volumes
         full_data_groups[group][f'{column}1'] = group
-        full_data_groups[group][f'{column}3'] = 50
+        try:
+            full_data_groups[group][f'{column}3'] = wb["Slat Folding & Master Mix"]["D8"].value
+        except KeyError:
+            print("No Slat Folding & Master Mix sheet detected. Defaulting to 50 µL reaction volume...")
+            full_data_groups[group][f'{column}3'] = 50
         full_data_groups[group][f'{column}4'] = len(full_data_groups[group]['IDs'])
         full_data_groups[group][f'{column}5'] = f"={column}3*{column}4"
         full_data_groups[group][f'{column}6'] = 50
@@ -389,6 +399,7 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
 
 def prepare_all_standard_sheets(slat_dict, save_filepath, default_staple_volume=150,
                                 default_staple_concentration=500,
+                                default_reaction_volume=50,
                                 peg_groups_per_layer=2,
                                 echo_sheet=None,
                                 max_slat_concentration_uM=2,
@@ -400,6 +411,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, default_staple_volume=
     :param save_filepath:
     :param default_staple_volume:
     :param default_staple_concentration:
+    :param default_reaction_volume:
     :param peg_groups_per_layer:
     :param echo_sheet:
     :param max_slat_concentration_uM:
@@ -411,7 +423,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, default_staple_volume=
     wb.remove(wb["Sheet"])
 
     prepare_master_mix_sheet(slat_dict, echo_sheet, default_staple_volume, default_staple_concentration,
-                             unique_transfer_volume_plates, wb)
-    prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, wb,
-                                   echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)
+                             default_reaction_volume, unique_transfer_volume_plates, wb)
+    prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, default_reaction_volume, 
+                                   wb, echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)
     wb.save(save_filepath)

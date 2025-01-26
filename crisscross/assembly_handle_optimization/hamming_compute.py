@@ -315,8 +315,8 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
             valid_product = True
             layer_indices[hkey[0]].extend(
                 range(final_combination_index * (4 * slat_length), (final_combination_index + 1) * (4 * slat_length)))
-        if specific_slat_groups:
-            for group_key, group in specific_slat_groups.items():
+        if specific_slat_groups: 
+            for group_key, group in specific_slat_groups.items(): 
                 if hkey in group and antihkey in group:
                     group_indices[group_key].extend(range(final_combination_index * (4 * slat_length),
                                                           (final_combination_index + 1) * (4 * slat_length)))
