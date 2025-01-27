@@ -126,13 +126,28 @@ NewLibraryMega.assign_crisscross_handles(HandleArray, v2_crisscross_handle_x_pla
 NewLibraryMega.assign_seed_handles(SeedArray, CombinedSeedPlate, layer_id=1)
 NewLibraryMega.patch_control_handles(CorePlate)
 
+NewLibraryVolume = 100 # nl
+
+# New library is at 100 µM, not 500 µM
+special_vol_plates = {'P3601_MA': int(NewLibraryVolume * (500 / 100)),
+                      'P3602_MA': int(NewLibraryVolume * (500 / 100)),
+                      'P3603_MA': int(NewLibraryVolume * (500 / 100)),
+                      'P3604_MA': int(NewLibraryVolume * (500 / 100)),
+                      'P3605_MA': int(NewLibraryVolume * (500 / 100)),
+                      'P3606_MA': int(NewLibraryVolume * (500 / 100))}
+
+# Note: this makes the total expected volume per well to be 200 nL * 32 + 1 µL * 32 = 38.4 µL, which is much higher than should be used as
+# a destination on the 96-well PCR plate
+# So let's split this in half across two plates - use 100 nL transfer volume instead of 200 nL and manually copy instructions to a second plate
+
 EchoSheetNew = convert_slats_into_echo_commands(NewLibraryMega.slats, "old_vs_new_library_kinetics", 
                                  DesignFolder, "SW119_zigzag_newlibrary_echo.csv",
-                                 default_transfer_volume=200,
+                                 default_transfer_volume=NewLibraryVolume,
+                                 unique_transfer_volume_for_plates=special_vol_plates,
                                  manual_plate_well_assignments=EightByEightWellsFlat[-32:])
 
 prepare_all_standard_sheets(NewLibraryMega.slats, os.path.join(DesignFolder, 'newlibrary_standard_helpers.xlsx'),
-                                default_staple_volume=200,
+                                default_staple_volume=NewLibraryVolume,
                                 default_staple_concentration=500,
                                 default_reaction_volume="max",
                                 echo_sheet=EchoSheetNew,

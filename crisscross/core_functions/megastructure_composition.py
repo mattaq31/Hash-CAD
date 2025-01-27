@@ -218,7 +218,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                      output_empty_wells=False,
                                      manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
                                      output_plate_size='96', center_only_well_pattern=False,
-                                     generate_plate_visualization=True, plate_viz_type='stacked_barcode'):
+                                     generate_plate_visualization=True, plate_viz_type='stacked_barcode',
+                                     destination_well_max_volume=25):
     """
     Converts a dictionary of slats into an echo liquid handler command list for all handles provided.
     :param slat_dict: Dictionary of slat objects
@@ -349,6 +350,19 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
     combined_df.to_csv(os.path.join(output_folder, output_filename), index=False)
 
+    # Check that the total volume for all destination wells is below a maximum limit to avoid falling into source plate during transfer
+    total_handle_mix_volumes_list = []
+    for slat_name in slat_dict.keys():
+        total_volume = sum(combined_df[combined_df["Component"].str.contains(slat_name+"_")]["Transfer Volume"])/1000
+        total_handle_mix_volumes_list.append([slat_name, total_volume, total_volume <= destination_well_max_volume])
+
+    if False in [x[2] for x in total_handle_mix_volumes_list]:
+        print("WARNING: The total volume in some destination wells exceeds the specified maximum destination well volume. This could result in contamination of source wells. Consider halving your individual transfer volumes.")
+        print("The offending slats are:")
+        component_wells_too_high = [x for x in total_handle_mix_volumes_list if x[2] == False]
+        for component_well in component_wells_too_high:
+            print("Component: " + component_well[0], "Total volume: %d" % component_well[1])   
+        
     if generate_plate_visualization:
         visualize_output_plates(output_well_descriptor_dict, output_plate_size, output_folder,
                                 output_filename.split('.')[0],
