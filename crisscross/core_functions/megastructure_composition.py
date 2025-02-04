@@ -2,7 +2,7 @@ import copy
 
 import pandas as pd
 import os
-from colorama import Fore
+from colorama import Fore, Style
 from crisscross.helper_functions.plate_constants import plate96, plate384, plate96_center_pattern
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch
@@ -357,12 +357,13 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         total_handle_mix_volumes_list.append([slat_name, total_volume, total_volume <= destination_well_max_volume])
 
     if False in [x[2] for x in total_handle_mix_volumes_list]:
-        print("WARNING: The total volume in some destination wells exceeds the specified maximum destination well volume. This could result in contamination of source wells. Consider halving your individual transfer volumes.")
+        print(Fore.RED + "WARNING: The total volume in some destination wells exceeds the specified maximum destination well volume. This could result in contamination of source wells. Consider halving your individual transfer volumes.")
         print("The offending slats are:")
         component_wells_too_high = [x for x in total_handle_mix_volumes_list if x[2] == False]
         for component_well in component_wells_too_high:
             print("Component: " + component_well[0], "Total volume: %d" % component_well[1])   
-        
+        print(Style.RESET_ALL)
+
     if generate_plate_visualization:
         visualize_output_plates(output_well_descriptor_dict, output_plate_size, output_folder,
                                 output_filename.split('.')[0],

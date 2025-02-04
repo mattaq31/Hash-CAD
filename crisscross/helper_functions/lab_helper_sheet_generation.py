@@ -280,7 +280,7 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
             full_data_groups[group][f'{column}3'] = wb["Slat Folding & Master Mix"]["D8"].value
         except KeyError:
             print("No Slat Folding & Master Mix sheet detected. Defaulting to 50 µL reaction volume...")
-            full_data_groups[group][f'{column}3'] = 50
+            full_data_groups[group][f'{column}3'] = default_reaction_volume
         full_data_groups[group][f'{column}4'] = len(full_data_groups[group]['IDs'])
         full_data_groups[group][f'{column}5'] = f"={column}3*{column}4"
         full_data_groups[group][f'{column}6'] = 50
