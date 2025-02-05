@@ -50,8 +50,10 @@ class _SideBarToolsState extends State<SideBarTools> {
                   return ListTile(
                     leading: Radio(
                       value: option["value"],
-                      groupValue: null,
-                      onChanged: (var value) {},
+                      groupValue: appState.layerList[appState.selectedLayerIndex]['value'],
+                      onChanged: (var value) {
+                        appState.updateSelectedLayer(index); // Update state on selection
+                      },
                     ),
                     title: Text(option["label"]),
                     trailing: Row(
@@ -68,19 +70,14 @@ class _SideBarToolsState extends State<SideBarTools> {
                           itemBuilder: (context) {
                             return [
                               PopupMenuItem(
-                                child: StatefulBuilder(
-                                  builder: (context, setState) {
-                                    // Local color state
-                                    return ColorPicker(
-                                      pickerColor: appState.slatColor,
-                                      onColorChanged: (color) {
-                                        setState(() {
-                                          appState.updateColor(index, color);
-                                        });
-                                      },
-                                      pickerAreaHeightPercent: 0.5,
-                                    );
-                                  }
+                                child: ColorPicker(
+                                  pickerColor: appState.layerList[index]["color"],
+                                  onColorChanged: (color) {
+                                    setState(() {
+                                      appState.updateColor(index, color);
+                                    });
+                                  },
+                                  pickerAreaHeightPercent: 0.5,
                                 ),
                               ),
                             ];
