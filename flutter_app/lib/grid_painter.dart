@@ -16,9 +16,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   final List<Map<String, dynamic>> slats =
       []; // List to hold the positions of slats
 
-  Offset initialFocalPoint = Offset.zero;
   double initialScale = 1.0;
-  Offset initialOffset = Offset.zero;
   double scale = 1.0;
   double minScale = 0.5;
   double maxScale = 3.0;
@@ -40,8 +38,15 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     }
 
     // the localPosition can be used to focus the zoom in the direction of the pointer
-    final Offset focus = (event.localPosition - offset) / scale;
-    var calcOffset = event.localPosition - focus * newScale;
+    // think of it this way:
+    // the 'localPosition' is the x/y coordinate of the pointer in terms of a 'world scale'
+    // however, the actually offset of the current view will have changed throughout use
+    // to find the new offset, first find the focus point of the current offset i.e. subtract the localPosition from the current offset
+    // next, translate this focus point into the new scale system by multiplying by the new scale and dividing by the old one
+    // finally, subtracting this focus point from the pointer coordinates in 'world scale' will result in the coordinates of the new
+    // 'origin' or offset of the current view
+    final Offset focus = (event.localPosition - offset);
+    var calcOffset = event.localPosition - focus * (newScale/scale);
 
     return (newScale, calcOffset);
   }
@@ -89,18 +94,15 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           },
           // this handles A) scaling applied via a multi-touch operation and B) the actual placement of a slat on the grid
           child: GestureDetector(
-            // TODO: apply same focus point system to ensure zooming is focused on the mouse pointer
             onScaleStart: (details) {
-              initialFocalPoint = details.focalPoint;
               initialScale = scale;
-              initialOffset = offset;
             },
             onScaleUpdate: (details) {
               setState(() {
-                scale =
-                    (initialScale * details.scale).clamp(minScale, maxScale);
-                offset = initialOffset +
-                    (details.focalPoint - initialFocalPoint) / scale;
+                // this scaling system is identical to the one used for the mouse wheel zoom (see function above)
+                final newScale = (initialScale * details.scale).clamp(minScale, maxScale);
+                offset = details.focalPoint - (((details.focalPoint - offset)/scale) * newScale);
+                scale = newScale;
               });
             },
             // this is the actual point a slat is added to the system
