@@ -17,6 +17,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       []; // List to hold the positions of slats
 
   double initialScale = 1.0;
+  Offset initialPanOffset = Offset.zero;
+  Offset initialGestureFocalPoint = Offset.zero;
   double scale = 1.0;
   double minScale = 0.5;
   double maxScale = 3.0;
@@ -96,12 +98,22 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           child: GestureDetector(
             onScaleStart: (details) {
               initialScale = scale;
+              initialPanOffset = offset;
+              initialGestureFocalPoint = details.focalPoint;
             },
             onScaleUpdate: (details) {
               setState(() {
+
                 // this scaling system is identical to the one used for the mouse wheel zoom (see function above)
                 final newScale = (initialScale * details.scale).clamp(minScale, maxScale);
-                offset = details.focalPoint - (((details.focalPoint - offset)/scale) * newScale);
+                if (newScale == initialScale){
+                  offset = initialPanOffset + (details.focalPoint - initialGestureFocalPoint)/scale;
+                }
+                else
+                  {
+                    offset = details.focalPoint - (((details.focalPoint - offset)/scale) * newScale);
+                  }
+                // TODO: not sure if the fact that pan and zoom cannot be handled simultaneously is a problem... should circle back here if so
                 scale = newScale;
               });
             },
@@ -170,7 +182,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                     )
                   ],
                 );
-                // TODO: can I have multiple custompainters?
               },
             ),
           ),
@@ -180,7 +191,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   }
 }
 
-// TODO: need to have a system to switch between horizontal and vertical...
 class GridPainter extends CustomPainter {
   final double gridSize;
   final double scale;
@@ -229,7 +239,6 @@ class GridPainter extends CustomPainter {
   }
 }
 
-// TODO: need to have a system to switch between horizontal and vertical...
 class SlatHoverPainter extends CustomPainter {
   final double gridSize;
   final double scale;
@@ -250,7 +259,7 @@ class SlatHoverPainter extends CustomPainter {
     // Draw the hovering slat
     if (hoverPosition != null) {
       final Paint hoverRodPaint = Paint()
-        ..color = slatColor.withOpacity(0.5) // Semi-transparent slat
+        ..color = slatColor.withValues(alpha: 0.5) // Semi-transparent slat
         ..strokeWidth = gridSize / 2
         ..style = PaintingStyle.fill;
 
@@ -280,7 +289,6 @@ class SlatHoverPainter extends CustomPainter {
   }
 }
 
-// TODO: need to have a system to switch between horizontal and vertical...
 class SlatPainter extends CustomPainter {
   final double gridSize;
   final double scale;
