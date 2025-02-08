@@ -43,68 +43,90 @@ class _SideBarToolsState extends State<SideBarTools> {
               SizedBox(height: 20),
               Text("Layers:"),
 
-              Column(
+              ReorderableListView(
+                shrinkWrap: true,
+                buildDefaultDragHandles: false,
+                onReorder: (int oldIndex, int newIndex) {
+                  if (newIndex > oldIndex) {
+                    newIndex--; // Adjust index when moving down
+                  }
+                  setState(() {
+                    final item = appState.layerList.removeAt(oldIndex);
+                    appState.layerList.insert(newIndex, item);
+                  });
+                },
                 children: appState.layerList.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  var option = entry.value;
-                  return ListTile(
-                    leading: Radio(
-                      value: option["value"],
-                      groupValue: appState.layerList[appState.selectedLayerIndex]['value'],
-                      onChanged: (var value) {
-                        appState.updateSelectedLayer(index); // Update state on selection
-                      },
-                    ),
-                    title: Text(option["label"]),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Popup color picker
-                        PopupMenuButton(
-                          constraints: BoxConstraints(
-                            minWidth: 200, // Set min width to prevent overflow
-                            maxWidth: 780, // Adjust as needed
+                    int index = entry.key;
+                    var option = entry.value;
+                    return ListTile(
+                      key: ValueKey(option["value"]),
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: Icon(Icons.drag_handle, color: Colors.black),
                           ),
-                          offset: Offset(0, 40), // Position below the button
-
-                          itemBuilder: (context) {
-                            return [
-                              PopupMenuItem(
-                                child: ColorPicker(
-                                  pickerColor: appState.layerList[index]["color"],
-                                  onColorChanged: (color) {
-                                    setState(() {
-                                      appState.updateColor(index, color);
-                                    });
-                                  },
-                                  pickerAreaHeightPercent: 0.5,
+                          SizedBox(width: 8),
+                          Radio(
+                            value: option["value"],
+                            groupValue: appState.layerList[appState.selectedLayerIndex]['value'],
+                            onChanged: (var value) {
+                              appState.updateSelectedLayer(index); // Update state on selection
+                            },
+                          ),
+                        ],
+                      ),
+                      title: Text(option["label"]),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Popup color picker
+                          PopupMenuButton(
+                            constraints: BoxConstraints(
+                              minWidth: 200, // Set min width to prevent overflow
+                              maxWidth: 780, // Adjust as needed
+                            ),
+                            offset: Offset(0, 40), // Position below the button
+                
+                            itemBuilder: (context) {
+                              return [
+                                PopupMenuItem(
+                                  child: ColorPicker(
+                                    pickerColor: appState.layerList[index]["color"],
+                                    onColorChanged: (color) {
+                                      setState(() {
+                                        appState.updateColor(index, color);
+                                      });
+                                    },
+                                    pickerAreaHeightPercent: 0.5,
+                                  ),
                                 ),
-                              ),
-                            ];
-                          },
-                          child: GestureDetector(
-                            onTap: null, // Pop-up opens on button press
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: option["color"],
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.black, width: 1),
+                              ];
+                            },
+                            child: GestureDetector(
+                              onTap: null, // Pop-up opens on button press
+                              child: Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: option["color"],
+                                  shape: BoxShape.circle,
+                                  border:
+                                      Border.all(color: Colors.black, width: 1),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(width: 8),
-                        IconButton(
-                          icon: Icon(Icons.close, color: Colors.red),
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                          SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.close, color: Colors.red),
+                            onPressed: () {},
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
               ),
             ],
           ),

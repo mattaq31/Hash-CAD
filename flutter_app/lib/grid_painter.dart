@@ -1,6 +1,10 @@
+import 'dart:ui';
+
+import 'package:crisscross_designer/crisscross_core/slats.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
+import 'crosshatch_shader.dart';
 import 'shared_app_state.dart';
 
 class GridAndCanvas extends StatefulWidget {
@@ -12,10 +16,6 @@ class GridAndCanvas extends StatefulWidget {
 
 class _GridAndCanvasState extends State<GridAndCanvas> {
   final double gridSize = 10.0; // Grid cell size
-  // final List<Offset> slats = []; // List to hold the positions of slats
-  final List<Map<String, dynamic>> slats =
-      []; // List to hold the positions of slats
-
   double initialScale = 1.0;
   Offset initialPanOffset = Offset.zero;
   Offset initialGestureFocalPoint = Offset.zero;
@@ -24,6 +24,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   double maxScale = 3.0;
   Offset offset = Offset.zero;
   Offset? hoverPosition; // Stores the snapped position of the hovering slat
+  bool hoverValid = true;
+  List<String> selectedSlats = [];
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
@@ -86,12 +88,39 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 (((localPosition.dy - offset.dy) / scale) / gridSize).round() *
                     gridSize,
               );
+
+              // check to see if clicked position is taken by a slat already
+              hoverValid = true;
+
+              // TODO: there must be a faster way to get this to run properly...
+              Map<int, Offset> slatCoordinates = {};
+              for (int i = 0; i < 32; i++) {
+                if (appState.layerList[appState.selectedLayerIndex]["direction"] == 'horizontal') {
+                  slatCoordinates[i + 1] = Offset(hoverPosition!.dx + i * gridSize, hoverPosition!.dy);
+                } else {
+                  slatCoordinates[i + 1] = Offset(hoverPosition!.dx, hoverPosition!.dy + i * gridSize);
+                }
+              }
+              // check to see if clicked position is taken by a slat already
+              Set coordSet = Set.from(slatCoordinates.values);
+
+              for (var slat in appState.slats) {
+                if (slat.layer == appState.selectedLayerIndex){
+                  // check all new slat coordinates in the slat's list of coordinates
+                  for (var coord in slat.slatPositionToCoordinate.values){
+                    if (coordSet.contains(coord)){
+                      hoverValid = false;
+                      return;
+                    }
+                  }
+                }
+              }
             });
+
           },
           onExit: (event) {
             setState(() {
-              hoverPosition =
-                  null; // Hide the hovering slat when cursor leaves the grid area
+              hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
             });
           },
           // this handles A) scaling applied via a multi-touch operation and B) the actual placement of a slat on the grid
@@ -133,29 +162,34 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               );
 
               // slats added to a persistent list here
-              setState(() {
-                slats.add({
-                  "Position": snappedPosition,
-                  "Layer": appState.selectedLayerIndex
-                });
-              });
+              Map<int, Offset> slatCoordinates = {};
+              for (int i = 0; i < 32; i++) {
+                if (appState.layerList[appState.selectedLayerIndex]["direction"] == 'horizontal') {
+                  slatCoordinates[i + 1] = Offset(snappedPosition.dx + i * gridSize, snappedPosition.dy);
+                } else {
+                  slatCoordinates[i + 1] = Offset(snappedPosition.dx, snappedPosition.dy + i * gridSize);
+                }
+              }
+              // check to see if clicked position is taken by a slat already
+              Set coordSet = Set.from(slatCoordinates.values);
+              for (var slat in appState.slats) {
+                if (slat.layer == appState.selectedLayerIndex){
+                  // check all new slat coordinates in the slat's list of coordinates
+                  for (var coord in slat.slatPositionToCoordinate.values){
+                    if (coordSet.contains(coord)){
+                      selectedSlats.add(slat.id);
+                      return;
+                    }
+                  }
+                }
+              }
+              selectedSlats = [];
+              // if not already taken, can proceed to add a new slat
+              appState.addSlat(snappedPosition, appState.selectedLayerIndex, slatCoordinates);
             },
-            // TODO: make the state management system more concise with less code duplication
             // the custom painter here constantly re-applies the grid and slats to the screen while moving around
             child: Consumer<MyAppState>(
               builder: (context, appState, child) {
-                List<Offset> slatPositions =
-                    slats.map((slat) => slat["Position"] as Offset).toList();
-                List<int> layerIndices =
-                    slats.map((slat) => slat["Layer"] as int).toList();
-                List<Color> layerColors = layerIndices
-                    .map((index) => appState.layerList[index]['color'] as Color)
-                    .toList();
-                List<String> layerDirections = layerIndices
-                    .map((index) =>
-                        appState.layerList[index]['direction'] as String)
-                    .toList();
-
                 return Stack(
                   children: [
                     CustomPaint(
@@ -166,7 +200,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                     CustomPaint(
                       size: Size.infinite,
                       painter: SlatPainter(scale, offset, gridSize,
-                          slatPositions, layerColors, layerDirections),
+                          appState.slats, appState.layerList, appState.selectedLayerIndex, selectedSlats),
                       child: Container(),
                     ),
                     CustomPaint(
@@ -177,7 +211,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                           gridSize,
                           appState.layerList[appState.selectedLayerIndex] ['color'],
                           hoverPosition,
-                          appState.layerList[appState.selectedLayerIndex]['direction']),
+                          appState.layerList[appState.selectedLayerIndex]['direction'],
+                          hoverValid),
                       child: Container(),
                     )
                   ],
@@ -197,6 +232,7 @@ class GridPainter extends CustomPainter {
   final Offset canvasOffset;
 
   GridPainter(this.scale, this.canvasOffset, this.gridSize);
+
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -246,9 +282,10 @@ class SlatHoverPainter extends CustomPainter {
   final Color slatColor;
   final Offset? hoverPosition;
   final String direction;
+  final bool hoverValid;
 
   SlatHoverPainter(this.scale, this.canvasOffset, this.gridSize, this.slatColor,
-      this.hoverPosition, this.direction);
+      this.hoverPosition, this.direction, this.hoverValid);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -263,17 +300,22 @@ class SlatHoverPainter extends CustomPainter {
         ..strokeWidth = gridSize / 2
         ..style = PaintingStyle.fill;
 
+      if (!hoverValid) {
+        hoverRodPaint.shader = CrossHatchShader.shader;
+        hoverRodPaint.color = Colors.red;
+      }
+
       if (direction == 'vertical') {
         canvas.drawLine(
           Offset(hoverPosition!.dx, hoverPosition!.dy - gridSize / 2),
           Offset(hoverPosition!.dx,
-              hoverPosition!.dy + gridSize * 32 + gridSize / 2),
+              hoverPosition!.dy + gridSize * 31 + gridSize / 2),
           hoverRodPaint,
         );
       } else {
         canvas.drawLine(
           Offset(hoverPosition!.dx - gridSize / 2, hoverPosition!.dy),
-          Offset(hoverPosition!.dx + gridSize * 32 + gridSize / 2,
+          Offset(hoverPosition!.dx + gridSize * 31 + gridSize / 2,
               hoverPosition!.dy),
           hoverRodPaint,
         );
@@ -293,12 +335,66 @@ class SlatPainter extends CustomPainter {
   final double gridSize;
   final double scale;
   final Offset canvasOffset;
-  final List<Offset> slats;
-  final List<Color> slatColors;
-  final List<String> directions;
+
+  final List<Map<String, dynamic>> layerList;
+  final List<Slat> slats;
+  final int selectedLayer;
+  final List<String> selectedSlats;
 
   SlatPainter(this.scale, this.canvasOffset, this.gridSize, this.slats,
-      this.slatColors, this.directions);
+      this.layerList, this.selectedLayer, this.selectedSlats);
+
+  void drawBorder(Canvas canvas, Slat slat, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = gridSize / 6
+      ..strokeCap = StrokeCap.round;
+
+    final spacing = gridSize / 4;
+
+    if (layerList[slat.layer]['direction'] == 'vertical') {
+      final startY = slat.slatPositionToCoordinate[1]!.dy - gridSize / 2;
+      final endY = slat.slatPositionToCoordinate[32]!.dy + gridSize / 2;
+      final x = slat.slatPositionToCoordinate[1]!.dx;
+
+      // Draw dots along vertical sides
+      for (double y = startY; y <= endY; y += spacing) {
+        canvas.drawPoints(PointMode.points, [
+          Offset(x - gridSize/2, y),  // Left side
+          Offset(x + gridSize/2, y),  // Right side
+        ], paint);
+      }
+
+      // Draw dots along horizontal ends
+      for (double dx = -gridSize/4; dx <= gridSize/4; dx += spacing) {
+        canvas.drawPoints(PointMode.points, [
+          Offset(x + dx, startY - gridSize/4),     // Top end
+          Offset(x + dx, endY + gridSize/4),       // Bottom end
+        ], paint);
+      }
+    } else {
+      final startX = slat.slatPositionToCoordinate[1]!.dx - gridSize / 2;
+      final endX = slat.slatPositionToCoordinate[32]!.dx + gridSize / 2;
+      final y = slat.slatPositionToCoordinate[1]!.dy;
+
+      // Draw dots along horizontal sides
+      for (double x = startX; x <= endX; x += spacing) {
+        canvas.drawPoints(PointMode.points, [
+          Offset(x, y - gridSize/2),  // Top side
+          Offset(x, y + gridSize/2),  // Bottom side
+        ], paint);
+      }
+
+      // Draw dots along vertical ends
+      for (double dy = -gridSize/4; dy <= gridSize/4; dy += spacing) {
+        canvas.drawPoints(PointMode.points, [
+          Offset(startX - gridSize/4, y + dy),     // Left end
+          Offset(endX + gridSize/4, y + dy),       // Right end
+        ], paint);
+      }
+    }
+  }
+
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -306,25 +402,38 @@ class SlatPainter extends CustomPainter {
     canvas.translate(canvasOffset.dx, canvasOffset.dy);
     canvas.scale(scale);
 
-    // TODO: slat length should be parametrized
-    List.generate(slats.length, (i) {
+    // TODO: slat draw length should be parametrized
+
+    final sortedSlats = List<Slat>.from(slats)
+      ..sort((a, b) => layerList[a.layer]['order'].compareTo(layerList[b.layer]['order']));
+
+    for (var slat in sortedSlats) {
       Paint rodPaint = Paint()
-        ..color = slatColors[i]
+        ..color = layerList[slat.layer]['color']
         ..strokeWidth = gridSize / 2
         ..style = PaintingStyle.fill;
+      if (slat.layer != selectedLayer) {
+        rodPaint = Paint()
+          ..color = layerList[slat.layer]['color'].withValues(alpha: 0.5)
+          ..strokeWidth = gridSize / 2
+          ..style = PaintingStyle.fill;
+      }
 
-      if (directions[i] == 'vertical') {
+      if (layerList[slat.layer]['direction'] == 'vertical') {
         canvas.drawLine(
-            Offset(slats[i].dx, slats[i].dy - gridSize / 2),
-            Offset(slats[i].dx, slats[i].dy + gridSize * 32 + gridSize / 2),
+            Offset(slat.slatPositionToCoordinate[1]!.dx, slat.slatPositionToCoordinate[1]!.dy - gridSize / 2),
+            Offset(slat.slatPositionToCoordinate[32]!.dx, slat.slatPositionToCoordinate[32]!.dy + gridSize / 2),
             rodPaint);
       } else {
         canvas.drawLine(
-            Offset(slats[i].dx - gridSize / 2, slats[i].dy),
-            Offset(slats[i].dx + gridSize * 32 + gridSize / 2, slats[i].dy),
+            Offset(slat.slatPositionToCoordinate[1]!.dx - gridSize / 2, slat.slatPositionToCoordinate[1]!.dy),
+            Offset(slat.slatPositionToCoordinate[32]!.dx + gridSize / 2, slat.slatPositionToCoordinate[32]!.dy),
             rodPaint);
       }
-    });
+      if (selectedSlats.contains(slat.id)){
+        drawBorder(canvas, slat, layerList[slat.layer]['color']);
+      }
+    }
 
     canvas.restore();
   }
