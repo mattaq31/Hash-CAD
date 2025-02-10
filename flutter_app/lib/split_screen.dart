@@ -15,7 +15,7 @@ class SplitScreen extends StatefulWidget {
 
 class _SplitScreenState extends State<SplitScreen> {
   // Initial divider position as a fraction of screen width
-  double _dividerPosition = 0.7;
+  double _dividerPosition = 0.5;
 
   @override
   Widget build(BuildContext context) {

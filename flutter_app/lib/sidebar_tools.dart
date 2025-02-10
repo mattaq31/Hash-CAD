@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'shared_app_state.dart';
 import 'package:flutter/material.dart';
@@ -11,10 +12,12 @@ class SideBarTools extends StatefulWidget {
 }
 
 class _SideBarToolsState extends State<SideBarTools> {
+  int selectedValue = 1;
+  TextEditingController controller = TextEditingController(text: '1');
+
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
-
     return AnimatedPositioned(
       duration: Duration(milliseconds: 300),
       left: 0,
@@ -35,7 +38,59 @@ class _SideBarToolsState extends State<SideBarTools> {
               SizedBox(height: 20),
 
               // Buttons
-              ElevatedButton(onPressed: () {}, child: Text("Button 1")),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 180,
+                    child: TextField(
+                      controller: controller,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Number of Slats to Draw',
+                      ),
+                      textInputAction: TextInputAction.done,
+                      inputFormatters: <TextInputFormatter>[ FilteringTextInputFormatter.digitsOnly],
+                      onSubmitted: (value) {
+                        int? newValue = int.tryParse(value);
+                        if (newValue != null && newValue >= 1 && newValue <= 32) {
+                          selectedValue = newValue;
+                          controller.text = selectedValue.toString();
+                        }
+                        else if (newValue != null && newValue < 1) {
+                          selectedValue = 1;
+                          controller.text = '1';
+                        }
+                        else {
+                          selectedValue = 32;
+                          controller.text = '32';
+                        }
+                        appState.updateSlatAddCount(selectedValue);
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.arrow_upward),
+                    onPressed: () {
+                      if (selectedValue < 32) {
+                        selectedValue++;
+                        controller.text = selectedValue.toString();
+                        appState.updateSlatAddCount(selectedValue);
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.arrow_downward),
+                    onPressed: () {
+                        if (selectedValue > 1) {
+                          selectedValue--;
+                          controller.text = selectedValue.toString();
+                          appState.updateSlatAddCount(selectedValue);
+                        }
+                    },
+                  ),
+                ],
+              ),
               SizedBox(height: 10),
               ElevatedButton(onPressed: () {}, child: Text("Button 2")),
 
