@@ -75,17 +75,13 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         child: MouseRegion(
           onHover: (event) {
             setState(() {
-              // these lines obtain the local position of the mouse pointer
-              final RenderBox box = context.findRenderObject() as RenderBox;
-              final Offset localPosition = box.globalToLocal(event.position);
-
               // the position is snapped to the nearest grid point
               // the function needs to make sure the global offset/scale
               // due to panning/zooming are taken into account
               hoverPosition = Offset(
-                (((localPosition.dx - offset.dx) / scale) / gridSize).round() *
+                (((event.position.dx - offset.dx) / scale) / gridSize).round() *
                     gridSize,
-                (((localPosition.dy - offset.dy) / scale) / gridSize).round() *
+                (((event.position.dy - offset.dy) / scale) / gridSize).round() *
                     gridSize,
               );
 
@@ -107,13 +103,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   }
                 }
               }
+              // TODO: this is now usable, but I'm sure this can still be optimized
+              Set<Offset> occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerIndex]?.keys.toSet() ?? {};
               // Check for conflicts in occupied positions
               for (var coord in slatCoordinates) {
-                if (appState.occupiedGridPoints
-                        .containsKey(appState.selectedLayerIndex) &&
-                    appState
-                        .occupiedGridPoints[appState.selectedLayerIndex]!.keys
-                        .contains(coord)) {
+                if (occupiedPositions.contains(coord)) {
                   hoverValid = false;
                   return;
                 }
@@ -170,26 +164,14 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               for (int j = 0; j < appState.slatAddCount; j++) {
                 incomingSlats.putIfAbsent(j, () => {});
                 for (int i = 0; i < 32; i++) {
-                  if (appState.layerList[appState.selectedLayerIndex]
-                          ["direction"] ==
-                      'horizontal') {
-                    // slatCoordinates[i + 1] = Offset(snappedPosition.dx + i * gridSize, snappedPosition.dy);
-                    incomingSlats[j]?[i + 1] = Offset(
-                        snappedPosition.dx + i * gridSize,
-                        snappedPosition.dy + j * gridSize);
+                  if (appState.layerList[appState.selectedLayerIndex]["direction"] =='horizontal') {
+                    incomingSlats[j]?[i + 1] = Offset(snappedPosition.dx + i * gridSize, snappedPosition.dy + j * gridSize);
                   } else {
-                    // slatCoordinates[i + 1] = Offset(snappedPosition.dx, snappedPosition.dy + i * gridSize);
-                    incomingSlats[j]?[i + 1] = Offset(
-                        snappedPosition.dx + j * gridSize,
-                        snappedPosition.dy + i * gridSize);
+                    incomingSlats[j]?[i + 1] = Offset(snappedPosition.dx + j * gridSize, snappedPosition.dy + i * gridSize);
                   }
-                  if (appState.occupiedGridPoints
-                          .containsKey(appState.selectedLayerIndex) &&
-                      appState
-                          .occupiedGridPoints[appState.selectedLayerIndex]!.keys
-                          .contains(incomingSlats[j]?[i + 1])) {
-                    selectedSlats.add(appState.occupiedGridPoints[appState
-                        .selectedLayerIndex]![incomingSlats[j]?[i + 1]]!);
+                  // TODO: if this could also be made faster, perhaps using a set, that would be great
+                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(incomingSlats[j]?[i + 1])) {
+                    selectedSlats.add(appState.occupiedGridPoints[appState.selectedLayerIndex]![incomingSlats[j]?[i + 1]]!);
                     return;
                   }
                 }
@@ -287,7 +269,7 @@ class GridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant GridPainter oldDelegate) {
-    return false; // Always repaint since the slat list might change
+    return false;
   }
 }
 
