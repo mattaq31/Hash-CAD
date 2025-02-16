@@ -8,6 +8,7 @@ import 'package:three_js_core/three_js_core.dart' as three;
 import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 import 'package:provider/provider.dart';
+import 'package:three_js_helpers/three_js_helpers.dart';
 
 class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
@@ -19,6 +20,7 @@ class ThreeDisplay extends StatefulWidget {
 class _ThreeDisplay extends State<ThreeDisplay> {
   late three.ThreeJS threeJs;
   bool isSetupComplete = false;
+  Set<String> slatIDs = {};
 
   @override
   void initState() {
@@ -68,6 +70,13 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     controls.maxPolarAngle = math.pi / 2;
 
+    // TODO: these grids don't show up in a useful position right now.  Perhaps I should create a 'home' zone in the 2D grid which corresponds to the zero area in the 3D scene, so that all scenes are anchored at the same position.
+    // final gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
+    // threeJs.scene.add(gridHelper);
+    //
+    // final axesHelper = AxesHelper(1000);
+    // threeJs.scene.add(axesHelper);
+
     // TODO: set better lighting
     final dirLight1 = three.DirectionalLight(0xffffff, 0.5);
     dirLight1.position.setValues(1, 1, 1);
@@ -97,8 +106,18 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   void addSlats(List<Slat> slats, List<Map<String, dynamic>> layerList){
 
+    Set localIDs = slats.map((slat) => slat.id).toSet();
+    Set removedIDs = slatIDs.difference(localIDs);
+    for (var id in removedIDs) {
+      removeSlat(id);
+      slatIDs.remove(id);
+    }
+
     for (var slat in slats) {
       if (threeJs.scene.getObjectByName(slat.id) == null) {
+
+        slatIDs.add(slat.id);
+
         final geometry = CylinderGeometry(2.5, 2.5, 320, 60); // actual size should be 310, but adding an extra 10 to improve visuals
         final material = three.MeshPhongMaterial.fromMap({"color": layerList[slat.layer]['color'].value & 0x00FFFFFF, "flatShading": true});
         final mesh = three.Mesh(geometry, material);
@@ -126,6 +145,13 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     // TODO: add centering system to zoom in on all slats if user desires
   }
 
+  void removeSlat(String id){
+    final slat = threeJs.scene.getObjectByName(id);
+    if (slat != null) {
+      threeJs.scene.remove(slat);
+    }
+  }
+
   void onResize(double width, double height) {
 
     if (!mounted || width <= 0 || height <= 0 || !isSetupComplete) return; // Ensure widget is still available
@@ -140,9 +166,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   @override
   Widget build(BuildContext context) {
     
-    return Consumer<MyAppState>(
+    return Consumer<DesignState>(
       builder: (context, appState, child) {
-        addSlats(appState.slats, appState.layerList);
+        addSlats(appState.slats.values.toList(), appState.layerList);
         return LayoutBuilder(
           builder: (context, constraints) {
             WidgetsBinding.instance.addPostFrameCallback((_) {

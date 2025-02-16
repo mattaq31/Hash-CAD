@@ -19,7 +19,7 @@ class _SplitScreenState extends State<SplitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
+    var appState = context.watch<DesignState>();
     CrossHatchShader.initialize(20.0);
     return Scaffold(
       body: Stack(

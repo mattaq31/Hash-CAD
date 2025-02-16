@@ -5,7 +5,7 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = Crisscross Designer
+PRODUCT_NAME = #-CAD
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = dfci.harvard.edu.flutterApp

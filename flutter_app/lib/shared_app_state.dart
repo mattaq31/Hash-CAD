@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'crisscross_core/slats.dart';
 
-class MyAppState extends ChangeNotifier {
+class DesignState extends ChangeNotifier {
   List<Map<String, dynamic>> layerList = [
     {
       "label": "Layer 1",
@@ -21,7 +21,8 @@ class MyAppState extends ChangeNotifier {
     },
   ];
 
-  List<Slat> slats = [];
+  Map<String, Slat> slats = {};
+  List<String> selectedSlats = [];
 
   int selectedLayerIndex = 0; // Default selection
   int slatAddCount = 1;
@@ -49,7 +50,7 @@ class MyAppState extends ChangeNotifier {
   void addSlats(Offset position, int layer, Map<int, Map<int, Offset>> slatCoordinates) {
 
     for (var slat in slatCoordinates.entries){
-      slats.add(Slat('L$layer-I${layerList[layer]["slat_count"]}', layer, slat.value));
+      slats['L$layer-I${layerList[layer]["slat_count"]}'] = Slat('L$layer-I${layerList[layer]["slat_count"]}', layer, slat.value);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
       occupiedGridPoints.putIfAbsent(layer, () => {});
       occupiedGridPoints[layer]?.addAll({for (var offset in slat.value.values) offset : 'L$layer-I${layerList[layer]["slat_count"]}'});
@@ -57,4 +58,33 @@ class MyAppState extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void removeSlat(String ID){
+    int layer = int.parse(ID.substring(1, 2));
+    slats.remove(ID);
+    occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
+    layerList[layer]["slat_count"] -= 1;
+    notifyListeners();
+  }
+
+  void selectSlat(String ID){
+    if (selectedSlats.contains(ID)){
+      selectedSlats.remove(ID);
+    } else {
+      selectedSlats.add(ID);
+    }
+    notifyListeners();
+  }
+  void clearSelection(){
+    selectedSlats = [];
+    notifyListeners();
+  }
+}
+
+class ActionState extends ChangeNotifier {
+String slatMode = 'Add';
+void updateSlatMode(String value) {
+  slatMode = value;
+  notifyListeners();
+}
 }

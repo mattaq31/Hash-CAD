@@ -1,6 +1,8 @@
 import 'dart:ui';
 
-import 'package:crisscross_designer/crisscross_core/slats.dart';
+import 'package:flutter/services.dart';
+
+import 'crisscross_core/slats.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +27,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   Offset offset = Offset.zero;
   Offset? hoverPosition; // Stores the snapped position of the hovering slat
   bool hoverValid = true;
-  List<String> selectedSlats = [];
+  // List<String> selectedSlats = [];
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
@@ -57,7 +59,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
 
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
+    var appState = context.watch<DesignState>();
+    var actionState = context.watch<ActionState>();
 
     return Scaffold(
       body: Listener(
@@ -73,46 +76,55 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         },
         // this handles the hovering function i.e. having a single slat follow the mouse to indicate where its position will be if dropped
         child: MouseRegion(
+          cursor: _getCursorForSlatMode(actionState.slatMode),
           onHover: (event) {
-            setState(() {
-              // the position is snapped to the nearest grid point
-              // the function needs to make sure the global offset/scale
-              // due to panning/zooming are taken into account
-              hoverPosition = Offset(
-                (((event.position.dx - offset.dx) / scale) / gridSize).round() *
-                    gridSize,
-                (((event.position.dy - offset.dy) / scale) / gridSize).round() *
-                    gridSize,
-              );
+            if (actionState.slatMode == "Add") {
+              setState(() {
+                // the position is snapped to the nearest grid point
+                // the function needs to make sure the global offset/scale
+                // due to panning/zooming are taken into account
+                hoverPosition = Offset(
+                  (((event.position.dx - offset.dx) / scale) / gridSize)
+                      .round() *
+                      gridSize,
+                  (((event.position.dy - offset.dy) / scale) / gridSize)
+                      .round() *
+                      gridSize,
+                );
 
-              // check to see if clicked position is taken by a slat already
-              hoverValid = true;
+                // check to see if clicked position is taken by a slat already
+                hoverValid = true;
 
-              // TODO: there must be a faster way to get this to run properly...
-              List<Offset> slatCoordinates = [];
-              for (int j = 0; j < appState.slatAddCount; j++) {
-                for (int i = 0; i < 32; i++) {
-                  if (appState.layerList[appState.selectedLayerIndex]
-                          ["direction"] ==
-                      'horizontal') {
-                    slatCoordinates.add(Offset(hoverPosition!.dx + i * gridSize,
-                        hoverPosition!.dy + j * gridSize));
-                  } else {
-                    slatCoordinates.add(Offset(hoverPosition!.dx + j * gridSize,
-                        hoverPosition!.dy + i * gridSize));
+                // TODO: there must be a faster way to get this to run properly...
+                List<Offset> slatCoordinates = [];
+                for (int j = 0; j < appState.slatAddCount; j++) {
+                  for (int i = 0; i < 32; i++) {
+                    if (appState.layerList[appState.selectedLayerIndex]
+                    ["direction"] ==
+                        'horizontal') {
+                      slatCoordinates.add(Offset(hoverPosition!.dx + i *
+                          gridSize,
+                          hoverPosition!.dy + j * gridSize));
+                    } else {
+                      slatCoordinates.add(Offset(hoverPosition!.dx + j *
+                          gridSize,
+                          hoverPosition!.dy + i * gridSize));
+                    }
                   }
                 }
-              }
-              // TODO: this is now usable, but I'm sure this can still be optimized
-              Set<Offset> occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerIndex]?.keys.toSet() ?? {};
-              // Check for conflicts in occupied positions
-              for (var coord in slatCoordinates) {
-                if (occupiedPositions.contains(coord)) {
-                  hoverValid = false;
-                  return;
+                // TODO: this is now usable, but I'm sure this can still be optimized
+                Set<Offset> occupiedPositions = appState
+                    .occupiedGridPoints[appState.selectedLayerIndex]?.keys
+                    .toSet() ?? {};
+                // Check for conflicts in occupied positions
+                for (var coord in slatCoordinates) {
+                  if (occupiedPositions.contains(coord)) {
+                    hoverValid = false;
+                    return;
+                  }
                 }
-              }
-            });
+              });
+            }
           },
           onExit: (event) {
             setState(() {
@@ -145,6 +157,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
             },
             // this is the actual point a slat is added to the system
             onTapUp: (details) {
+
               // Get tap position on the grid
               final RenderBox box = context.findRenderObject() as RenderBox;
               final Offset localPosition =
@@ -158,28 +171,49 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                     gridSize,
               );
 
-              // slats added to a persistent list here
-              Map<int, Map<int, Offset>> incomingSlats = {};
-              // Map<int, Offset> slatCoordinates = {};
-              for (int j = 0; j < appState.slatAddCount; j++) {
-                incomingSlats.putIfAbsent(j, () => {});
-                for (int i = 0; i < 32; i++) {
-                  if (appState.layerList[appState.selectedLayerIndex]["direction"] =='horizontal') {
-                    incomingSlats[j]?[i + 1] = Offset(snappedPosition.dx + i * gridSize, snappedPosition.dy + j * gridSize);
-                  } else {
-                    incomingSlats[j]?[i + 1] = Offset(snappedPosition.dx + j * gridSize, snappedPosition.dy + i * gridSize);
-                  }
-                  // TODO: if this could also be made faster, perhaps using a set, that would be great
-                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(incomingSlats[j]?[i + 1])) {
-                    selectedSlats.add(appState.occupiedGridPoints[appState.selectedLayerIndex]![incomingSlats[j]?[i + 1]]!);
-                    return;
+              if (actionState.slatMode == "Add"){
+                // slats added to a persistent list here
+                Map<int, Map<int, Offset>> incomingSlats = {};
+                // Map<int, Offset> slatCoordinates = {};
+                for (int j = 0; j < appState.slatAddCount; j++) {
+                  incomingSlats.putIfAbsent(j, () => {});
+                  for (int i = 0; i < 32; i++) {
+                    if (appState.layerList[appState.selectedLayerIndex]
+                            ["direction"] ==
+                        'horizontal') {
+                      incomingSlats[j]?[i + 1] = Offset(
+                          snappedPosition.dx + i * gridSize,
+                          snappedPosition.dy + j * gridSize);
+                    } else {
+                      incomingSlats[j]?[i + 1] = Offset(
+                          snappedPosition.dx + j * gridSize,
+                          snappedPosition.dy + i * gridSize);
+                    }
+                    // TODO: if this could also be made faster, perhaps using a set, that would be great
+                    if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(incomingSlats[j]?[i + 1])) {
+                      return;
+                    }
                   }
                 }
+                // if not already taken, can proceed to add a new slat
+                appState.clearSelection();
+                appState.addSlats(snappedPosition, appState.selectedLayerIndex, incomingSlats);
               }
-              // if not already taken, can proceed to add a new slat
-              selectedSlats = [];
-              appState.addSlats(
-                  snappedPosition, appState.selectedLayerIndex, incomingSlats);
+              else if (actionState.slatMode == "Delete"){
+                // slats removed from the persistent list here
+                if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(snappedPosition)) {
+                  appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerIndex]![snappedPosition]!);
+                }
+              }
+              else if (actionState.slatMode == "Move") {
+                // TODO: if this could also be made faster, perhaps using a set, that would be great
+                if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(snappedPosition)) {
+                  appState.selectSlat(appState.occupiedGridPoints[appState.selectedLayerIndex]![snappedPosition]!);
+                }
+                else{
+                  appState.clearSelection();
+                }
+              }
             },
             // the custom painter here constantly re-applies the grid and slats to the screen while moving around
             child: Stack(
@@ -210,10 +244,10 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                       scale,
                       offset,
                       gridSize,
-                      appState.slats,
+                      appState.slats.values.toList(),
                       appState.layerList,
                       appState.selectedLayerIndex,
-                      selectedSlats),
+                      appState.selectedSlats),
                   child: Container(),
                 ),
               ],
@@ -222,6 +256,19 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         ),
       ),
     );
+  }
+}
+
+SystemMouseCursor _getCursorForSlatMode(String slatMode) {
+  switch (slatMode) {
+    case "Add":
+      return SystemMouseCursors.precise; // Example: crosshair for adding
+    case "Delete":
+      return SystemMouseCursors.precise; // Example: blocked cursor for removal
+    case "Move":
+      return SystemMouseCursors.grab; // Example: pointer for selecting
+    default:
+      return SystemMouseCursors.basic; // Default cursor
   }
 }
 
