@@ -115,9 +115,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     for (var slat in slats) {
       if (threeJs.scene.getObjectByName(slat.id) == null) {
-
         slatIDs.add(slat.id);
-
         final geometry = CylinderGeometry(2.5, 2.5, 320, 60); // actual size should be 310, but adding an extra 10 to improve visuals
         final material = three.MeshPhongMaterial.fromMap({"color": layerList[slat.layer]['color'].value & 0x00FFFFFF, "flatShading": true});
         final mesh = three.Mesh(geometry, material);
@@ -136,10 +134,27 @@ class _ThreeDisplay extends State<ThreeDisplay> {
           mesh.position.x = slat.slatPositionToCoordinate[1]!.dx + 320/2 - 5;
           mesh.position.z = slat.slatPositionToCoordinate[1]!.dy;
         }
-
           mesh.updateMatrix();
         mesh.matrixAutoUpdate = false;
         threeJs.scene.add(mesh);
+      }
+      else{
+        final meshSlat = threeJs.scene.getObjectByName(slat.id);
+        double incomingPositionZ;
+        double incomingPositionX;
+        if (layerList[slat.layer]['direction'] == 'vertical') {
+          incomingPositionZ = slat.slatPositionToCoordinate[1]!.dy + 320/2 - 5;
+          incomingPositionX = slat.slatPositionToCoordinate[1]!.dx;
+        }
+        else{
+          incomingPositionZ = slat.slatPositionToCoordinate[1]!.dy;
+          incomingPositionX = slat.slatPositionToCoordinate[1]!.dx + 320/2 - 5;
+        }
+        if (meshSlat?.position.x != incomingPositionX || meshSlat?.position.z != incomingPositionZ) {
+          meshSlat?.position.x = incomingPositionX;
+          meshSlat?.position.z = incomingPositionZ;
+          meshSlat?.updateMatrix();
+        }
       }
     }
     // TODO: add centering system to zoom in on all slats if user desires

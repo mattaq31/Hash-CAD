@@ -25,6 +25,11 @@ class Slat {
       });
     }
 
+  void updateCoordinates(Map<int, Offset> slatCoordinates){
+    slatPositionToCoordinate = slatCoordinates;
+    slatCoordinateToPosition = {for (var offset in slatCoordinates.entries) offset.value : offset.key};
+  }
+
   void reverseDirection() {
     /// Reverses the handle order on the slat.
     Map<int, Offset> newSlatPositionToCoordinate = {};

@@ -59,6 +59,16 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
+
+    // also need to remove old positions from occupiedGridPoints and add new ones
+    int layer = int.parse(slatID.substring(1, 2));
+    occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
+    slats[slatID]?.updateCoordinates(slatCoordinates);
+    occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset : slatID});
+    notifyListeners();
+  }
+
   void removeSlat(String ID){
     int layer = int.parse(ID.substring(1, 2));
     slats.remove(ID);
