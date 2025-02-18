@@ -32,7 +32,6 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.7.2
         with:
-          branch: gh-pages
           folder: flutter_app/build/web
           clean: true  # Remove previous files before deploying
 
