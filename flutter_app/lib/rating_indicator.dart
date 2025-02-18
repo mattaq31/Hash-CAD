@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class RatingIndicator extends StatelessWidget {
   final double rating; // Value from 0 to 100
 
-  RatingIndicator({required this.rating});
+  const RatingIndicator({super.key, required this.rating});
 
   @override
   Widget build(BuildContext context) {

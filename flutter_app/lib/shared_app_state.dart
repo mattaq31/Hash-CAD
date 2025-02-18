@@ -4,18 +4,22 @@ import 'crisscross_core/slats.dart';
 class DesignState extends ChangeNotifier {
   List<Map<String, dynamic>> layerList = [
     {
-      "label": "Layer 1",
-      "value": "L1",
-      "direction": 'horizontal',
-      'order': 1,
-      'slat_count': 0,
-      "color": Colors.blue
+      "label": "Layer 1", // just a label
+      "value": "L1", // short form label
+      "direction": 'horizontal', // slat direction - TO REMOVE
+      'order': 1, // draw order - has to be updated when layers are moved
+      'top_helix': 'H5', // not in use for now
+      'bottom_helix': 'H2', // not in use for now
+      'slat_count': 0, // used to give an id to a new slat
+      "color": Colors.blue // default slat color
     },
     {
       "label": "Layer 2",
       "value": "L2",
       "direction": 'vertical',
       'slat_count': 0,
+      'top_helix': 'H5',
+      'bottom_helix': 'H2',
       'order': 2,
       "color": Colors.red
     },
@@ -87,6 +91,34 @@ class DesignState extends ChangeNotifier {
   }
   void clearSelection(){
     selectedSlats = [];
+    notifyListeners();
+  }
+
+  void rotateLayerDirection(){
+    if (layerList[selectedLayerIndex]['direction'] == 'horizontal'){
+      layerList[selectedLayerIndex]['direction'] = 'vertical';
+    }
+    else{
+      layerList[selectedLayerIndex]['direction'] = 'horizontal';
+    }
+    notifyListeners();
+  }
+
+  void flipLayer(int layer){
+    if (layerList[layer]['top_helix'] == 'H5'){
+      layerList[layer]['top_helix'] = 'H2';
+      layerList[layer]['bottom_helix'] = 'H5';
+    }
+    else{
+      layerList[layer]['top_helix'] = 'H5';
+      layerList[layer]['bottom_helix'] = 'H2';
+    }
+    notifyListeners();
+  }
+
+  void deleteLayer(int layer){
+    layerList.removeAt(layer);
+    selectedLayerIndex = layerList.isEmpty ? -1 : layerList.length - 1;
     notifyListeners();
   }
 }
