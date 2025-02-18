@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'crosshatch_shader.dart';
 import 'shared_app_state.dart';
 
+/// Class that takes care of painting all 2D objects on the grid, including the grid itself, slats and slat hover effects.
 class GridAndCanvas extends StatefulWidget {
   const GridAndCanvas({super.key});
 
@@ -18,26 +19,35 @@ class GridAndCanvas extends StatefulWidget {
 }
 
 class _GridAndCanvasState extends State<GridAndCanvas> {
-  final double gridSize = 10.0; // Grid cell size
-  double initialScale = 1.0;
-  Offset initialPanOffset = Offset.zero;
-  Offset initialGestureFocalPoint = Offset.zero;
-  double scale = 1.0;
+
+  final double gridSize = 10.0; // Grid cell size (do not change)
+
+  double initialScale = 1.0; // scale parameters
   double minScale = 0.5;
   double maxScale = 3.0;
-  Offset offset = Offset.zero;
+
+  double scale = 1.0; // actual running scale value
+  Offset offset = Offset.zero; // actual running offset value
+
+  // for the gesture detector (touchpad)
+  Offset initialPanOffset = Offset.zero;
+  Offset initialGestureFocalPoint = Offset.zero;
+
   Offset? hoverPosition; // Stores the snapped position of the hovering slat
-  bool hoverValid = true;
-  bool dragActive = false;
-  bool isShiftPressed = false;
-  Offset slatMoveAnchor = Offset.zero;
-  final FocusNode keyFocusNode = FocusNode(); // Persistent focus node
-  List<String> hiddenSlats = [];
+  bool hoverValid = true;  // Flag to indicate if the hovering slat is in a valid position
+
+  bool dragActive = false;  // currently in slat drag mode (panning turned off)
+  Offset slatMoveAnchor = Offset.zero; // the anchor point of the slats being moved
+  List<String> hiddenSlats = []; // slats that are hidden from view while being moved
+
+  bool isShiftPressed = false; // keyboard bool check
+  final FocusNode keyFocusNode = FocusNode(); // Persistent focus node for keyboard
+
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
-  (double, Offset) scrollZoomCalculator(PointerScrollEvent event,
-      {double zoomFactor = 0.1}) {
+  (double, Offset) scrollZoomCalculator(PointerScrollEvent event, {double zoomFactor = 0.1}) {
+
     double newScale = scale;
 
     // only checks vertical scroll movement (in or out)
@@ -62,6 +72,28 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     return (newScale, calcOffset);
   }
 
+  /// Function for checking if a slat can be placed at a given coordinate.
+  bool checkCoordinateOccupancy(DesignState appState, List<Offset> coordinates){
+
+    // TODO: this is now usable, but I'm sure this can still be optimized
+    Set<Offset> occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys.toSet() ?? {};
+    Set<Offset> hiddenPositions = {};
+
+    // hidden slats are not considered for conflicts
+    for (var slat in hiddenSlats){
+      hiddenPositions.addAll(appState.slats[slat]!.slatPositionToCoordinate.values);
+    }
+
+    // Check for conflicts in occupied positions
+    for (var coord in coordinates) {
+      if (occupiedPositions.contains(coord) && !hiddenPositions.contains(coord)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Function for converting a mouse hover event into a 'snapPosition' and 'hoverValid' flag to be used when pinpointing the current position on the grid.
   (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, bool preSelectedSlats){
     // the position is snapped to the nearest grid point
     // the function needs to make sure the global offset/scale
@@ -84,10 +116,12 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         }
       }
     }
+    // preselectedSlats means that the slats are already selected and are being moved
     else {
       for (int j = 0; j < appState.slatAddCount; j++) {
         for (int i = 0; i < 32; i++) {
-          if (appState.layerList[appState.selectedLayerIndex]["direction"] == 'horizontal') {
+          // TODO: this eventually needs to be overriden when new angle types are introduced
+          if (appState.layerMap[appState.selectedLayerKey]?["direction"] == 'horizontal') {
             slatCoordinates.add(Offset(snapPosition!.dx + i * gridSize,
                 snapPosition!.dy + j * gridSize));
           } else {
@@ -97,37 +131,35 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         }
       }
     }
-    snapHoverValid = !checkCoordinateOccupancy(appState, slatCoordinates);
 
+    snapHoverValid = !checkCoordinateOccupancy(appState, slatCoordinates);
     return (snapPosition, snapHoverValid);
   }
 
-  bool checkCoordinateOccupancy(DesignState appState, List<Offset> coordinates){
-
-    // TODO: this is now usable, but I'm sure this can still be optimized
-    Set<Offset> occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerIndex]?.keys.toSet() ?? {};
-    Set<Offset> hiddenPositions = {};
-
-    // hidden slats are not considered for conflicts
-    for (var slat in hiddenSlats){
-      hiddenPositions.addAll(appState.slats[slat]!.slatPositionToCoordinate.values);
+  /// logic for changing the slat cursor type based on the current action mode
+  SystemMouseCursor getCursorForSlatMode(String slatMode) {
+    switch (slatMode) {
+      case "Add":
+        return SystemMouseCursors.precise; // Example: crosshair for adding
+      case "Delete":
+        return SystemMouseCursors.precise; // Example: blocked cursor for removal
+      case "Move":
+        return SystemMouseCursors.grab; // Example: pointer for selecting
+      default:
+        return SystemMouseCursors.basic; // Default cursor
     }
-
-    // Check for conflicts in occupied positions
-    for (var coord in coordinates) {
-      if (occupiedPositions.contains(coord) && !hiddenPositions.contains(coord)) {
-        return true;
-      }
-    }
-    return false;
   }
-
 
   @override
   Widget build(BuildContext context) {
+
+    // watches the current slat and layer statuses
     var appState = context.watch<DesignState>();
+
+    // watches the current action mode
     var actionState = context.watch<ActionState>();
 
+    // main app activity defined here
     return Scaffold(
       body: Listener(
         // this handles mouse zoom events only
@@ -140,17 +172,14 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
             });
           }
         },
-        // the following three event handlers are specifically setup to handle the move mode
+        // the following three event handlers are specifically setup to handle the slat move mode
         onPointerDown: (event){
           // in move mode, a slat can be moved directly with a click and drag - this detects if a slat is under the pointer when clicked
           if(actionState.slatMode == "Move"){
             final Offset snappedPosition = Offset(
-              (((event.position.dx - offset.dx) / scale) / gridSize).round() *
-                  gridSize,
-              (((event.position.dy - offset.dy) / scale) / gridSize).round() *
-                  gridSize,
-            );
-            if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(snappedPosition)) {
+              (((event.position.dx - offset.dx) / scale) / gridSize).round() * gridSize,
+              (((event.position.dy - offset.dy) / scale) / gridSize).round() * gridSize);
+            if (appState.occupiedGridPoints.containsKey(appState.selectedLayerKey) && appState.occupiedGridPoints[appState.selectedLayerKey]!.keys.contains(snappedPosition)) {
               dragActive = true;  // drag mode is signalled here - panning is now disabled
               slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
             }
@@ -207,7 +236,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           },
           // this handles the hovering function in most modes i.e. having a single slat follow the mouse to indicate where its position will be if dropped
           child: MouseRegion(
-            cursor: _getCursorForSlatMode(actionState.slatMode),  // TODO: it looks better if the cursor changes when hovering over a slat, rather than always being the same in move mode
+            cursor: getCursorForSlatMode(actionState.slatMode),  // TODO: it looks better if the cursor changes when hovering over a slat, rather than always being the same in move mode
             onHover: (event) {
               keyFocusNode.requestFocus();
               if (actionState.slatMode == "Add") {
@@ -250,15 +279,13 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   scale = newScale;
                 });
               },
-              // this is the actual point a slat is added to the system
+              // this is the actual point a new slat is being added to the system
               onTapDown: (details) {
 
                 // snap the coordinate to the grid, while taking into account the global offset and scale
                 final Offset snappedPosition = Offset(
-                  (((details.localPosition.dx - offset.dx) / scale) / gridSize).round() *
-                      gridSize,
-                  (((details.localPosition.dy - offset.dy) / scale) / gridSize).round() *
-                      gridSize,
+                  (((details.localPosition.dx - offset.dx) / scale) / gridSize).round() * gridSize,
+                  (((details.localPosition.dy - offset.dy) / scale) / gridSize).round() * gridSize,
                 );
 
                 if (actionState.slatMode == "Add"){
@@ -267,12 +294,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   }
                   // slats added to a persistent list here
                   Map<int, Map<int, Offset>> incomingSlats = {};
-                  // Map<int, Offset> slatCoordinates = {};
+
                   for (int j = 0; j < appState.slatAddCount; j++) {
                     incomingSlats.putIfAbsent(j, () => {});
                     for (int i = 0; i < 32; i++) {
-                      if (appState.layerList[appState.selectedLayerIndex]
-                      ["direction"] == 'horizontal') {
+                      if (appState.layerMap[appState.selectedLayerKey]?["direction"] == 'horizontal') {
                         incomingSlats[j]?[i + 1] = Offset(
                             snappedPosition.dx + i * gridSize,
                             snappedPosition.dy + j * gridSize);
@@ -285,22 +311,23 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   }
                   // if not already taken, can proceed to add a new slat
                   appState.clearSelection();
-                  appState.addSlats(snappedPosition, appState.selectedLayerIndex, incomingSlats);
+                  appState.addSlats(snappedPosition, appState.selectedLayerKey, incomingSlats);
                 }
                 else if (actionState.slatMode == "Delete"){
                   // slats removed from the persistent list here
-                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(snappedPosition)) {
-                    appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerIndex]![snappedPosition]!);
+                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerKey) && appState.occupiedGridPoints[appState.selectedLayerKey]!.keys.contains(snappedPosition)) {
+                    appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![snappedPosition]!);
                   }
                 }
                 else if (actionState.slatMode == "Move") {
                   // TODO: if this could also be made faster, perhaps using a set, that would be great
                   // TODO: on touchpad, the shift click seems to clear the selection instead of add on (probably due to multiple clicks?)
-                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerIndex) && appState.occupiedGridPoints[appState.selectedLayerIndex]!.keys.contains(snappedPosition)) {
+                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerKey) && appState.occupiedGridPoints[appState.selectedLayerKey]!.keys.contains(snappedPosition)) {
                     if (appState.selectedSlats.isNotEmpty && !isShiftPressed){
                       appState.clearSelection();
                     }
-                    appState.selectSlat(appState.occupiedGridPoints[appState.selectedLayerIndex]![snappedPosition]!);
+                    // this flips a selection if the slat was already clicked (and pressing shift)
+                    appState.selectSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![snappedPosition]!);
                   }
                   else{
                     appState.clearSelection();
@@ -321,9 +348,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         scale,
                         offset,
                         gridSize,
-                        appState.layerList[appState.selectedLayerIndex]['color'],
+                        appState.layerMap[appState.selectedLayerKey]?['color'],
                         hoverPosition,
-                        appState.layerList[appState.selectedLayerIndex]['direction'],
+                        appState.layerMap[appState.selectedLayerKey]?['direction'],
                         hoverValid,
                         appState.slatAddCount,
                         appState.selectedSlats.map((e) => appState.slats[e]!).toList(),
@@ -339,8 +366,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         offset,
                         gridSize,
                         appState.slats.values.toList(),
-                        appState.layerList,
-                        appState.selectedLayerIndex,
+                        appState.layerMap,
+                        appState.selectedLayerKey,
                         appState.selectedSlats,
                         hiddenSlats),
                     child: Container(),
@@ -355,19 +382,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   }
 }
 
-SystemMouseCursor _getCursorForSlatMode(String slatMode) {
-  switch (slatMode) {
-    case "Add":
-      return SystemMouseCursors.precise; // Example: crosshair for adding
-    case "Delete":
-      return SystemMouseCursors.precise; // Example: blocked cursor for removal
-    case "Move":
-      return SystemMouseCursors.grab; // Example: pointer for selecting
-    default:
-      return SystemMouseCursors.basic; // Default cursor
-  }
-}
-
+/// Custom painter for the grid lines
 class GridPainter extends CustomPainter {
   final double gridSize;
   final double scale;
@@ -416,15 +431,15 @@ class GridPainter extends CustomPainter {
   }
 }
 
-
+/// Function to calculate the angle of a slat based on its two end points
 double calculateSlatAngle(Offset p1, Offset p2) {
-  // calculates extension from either point of a slat for a more visually-pleasing experience
   double dx = p2.dx - p1.dx;
   double dy = p2.dy - p1.dy;
   double angle = atan2(dy, dx); // Angle in radians
   return angle;
 }
 
+/// Function to calculate the tiny extension outside of the grid on either side of a slat, based on the slat's angle and the grid size.
 Offset calculateSlatExtend(Offset p1, Offset p2, double gridSize){
   double slatAngle = calculateSlatAngle(p1, p2);
   double extX = (gridSize/2) * cos(slatAngle);
@@ -432,7 +447,7 @@ Offset calculateSlatExtend(Offset p1, Offset p2, double gridSize){
   return Offset(extX, extY);
 }
 
-
+/// Custom painter for the slat hover display
 class SlatHoverPainter extends CustomPainter {
   final double gridSize;
   final double scale;
@@ -452,21 +467,24 @@ class SlatHoverPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+
+    // usual transformations required to draw on the canvas
     canvas.save();
     canvas.translate(canvasOffset.dx, canvasOffset.dy);
     canvas.scale(scale);
-    // Draw the hovering slat
+
     if (hoverPosition != null) {
       final Paint hoverRodPaint = Paint()
         ..color = slatColor.withValues(alpha: 0.5) // Semi-transparent slat
         ..strokeWidth = gridSize / 2
         ..style = PaintingStyle.fill;
 
-      if (!hoverValid) {
+      if (!hoverValid) {  // invalid slat
         hoverRodPaint.shader = CrossHatchShader.shader;
         hoverRodPaint.color = Colors.red;
       }
 
+      // if there are no preset positions, attempt to draw based on layer angle TODO: this needs to be updated with more options
       if (ignorePreSelectedSlats) {
         if (direction == 'vertical') {
           for (int i = 0; i < slatAddCount; i++) {
@@ -489,7 +507,9 @@ class SlatHoverPainter extends CustomPainter {
             );
           }
         }
-      } else {
+      }
+      // otherwise, draw hover points based on the anchor and provided coordinates
+      else {
         Offset anchorTranslate = hoverPosition! - moveAnchor;
         for (var slat in preSelectedSlats) {
           Offset slatExtend = calculateSlatExtend(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!, gridSize);
@@ -508,22 +528,23 @@ class SlatHoverPainter extends CustomPainter {
   }
 }
 
+/// Custom painter for the slats themselves
 class SlatPainter extends CustomPainter {
   final double gridSize;
   final double scale;
   final Offset canvasOffset;
 
-  final List<Map<String, dynamic>> layerList;
+  final Map<String, Map<String, dynamic>> layerMap;
   final List<Slat> slats;
-  final int selectedLayer;
+  final String selectedLayer;
   final List<String> selectedSlats;
   final List<String> hiddenSlats;
 
   SlatPainter(this.scale, this.canvasOffset, this.gridSize, this.slats,
-      this.layerList, this.selectedLayer, this.selectedSlats, this.hiddenSlats);
+      this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats);
 
+  /// draws a dotted border around a slat when selected
   void drawBorder(Canvas canvas, Slat slat, Color color, Offset slatExtend) {
-
     final paint = Paint()
       ..color = color
       ..strokeWidth = gridSize / 6
@@ -576,31 +597,31 @@ class SlatPainter extends CustomPainter {
     canvas.scale(scale);
 
     // TODO: slat draw length should be parametrized
-
     final sortedSlats = List<Slat>.from(slats)
-      ..sort((a, b) => layerList[a.layer]['order'].compareTo(layerList[b.layer]['order']));
+      ..sort((a, b) => layerMap[a.layer]?['order'].compareTo(layerMap[b.layer]?['order']));
 
     for (var slat in sortedSlats) {
       if(hiddenSlats.contains(slat.id)){
         continue;
       }
       Paint rodPaint = Paint()
-        ..color = layerList[slat.layer]['color']
+        ..color = layerMap[slat.layer]?['color']
         ..strokeWidth = gridSize / 2
         ..style = PaintingStyle.fill;
-      if (slat.layer != selectedLayer) {
+      if (slat.layer != selectedLayer) { // TODO: alpha values can start to overlap when there are loads of layers....
         rodPaint = Paint()
-          ..color = layerList[slat.layer]['color'].withValues(alpha: 0.5)
+          ..color = layerMap[slat.layer]?['color'].withValues(alpha: 0.5)
           ..strokeWidth = gridSize / 2
           ..style = PaintingStyle.fill;
       }
+
       Offset slatExtend = calculateSlatExtend(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!, gridSize);
 
       canvas.drawLine(slat.slatPositionToCoordinate[1]! - slatExtend,
           slat.slatPositionToCoordinate[32]! + slatExtend, rodPaint);
 
       if (selectedSlats.contains(slat.id)) {
-        drawBorder(canvas, slat, layerList[slat.layer]['color'], slatExtend);
+        drawBorder(canvas, slat, layerMap[slat.layer]?['color'], slatExtend);
       }
     }
 

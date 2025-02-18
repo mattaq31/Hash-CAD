@@ -5,7 +5,7 @@ class Slat {
   /// Wrapper class to hold all of a slat's handles and related details.
 
   final String id;
-  final int layer;
+  final String layer;
   final int maxLength;
   bool reversedSlat = false; // flag to indicate if the slat has been reversed
 

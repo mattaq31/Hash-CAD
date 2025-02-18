@@ -47,6 +47,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     super.dispose();
   }
 
+
   late three.Mesh mesh;
   late OrbitControls controls;
 
@@ -104,55 +105,92 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     print("LookAt Target: (${target.x}, ${target.y}, ${target.z})");
   }
 
-  void addSlats(List<Slat> slats, List<Map<String, dynamic>> layerList){
+  /// Calculates a slat's directionality angle based on the first and last points
+  double calculateSlatAngle(Offset p1, Offset p2) {
+    double dx = p2.dx - p1.dx;
+    double dy = p2.dy - p1.dy;
+    double angle = math.atan2(dy, dx); // Angle in radians
+    return angle;
+  }
+
+  /// Calculates the extension from the slat's center point to the edge of the slat, based on the slat's angle and the grid size.
+  Offset calculateSlatExtend(Offset p1, Offset p2, double gridSize){
+    double slatAngle = calculateSlatAngle(p1, p2);
+    double extX = (gridSize/2) * math.cos(slatAngle);
+    double extY = (gridSize/2) * math.sin(slatAngle);
+    return Offset(extX, extY);
+  }
+
+  /// Adds all provided slats into the 3D scene, updating existing slats if necessary.
+  void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap){
 
     Set localIDs = slats.map((slat) => slat.id).toSet();
     Set removedIDs = slatIDs.difference(localIDs);
+
+    // deletes slats that are no longer in the list
     for (var id in removedIDs) {
       removeSlat(id);
       slatIDs.remove(id);
     }
 
     for (var slat in slats) {
+      // if slat does not exist, recreate from scratch
       if (threeJs.scene.getObjectByName(slat.id) == null) {
         slatIDs.add(slat.id);
         final geometry = CylinderGeometry(2.5, 2.5, 320, 60); // actual size should be 310, but adding an extra 10 to improve visuals
-        final material = three.MeshPhongMaterial.fromMap({"color": layerList[slat.layer]['color'].value & 0x00FFFFFF, "flatShading": true});
+        final material = three.MeshPhongMaterial.fromMap({"color": layerMap[slat.layer]?['color'].value & 0x00FFFFFF, "flatShading": true});
         final mesh = three.Mesh(geometry, material);
         mesh.name = slat.id;
 
-        mesh.position.y = slat.layer.toDouble() * 6.5;
-        mesh.rotation.z = math.pi / 2;
+        // a value of 6.5 used for each layer (enough for one slat + a small gap for cargo later on)
+        mesh.position.y = layerMap[slat.layer]?['order'].toDouble() * 6.5;
+        mesh.rotation.z = math.pi / 2;  // default
 
-        if (layerList[slat.layer]['direction'] == 'vertical') {
-          mesh.rotation.y = -math.pi/2;
-          mesh.position.z = slat.slatPositionToCoordinate[1]!.dy + 320/2 - 5;
-          mesh.position.x = slat.slatPositionToCoordinate[1]!.dx;
-        }
-        else{
-          mesh.rotation.y = 0;
-          mesh.position.x = slat.slatPositionToCoordinate[1]!.dx + 320/2 - 5;
-          mesh.position.z = slat.slatPositionToCoordinate[1]!.dy;
-        }
-          mesh.updateMatrix();
+        // same angle/extension system used here as in 2D system
+        double slatAngle = calculateSlatAngle(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!);
+        Offset slatExtend = calculateSlatExtend(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!, 2*(320/2 - 5));
+
+        mesh.rotation.y = -slatAngle;
+        mesh.position.z = slat.slatPositionToCoordinate[1]!.dy + slatExtend.dy;
+        mesh.position.x = slat.slatPositionToCoordinate[1]!.dx + slatExtend.dx;
+        mesh.updateMatrix();
         mesh.matrixAutoUpdate = false;
         threeJs.scene.add(mesh);
       }
+      // slat already exists - should check to see if layer position, color, or direction has changed
       else{
+        bool updateNeeded = false;
         final meshSlat = threeJs.scene.getObjectByName(slat.id);
-        double incomingPositionZ;
-        double incomingPositionX;
-        if (layerList[slat.layer]['direction'] == 'vertical') {
-          incomingPositionZ = slat.slatPositionToCoordinate[1]!.dy + 320/2 - 5;
-          incomingPositionX = slat.slatPositionToCoordinate[1]!.dx;
-        }
-        else{
-          incomingPositionZ = slat.slatPositionToCoordinate[1]!.dy;
-          incomingPositionX = slat.slatPositionToCoordinate[1]!.dx + 320/2 - 5;
-        }
-        if (meshSlat?.position.x != incomingPositionX || meshSlat?.position.z != incomingPositionZ) {
+        double slatAngle = calculateSlatAngle(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!);
+        Offset slatExtend = calculateSlatExtend(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!, 2*(320/2 - 5));
+
+        double incomingSlatAngle = -slatAngle;
+        double incomingPositionZ = slat.slatPositionToCoordinate[1]!.dy + slatExtend.dy;
+        double incomingPositionX = slat.slatPositionToCoordinate[1]!.dx + slatExtend.dx;
+        double incomingLayer = layerMap[slat.layer]?['order'].toDouble() * 6.5;
+
+        // general position change
+        if (meshSlat?.position.x != incomingPositionX || meshSlat?.position.z != incomingPositionZ || meshSlat?.rotation.y != incomingSlatAngle) {
           meshSlat?.position.x = incomingPositionX;
           meshSlat?.position.z = incomingPositionZ;
+          meshSlat?.rotation.y = incomingSlatAngle;
+          updateNeeded = true;
+        }
+
+        // layer change
+        if (meshSlat?.position.y != incomingLayer) {
+          meshSlat?.position.y = incomingLayer;
+          updateNeeded = true;
+        }
+
+        // color change
+        if (layerMap[slat.layer]?['color'].value & 0x00FFFFFF != meshSlat?.material?.color.getHex()) {
+          meshSlat?.material?.color.setFromHex32(layerMap[slat.layer]?['color'].value & 0x00FFFFFF);
+          updateNeeded = true;
+        }
+
+        // request update if necessary
+        if(updateNeeded) {
           meshSlat?.updateMatrix();
         }
       }
@@ -160,6 +198,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     // TODO: add centering system to zoom in on all slats if user desires
   }
 
+  /// Removes a slat from the 3D scene
   void removeSlat(String id){
     final slat = threeJs.scene.getObjectByName(id);
     if (slat != null) {
@@ -167,8 +206,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
   }
 
+  /// Attempts to adjust viewer size when window is adjusted, although this is still not 100% effective
   void onResize(double width, double height) {
-
     if (!mounted || width <= 0 || height <= 0 || !isSetupComplete) return; // Ensure widget is still available
 
     if (threeJs.camera != null && threeJs.renderer != null) {
@@ -180,10 +219,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   @override
   Widget build(BuildContext context) {
-    
     return Consumer<DesignState>(
       builder: (context, appState, child) {
-        addSlats(appState.slats.values.toList(), appState.layerList);
+        manageSlats(appState.slats.values.toList(), appState.layerMap);
         return LayoutBuilder(
           builder: (context, constraints) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
