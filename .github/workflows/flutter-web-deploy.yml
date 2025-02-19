@@ -18,11 +18,13 @@ jobs:
         with:
           channel: stable
 
-      - name: Clean Flutter Project
-        run: flutter clean
-
       - name: Enable Flutter Web
         run: flutter config --enable-web
+        working-directory: flutter_app
+
+      - name: Clean Flutter Project
+        run: flutter clean
+        working-directory: flutter_app
 
       - name: Install Dependencies
         run: flutter pub get
