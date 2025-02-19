@@ -12,7 +12,7 @@ Future<void> main() async {
       ChangeNotifierProvider(create: (context) => ActionState())],
     child: MaterialApp(
       home: SplitScreen(),
-      title: 'Crisscross Designer',
+      title: 'Hash-CAD',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
