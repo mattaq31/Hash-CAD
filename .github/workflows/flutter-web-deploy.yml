@@ -3,7 +3,7 @@ name: Deploy Flutter Web to GitHub Pages
 on:
   push:
     branches:
-      - main  # Change to your main development branch if needed
+      - web-deploy  # Change to your main development branch if needed
 
 jobs:
   build_and_deploy:
@@ -33,6 +33,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4.7.2
         with:
           folder: flutter_app/build/web
+          branch: gh-pages
           clean: true  # Remove previous files before deploying
 
 
