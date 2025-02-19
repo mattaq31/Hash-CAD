@@ -18,6 +18,9 @@ jobs:
         with:
           channel: stable
 
+      - name: Clean Flutter Project
+        run: flutter clean
+
       - name: Enable Flutter Web
         run: flutter config --enable-web
 
