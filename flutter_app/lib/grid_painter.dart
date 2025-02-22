@@ -174,6 +174,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         },
         // the following three event handlers are specifically setup to handle the slat move mode
         onPointerDown: (event){
+          keyFocusNode.requestFocus(); // I don't know why keyboard focus keeps being lost, but this should help fix the problem
+
           // in move mode, a slat can be moved directly with a click and drag - this detects if a slat is under the pointer when clicked
           if(actionState.slatMode == "Move"){
             final Offset snappedPosition = Offset(
@@ -232,6 +234,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               else{
                 isShiftPressed = false;
               }
+              if (event is KeyUpEvent){
+                isShiftPressed = false;
+              }
             });
           },
           // this handles the hovering function in most modes i.e. having a single slat follow the mouse to indicate where its position will be if dropped
@@ -281,7 +286,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               },
               // this is the actual point a new slat is being added to the system
               onTapDown: (details) {
-
+                keyFocusNode.requestFocus();
                 // snap the coordinate to the grid, while taking into account the global offset and scale
                 final Offset snappedPosition = Offset(
                   (((details.localPosition.dx - offset.dx) / scale) / gridSize).round() * gridSize,
@@ -319,17 +324,31 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                     appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![snappedPosition]!);
                   }
                 }
-                else if (actionState.slatMode == "Move") {
+              },
+
+              onTapUp: (TapUpDetails details) {
+                keyFocusNode.requestFocus();
+                final Offset snappedPosition = Offset(
+                  (((details.localPosition.dx - offset.dx) / scale) / gridSize).round() * gridSize,
+                  (((details.localPosition.dy - offset.dy) / scale) / gridSize).round() * gridSize,
+                );
+                if (actionState.slatMode == "Move") {
                   // TODO: if this could also be made faster, perhaps using a set, that would be great
                   // TODO: on touchpad, the shift click seems to clear the selection instead of add on (probably due to multiple clicks?)
-                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerKey) && appState.occupiedGridPoints[appState.selectedLayerKey]!.keys.contains(snappedPosition)) {
-                    if (appState.selectedSlats.isNotEmpty && !isShiftPressed){
+                  print(isShiftPressed);
+                  if (appState.occupiedGridPoints
+                          .containsKey(appState.selectedLayerKey) &&
+                      appState
+                          .occupiedGridPoints[appState.selectedLayerKey]!.keys
+                          .contains(snappedPosition)) {
+                    if (appState.selectedSlats.isNotEmpty && !isShiftPressed) {
+                      print('I am here');
                       appState.clearSelection();
                     }
                     // this flips a selection if the slat was already clicked (and pressing shift)
-                    appState.selectSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![snappedPosition]!);
-                  }
-                  else{
+                    appState.selectSlat(appState.occupiedGridPoints[
+                        appState.selectedLayerKey]![snappedPosition]!);
+                  } else {
                     appState.clearSelection();
                   }
                 }
