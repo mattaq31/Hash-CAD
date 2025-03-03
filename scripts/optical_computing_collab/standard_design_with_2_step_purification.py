@@ -33,7 +33,7 @@ for n in np.arange(16,32):
 megastructure.assign_cargo_handles_with_array(fiveprime_handle_pattern, doublepure_key, layer='bottom')
 ########## PATCHING PLATES
 core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
-src_004, src_005, src_007, P3518 = get_cargo_plates()
+src_004, src_005, src_007, P3518, P3510 = get_cargo_plates()
 
 megastructure.patch_placeholder_handles(
     [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, src_007, P3518, src_004],

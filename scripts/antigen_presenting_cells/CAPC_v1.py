@@ -18,10 +18,12 @@ lab_helper_folder = os.path.join(design_folder, 'lab_helper_sheets')
 create_dir_if_empty(echo_folder, lab_helper_folder)
 
 generate_graphical_report = False
+generate_trench_graphics = True
 generate_animation = False
-generate_echo = True
-generate_lab_helpers = True
+generate_echo = False
+generate_lab_helpers = False
 compute_hamming = False
+export_design = False
 
 np.random.seed(8)
 
@@ -37,10 +39,18 @@ M1.patch_placeholder_handles(
     [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, src_007, src_004],
     ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
 M1.patch_control_handles(core_plate)
+
+if export_design:
+    M1.export_design('final_design.xlsx', design_folder)
 ########################################
 # ECHO
-
 special_vol_plates = {'sw_src007': int(150 * (500 / 200)), 'sw_src004': int(150 * (500 / 200))}
+
+# sw_src007
+# sw_src004
+# new handle library (6)
+# sw_src002
+# new seed plate - 3621
 
 if generate_echo:
     echo_sheet = convert_slats_into_echo_commands(slat_dict=M1.slats,
@@ -114,3 +124,22 @@ if generate_animation:
                               custom_assembly_groups=custom_animation_dict,
                               animation_type='translate',
                               camera_spin=True)
+
+if generate_trench_graphics:
+    special_groups = {'Horizontal-Trench': ['layer1-slat119', 'layer1-slat120', 'layer1-slat183', 'layer1-slat184'],
+                      'Vertical-Trench': ['layer2-slat59', 'layer2-slat60', 'layer2-slat26', 'layer2-slat27']}
+    del M1.slats['layer1-slat119']
+    del M1.slats['layer1-slat120']
+    del M1.slats['layer1-slat183']
+    del M1.slats['layer1-slat184']
+    
+    del M1.slats['layer2-slat59']
+    del M1.slats['layer2-slat60']
+    del M1.slats['layer2-slat26']
+    del M1.slats['layer2-slat27']
+
+    M1.create_standard_graphical_report(os.path.join(design_folder, 'trench_visualization/'),
+                                        colormap='Set1',
+                                        cargo_colormap='Dark2',
+                                        generate_3d_video=True,
+                                        seed_color=(1.0, 1.0, 0.0))

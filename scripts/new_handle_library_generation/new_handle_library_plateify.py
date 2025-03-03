@@ -43,8 +43,8 @@ core_h5_sequences = [core_plate.sequences[i + 1, 5, 0] for i in range(32)]
 # prepare naming scheme
 slat_side_labels = ['H5', 'H2']
 handle_type_labels = ['handles', 'antihandles']
-post_nominal = 'FK_CCV2'
-plate_number_start = 4000
+post_nominal = 'MA_CCV2'
+plate_number_start = 3648
 seq_set_size = 32
 set_count = len(new_handles) // seq_set_size
 plate_size = len(plate384)
@@ -73,7 +73,7 @@ for helix_side, handle_type in all_plate_combos:
         for helix_position in range(len(core_set_sequences)):
             for seq_num, seq in enumerate(set_sequences):
                 # consistent plate naming scheme
-                plate_name = f'P{plate_number_start}_FK_{helix_side}_{handle_type}_S{set + 1}{ascii_uppercase[plate_number_start - orig_plate_start]}'
+                plate_name = f'P{plate_number_start}_MA_{helix_side}_{handle_type}_S{set + 1}{ascii_uppercase[plate_number_start - orig_plate_start]}'
 
                 # william won't be ordering these first
                 if (helix_side == 'H5' and handle_type == 'antihandles') or (helix_side == 'H2' and handle_type == 'handles'):
