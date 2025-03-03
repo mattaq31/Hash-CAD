@@ -420,7 +420,7 @@ class GridPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final Paint minorDotPaint = Paint()
-      ..color = Colors.grey[300]!
+      ..color = Colors.grey[400]!
       ..style = PaintingStyle.fill;
 
     // Calculate the bounds of the visible area in the grid's coordinate space

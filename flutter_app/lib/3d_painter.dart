@@ -9,6 +9,8 @@ import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 import 'package:provider/provider.dart';
 import 'package:three_js_helpers/three_js_helpers.dart';
+import 'package:three_js_core/core/object_3d.dart';
+
 
 class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
@@ -20,6 +22,8 @@ class ThreeDisplay extends StatefulWidget {
 class _ThreeDisplay extends State<ThreeDisplay> {
   late three.ThreeJS threeJs;
   bool isSetupComplete = false;
+  double VFOV = 70;
+  late double HFOV;
   Set<String> slatIDs = {};
 
   @override
@@ -47,7 +51,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     super.dispose();
   }
 
-
   late three.Mesh mesh;
   late OrbitControls controls;
 
@@ -55,7 +58,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     threeJs.scene = three.Scene();
     threeJs.scene.background = tmath.Color.fromHex32(0xffffff);
 
-    threeJs.camera = three.PerspectiveCamera(70, threeJs.width / threeJs.height, 1, 10000);
+    threeJs.camera = three.PerspectiveCamera(VFOV, threeJs.width / threeJs.height, 1, 10000);
+    HFOV = 2 * math.atan(math.tan(VFOV * math.pi / 180 / 2) * threeJs.width / threeJs.height) * 180 / math.pi;
 
     threeJs.camera.position.setValues(749, 186, 1043);
     controls = OrbitControls(threeJs.camera, threeJs.globalKey);
@@ -123,6 +127,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   /// Adds all provided slats into the 3D scene, updating existing slats if necessary.
   void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap){
+
+    if (!isSetupComplete || threeJs.scene == null) return;
 
     Set localIDs = slats.map((slat) => slat.id).toSet();
     Set removedIDs = slatIDs.difference(localIDs);
@@ -206,12 +212,76 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
   }
 
+  void centerOnSlats(){
+    if (!isSetupComplete) return;
+
+    // Get all slats in the scene
+    List<three.Object3D> slats = threeJs.scene.children
+        .where((obj) => obj.name.contains("-"))
+        .toList();
+
+    // nothing to focus on
+    if (slats.isEmpty) return;
+
+    // Compute bounding box of all slats
+    var boundingBox = tmath.BoundingBox();
+
+    for (var slat in slats) {
+      var slatBox = tmath.BoundingBox().setFromObject(slat);
+      boundingBox.expandByPoint(slatBox.min);
+      boundingBox.expandByPoint(slatBox.max);
+    }
+
+    // Compute centroid of the bounding box
+    tmath.Vector3 center = tmath.Vector3(0, 0, 0);
+    boundingBox.getCenter(center);
+
+    // Can use this to indicate centre position (for debugging purposes)
+    // final geometry = three.SphereGeometry(2.5); // actual size should be 310, but adding an extra 10 to improve visuals
+    // final material = three.MeshPhongMaterial.fromMap({"color": 0xFF00FF, "flatShading": true});
+    // final mesh = three.Mesh(geometry, material);
+    // mesh.position.setValues(center.x, center.y, center.z);
+    // threeJs.scene.add(mesh);
+
+    // computes boundary sphere i.e. container that encapsulates all slats
+    // Attempts to find the best camera distance based on the horizontal/vertical aspect ratio
+    var boundSphere = tmath.BoundingSphere();
+    boundingBox.getBoundingSphere(boundSphere);
+    double hDistance = boundSphere.radius / (math.tan(HFOV * math.pi / 180 / 2));
+    double vDistance = boundSphere.radius / (math.tan(VFOV * math.pi / 180 / 2));
+    double cameraDistance = 1.1 * math.max(hDistance, vDistance); // adds a little buffer, just in case
+
+    tmath.Vector3 cameraDirection = threeJs.camera.getWorldDirection(tmath.Vector3(0, 0, 0));
+
+    // Desired fixed camera angles TODO: should these be tunable?
+    double elevationAngle = 30 * (math.pi / 180); // Convert to radians
+    double azimuthAngle = 45 * (math.pi / 180);
+
+    // Convert spherical coordinates to Cartesian (x, y, z)
+    double radius = cameraDistance;  // Distance from the scene center
+    double x = radius * math.cos(elevationAngle) * math.cos(azimuthAngle);
+    double y = radius * math.sin(elevationAngle); // Height due to elevation
+    double z = radius * math.cos(elevationAngle) * math.sin(azimuthAngle);
+
+    // Compute new camera position relative to the bounding box center
+    tmath.Vector3 newCameraPosition = tmath.Vector3(x, y, z).add(center);
+
+    // Applies the new camera position
+    threeJs.camera.position.setValues(newCameraPosition.x, newCameraPosition.y, newCameraPosition.z);
+
+    // updates camera target to the center of all slats
+    controls.target.setValues(center.x, center.y, center.z);
+    controls.update();
+  }
+
+
   /// Attempts to adjust viewer size when window is adjusted, although this is still not 100% effective
   void onResize(double width, double height) {
     if (!mounted || width <= 0 || height <= 0 || !isSetupComplete) return; // Ensure widget is still available
 
     if (threeJs.camera != null && threeJs.renderer != null) {
       threeJs.camera.aspect = width / height;
+      HFOV = 2 * math.atan(math.tan(VFOV * math.pi / 180 / 2) * width / height) * 180 / math.pi;
       threeJs.camera.updateProjectionMatrix();
       threeJs.renderer?.setSize(width, height, true);
     }
@@ -219,20 +289,34 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DesignState>(
-      builder: (context, appState, child) {
-        manageSlats(appState.slats.values.toList(), appState.layerMap);
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              onResize(constraints.maxWidth, constraints.maxHeight);
-            });
-            return threeJs.build();
-          },
-        );
-      }
-    );
+    return Consumer<DesignState>(builder: (context, appState, child) {
+      manageSlats(appState.slats.values.toList(), appState.layerMap);
+      return Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                onResize(constraints.maxWidth, constraints.maxHeight);
+              });
+              return threeJs.build();
+            },
+          ),
+          Positioned(
+            bottom: 16.0,
+            right: 16.0,
+            child: ElevatedButton(
+              onPressed: centerOnSlats,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.3),
+                // Semi-transparent
+                foregroundColor: Colors.black, // Text/icon color
+              ),
+              child: const Icon(Icons.filter_center_focus),
+            ),
+          ),
+        ],
+      );
+    });
   }
-
 }
 
