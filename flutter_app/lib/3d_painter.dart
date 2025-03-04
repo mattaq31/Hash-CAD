@@ -61,9 +61,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     threeJs.camera = three.PerspectiveCamera(VFOV, threeJs.width / threeJs.height, 1, 10000);
     HFOV = 2 * math.atan(math.tan(VFOV * math.pi / 180 / 2) * threeJs.width / threeJs.height) * 180 / math.pi;
 
-    threeJs.camera.position.setValues(749, 186, 1043);
+    threeJs.camera.position.setValues(-63.18, 154.58, 328.46);
     controls = OrbitControls(threeJs.camera, threeJs.globalKey);
-    controls.target.setValues(791, -8, 690);
+    controls.target.setValues(-21.87, -8, 3.73);
 
     controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
     controls.dampingFactor = 0.05;
@@ -75,12 +75,11 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     controls.maxPolarAngle = math.pi / 2;
 
-    // TODO: these grids don't show up in a useful position right now.  Perhaps I should create a 'home' zone in the 2D grid which corresponds to the zero area in the 3D scene, so that all scenes are anchored at the same position.
-    // final gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
-    // threeJs.scene.add(gridHelper);
-    //
-    // final axesHelper = AxesHelper(1000);
-    // threeJs.scene.add(axesHelper);
+    final gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
+    threeJs.scene.add(gridHelper);
+
+    final axesHelper = AxesHelper(1000);
+    threeJs.scene.add(axesHelper);
 
     // TODO: set better lighting
     final dirLight1 = three.DirectionalLight(0xffffff, 0.5);
@@ -201,7 +200,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         }
       }
     }
-    // TODO: add centering system to zoom in on all slats if user desires
   }
 
   /// Removes a slat from the 3D scene
@@ -250,8 +248,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     double hDistance = boundSphere.radius / (math.tan(HFOV * math.pi / 180 / 2));
     double vDistance = boundSphere.radius / (math.tan(VFOV * math.pi / 180 / 2));
     double cameraDistance = 1.1 * math.max(hDistance, vDistance); // adds a little buffer, just in case
-
-    tmath.Vector3 cameraDirection = threeJs.camera.getWorldDirection(tmath.Vector3(0, 0, 0));
 
     // Desired fixed camera angles TODO: should these be tunable?
     double elevationAngle = 30 * (math.pi / 180); // Convert to radians

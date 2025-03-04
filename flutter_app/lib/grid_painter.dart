@@ -26,8 +26,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   double minScale = 0.5;
   double maxScale = 3.0;
 
-  double scale = 1.0; // actual running scale value
-  Offset offset = Offset.zero; // actual running offset value
+  double scale = 0.8; // actual running scale value
+  Offset offset = Offset(800,700); // actual running offset value
 
   // for the gesture detector (touchpad)
   Offset initialPanOffset = Offset.zero;
@@ -429,6 +429,14 @@ class GridPainter extends CustomPainter {
     final double right = left + size.width / scale;
     final double bottom = top + size.height / scale;
 
+    // draws permanent 'grid' area to guide user to a central area
+    final Paint rectPaint = Paint()
+      ..color = Colors.grey[400]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    canvas.drawRect(Rect.fromLTWH(-500, -500, 1000, 1000), rectPaint);
+
     // Draw dots TODO: does this need to be redrawn every time?
     for (double x = (left ~/ gridSize) * gridSize; x < right; x += gridSize) {
       for (double y = (top ~/ gridSize) * gridSize; y < bottom; y += gridSize) {
@@ -441,6 +449,14 @@ class GridPainter extends CustomPainter {
         }
       }
     }
+
+    final Paint crosshairPaint = Paint()
+      ..color = Colors.red
+      ..strokeWidth = 2.0;
+    double crosshairSize = 10.0; // Length of crosshair lines
+    canvas.drawLine(Offset(-crosshairSize, 0), Offset(crosshairSize, 0), crosshairPaint);
+    canvas.drawLine(Offset(0, -crosshairSize), Offset(0, crosshairSize), crosshairPaint);
+
     canvas.restore();
   }
 
