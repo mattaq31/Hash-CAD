@@ -71,7 +71,8 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
 
 
 def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_row_by_column=None,
-                                           data_type='2d_excel', plate_size=384, plate_name=None, scramble_names=False):
+                                           data_type='2d_excel', plate_size=384, plate_name=None,
+                                           scramble_names=False, output_generic_cargo_plate_mapping=False):
     """
     Generates a new plate from a dataframe containing sequences, names and notes, then saves it to file.
     TODO: make faster and more elegant.
@@ -83,6 +84,8 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
     :param plate_size: 96 or 384
     :param plate_name: Name of the plate (used for IDT order form)
     :param scramble_names: If true, scrubs all identifiable names when preparing an IDT order output
+    :param output_generic_cargo_plate_mapping: If true, outputs the generic cargo plate mapping naming schemes
+    to the 'names' sheet so that the generic cargo plate system can be used directly from the generated file
     :return: final dataframe that's saved to file
     """
     if plate_size == 96:
@@ -133,7 +136,12 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
         desc_dict = add_data_to_plate_df(letters, max_col, desc_dict)
         with pd.ExcelWriter(os.path.join(folder, filename)) as writer:
             seq_dict.to_excel(writer, sheet_name='Sequences', index_label=filename.split('.')[0])
-            name_dict.to_excel(writer, sheet_name='Names', index_label=filename.split('.')[0])
+            
+            if output_generic_cargo_plate_mapping:
+                name_dict.to_excel(writer, sheet_name='Names', index_label='name_side_position')
+            else:
+                name_dict.to_excel(writer, sheet_name='Names', index_label=filename.split('.')[0])
+
             desc_dict.to_excel(writer, sheet_name='Descriptions', index_label=filename.split('.')[0])
         return seq_dict
     elif data_type == 'IDT_order':  # all details in one sheet
