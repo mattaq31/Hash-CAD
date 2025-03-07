@@ -19,16 +19,22 @@ else:
 
 def visualize_plate_with_color_labels(plate_size, well_color_dict,
                                       color_label_dict=None,
+                                      well_label_dict=None,
                                       plate_title=None, save_folder=None,
                                       save_file=None, direct_show=True,
                                       plate_display_aspect_ratio=1.495):
     """
-
-    :param plate_size: Either 96 or 384
-    :param save_folder: Output folder (None if not saving)
-    :param save_file: Output filename (None if not saving)
-    :param direct_show: Whether or not to directly visualize the plate figure (default true)
-    :param plate_display_aspect_ratio: Aspect ratio to use for figure display - default matches true plate dimensions
+    Use this function to create a plate graphic with specific colours placed in each well, and alternatively a unique
+    label for each well too.
+    :param plate_size: '384' or '96'
+    :param well_color_dict: Dictionary containing colour to be placed in specific wells.
+    :param color_label_dict: Legend to use for specific colours (at the bottom of the image)
+    :param well_label_dict: Optional label to place in specific wells
+    :param plate_title: Title to display above plate
+    :param save_folder: Output folder
+    :param save_file: Output file name
+    :param direct_show: Set to true to display the image directly
+    :param plate_display_aspect_ratio: Aspect ratio to use for plate display
     :return: N/A
     """
 
@@ -61,9 +67,13 @@ def visualize_plate_with_color_labels(plate_size, well_color_dict,
         if well in well_color_dict:
             color = well_color_dict[well]
             circle = Circle((x, y), radius=0.3, fill=True, facecolor=color, edgecolor='black')
+            # adds the well label if it exists
         else:
             # empty well
             circle = Circle((x, y), radius=0.3, fill=None)
+
+        if well_label_dict is not None and well in well_label_dict:
+            ax.text(x, y, well_label_dict[well] if isinstance(well_label_dict[well], str) else str(well_label_dict[well]), ha='center', va='center', fontsize=12)
 
         ax.add_patch(circle)
 

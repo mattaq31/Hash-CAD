@@ -136,7 +136,7 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
         desc_dict = add_data_to_plate_df(letters, max_col, desc_dict)
         with pd.ExcelWriter(os.path.join(folder, filename)) as writer:
             seq_dict.to_excel(writer, sheet_name='Sequences', index_label=filename.split('.')[0])
-            
+
             if output_generic_cargo_plate_mapping:
                 name_dict.to_excel(writer, sheet_name='Names', index_label='name_side_position')
             else:
