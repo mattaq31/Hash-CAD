@@ -52,7 +52,7 @@ nelson_quimby_antihandles = 'sw_src005_antiNelsonQuimby_cc6hb_h2handles'  # this
 cnt_patterning = 'P3510_SSW_cnt_patterning'  # this contains h2, h5, and h1 extensions and DNA PAINT sequences for U Fribourg collab with CNT placement
 octahedron_patterning_v1 = 'P3518_MA_octahedron_patterning_v1'  # this contains the H2 sequences for the octahedron patterning (diagonal) and H2/H5 strands for cross-bar binding
 simpsons_mixplate_antihandles = 'sw_src007_nelson_quimby_bart_edna'  # this contains a variety of Bart, Edna, Nelson and Quimby handles for both H2 and H5
-
+paint_h5_handles = 'P3628_SSW_plate' #this contains PAINT Probe 1 9nts dock strands for positions 1, 2, 4, 8, 16, 32, PAINT Probe 1 10nts dock strands for positions 1, 2, 4, 8, 16, 32,Biotinylated Quimby handle oligo for surface functionalization,D1-D4, E1-E4, F1-F4, G1-G4, H1-H4: first 4 6hb slat core staples for h1 -> h1, 5x orders of each for a total of 50 nmole each strand
 
 def sanitize_plate_map(name):
     """

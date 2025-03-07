@@ -7,7 +7,8 @@ from crisscross.helper_functions.plate_constants import (sanitize_plate_map, bas
                                                          nelson_quimby_antihandles,
                                                          octahedron_patterning_v1,
                                                          simpsons_mixplate_antihandles, seed_slat_purification_handles,
-                                                         cckz_h5_handle_plates, cckz_h2_antihandle_plates, cnt_patterning)
+                                                         cckz_h5_handle_plates, cckz_h2_antihandle_plates,
+                                                         cnt_patterning, paint_h5_handles, seed_plug_plate_all_8064)
 import os
 import ast
 from pydoc import locate
@@ -107,9 +108,9 @@ def get_standard_plates(handle_library_v2=False):
     seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
     center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
     combined_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all, core_plate_folder)
-
+    all_8064_seed_plugs = get_plateclass('CombinedSeedPlugPlate',seed_plug_plate_all_8064, core_plate_folder)
     return (core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate,
-            combined_seed_plate)
+            combined_seed_plate, all_8064_seed_plugs)
 
 
 def get_cargo_plates():
@@ -121,4 +122,5 @@ def get_cargo_plates():
     src_004 = get_plateclass('HybridPlate', seed_slat_purification_handles, cargo_plate_folder)
     P3518 = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
     P3510 = get_plateclass('GenericPlate', cnt_patterning, cargo_plate_folder)
-    return src_004, src_005, src_007, P3518, P3510
+    P3628 = get_plateclass('GenericPlate',paint_h5_handles, cargo_plate_folder)
+    return src_004, src_005, src_007, P3518, P3510, P3628
