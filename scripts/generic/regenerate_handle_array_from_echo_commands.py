@@ -3,15 +3,14 @@ import numpy as np
 import os
 
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.core_functions.slats import Slat
 from crisscross.core_functions.megastructures import Megastructure
 
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
-                                                         crisscross_h5_handle_plates,
-                                                         seed_plug_plate_corner, seed_plug_plate_center,
-                                                         octahedron_patterning_v1, old_format_cargo_plate_folder,
-                                                         nelson_quimby_antihandles, h2_biotin_direct,
-                                                         sanitize_plate_map)
+from crisscross.plate_mapping.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
+                                                      crisscross_h5_handle_plates,
+                                                      seed_plug_plate_corner, seed_plug_plate_center,
+                                                      octahedron_patterning_v1, old_format_cargo_plate_folder,
+                                                      h2_biotin_direct,
+                                                      sanitize_plate_map)
 from crisscross.plate_mapping import get_plateclass
 
 stella_file = '/Users/matt/Desktop/20231023_SW082_unitsq0_cornerseed_scaledup_centered.csv'

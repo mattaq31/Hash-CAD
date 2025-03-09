@@ -6,7 +6,7 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import plate96_center_pattern
+from crisscross.plate_mapping.plate_constants import plate96_center_pattern
 from crisscross.plate_mapping import get_standard_plates, get_cargo_plates
 
 ########## CONFIG

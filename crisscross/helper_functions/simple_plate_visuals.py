@@ -1,10 +1,8 @@
 import os
-from colorama import Fore
-from crisscross.helper_functions.plate_constants import plate96, plate384
+from crisscross.plate_mapping.plate_constants import plate96, plate384
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch
 from string import ascii_uppercase
-from collections import Counter
 import platform
 
 # consistent figure formatting between mac, windows and linux

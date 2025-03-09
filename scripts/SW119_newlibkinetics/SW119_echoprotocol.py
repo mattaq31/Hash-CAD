@@ -147,11 +147,11 @@ EchoSheetNew = convert_slats_into_echo_commands(NewLibraryMega.slats, "old_vs_ne
                                  manual_plate_well_assignments=EightByEightWellsFlat[-32:])
 
 prepare_all_standard_sheets(NewLibraryMega.slats, os.path.join(DesignFolder, 'newlibrary_standard_helpers.xlsx'),
-                                default_staple_volume=NewLibraryVolume,
-                                default_staple_concentration=500,
-                                default_reaction_volume="max",
-                                echo_sheet=EchoSheetNew,
-                                peg_groups_per_layer=1)
+                            reference_single_handle_volume=NewLibraryVolume,
+                            reference_single_handle_concentration=500,
+                            slat_mixture_volume="max",
+                            echo_sheet=EchoSheetNew,
+                            peg_groups_per_layer=1)
 
 
 

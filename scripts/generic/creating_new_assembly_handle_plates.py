@@ -1,9 +1,7 @@
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.plate_mapping import get_plateclass
-import os
-import numpy as np
-from crisscross.helper_functions.plate_constants import (core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, slat_core)
+from crisscross.plate_mapping.plate_constants import (core_plate_folder, crisscross_h5_handle_plates,
+                                                      crisscross_h2_handle_plates, slat_core)
 from collections import defaultdict
 import pandas as pd
 

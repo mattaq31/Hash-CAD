@@ -5,7 +5,6 @@ import os
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.plate_mapping import get_standard_plates, get_cargo_plates
-from crisscross.helper_functions.plate_constants import (octahedron_patterning_v1, cargo_plate_folder, nelson_quimby_antihandles)
 
 DesignFolder = "/Users/stellawang/HMS Dropbox/Siyuan Wang/crisscross_team/Crisscross Designs/SW114_psoralenunitsq"
 DesignFile = "psoralensquare_H25.xlsx"

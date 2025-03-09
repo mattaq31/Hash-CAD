@@ -1,12 +1,7 @@
-from collections import defaultdict
-from string import ascii_uppercase
-
-import pandas as pd
-import os
 from crisscross.core_functions.plate_handling import read_dna_plate_mapping
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.plate_mapping import get_plateclass
-from crisscross.helper_functions.plate_constants import paint_h5_handles
+from crisscross.plate_mapping.plate_constants import paint_h5_handles
 
 input_filename = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/PAINT/P3628_SSW.xls'
 output_folder = '/Users/yichenzhao/PycharmProjects/Crisscross-Design/cargo_plates'

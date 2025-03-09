@@ -69,8 +69,8 @@ special_groups = {'Horizontal-Trench': ['layer1-slat119', 'layer1-slat120', 'lay
 
 if generate_lab_helpers:
     prepare_all_standard_sheets(M1.slats, os.path.join(lab_helper_folder, f'{experiment_name}_standard_helpers.xlsx'),
-                                default_staple_volume=150,
-                                default_staple_concentration=500,
+                                reference_single_handle_volume=150,
+                                reference_single_handle_concentration=500,
                                 echo_sheet=None if not generate_echo else echo_sheet,
                                 peg_groups_per_layer=4,
                                 special_slat_groups=special_groups,

@@ -4,7 +4,7 @@ from string import ascii_uppercase
 import pandas as pd
 
 from crisscross.core_functions.plate_handling import add_data_to_plate_df
-from crisscross.helper_functions.plate_constants import seed_plug_plate_all, core_plate_folder
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_all, core_plate_folder
 from crisscross.plate_mapping import get_plateclass
 
 

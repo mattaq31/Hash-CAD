@@ -11,8 +11,8 @@ from crisscross.assembly_handle_optimization.hamming_compute import multirule_pr
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
-from crisscross.helper_functions.plate_constants import octahedron_patterning_v1, cargo_plate_folder, plate96_center_pattern
-from crisscross.plate_mapping import get_plateclass, get_standard_plates
+from crisscross.plate_mapping.plate_constants import octahedron_patterning_v1, cargo_plate_folder, plate96_center_pattern
+from crisscross.plate_mapping import get_plateclass, get_standard_plates, get_assembly_handle_v2_sample_plates
 
 ########################################
 # script setup
@@ -37,8 +37,8 @@ crossbar_key = {**{i + 11: f'{crossbar_linkages[i]}-10mer' for i in range(7)},
                 **{i + 4: f'anti{crossbar_linkages[i]}-10mer' for i in range(7)}}
 ########################################
 # Plate sequences
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates()
-_, v2_crisscross_antihandle_y_plates, v2_crisscross_handle_x_plates, _, _, _ = get_standard_plates(handle_library_v2=True)
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate, all_8064_seed_plugs = get_standard_plates()
+v2_crisscross_antihandle_y_plates, v2_crisscross_handle_x_plates = get_assembly_handle_v2_sample_plates()
 
 crossbar_plate = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
 ########################################
@@ -176,8 +176,8 @@ for index, design in enumerate(design_names):
     special_groups = {'Crossbars': ['crossbar_slat_1', 'crossbar_slat_2']}
 
     prepare_all_standard_sheets(megastructure.slats, os.path.join(lab_helper_folder, f'{design}_standard_helpers.xlsx'),
-                                default_staple_volume=150,
-                                default_staple_concentration=500,
+                                reference_single_handle_volume=150,
+                                reference_single_handle_concentration=500,
                                 echo_sheet=echo_sheet,
                                 peg_groups_per_layer=2,
                                 special_slat_groups=special_groups,

@@ -31,8 +31,11 @@ crisscross_not_ordered_h2_handle_plates = ["PX1_MA_h2_handles", "PX2_MA_h2_handl
 
 # V2 - Katzi Seqs
 
-cckz_h5_handle_plates = ['P3601_MA_H5_handles_S1A', 'P3602_MA_H5_handles_S1B', 'P3603_MA_H5_handles_S1C']
-cckz_h2_antihandle_plates = ['P3604_MA_H2_antihandles_S1A', 'P3605_MA_H2_antihandles_S1B', 'P3606_MA_H2_antihandles_S1C']
+cckz_h5_sample_handle_plates = ['P3601_MA_H5_handles_S1A', 'P3602_MA_H5_handles_S1B', 'P3603_MA_H5_handles_S1C']
+cckz_h2_sample_antihandle_plates = ['P3604_MA_H2_antihandles_S1A', 'P3605_MA_H2_antihandles_S1B', 'P3606_MA_H2_antihandles_S1C']
+
+cckz_h5_handle_plates = ['P3649_MA_H5_handles_S1A', 'P3650_MA_H5_handles_S1B', 'P3651_MA_H5_handles_S1C', 'P3652_MA_H5_handles_S2A', 'P3653_MA_H5_handles_S2B', 'P3654_MA_H5_handles_S2C']
+cckz_h2_antihandle_plates = ['P3655_MA_H2_antihandles_S1A', 'P3656_MA_H2_antihandles_S1B', 'P3657_MA_H2_antihandles_S1C', 'P3658_MA_H2_antihandles_S2A', 'P3659_MA_H2_antihandles_S2B', 'P3660_MA_H2_antihandles_S2C']
 
 
 # SEED, CORE AND CARGO PLATES

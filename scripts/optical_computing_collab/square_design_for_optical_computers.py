@@ -11,8 +11,8 @@ from crisscross.assembly_handle_optimization.random_hamming_optimizer import gen
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import (octahedron_patterning_v1, cargo_plate_folder,
-                                                         nelson_quimby_antihandles, h2_biotin_direct)
+from crisscross.plate_mapping.plate_constants import (octahedron_patterning_v1, cargo_plate_folder,
+                                                      nelson_quimby_antihandles, h2_biotin_direct)
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
 ########################################

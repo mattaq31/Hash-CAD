@@ -1,14 +1,15 @@
 from crisscross.core_functions.plate_handling import read_dna_plate_mapping
-from crisscross.helper_functions.plate_constants import (sanitize_plate_map, base_directory, slat_core, \
-                                                         core_plate_folder, crisscross_h5_handle_plates,
-                                                         assembly_handle_folder, crisscross_h2_handle_plates, \
-                                                         seed_plug_plate_corner, seed_plug_plate_center,
-                                                         seed_plug_plate_all, cargo_plate_folder,
-                                                         nelson_quimby_antihandles,
-                                                         octahedron_patterning_v1,
-                                                         simpsons_mixplate_antihandles, seed_slat_purification_handles,
-                                                         cckz_h5_handle_plates, cckz_h2_antihandle_plates,
-                                                         cnt_patterning, paint_h5_handles, seed_plug_plate_all_8064)
+from crisscross.plate_mapping.plate_constants import (sanitize_plate_map, base_directory, slat_core, \
+                                                      core_plate_folder, crisscross_h5_handle_plates,
+                                                      assembly_handle_folder, crisscross_h2_handle_plates, \
+                                                      seed_plug_plate_corner, seed_plug_plate_center,
+                                                      seed_plug_plate_all, cargo_plate_folder,
+                                                      nelson_quimby_antihandles,
+                                                      octahedron_patterning_v1,
+                                                      simpsons_mixplate_antihandles, seed_slat_purification_handles,
+                                                      cckz_h5_handle_plates, cckz_h2_antihandle_plates,
+                                                      cckz_h5_sample_handle_plates, cckz_h2_sample_antihandle_plates,
+                                                      cnt_patterning, paint_h5_handles, seed_plug_plate_all_8064)
 import os
 import ast
 from pydoc import locate
@@ -81,6 +82,20 @@ def get_plateclass(name, plate_name, plate_folder, **kwargs):
     """
     return locate(available_plate_loaders[name])(plate_name, plate_folder, **kwargs)
 
+def get_assembly_handle_v2_sample_plates():
+    """
+    Generates plates used for the initial testing of assembly handle library v2.
+    """
+
+    crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
+                                                    cckz_h2_sample_antihandle_plates,
+                                                    assembly_handle_folder, plate_slat_sides=[2, 2, 2])
+
+    crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
+                                                cckz_h5_sample_handle_plates,
+                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+    return crisscross_antihandle_y_plates, crisscross_handle_x_plates
+
 
 def get_standard_plates(handle_library_v2=False):
     """
@@ -122,5 +137,5 @@ def get_cargo_plates():
     src_004 = get_plateclass('HybridPlate', seed_slat_purification_handles, cargo_plate_folder)
     P3518 = get_plateclass('GenericPlate', octahedron_patterning_v1, cargo_plate_folder)
     P3510 = get_plateclass('GenericPlate', cnt_patterning, cargo_plate_folder)
-    P3628 = get_plateclass('GenericPlate',paint_h5_handles, cargo_plate_folder)
+    P3628 = get_plateclass('GenericPlate', paint_h5_handles, cargo_plate_folder)
     return src_004, src_005, src_007, P3518, P3510, P3628

@@ -1,5 +1,5 @@
 from crisscross.plate_mapping import BasePlate
-from crisscross.helper_functions.plate_constants import sanitize_plate_map
+from crisscross.plate_mapping.plate_constants import sanitize_plate_map
 import math
 
 

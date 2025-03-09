@@ -8,7 +8,7 @@ from crisscross.assembly_handle_optimization.random_hamming_optimizer import gen
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from capc_pattern_generator import capc_pattern_generator
 
-from crisscross.helper_functions.plate_constants import cargo_plate_folder, octahedron_patterning_v1, nelson_quimby_antihandles, simpsons_mixplate_antihandles
+from crisscross.plate_mapping.plate_constants import cargo_plate_folder, octahedron_patterning_v1, nelson_quimby_antihandles, simpsons_mixplate_antihandles
 
 design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/CAPCs/version_1'
 read_handles_from_file = True

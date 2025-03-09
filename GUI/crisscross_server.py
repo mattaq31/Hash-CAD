@@ -6,7 +6,7 @@ import os
 
 from GUI.backend_functions.debugging_error_preview import DualStreamHandler
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import base_directory
+from crisscross.plate_mapping.plate_constants import base_directory
 
 
 if __name__ == '__main__':

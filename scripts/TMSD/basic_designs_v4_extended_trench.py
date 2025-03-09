@@ -13,9 +13,9 @@ from crisscross.assembly_handle_optimization.random_hamming_optimizer import gen
 from crisscross.core_functions.slats import Slat
 
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
+from crisscross.plate_mapping.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
-from crisscross.helper_functions.plate_constants import plate96
+from crisscross.plate_mapping.plate_constants import plate96
 
 ################################
 # script setup

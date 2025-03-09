@@ -3,18 +3,16 @@
 # nucX in the original H29 square is using edge seed so is compatible
 # Y1 and Y2 are the same handle set design
 
-import pandas as pd
 import os
 import numpy as np
 from itertools import product
-import matplotlib.pyplot as plt
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
-from crisscross.helper_functions.plate_constants import seed_slat_purification_handles, cargo_plate_folder, plate96
+from crisscross.plate_mapping.plate_constants import seed_slat_purification_handles, cargo_plate_folder
 
 ########################################
 # script setup

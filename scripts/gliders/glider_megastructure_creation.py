@@ -9,7 +9,7 @@ from crisscross.assembly_handle_optimization.hamming_compute import multirule_pr
 from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
-from crisscross.helper_functions.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
+from crisscross.plate_mapping.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 
 design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/gliders/design_v1'
 # design_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/design_testing_area/glider_v2_2'

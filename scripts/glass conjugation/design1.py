@@ -2,15 +2,11 @@ import os
 import numpy as np
 
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.core_functions.slat_design import read_design_from_excel, generate_standard_square_slats
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.core_functions.slat_design import read_design_from_excel
 from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
-from crisscross.plate_mapping import get_plateclass, get_standard_plates, get_cargo_plates
-from crisscross.helper_functions.plate_constants import seed_plug_plate_center_8064, core_plate_folder
+from crisscross.plate_mapping import get_standard_plates
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_center_8064, core_plate_folder
 from crisscross.plate_mapping import get_plateclass
-from scripts.antigen_presenting_cells.capc_pattern_generator import capc_pattern_generator
-from crisscross.helper_functions.plate_constants import cargo_plate_folder, octahedron_patterning_v1, nelson_quimby_antihandles, simpsons_mixplate_antihandles
-from crisscross.core_functions.slats import convert_slat_array_into_slat_objects, get_slat_key
 
 design_folder = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/'
 slat_array = read_design_from_excel(design_folder, ['bottomlayer1.csv','toplayer1.csv'])

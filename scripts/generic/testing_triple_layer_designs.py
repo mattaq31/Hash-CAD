@@ -3,7 +3,7 @@ from crisscross.core_functions.slat_design import read_design_from_excel
 import numpy as np
 from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
-from crisscross.helper_functions.plate_constants import nelson_quimby_antihandles, cargo_plate_folder
+from crisscross.plate_mapping.plate_constants import nelson_quimby_antihandles, cargo_plate_folder
 
 # Step 1 - generate weird shaped design (maybe just the plus for now)
 folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/crisscross_code/scratch/plus_design'

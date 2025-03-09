@@ -3,7 +3,8 @@ import copy
 import pandas as pd
 import os
 from colorama import Fore, Style
-from crisscross.helper_functions.plate_constants import plate96, plate384, plate96_center_pattern
+from crisscross.plate_mapping.plate_constants import plate96, plate384, plate96_center_pattern
+from crisscross.plate_mapping.plate_concentrations import apply_well_exceptions, concentration_library
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch
 from string import ascii_uppercase
@@ -18,24 +19,6 @@ elif platform.system() == 'Windows':
 else:
     plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
 
-
-def apply_well_exceptions(complete_echo_df):
-    """
-    Some wells in certain plates have concentrations that differ from the rest in the plate,
-    either due to a lab mistake or some other design consideration.  This function applies
-    fixes to the specific wells we have identified, if found in the design.
-    :param complete_echo_df: The full echo dataframe
-    :return: Same echo dataframe with patches applied
-    """
-    fixed_df = copy.copy(complete_echo_df)
-    exception_wells = {('P3601_MA', 'N19'): 2,
-                       ('P3601_MA', 'N22'): 2,
-                       ('P3601_MA', 'N24'): 2} # key is the well affected, while value is the multiple that needs to be applied to the related volume
-
-    for (plate, well), multiplier in exception_wells.items():
-        fixed_df.loc[(fixed_df['Source Plate Name'] == plate) & (fixed_df['Source Well'] == well), 'Transfer Volume'] *= multiplier
-
-    return fixed_df
 
 def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder, save_file,
                             slat_display_format='pie', plate_display_aspect_ratio=1.495):
@@ -240,6 +223,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
     :return: Pandas dataframe corresponding to output ech handler command list
     """
+    # TODO: enforce volume of a single command to be a multiple of 25nl
 
     # echo command prep
     output_command_list = []
@@ -310,11 +294,15 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                 else:
                     raise RuntimeError(f'The design provided has an incomplete slat: {slat_name} (slat ID {slat.ID})')
 
-            # certain plates will need different input volumes if they have different handle concentrations
+            # manages exact staple volumes here
             if unique_transfer_volume_for_plates is not None and handle_data['plate'] in unique_transfer_volume_for_plates:
+                # certain plates will need different input volumes if they have different handle concentrations - users can manually specify the changes
                 handle_specific_vol = unique_transfer_volume_for_plates[handle_data['plate']]*slat_multiplier
             else:
-                handle_specific_vol = default_transfer_volume*slat_multiplier
+                # otherwise, extract the exact handle volumes to ensure an equal concentration w.r.t the core staples plate
+                if handle_data['plate'] == 'sw_src007':
+                    z=6
+                handle_specific_vol = int(default_transfer_volume * (concentration_library['sw_src002'] / concentration_library[handle_data['plate']]) * slat_multiplier)
 
             if ',' in slat_name:
                 raise RuntimeError('Slat names cannot contain commas - this will cause issues with the echo csv  file.')

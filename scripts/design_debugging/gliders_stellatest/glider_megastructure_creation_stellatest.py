@@ -7,9 +7,9 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_handle_set_and_optimize, calculate_slat_hamming
 from crisscross.plate_mapping import get_plateclass
 
-from crisscross.helper_functions.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                         crisscross_h2_handle_plates, assembly_handle_folder,
-                                                         seed_plug_plate_center)
+from crisscross.plate_mapping.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
+                                                      crisscross_h2_handle_plates, assembly_handle_folder,
+                                                      seed_plug_plate_center)
 
 
 ########################################

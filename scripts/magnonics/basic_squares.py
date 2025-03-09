@@ -10,7 +10,7 @@ from crisscross.assembly_handle_optimization.hamming_compute import multirule_pr
 from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
-from crisscross.helper_functions.plate_constants import octahedron_patterning_v1, cargo_plate_folder, plate96
+from crisscross.plate_mapping.plate_constants import octahedron_patterning_v1, cargo_plate_folder, plate96
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
 ########################################

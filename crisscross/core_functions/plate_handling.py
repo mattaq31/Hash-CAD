@@ -1,10 +1,9 @@
-import math
 import os
 from collections import defaultdict
 from string import ascii_uppercase
 import pandas as pd
 
-from crisscross.helper_functions import plate_constants
+from crisscross.plate_mapping import plate_constants
 
 
 def add_data_to_plate_df(letters, column_total, data_dict):

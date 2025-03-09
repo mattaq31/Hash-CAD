@@ -5,11 +5,10 @@ from crisscross.core_functions.plate_handling import generate_new_plate_from_sla
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping import get_plateclass
 import os
-import numpy as np
-from crisscross.helper_functions.plate_constants import (core_plate_folder, crisscross_h5_handle_plates,
-                                                         assembly_handle_folder, plate384,
-                                                         crisscross_h2_handle_plates, slat_core,
-                                                         crisscross_not_ordered_h2_handle_plates)
+from crisscross.plate_mapping.plate_constants import (core_plate_folder, crisscross_h5_handle_plates,
+                                                      assembly_handle_folder, plate384,
+                                                      crisscross_h2_handle_plates, slat_core,
+                                                      crisscross_not_ordered_h2_handle_plates)
 from collections import defaultdict
 import pandas as pd
 from string import ascii_uppercase

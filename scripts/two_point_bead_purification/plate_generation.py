@@ -5,7 +5,7 @@ import pandas as pd
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.core_functions.slat_design import attach_cargo_handles_to_core_sequences
 from crisscross.helper_functions.standard_sequences import simpsons_anti, simpsons
-from crisscross.helper_functions.plate_constants import (octahedron_patterning_v1, cargo_plate_folder)
+from crisscross.plate_mapping.plate_constants import (octahedron_patterning_v1, cargo_plate_folder)
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 
 ########################################

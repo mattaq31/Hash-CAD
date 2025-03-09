@@ -7,8 +7,8 @@ from crisscross.core_functions.megastructure_composition import convert_slats_in
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
-from crisscross.helper_functions.plate_constants import seed_plug_plate_center_8064, core_plate_folder
-from crisscross.plate_mapping import get_standard_plates, get_cargo_plates, get_plateclass
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_center_8064, core_plate_folder
+from crisscross.plate_mapping import get_standard_plates, get_cargo_plates, get_plateclass, get_assembly_handle_v2_sample_plates
 from scripts.antigen_presenting_cells.capc_pattern_generator import capc_pattern_generator
 
 design_folder = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/FinalCross'
@@ -17,7 +17,8 @@ lab_helper_folder = os.path.join(design_folder, 'lab_helper_sheets')
 create_dir_if_empty(echo_folder, lab_helper_folder)
 experiment_name = 'YXZ001'
 
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, _, _, _ = (get_standard_plates(handle_library_v2=True))
+core_plate, _, _, _, _, _ = (get_standard_plates(handle_library_v2=True))
+crisscross_antihandle_y_plates, crisscross_handle_x_plates = get_assembly_handle_v2_sample_plates()
 
 p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_center_8064, core_plate_folder)
 
@@ -95,8 +96,8 @@ if generate_echo:
 
 if generate_lab_helpers:
     prepare_all_standard_sheets(M2.slats, os.path.join(lab_helper_folder, f'{experiment_name}_standard_helpers.xlsx'),
-                                default_staple_volume=target_volume,
-                                default_staple_concentration=500,
+                                reference_single_handle_volume=target_volume,
+                                reference_single_handle_concentration=500,
                                 echo_sheet=None if not generate_echo else echo_sheet,
                                 peg_groups_per_layer=4,
                                 unique_transfer_volume_plates=special_vol_plates)

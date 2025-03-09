@@ -6,8 +6,7 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping import get_plateclass, get_standard_plates, get_cargo_plates
-from crisscross.helper_functions.plate_constants import seed_plug_plate_all_8064, core_plate_folder, paint_h5_handles
-
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_all_8064, core_plate_folder
 
 core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate, all_8064_seed_plugs  = get_standard_plates()
 p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all_8064, core_plate_folder)
@@ -74,8 +73,8 @@ if generate_echo:
 
 if generate_lab_helpers:
     prepare_all_standard_sheets(M1.slats, os.path.join(lab_helper_folder, f'{experiment_name}_standard_helpers.xlsx'),
-                                default_staple_volume=target_volume,
-                                default_staple_concentration=500,
+                                reference_single_handle_volume=target_volume,
+                                reference_single_handle_concentration=500,
                                 echo_sheet=None if not generate_echo else echo_sheet,
                                 peg_groups_per_layer=4,
                                 unique_transfer_volume_plates=special_vol_plates)

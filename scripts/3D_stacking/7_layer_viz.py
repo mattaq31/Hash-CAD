@@ -1,6 +1,5 @@
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.helper_functions.plate_constants import simpsons_mixplate_antihandles, cargo_plate_folder
+from crisscross.plate_mapping.plate_constants import simpsons_mixplate_antihandles, cargo_plate_folder
 from crisscross.plate_mapping import get_standard_plates, get_plateclass
 import os
 

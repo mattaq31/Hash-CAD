@@ -5,7 +5,7 @@ from collections import defaultdict
 import pandas as pd
 
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
-from crisscross.helper_functions.plate_constants import seed_plug_plate_corner, core_plate_folder, \
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_corner, core_plate_folder, \
     seed_plug_plate_center, seed_plug_plate_center_8064
 from crisscross.plate_mapping import get_plateclass
 
