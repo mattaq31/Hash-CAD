@@ -49,7 +49,7 @@ M1.patch_control_handles(core_plate)
 
 
 if generate_echo:
-    target_volume = 100
+    target_volume = 200
     special_vol_plates = {'sw_src007': int(target_volume * (500 / 200)),
                           'sw_src004': int(target_volume * (500 / 200)),
                           'P3621_SSW': int(target_volume * (500 / 200)),
@@ -76,7 +76,7 @@ if generate_lab_helpers:
                                 reference_single_handle_volume=target_volume,
                                 reference_single_handle_concentration=500,
                                 echo_sheet=None if not generate_echo else echo_sheet,
-                                peg_groups_per_layer=4,
+                                peg_groups_per_layer=2,
                                 unique_transfer_volume_plates=special_vol_plates)
 
 if generate_graphical_report:

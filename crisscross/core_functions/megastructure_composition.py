@@ -223,7 +223,6 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
     :return: Pandas dataframe corresponding to output ech handler command list
     """
-    # TODO: enforce volume of a single command to be a multiple of 25nl
 
     # echo command prep
     output_command_list = []
@@ -303,6 +302,10 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             else:
                 # otherwise, extract the exact handle volumes to ensure an equal concentration w.r.t the core staples plate
                 handle_specific_vol = int(default_transfer_volume * (concentration_library['sw_src002'] / concentration_library[handle_data['plate']]) * slat_multiplier)
+
+            # handle volume needs to be a multiple of 25nl for echo to be able to execute...
+            if handle_specific_vol % 25 != 0:
+                raise RuntimeError(f'Handle volume selected for {handle_data} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). Please adjust nominal handle volume to fix.')
 
             if ',' in slat_name:
                 raise RuntimeError('Slat names cannot contain commas - this will cause issues with the echo csv  file.')

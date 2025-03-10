@@ -12,8 +12,8 @@ from crisscross.plate_mapping import get_standard_plates, get_cargo_plates, get_
 # update these depending on user
 experiment_folder = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/ColumbiaNewLib'
 base_design_import_file = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/ColumbiaNewLib/full_design.xlsx'
-# experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025'
-# base_design_import_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025/full_design.xlsx'
+experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025'
+base_design_import_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025/full_design.xlsx'
 
 echo_folder = os.path.join(experiment_folder, 'echo_commands')
 lab_helper_folder = os.path.join(experiment_folder, 'lab_helper_sheets')
@@ -42,18 +42,33 @@ megastructure.patch_control_handles(core_plate)
 
 target_volume = 100 # nl per staple
 if generate_echo:
-    echo_sheet = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
-                                 destination_plate_name='octa_double_purif_plate',
+    echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
+                                 destination_plate_name='octa_double_purif_plate_1',
                                  default_transfer_volume=target_volume,
                                  output_folder=echo_folder,
                                  center_only_well_pattern=True,
                                  plate_viz_type='barcode',
-                                 output_filename=f'new_columbia_pattern_2_step_purif_echo.csv')
+                                 output_filename=f'new_columbia_pattern_2_step_purif_echo_plate_1.csv')
+
+    echo_sheet_2 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
+                                 destination_plate_name='octa_double_purif_plate_2',
+                                 default_transfer_volume=target_volume,
+                                 output_folder=echo_folder,
+                                 center_only_well_pattern=True,
+                                 plate_viz_type='barcode',
+                                 output_filename=f'new_columbia_pattern_2_step_purif_echo_plate_2.csv')
 if generate_lab_helpers:
-    prepare_all_standard_sheets(megastructure.slats, os.path.join(lab_helper_folder, f'new_columbia_standard_helpers.xlsx'),
+    prepare_all_standard_sheets(megastructure.slats, os.path.join(lab_helper_folder, f'new_columbia_standard_helpers_plate_1.xlsx'),
                                 reference_single_handle_volume=target_volume,
                                 reference_single_handle_concentration=500,
-                                echo_sheet=None if not generate_echo else echo_sheet,
+                                echo_sheet=None if not generate_echo else echo_sheet_1,
+                                slat_mixture_volume="max",
+                                peg_groups_per_layer=2)
+
+    prepare_all_standard_sheets(megastructure.slats, os.path.join(lab_helper_folder, f'new_columbia_standard_helpers_plate_2.xlsx'),
+                                reference_single_handle_volume=target_volume,
+                                reference_single_handle_concentration=500,
+                                echo_sheet=None if not generate_echo else echo_sheet_2,
                                 slat_mixture_volume="max",
                                 peg_groups_per_layer=2)
 

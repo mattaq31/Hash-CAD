@@ -54,7 +54,7 @@ if generate_graphical_report:
                                         generate_3d_video=True,
                                         seed_color=(1.0, 1.0, 0.0))
 if generate_echo:
-    target_volume = 100
+    target_volume = 200
     special_vol_plates = {'sw_src007': int(target_volume * (500 / 200)),
                           'sw_src004': int(target_volume * (500 / 200)),
                           'P3621_SSW': int(target_volume * (500 / 200)),
