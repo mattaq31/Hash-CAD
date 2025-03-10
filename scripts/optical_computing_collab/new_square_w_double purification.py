@@ -9,11 +9,11 @@ from crisscross.plate_mapping import get_standard_plates, get_cargo_plates, get_
 
 
 ########## CONFIG
+# update these depending on user
 experiment_folder = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/ColumbiaNewLib'
 base_design_import_file = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/ColumbiaNewLib/full_design.xlsx'
-
-experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025'
-base_design_import_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025/full_design.xlsx'
+# experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025'
+# base_design_import_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/optical_computers/design_mar_2025/full_design.xlsx'
 
 echo_folder = os.path.join(experiment_folder, 'echo_commands')
 lab_helper_folder = os.path.join(experiment_folder, 'lab_helper_sheets')

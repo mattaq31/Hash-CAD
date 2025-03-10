@@ -230,6 +230,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     output_well_list = []
     output_plate_num_list = []
     output_well_descriptor_dict = {}
+    all_plates_needed = set()
 
     if output_plate_size == '96':
         plate_format = plate96
@@ -281,6 +282,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
         for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data,
                                                           ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
+            all_plates_needed.add(handle_data['plate'])
             if 'plate' not in handle_data:
                 if output_empty_wells:  # this is the case where a placeholder handle is used (no plate available).
                     #  If the user indicates they want to manually add in these handles,
@@ -300,8 +302,6 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                 handle_specific_vol = unique_transfer_volume_for_plates[handle_data['plate']]*slat_multiplier
             else:
                 # otherwise, extract the exact handle volumes to ensure an equal concentration w.r.t the core staples plate
-                if handle_data['plate'] == 'sw_src007':
-                    z=6
                 handle_specific_vol = int(default_transfer_volume * (concentration_library['sw_src002'] / concentration_library[handle_data['plate']]) * slat_multiplier)
 
             if ',' in slat_name:
@@ -356,5 +356,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         visualize_output_plates(output_well_descriptor_dict, output_plate_size, output_folder,
                                 output_filename.split('.')[0],
                                 slat_display_format=plate_viz_type)  # prepares a visualization of the output plates
+
+    print(Fore.BLUE + f'Info: These are the plates you need for this echo run:{all_plates_needed}' + Fore.RESET)
 
     return combined_df
