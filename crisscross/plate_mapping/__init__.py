@@ -106,11 +106,11 @@ def get_standard_plates(handle_library_v2=False):
     if handle_library_v2:
         crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
                                                         cckz_h2_antihandle_plates,
-                                                        assembly_handle_folder, plate_slat_sides=[2, 2, 2])
+                                                        assembly_handle_folder, plate_slat_sides=[2] * 6)
 
         crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
                                                     cckz_h5_handle_plates,
-                                                    assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+                                                    assembly_handle_folder, plate_slat_sides=[5] * 6)
     else:
         crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
                                                         crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,

@@ -118,7 +118,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
 
     print(Fore.BLUE + f'Info: Lowest handle mixture concentration: {round(min_handle_mix_conc, 1)}nM, highest handle mixture concentration: {round(max_handle_mix_conc, 1)}nM.' + Fore.RESET)
 
-    if (max_handle_mix_conc - min_handle_mix_conc) / min_handle_mix_conc > 0.1:
+    if (max_handle_mix_conc - min_handle_mix_conc) / min_handle_mix_conc > 0.2:
         print(Fore.MAGENTA + f'Warning: The handle mixtures generated have a wide concentration range. '
                              f'You could save on some staples by splitting the master mix preparation '
                              f'into two or more batches.' + Fore.RESET)
