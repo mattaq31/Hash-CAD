@@ -19,7 +19,7 @@ echo_folder = os.path.join(design_folder, 'echo_commands')
 lab_helper_folder = os.path.join(design_folder, 'lab_helper_sheets')
 hamming_folder = os.path.join(design_folder, 'hamming_arrays')
 create_dir_if_empty(echo_folder, lab_helper_folder, hamming_folder)
-experiment_name = 'YXZ003'
+experiment_name = 'YXZ002'
 
 slat_array = np.ones((1,32,1))
 
