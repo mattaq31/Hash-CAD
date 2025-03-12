@@ -83,7 +83,7 @@ if new_sequence_plate_generation:
     names = []
     descriptions = []
     sequences = []
-    for handle in all_handles_required:
+    for handle in sorted(all_handles_required):
         slat_pos = int(handle.split('-')[1])
         slat_side = int(handle.split('-')[2].split('h')[-1])
         new_seq = core_plate.get_sequence(slat_pos, slat_side) + 'tt' + nanowire_handle_sequence
