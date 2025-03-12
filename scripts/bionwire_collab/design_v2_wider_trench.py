@@ -74,7 +74,7 @@ M_trench.assign_cargo_handles_with_array(trench_cargo_array, cargo_key={3: 'Gold
 ##################
 # new sequence preparation
 if new_sequence_plate_generation:
-    nanowire_handle_sequence = 'TTTTGGGTTGATAAAAGCATGACAGGTTGATAATATAGAT'
+    nanowire_handle_sequence = 'GGTTGATAAAAGCATGACAGGTTGATAATATAGAT'
     all_handles_required = set()
     for slat_id, slat in M_trench.slats.items():
         for placeholder in slat.placeholder_list:
