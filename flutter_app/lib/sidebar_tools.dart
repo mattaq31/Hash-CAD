@@ -17,7 +17,7 @@ class SideBarTools extends StatefulWidget {
 
 List<String> getOrderedKeys(Map<String, Map<String, dynamic>> layerMap) {
   return layerMap.keys.toList()
-    ..sort((a, b) => layerMap[a]!['order'].compareTo(layerMap[b]!['order']));
+    ..sort((a, b) => layerMap[b]!['order'].compareTo(layerMap[a]!['order']));
 }
 
 class _SideBarToolsState extends State<SideBarTools> {
@@ -26,6 +26,7 @@ class _SideBarToolsState extends State<SideBarTools> {
   bool isCollapsed = false;
   bool collapseAnimation = false;
   String slatModelSelection = 'Add';
+  bool displayAssemblyHandles = false;
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +168,17 @@ class _SideBarToolsState extends State<SideBarTools> {
                     Text("Press 'Alt' to rotate slat draw direction!",
                         style: TextStyle(
                             fontSize: 14, color: Colors.grey.shade600)),
-                    SizedBox(height: 10),
+                    CheckboxListTile(
+                      title: const Text('Display Assembly Handles'),
+                      value: displayAssemblyHandles,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          displayAssemblyHandles = value ?? false;
+                          actionState.setAssemblyHandleDisplay(displayAssemblyHandles);
+                        });
+                      },
+                    ),
+                    SizedBox(height: 5),
                     Divider(thickness: 2, color: Colors.grey.shade300),
                     Text("Layer Manager",
                         style: TextStyle(
@@ -198,13 +209,13 @@ class _SideBarToolsState extends State<SideBarTools> {
                             sortedKeys.insert(newIndex, movedKey);
 
                             // Pass the reordered keys to reOrderLayers
-                            appState.reOrderLayers(sortedKeys);
+                            appState.reOrderLayers(sortedKeys.reversed.toList());
 
                           });
                         },
                         children: getOrderedKeys(appState.layerMap).map((key) {
                           var entry = appState.layerMap[key]!;
-                          int index = entry['order'];
+                          int index = appState.layerMap.length - (entry['order'] as int) - 1; // done to counteract the reversed order system of the layer sorter
                           bool isSelected = key == appState.selectedLayerKey;
 
                           return Material(
@@ -355,7 +366,11 @@ class _SideBarToolsState extends State<SideBarTools> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton.icon(
-                          onPressed: () {},
+                          onPressed: () {
+                            appState.generateRandomAssemblyHandles();
+                            actionState.setAssemblyHandleDisplay(true);
+                            displayAssemblyHandles = true;
+                          },
                           icon: Icon(Icons.shuffle, size: 18),
                           label: Text("Randomize"),
                           style: ElevatedButton.styleFrom(
@@ -385,7 +400,9 @@ class _SideBarToolsState extends State<SideBarTools> {
                       },
                     ),
                     FilledButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        appState.cleanAllHandles();
+                      },
                       icon: Icon(Icons.delete_sweep, size: 18),
                       label: Text("Delete all handles"),
                       style: ElevatedButton.styleFrom(

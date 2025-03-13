@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'crisscross_core/slats.dart';
+import 'crisscross_core/sparse_to_array_conversion.dart';
+import 'crisscross_core/assembly_handles.dart';
+import 'package:excel/excel.dart';
+import 'dart:io';
+
+import 'file_io.dart';
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
 String nextCapitalLetter(String current) {
   int len = current.length;
-  List<int> chars = current.split('').map((c) => c.codeUnitAt(0) - 'A'.codeUnitAt(0)).toList();
+  List<int> chars = current
+      .split('')
+      .map((c) => c.codeUnitAt(0) - 'A'.codeUnitAt(0))
+      .toList();
 
   for (int i = len - 1; i >= 0; i--) {
     if (chars[i] < 25) {
@@ -18,25 +28,40 @@ String nextCapitalLetter(String current) {
   return 'A${String.fromCharCodes(chars.map((e) => 'A'.codeUnitAt(0) + e))}';
 }
 
-
 /// State management for the design of the current megastructure
 class DesignState extends ChangeNotifier {
+  final double gridSize = 10.0; // do not change
+
   // good for distinguishing layers quickly, but user can change colours
-  List<String> colorPalette = ['#ebac23', '#b80058', '#008cf9', '#006e00', '#00bbad', '#d163e6', '#b24602', '#ff9287', '#5954d6', '#00c6f8', '#878500', '#00a76c', '#bdbdbd'];
+  List<String> colorPalette = [
+    '#ebac23',
+    '#b80058',
+    '#008cf9',
+    '#006e00',
+    '#00bbad',
+    '#d163e6',
+    '#b24602',
+    '#ff9287',
+    '#5954d6',
+    '#00c6f8',
+    '#878500',
+    '#00a76c',
+    '#bdbdbd'
+  ];
 
   // main properties for each design layer
-  Map<String,Map<String, dynamic>> layerMap = {
-    'A':{
+  Map<String, Map<String, dynamic>> layerMap = {
+    'A': {
       "direction": 'horizontal', // slat default direction
       'order': 0, // draw order - has to be updated when layers are moved
       'top_helix': 'H5', // not in use for now
       'bottom_helix': 'H2', // not in use for now
-      'slat_count': 0, // used to give an id to a new slat
+      'slat_count': 1, // used to give an id to a new slat
       "color": Color(int.parse('0xFFebac23')) // default slat color
     },
     'B': {
       "direction": 'vertical',
-      'slat_count': 0,
+      'slat_count': 1,
       'top_helix': 'H5',
       'bottom_helix': 'H2',
       'order': 1,
@@ -58,14 +83,26 @@ class DesignState extends ChangeNotifier {
 
   // useful to keep track of occupancy and speed up grid checks
   Map<String, Map<Offset, String>> occupiedGridPoints = {};
+  int minX = -1;
+  int minY = -1;
+  int maxX = 0;
+  int maxY = 0;
 
   /// Adds slats to the design
-  void addSlats(Offset position, String layer, Map<int, Map<int, Offset>> slatCoordinates) {
-    for (var slat in slatCoordinates.entries){
-      slats['$layer-I${layerMap[layer]?["slat_count"]}'] = Slat('$layer-I${layerMap[layer]?["slat_count"]}', layer, slat.value);
+  void addSlats(Offset position, String layer,
+      Map<int, Map<int, Offset>> slatCoordinates) {
+    for (var slat in slatCoordinates.entries) {
+      slats['$layer-I${layerMap[layer]?["slat_count"]}'] = Slat(
+          layerMap[layer]?["slat_count"],
+          '$layer-I${layerMap[layer]?["slat_count"]}',
+          layer,
+          slat.value);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
       occupiedGridPoints.putIfAbsent(layer, () => {});
-      occupiedGridPoints[layer]?.addAll({for (var offset in slat.value.values) offset : '$layer-I${layerMap[layer]?["slat_count"]}'});
+      occupiedGridPoints[layer]?.addAll({
+        for (var offset in slat.value.values)
+          offset: '$layer-I${layerMap[layer]?["slat_count"]}'
+      });
       layerMap[layer]?["slat_count"] += 1;
     }
     notifyListeners();
@@ -77,7 +114,8 @@ class DesignState extends ChangeNotifier {
     String layer = slatID.split('-')[0];
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
     slats[slatID]?.updateCoordinates(slatCoordinates);
-    occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset : slatID});
+    occupiedGridPoints[layer]
+        ?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
     notifyListeners();
   }
 
@@ -103,7 +141,7 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Removes a slat from the design
-  void removeSlat(String ID){
+  void removeSlat(String ID) {
     String layer = ID.split('-')[0];
     slats.remove(ID);
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
@@ -112,8 +150,8 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Selects or deselects a slat
-  void selectSlat(String ID){
-    if (selectedSlats.contains(ID)){
+  void selectSlat(String ID) {
+    if (selectedSlats.contains(ID)) {
       selectedSlats.remove(ID);
     } else {
       selectedSlats.add(ID);
@@ -122,17 +160,16 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Clears all selected slats
-  void clearSelection(){
+  void clearSelection() {
     selectedSlats = [];
     notifyListeners();
   }
 
   /// Rotates the direction of a layer from horizontal to vertical or vice versa
-  void rotateLayerDirection(){
-    if (layerMap[selectedLayerKey]?['direction'] == 'horizontal'){
+  void rotateLayerDirection() {
+    if (layerMap[selectedLayerKey]?['direction'] == 'horizontal') {
       layerMap[selectedLayerKey]?['direction'] = 'vertical';
-    }
-    else{
+    } else {
       layerMap[selectedLayerKey]?['direction'] = 'horizontal';
     }
 
@@ -140,12 +177,11 @@ class DesignState extends ChangeNotifier {
   }
 
   /// flips the H2-H5 direction of a layer (currently unused)
-  void flipLayer(String layer){
-    if (layerMap[layer]?['top_helix'] == 'H5'){
+  void flipLayer(String layer) {
+    if (layerMap[layer]?['top_helix'] == 'H5') {
       layerMap[layer]?['top_helix'] = 'H2';
       layerMap[layer]?['bottom_helix'] = 'H5';
-    }
-    else{
+    } else {
       layerMap[layer]?['top_helix'] = 'H5';
       layerMap[layer]?['bottom_helix'] = 'H2';
     }
@@ -153,9 +189,9 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Deletes a layer from the design entirely
-  void deleteLayer(String layer){
-
-    if (!layerMap.containsKey(layer)) return; // Ensure the layer exists before deleting
+  void deleteLayer(String layer) {
+    if (!layerMap.containsKey(layer))
+      return; // Ensure the layer exists before deleting
 
     layerMap.remove(layer); // Remove the layer
 
@@ -181,7 +217,7 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Reorders the positions of the layers based on a new order
-  void reOrderLayers(List<String> newOrder){
+  void reOrderLayers(List<String> newOrder) {
     for (int i = 0; i < newOrder.length; i++) {
       layerMap[newOrder[i]]!['order'] = i; // Assign new order values
     }
@@ -189,43 +225,96 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Adds an entirely new layer to the design
-  void addLayer(){
-
+  void addLayer() {
     // if last last layerMap value has direction horizontal, next direction should be vertical and vice versa
     String newDirection;
-    if (layerMap.values.last['direction'] == 'horizontal'){
+    if (layerMap.values.last['direction'] == 'horizontal') {
       newDirection = 'vertical';
-    }
-    else{
+    } else {
       newDirection = 'horizontal';
     }
 
     layerMap[nextLayerKey] = {
       "direction": newDirection,
-      'slat_count': 0,
+      'slat_count': 1,
       'top_helix': 'H5',
       'bottom_helix': 'H2',
       'order': layerMap.length,
-      "color": Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}'))
+      "color":
+          Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}'))
     };
 
-    if (nextColorIndex == colorPalette.length - 1){
+    if (nextColorIndex == colorPalette.length - 1) {
       nextColorIndex = 0;
-    }
-    else{
+    } else {
       nextColorIndex += 1;
     }
 
     nextLayerKey = nextCapitalLetter(nextLayerKey);
     notifyListeners();
   }
+
+  void generateRandomAssemblyHandles() {
+    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, gridSize);
+
+    List<List<List<int>>> handleArray = generateRandomSlatHandles(slatArray, 32, seed: DateTime.now().millisecondsSinceEpoch % 1000);
+    Offset minPos;
+    Offset maxPos;
+    (minPos, maxPos) = extractGridBoundary(slats);
+
+    for (var slat in slats.values) {
+      List assemblyLayers = [];
+      if (layerMap[slat.layer]!['order'] == 0) {
+        assemblyLayers.add(0);
+      } else if (layerMap[slat.layer]!['order'] == layerMap.length-1) {
+        assemblyLayers.add(handleArray[0][0].length-1);
+      } else {
+        assemblyLayers.add(layerMap[slat.layer]!['order'] - 1);
+        assemblyLayers.add(layerMap[slat.layer]!['order']);
+      }
+      for (int i = 0; i < slat.maxLength; i++) {
+        int x = ((slat.slatPositionToCoordinate[i+1]!.dx - minPos!.dx) / gridSize).floor();
+        int y = ((slat.slatPositionToCoordinate[i+1]!.dy - minPos!.dy) / gridSize).floor();
+        for (var aLayer in assemblyLayers) {
+          if (handleArray[x][y][aLayer] != 0) {
+            int slatSide;
+            if (aLayer == layerMap[slat.layer]!['order']){
+              slatSide = int.parse(layerMap[slat.layer]?['top_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+            }
+            else{
+              slatSide = int.parse(layerMap[slat.layer]?['bottom_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+            }
+            slat.setPlaceholderHandle(i + 1, slatSide, '${handleArray[x][y][aLayer]}', 'Assembly');
+          }
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  void cleanAllHandles(){
+    /// Removes all handles from the slats
+    /// TODO: PROBLEM WHEN SHIFTING SLAT LAYERS - ASSEMBLY HANDLES ARE CARRIED OVER!
+    for (var slat in slats.values) {
+      slat.clearAllHandles();
+    }
+    notifyListeners();
+  }
 }
 
-/// State management for the action mode of the app
+/// State management for action mode and display settings
 class ActionState extends ChangeNotifier {
-String slatMode = 'Add';
-void updateSlatMode(String value) {
-  slatMode = value;
-  notifyListeners();
-}
+  String slatMode = 'Add';
+  bool displayAssemblyHandles = false;
+
+  void updateSlatMode(String value) {
+    slatMode = value;
+    notifyListeners();
+  }
+
+  void setAssemblyHandleDisplay(bool value){
+    displayAssemblyHandles = value;
+    notifyListeners();
+  }
+
 }

@@ -7,6 +7,7 @@ class Slat {
   final String id;
   final String layer;
   final int maxLength;
+  final int numericID;
   bool reversedSlat = false; // flag to indicate if the slat has been reversed
 
   // Maps positions on the slat to coordinates on a 2D grid and vice-versa
@@ -18,7 +19,7 @@ class Slat {
   Map<int, Map<String, dynamic>> h2Handles = {};
   Map<int, Map<String, dynamic>> h5Handles = {};
 
-  Slat(this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32}) {
+  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32}) {
       slatCoordinates.forEach((key, coord) {
         slatPositionToCoordinate[key] = coord;
         slatCoordinateToPosition[coord] = key;
@@ -45,16 +46,18 @@ class Slat {
     reversedSlat = !reversedSlat;
   }
 
-  void setPlaceholderHandle(int handleId, int slatSide, String descriptor) {
+  void setPlaceholderHandle(int handleId, int slatSide, String descriptor, String category) {
     /// Assigns a placeholder to the slat, instead of a full handle.
+
+    // TODO: MORE STREAMLINED PLACEMENT LOGIC and REDUNDANCY/ERROR HANDLING
     if (handleId < 1 || handleId > maxLength) {
       throw Exception('Handle ID out of range');
     }
 
     if (slatSide == 2) {
-      h2Handles[handleId] = {'descriptor': descriptor};
+      h2Handles[handleId] = {'descriptor': descriptor, 'category': category};
     } else if (slatSide == 5) {
-      h5Handles[handleId] = {'descriptor': descriptor};
+      h5Handles[handleId] = {'descriptor': descriptor, 'category': category};
     } else {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
@@ -63,7 +66,7 @@ class Slat {
   }
 
   void updatePlaceholderHandle(
-      int handleId, int slatSide, String sequence, String well, String plateName, String descriptor) {
+      int handleId, int slatSide, String sequence, String well, String plateName, String descriptor, String category) {
     /// Updates a placeholder handle with the actual handle.
 
     String inputId = 'handle-$handleId-h$slatSide';
@@ -74,25 +77,32 @@ class Slat {
     }
 
     if (slatSide == 2) {
-      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor};
+      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
     } else if (slatSide == 5) {
-      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor};
+      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
     }
   }
 
-  void setHandle(int handleId, int slatSide, String sequence, String well, String plateName, String descriptor) {
+  void setHandle(int handleId, int slatSide, String sequence, String well, String plateName, String descriptor, String category) {
     /// Defines the full details of a handle on a slat.
     if (handleId < 1 || handleId > maxLength) {
       throw Exception('Handle ID out of range');
     }
 
     if (slatSide == 2) {
-      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor};
+      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
     } else if (slatSide == 5) {
-      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor};
+      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
     } else {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
+  }
+
+  void clearAllHandles(){
+    /// Removes all handles from the slat.
+    h2Handles.clear();
+    h5Handles.clear();
+    placeholderList.clear();
   }
 
   double getMolecularWeight() {

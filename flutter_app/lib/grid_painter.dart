@@ -24,7 +24,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
 
   double initialScale = 1.0; // scale parameters
   double minScale = 0.5;
-  double maxScale = 3.0;
+  double maxScale = 6.0;
 
   double scale = 0.8; // actual running scale value
   Offset offset = Offset(800,700); // actual running offset value
@@ -388,7 +388,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         appState.layerMap,
                         appState.selectedLayerKey,
                         appState.selectedSlats,
-                        hiddenSlats),
+                        hiddenSlats,
+                        actionState.displayAssemblyHandles),
                     child: Container(),
                   ),
                 ],
@@ -574,9 +575,10 @@ class SlatPainter extends CustomPainter {
   final String selectedLayer;
   final List<String> selectedSlats;
   final List<String> hiddenSlats;
+  final bool drawAssemblyHandles;
 
   SlatPainter(this.scale, this.canvasOffset, this.gridSize, this.slats,
-      this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats);
+      this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats, this.drawAssemblyHandles);
 
   /// draws a dotted border around a slat when selected
   void drawBorder(Canvas canvas, Slat slat, Color color, Offset slatExtend) {
@@ -645,15 +647,124 @@ class SlatPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
       if (slat.layer != selectedLayer) { // TODO: alpha values can start to overlap when there are loads of layers....
         rodPaint = Paint()
-          ..color = layerMap[slat.layer]?['color'].withValues(alpha: 0.5)
+          ..color = layerMap[slat.layer]?['color'].withValues(alpha: 0.2)
           ..strokeWidth = gridSize / 2
           ..style = PaintingStyle.fill;
       }
 
       Offset slatExtend = calculateSlatExtend(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!, gridSize);
 
-      canvas.drawLine(slat.slatPositionToCoordinate[1]! - slatExtend,
-          slat.slatPositionToCoordinate[32]! + slatExtend, rodPaint);
+      canvas.drawLine(slat.slatPositionToCoordinate[1]! - slatExtend, slat.slatPositionToCoordinate[32]! + slatExtend, rodPaint);
+
+      if (slat.layer == selectedLayer && drawAssemblyHandles) {
+        for (int i = 0; i < slat.maxLength; i++) {
+          if (slat.h5Handles.containsKey(i + 1) || slat.h2Handles.containsKey(i + 1)) {
+            String topText = '↑X';
+            String bottomText = '↓X';
+            Color topColor = Colors.red;
+            Color bottomColor = Colors.red;
+            if (slat.h5Handles.containsKey(i + 1)) {
+              topText = '↑${slat.h5Handles[i + 1]!["descriptor"]}';
+              topColor = Colors.green;
+            }
+            if (slat.h2Handles.containsKey(i + 1)) {
+              bottomText = '↓${slat.h2Handles[i + 1]!["descriptor"]}';
+              bottomColor = Colors.green;
+            }
+
+            final position = slat.slatPositionToCoordinate[i + 1]!;
+            final size = gridSize * 0.85; // Adjust size as needed
+            final halfHeight = size / 2;
+
+            final rect_top = Rect.fromCenter(
+              center: Offset(position.dx, position.dy - halfHeight/2),
+              width: size,
+              height: halfHeight,
+            );
+
+            final rect_bottom = Rect.fromCenter(
+              center: Offset(position.dx, position.dy + halfHeight/2),
+              width: size,
+              height: halfHeight,
+            );
+
+            canvas.drawRect(
+              rect_top,
+              Paint()
+                ..color = topColor
+                ..style = PaintingStyle.fill,
+            );
+
+            canvas.drawRect(
+              rect_bottom,
+              Paint()
+                ..color = bottomColor
+                ..style = PaintingStyle.fill,
+            );
+
+            // Draw the top "2"
+            final topTextPainter = TextPainter(
+              text: TextSpan(
+                text: topText,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: halfHeight * 0.8,
+                  // Adjust font size to fit half the rectangle
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+            );
+            topTextPainter.layout();
+
+            final topBaselineOffset = topTextPainter
+                    .computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
+                0;
+
+            final topOffset = Offset(
+              position.dx - topTextPainter.width / 2 - 0.1,
+              position.dy - halfHeight + (halfHeight - topBaselineOffset) / 2,
+            );
+            topTextPainter.paint(canvas, topOffset);
+
+            // Draw the bottom "2"
+            final bottomTextPainter = TextPainter(
+              text: TextSpan(
+                text: bottomText,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: halfHeight * 0.8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+            );
+            bottomTextPainter.layout();
+
+            final bottomBaselineOffset = bottomTextPainter
+                    .computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
+                0;
+            final bottomOffset = Offset(
+              position.dx - bottomTextPainter.width / 2 - 0.1,
+              position.dy +
+                  halfHeight -
+                  (halfHeight + bottomBaselineOffset) / 2,
+            );
+            bottomTextPainter.paint(canvas, bottomOffset);
+
+            // Draw dividing line between the two "2"s
+            canvas.drawLine(
+              Offset(rect_top.left, position.dy),
+              Offset(rect_top.right, position.dy),
+              Paint()
+                ..color = Colors.white
+                ..strokeWidth = 0.5,
+            );
+          }
+        }
+      }
 
       if (selectedSlats.contains(slat.id)) {
         drawBorder(canvas, slat, layerMap[slat.layer]?['color'], slatExtend);
