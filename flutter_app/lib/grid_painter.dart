@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 import 'crisscross_core/slats.dart';
 import 'package:flutter/material.dart';
@@ -633,6 +634,8 @@ class SlatPainter extends CustomPainter {
     canvas.translate(canvasOffset.dx, canvasOffset.dy);
     canvas.scale(scale);
 
+    final isWeb = kIsWeb;
+
     // TODO: slat draw length should be parametrized
     final sortedSlats = List<Slat>.from(slats)
       ..sort((a, b) => layerMap[a.layer]?['order'].compareTo(layerMap[b.layer]?['order']));
@@ -718,9 +721,14 @@ class SlatPainter extends CustomPainter {
             );
             topTextPainter.layout();
 
-            final topBaselineOffset = topTextPainter
-                    .computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
-                0;
+            double topBaselineOffset;
+
+            if (isWeb){
+              topBaselineOffset = topTextPainter.height;
+            }
+            else{
+              topBaselineOffset = topTextPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ??0;
+            }
 
             final topOffset = Offset(
               position.dx - topTextPainter.width / 2 - 0.1,
@@ -734,6 +742,7 @@ class SlatPainter extends CustomPainter {
                 text: bottomText,
                 style: TextStyle(
                   color: Colors.white,
+                  fontFamily: 'Roboto',
                   fontSize: halfHeight * 0.8,
                   fontWeight: FontWeight.bold,
                 ),
@@ -743,9 +752,15 @@ class SlatPainter extends CustomPainter {
             );
             bottomTextPainter.layout();
 
-            final bottomBaselineOffset = bottomTextPainter
-                    .computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
-                0;
+            double bottomBaselineOffset;
+            if (isWeb) {
+              bottomBaselineOffset = bottomTextPainter.height;
+            } else {
+              bottomBaselineOffset =
+                  bottomTextPainter.computeDistanceToActualBaseline(
+                          TextBaseline.alphabetic) ?? 0;
+            }
+
             final bottomOffset = Offset(
               position.dx - bottomTextPainter.width / 2 - 0.1,
               position.dy +
