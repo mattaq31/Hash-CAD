@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'dart:io';
 import 'crisscross_core/slats.dart';
@@ -6,7 +7,6 @@ import 'crisscross_core/sparse_to_array_conversion.dart';
 import 'crisscross_core/assembly_handles.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
-
 
 Future<String?> selectSaveLocation(String defaultFileName) async {
   String? filePath = await FilePicker.platform.saveFile(
@@ -78,21 +78,24 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
 
   excel.delete('Sheet1'); // removes useless first sheet
 
-  // Get the directory to save the file
-  String? filePath = await selectSaveLocation('Megastructure.xlsx');
-
-  // if filepath is null, return
-  if (filePath == null) {
-    return;
+  if (kIsWeb){
+    // TODO: allow user to change filename in-app somehow
+    excel.save(fileName: 'Megastructure.xlsx');
   }
-
-  // Save the file
-  List<int>? fileBytes = excel.encode();
-
-  if (fileBytes != null) {
-    File(filePath)
-      ..createSync(recursive: true)
-      ..writeAsBytesSync(fileBytes);
+  else {
+    // Get the directory to save the file
+    String? filePath = await selectSaveLocation('Megastructure.xlsx');
+    // if filepath is null, return
+    if (filePath == null) {
+      return;
+    }
+    // Save the file
+    List<int>? fileBytes = excel.encode();
+    if (fileBytes != null) {
+      File(filePath)
+        ..createSync(recursive: true)
+        ..writeAsBytesSync(fileBytes);
+    }
   }
 }
 
