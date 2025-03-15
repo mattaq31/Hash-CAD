@@ -9,7 +9,6 @@ import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 import 'package:provider/provider.dart';
 import 'package:three_js_helpers/three_js_helpers.dart';
-import 'package:three_js_core/core/object_3d.dart';
 
 
 class ThreeDisplay extends StatefulWidget {
@@ -25,6 +24,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   double VFOV = 70;
   late double HFOV;
   Set<String> slatIDs = {};
+  Map<String, Map<String, three.Mesh>> slatAccessories = {};
 
   @override
   void initState() {
@@ -51,7 +51,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     super.dispose();
   }
 
-  late three.Mesh mesh;
   late OrbitControls controls;
 
   void setup(){
@@ -124,6 +123,102 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     return Offset(extX, extY);
   }
 
+  void createAssemblyHandle(String slatID, String name, Offset position, int color, double zOrder, String topSide, String handleSide){
+    /// Creates a new handle graphic in the 3D scene.
+    final geometry = CylinderGeometry(2, 2, 1.5, 60);
+    final material = three.MeshPhongMaterial.fromMap({"color": color, "flatShading": true});
+    final mesh = three.Mesh(geometry, material);
+    mesh.name = name;
+    double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
+    mesh.position.setValues(position!.dx, (zOrder * 6.5) + verticalOffset, position!.dy);
+    mesh.rotation.z = math.pi;
+    mesh.updateMatrix();
+    mesh.matrixAutoUpdate = false;
+    threeJs.scene.add(mesh);
+    slatAccessories[slatID]?[name] = mesh;
+  }
+
+  void updateAssemblyHandle(three.Object3D handleMesh, Offset newPosition, int newColor, double newZOrder, String newTopSide, String newHandleSide){
+    /// Makes updates to the position and color of an existing handle in the 3D scene, if necessary.  Regenerating from scratch is slow so an update is preferred instead.
+
+    double verticalOffset = (newTopSide == newHandleSide) ? 2.5 : -2.5;
+    bool updateNeeded = false;
+    // general position change
+    if (handleMesh.position.x != newPosition.dx || handleMesh.position.y != (newZOrder * 6.5) + verticalOffset || handleMesh.position.z != newPosition.dy) {
+      handleMesh.position.x = newPosition.dx;
+      handleMesh.position.y = (newZOrder * 6.5) + verticalOffset;
+      handleMesh.position.z = newPosition.dy;
+      updateNeeded = true;
+    }
+
+    if (newColor != handleMesh.material?.color.getHex()) {
+      handleMesh.material?.color.setFromHex32(newColor);
+      updateNeeded = true;
+    }
+
+    if (updateNeeded) {
+      handleMesh.updateMatrix();
+    }
+  }
+
+  void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide) {
+    final handleName = '${slat.id}-handle-$handlePosition-$handleSide';
+    final existingHandleMesh = threeJs.scene.getObjectByName(handleName);
+
+    bool existingHandle = false;
+    if (handleSide == 'H5'){
+      existingHandle = slat.h5Handles.containsKey(handlePosition);
+    }
+    else if (handleSide == 'H2'){
+      existingHandle = slat.h2Handles.containsKey(handlePosition);
+    }
+
+    if (existingHandle) {
+      if (existingHandleMesh == null) {
+        // Create new handle if missing
+        createAssemblyHandle(slat.id, handleName, position, color, order, topSide, handleSide);
+      } else {
+        // Update existing handle
+        updateAssemblyHandle(existingHandleMesh!, position, color, order, topSide, handleSide);
+      }
+    } else if (existingHandleMesh != null) {
+      // Remove handle if it was deleted from the slat but still lingering in the scene
+      threeJs.scene.remove(existingHandleMesh!);
+      slatAccessories[slat.id]?.remove(handleName);
+    }
+  }
+
+
+  void manageAssemblyHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap) {
+    /// Adds, updates or removes assembly handles from the 3D scene based on the current state of the slat.
+    if (!slatAccessories.containsKey(baseSlat.id)) {
+      slatAccessories[baseSlat.id] = {};
+    }
+    final topSide = (layerMap[baseSlat.layer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
+    final color = layerMap[baseSlat.layer]?['color'].value & 0x00FFFFFF;
+    final order = layerMap[baseSlat.layer]?['order'].toDouble();
+    for (var i = 1; i <= baseSlat.maxLength; i++) {
+      handleAssembly(
+        baseSlat,
+        i,
+        baseSlat.slatPositionToCoordinate[i]!,
+        color,
+        order,
+        topSide,
+        'H2',
+      );
+      handleAssembly(
+        baseSlat,
+        i,
+        baseSlat.slatPositionToCoordinate[i]!,
+        color,
+        order,
+        topSide,
+        'H5',
+      );
+    }
+  }
+
   /// Adds all provided slats into the 3D scene, updating existing slats if necessary.
   void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap){
 
@@ -161,6 +256,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         mesh.updateMatrix();
         mesh.matrixAutoUpdate = false;
         threeJs.scene.add(mesh);
+        manageAssemblyHandles(slat, layerMap); // add assembly handles to the slat
       }
       // slat already exists - should check to see if layer position, color, or direction has changed
       else{
@@ -193,6 +289,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
           meshSlat?.material?.color.setFromHex32(layerMap[slat.layer]?['color'].value & 0x00FFFFFF);
           updateNeeded = true;
         }
+        manageAssemblyHandles(slat, layerMap); // add/update/remove assembly handles
 
         // request update if necessary
         if(updateNeeded) {
@@ -207,6 +304,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     final slat = threeJs.scene.getObjectByName(id);
     if (slat != null) {
       threeJs.scene.remove(slat);
+
+      slatAccessories[id]?.forEach((name, handle) {
+        threeJs.scene.remove(handle);
+      });
     }
   }
 

@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'crisscross_core/slats.dart';
 import 'crisscross_core/sparse_to_array_conversion.dart';
 import 'crisscross_core/assembly_handles.dart';
-import 'package:excel/excel.dart';
-import 'dart:io';
-
 import 'file_io.dart';
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
@@ -145,7 +141,6 @@ class DesignState extends ChangeNotifier {
     String layer = ID.split('-')[0];
     slats.remove(ID);
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
-    layerMap[layer]?["slat_count"] -= 1;
     notifyListeners();
   }
 
@@ -299,6 +294,10 @@ class DesignState extends ChangeNotifier {
       slat.clearAllHandles();
     }
     notifyListeners();
+  }
+  void exportCurrentDesign() async {
+    /// Exports the current design to an excel file
+    exportDesign(slats, layerMap, gridSize);
   }
 }
 

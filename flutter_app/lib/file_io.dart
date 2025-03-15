@@ -25,6 +25,7 @@ Future<String?> selectSaveLocation(String defaultFileName) async {
 
 void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize) async{
 
+  // TODO: assembly handles should not be created here - should only be drawn from slat system
   List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, gridSize);
   List<List<List<int>>> handleArray = generateRandomSlatHandles(slatArray, 32); //TODO: this should not be generated randomly but be assigned to slats and then retained
 

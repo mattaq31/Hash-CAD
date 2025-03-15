@@ -336,14 +336,12 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 if (actionState.slatMode == "Move") {
                   // TODO: if this could also be made faster, perhaps using a set, that would be great
                   // TODO: on touchpad, the shift click seems to clear the selection instead of add on (probably due to multiple clicks?)
-                  print(isShiftPressed);
                   if (appState.occupiedGridPoints
                           .containsKey(appState.selectedLayerKey) &&
                       appState
                           .occupiedGridPoints[appState.selectedLayerKey]!.keys
                           .contains(snappedPosition)) {
                     if (appState.selectedSlats.isNotEmpty && !isShiftPressed) {
-                      print('I am here');
                       appState.clearSelection();
                     }
                     // this flips a selection if the slat was already clicked (and pressing shift)
@@ -659,6 +657,7 @@ class SlatPainter extends CustomPainter {
 
       canvas.drawLine(slat.slatPositionToCoordinate[1]! - slatExtend, slat.slatPositionToCoordinate[32]! + slatExtend, rodPaint);
 
+      // TODO: H2/H5 position needs to be re-determined when directionality is flipped...
       if (slat.layer == selectedLayer && drawAssemblyHandles) {
         for (int i = 0; i < slat.maxLength; i++) {
           if (slat.h5Handles.containsKey(i + 1) || slat.h2Handles.containsKey(i + 1)) {
@@ -736,7 +735,6 @@ class SlatPainter extends CustomPainter {
             );
             topTextPainter.paint(canvas, topOffset);
 
-            // Draw the bottom "2"
             final bottomTextPainter = TextPainter(
               text: TextSpan(
                 text: bottomText,
@@ -769,7 +767,7 @@ class SlatPainter extends CustomPainter {
             );
             bottomTextPainter.paint(canvas, bottomOffset);
 
-            // Draw dividing line between the two "2"s
+            // Draw dividing line
             canvas.drawLine(
               Offset(rect_top.left, position.dy),
               Offset(rect_top.right, position.dy),
