@@ -155,3 +155,5 @@ prepare_all_standard_sheets(NewLibraryMega.slats, os.path.join(DesignFolder, 'ne
 
 
 
+### For the future, when using the new handle library at small scale, use this line from Matthew
+# crisscross_antihandle_y_plates, crisscross_handle_x_plates = get_assembly_handle_v2_sample_plates()
