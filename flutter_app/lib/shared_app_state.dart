@@ -50,8 +50,8 @@ class DesignState extends ChangeNotifier {
     'A': {
       "direction": 'horizontal', // slat default direction
       'order': 0, // draw order - has to be updated when layers are moved
-      'top_helix': 'H5', // not in use for now
-      'bottom_helix': 'H2', // not in use for now
+      'top_helix': 'H5',
+      'bottom_helix': 'H2',
       'slat_count': 1, // used to give an id to a new slat
       "color": Color(int.parse('0xFFebac23')) // default slat color
     },
@@ -250,12 +250,11 @@ class DesignState extends ChangeNotifier {
   }
 
   void generateRandomAssemblyHandles() {
-    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, gridSize);
-
-    List<List<List<int>>> handleArray = generateRandomSlatHandles(slatArray, 32, seed: DateTime.now().millisecondsSinceEpoch % 1000);
     Offset minPos;
     Offset maxPos;
     (minPos, maxPos) = extractGridBoundary(slats);
+    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
+    List<List<List<int>>> handleArray = generateRandomSlatHandles(slatArray, 32, seed: DateTime.now().millisecondsSinceEpoch % 1000);
 
     for (var slat in slats.values) {
       List assemblyLayers = [];
@@ -298,6 +297,41 @@ class DesignState extends ChangeNotifier {
   void exportCurrentDesign() async {
     /// Exports the current design to an excel file
     exportDesign(slats, layerMap, gridSize);
+  }
+
+  void importNewDesign() async{
+    var (newSlats, newLayerMap) = await importDesign();
+    // check if the maps are empty
+    if (newSlats.isEmpty || newLayerMap.isEmpty) {
+      return;
+    }
+    layerMap = newLayerMap;
+    slats = newSlats;
+    notifyListeners();
+  }
+
+  void clearAll() {
+    slats = {};
+    layerMap = {
+      'A': {
+        "direction": 'horizontal', // slat default direction
+        'order': 0, // draw order - has to be updated when layers are moved
+        'top_helix': 'H5',
+        'bottom_helix': 'H2',
+        'slat_count': 1, // used to give an id to a new slat
+        "color": Color(int.parse('0xFFebac23')) // default slat color
+      },
+      'B': {
+        "direction": 'vertical',
+        'slat_count': 1,
+        'top_helix': 'H5',
+        'bottom_helix': 'H2',
+        'order': 1,
+        "color": Color(int.parse('0xFFb80058'))
+      },
+    };
+    selectedLayerKey = 'A';
+    notifyListeners();
   }
 }
 

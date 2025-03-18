@@ -78,7 +78,7 @@ class _SideBarToolsState extends State<SideBarTools> {
                           children: [
                             FilledButton.icon(
                               onPressed: () {
-                                appState.cleanAllHandles();
+                                appState.importNewDesign();
                               },
                               icon: Icon(Icons.upload, size: 18),
                               label: Text("Import"),
@@ -218,6 +218,22 @@ class _SideBarToolsState extends State<SideBarTools> {
                             actionState.setAssemblyHandleDisplay(displayAssemblyHandles);
                           });
                         },
+                      ),
+                      FilledButton.icon(
+                        onPressed: () {
+                          appState.clearAll();
+                        },
+                        icon: Icon(Icons.cleaning_services, size: 18),
+                        label: Text("Clear All"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red, // Red background
+                          foregroundColor: Colors.white, // White text
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          textStyle: TextStyle(fontSize: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8), // Rounded edges
+                          ),
+                        ),
                       ),
                       SizedBox(height: 5),
                       Divider(thickness: 2, color: Colors.grey.shade300),
