@@ -249,6 +249,7 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // TODO: assembly handles are still causing performance issues - it's probably the 3D system - need to investigate
   void generateRandomAssemblyHandles() {
     Offset minPos;
     Offset maxPos;
@@ -331,6 +332,7 @@ class DesignState extends ChangeNotifier {
       },
     };
     selectedLayerKey = 'A';
+    occupiedGridPoints = {};
     notifyListeners();
   }
 }
@@ -339,6 +341,7 @@ class DesignState extends ChangeNotifier {
 class ActionState extends ChangeNotifier {
   String slatMode = 'Add';
   bool displayAssemblyHandles = false;
+  bool evolveMode = false;
 
   void updateSlatMode(String value) {
     slatMode = value;
@@ -350,4 +353,13 @@ class ActionState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void activateEvolveMode(){
+    evolveMode = true;
+    notifyListeners();
+  }
+
+  void deactivateEvolveMode(){
+    evolveMode = false;
+    notifyListeners();
+  }
 }

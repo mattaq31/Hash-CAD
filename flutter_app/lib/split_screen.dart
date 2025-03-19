@@ -5,6 +5,7 @@ import 'crosshatch_shader.dart';
 import 'grid_painter.dart';
 import 'sidebar_tools.dart';
 import 'shared_app_state.dart';
+import 'hamming_evolve_window.dart';
 
 class SplitScreen extends StatefulWidget {
   const SplitScreen({super.key});
@@ -73,6 +74,7 @@ class _SplitScreenState extends State<SplitScreen> {
             },
           ),
           SideBarTools(),
+          HammingEvolveWindow(),
         ],
       ),
     );

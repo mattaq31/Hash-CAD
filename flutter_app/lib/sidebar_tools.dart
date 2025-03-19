@@ -438,7 +438,9 @@ class _SideBarToolsState extends State<SideBarTools> {
                           ),
                           SizedBox(width: 10),
                           ElevatedButton.icon(
-                            onPressed: () {},
+                            onPressed: () {
+                              actionState.activateEvolveMode();
+                            },
                             icon: Icon(Icons.auto_awesome, size: 18),
                             label: Text("Evolve"),
                             style: ElevatedButton.styleFrom(
