@@ -3,6 +3,8 @@ import 'crisscross_core/slats.dart';
 import 'crisscross_core/sparse_to_array_conversion.dart';
 import 'crisscross_core/assembly_handles.dart';
 import 'file_io.dart';
+import 'grpc_client_architecture/client_entry.dart';
+
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
 String nextCapitalLetter(String current) {
@@ -249,13 +251,11 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // TODO: assembly handles are still causing performance issues - it's probably the 3D system - need to investigate
-  void generateRandomAssemblyHandles() {
-    Offset minPos;
-    Offset maxPos;
-    (minPos, maxPos) = extractGridBoundary(slats);
-    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
-    List<List<List<int>>> handleArray = generateRandomSlatHandles(slatArray, 32, seed: DateTime.now().millisecondsSinceEpoch % 1000);
+
+  void assignAssemblyHandleArray(List<List<List<int>>> handleArray, Offset? minPos, Offset? maxPos){
+    if (minPos == null || maxPos == null){
+      (minPos, maxPos) = extractGridBoundary(slats);
+    }
 
     for (var slat in slats.values) {
       List assemblyLayers = [];
@@ -284,7 +284,34 @@ class DesignState extends ChangeNotifier {
         }
       }
     }
+  }
+
+  // TODO: assembly handles are still causing performance issues - it's probably the 3D system - need to investigate
+  void generateRandomAssemblyHandles(int uniqueHandleCount, bool splitLayerHandles) {
+    Offset minPos;
+    Offset maxPos;
+    (minPos, maxPos) = extractGridBoundary(slats);
+    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
+    List<List<List<int>>> handleArray;
+
+    if (splitLayerHandles) {
+      handleArray = generateLayerSplitHandles(slatArray, uniqueHandleCount,
+          seed: DateTime.now().millisecondsSinceEpoch % 1000);
+    } else {
+      handleArray = generateRandomSlatHandles(slatArray, uniqueHandleCount,
+          seed: DateTime.now().millisecondsSinceEpoch % 1000);
+    }
+
+    assignAssemblyHandleArray(handleArray, minPos, maxPos);
     notifyListeners();
+  }
+
+  List<List<List<int>>> getSlatArray(){
+    Offset minPos;
+    Offset maxPos;
+    (minPos, maxPos) = extractGridBoundary(slats);
+    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
+    return slatArray;
   }
 
   void cleanAllHandles(){
@@ -362,4 +389,86 @@ class ActionState extends ChangeNotifier {
     evolveMode = false;
     notifyListeners();
   }
+}
+
+/// State management for communicating with python server
+class ServerState extends ChangeNotifier {
+  final Client hammingClient = Client();
+
+  List<double> hammingMetrics = [];
+  List<double> physicsMetrics = [];
+
+  Map<String, String> evoParams = {
+    'mutation_rate': '0.0025',
+    'mutation_type_probabilities': '0.425, 0.425, 0.15',
+    'evolution_generations': '200',
+    'evolution_population': '30',
+    'process_count': 'DEFAULT',
+    'generational_survivors': '3',
+    'seed': '8',
+    'number_unique_handles': '32',
+    'split_sequence_handles': 'true'
+  };
+
+  // Human-readable labels for UI display
+  final Map<String, String> paramLabels = {
+    'mutation_rate': 'Mutation Rate',
+    'mutation_type_probabilities': 'Mutation Probabilities',
+    'evolution_generations': 'Max Generations',
+    'evolution_population': 'Evolution Population',
+    'process_count': 'Number of Threads',
+    'generational_survivors': 'Generational Survivors',
+    'seed': 'Random Seed',
+    'number_unique_handles': 'Unique Handle Count',
+    'split_sequence_handles': 'Split Sequence Handles',
+  };
+
+  bool evoActive = false;
+
+  ServerState() {
+    // Listen to updates from the client
+    hammingClient.updates.listen((update) {
+      hammingMetrics.add(update.hamming);
+      physicsMetrics.add(update.physics);
+      notifyListeners(); // Notify UI elements
+    });
+  }
+
+  void evolveAssemblyHandles(List<List<List<int>>> slatArray) {
+    hammingClient.initiateEvolve(slatArray, evoParams);
+    evoActive = true;
+    notifyListeners();
+  }
+
+  void pauseEvolve(){
+    hammingClient.pauseEvolve();
+    evoActive = false;
+    notifyListeners();
+  }
+
+  void exportRequest(String folderPath){
+    hammingClient.requestExport(folderPath);
+  }
+
+  Future<List<List<List<int>>>> stopEvolve(){
+    evoActive = false;
+    Future<List<List<List<int>>>> finalArray = hammingClient.stopEvolve();
+    hammingMetrics = [];
+    physicsMetrics = [];
+    notifyListeners();
+
+    return finalArray;
+  }
+
+  void updateEvoParam(String parameter, String value){
+    evoParams[parameter] = value;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    hammingClient.shutdown(); // Clean up resources
+    super.dispose();
+  }
+
 }

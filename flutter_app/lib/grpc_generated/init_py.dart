@@ -50,8 +50,7 @@ void _initParamsFromEnvVars(bool doNoStartPy) {
     initPyImpl();
   }
 
-  var flag = const String.fromEnvironment('useRemote', defaultValue: 'false') ==
-      'true';
+  var flag = const String.fromEnvironment('useRemote', defaultValue: 'false') == 'true';
   if (doNoStartPy || flag) {
     localPyStartSkipped = true;
   }
@@ -61,8 +60,7 @@ void _initParamsFromEnvVars(bool doNoStartPy) {
     defaultHost = hostOverride;
   }
 
-  var portOverride =
-      int.tryParse(const String.fromEnvironment('port', defaultValue: ''));
+  var portOverride = int.tryParse(const String.fromEnvironment('port', defaultValue: ''));
   if (portOverride != null) {
     defaultPort = portOverride;
   }

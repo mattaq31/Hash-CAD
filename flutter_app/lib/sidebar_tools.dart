@@ -21,20 +21,24 @@ List<String> getOrderedKeys(Map<String, Map<String, dynamic>> layerMap) {
 }
 
 class _SideBarToolsState extends State<SideBarTools> {
-  int selectedValue = 1;
-  TextEditingController controller = TextEditingController(text: '1');
+  int slatAddCount = 1;
+  int uniqueHandleCount = 32;
+  TextEditingController slatAddTextController = TextEditingController(text: '1');
+  TextEditingController handleAddTextController = TextEditingController(text: '32');
   bool isCollapsed = false;
   bool collapseAnimation = false;
   String slatModelSelection = 'Add';
   bool displayAssemblyHandles = false;
+  bool preventSelfComplementarySlats = true;
 
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
+    var serverState = context.watch<ServerState>();
 
     return AnimatedPositioned(
-      duration: Duration(milliseconds: 500),
+      duration: Duration(milliseconds: 300),
       bottom: 0,
       top: 0,
       onEnd: () {
@@ -155,7 +159,7 @@ class _SideBarToolsState extends State<SideBarTools> {
                           SizedBox(
                             width: 180,
                             child: TextField(
-                              controller: controller,
+                              controller: slatAddTextController,
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(),
@@ -170,36 +174,36 @@ class _SideBarToolsState extends State<SideBarTools> {
                                 if (newValue != null &&
                                     newValue >= 1 &&
                                     newValue <= 32) {
-                                  selectedValue = newValue;
-                                  controller.text = selectedValue.toString();
+                                  slatAddCount = newValue;
+                                  slatAddTextController.text = slatAddCount.toString();
                                 } else if (newValue != null && newValue < 1) {
-                                  selectedValue = 1;
-                                  controller.text = '1';
+                                  slatAddCount = 1;
+                                  slatAddTextController.text = '1';
                                 } else {
-                                  selectedValue = 32;
-                                  controller.text = '32';
+                                  slatAddCount = 32;
+                                  slatAddTextController.text = '32';
                                 }
-                                appState.updateSlatAddCount(selectedValue);
+                                appState.updateSlatAddCount(slatAddCount);
                               },
                             ),
                           ),
                           IconButton(
                             icon: Icon(Icons.arrow_upward),
                             onPressed: () {
-                              if (selectedValue < 32) {
-                                selectedValue++;
-                                controller.text = selectedValue.toString();
-                                appState.updateSlatAddCount(selectedValue);
+                              if (slatAddCount < 32) {
+                                slatAddCount++;
+                                slatAddTextController.text = slatAddCount.toString();
+                                appState.updateSlatAddCount(slatAddCount);
                               }
                             },
                           ),
                           IconButton(
                             icon: Icon(Icons.arrow_downward),
                             onPressed: () {
-                              if (selectedValue > 1) {
-                                selectedValue--;
-                                controller.text = selectedValue.toString();
-                                appState.updateSlatAddCount(selectedValue);
+                              if (slatAddCount > 1) {
+                                slatAddCount--;
+                                slatAddTextController.text = slatAddCount.toString();
+                                appState.updateSlatAddCount(slatAddCount);
                               }
                             },
                           ),
@@ -424,7 +428,7 @@ class _SideBarToolsState extends State<SideBarTools> {
                         children: [
                           ElevatedButton.icon(
                             onPressed: () {
-                              appState.generateRandomAssemblyHandles();
+                              appState.generateRandomAssemblyHandles(uniqueHandleCount, preventSelfComplementarySlats);
                               actionState.setAssemblyHandleDisplay(true);
                               displayAssemblyHandles = true;
                             },
@@ -451,11 +455,67 @@ class _SideBarToolsState extends State<SideBarTools> {
                           ),
                         ],
                       ),
+                      SizedBox(height: 15),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text("Handle library size", style: TextStyle(fontSize: 16)),
+                          SizedBox(width: 10),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 25.0),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: SizedBox(
+                                width: 60,
+                                child: TextField(
+                                  controller: handleAddTextController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  textInputAction: TextInputAction.done,
+                                  inputFormatters: <TextInputFormatter>[
+                                    FilteringTextInputFormatter.digitsOnly
+                                  ],
+                                  onSubmitted: (value) {
+                                    int? newValue = int.tryParse(value);
+                                    if (newValue != null &&
+                                        newValue >= 1 &&
+                                        newValue <= 997) {
+                                      uniqueHandleCount = newValue;
+                                      handleAddTextController.text = uniqueHandleCount.toString();
+                                    } else if (newValue != null && newValue < 1) {
+                                      uniqueHandleCount = 1;
+                                      handleAddTextController.text = '1';
+                                    } else {
+                                      uniqueHandleCount = 997;
+                                      handleAddTextController.text = '997';
+                                    }
+                                    serverState.updateEvoParam('number_unique_handles', uniqueHandleCount.toString());
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       CheckboxListTile(
-                        title: const Text('Reset current handles'),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
+                        title: const Text('Reset current handles', textAlign: TextAlign.center),
                         value: true,
                         onChanged: (bool? value) {
                           setState(() {});
+                        },
+                      ),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
+                        title: const Text('Prevent self-complementary slats', textAlign: TextAlign.center),
+                        value: preventSelfComplementarySlats,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            preventSelfComplementarySlats = value ?? false;
+                            serverState.updateEvoParam("split_sequence_handles", preventSelfComplementarySlats.toString());
+                          });
                         },
                       ),
                       FilledButton.icon(
@@ -481,7 +541,7 @@ class _SideBarToolsState extends State<SideBarTools> {
                                   style: TextStyle(
                                       fontSize: 16, fontWeight: FontWeight.bold)),
                               SizedBox(width: 20),
-                              RatingIndicator(rating: 90.0),
+                              HammingIndicator(value: 0.0),
                             ],
                           ),
                           SizedBox(height: 10),

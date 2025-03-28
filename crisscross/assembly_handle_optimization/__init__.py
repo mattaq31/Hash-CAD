@@ -9,7 +9,7 @@ def generate_random_slat_handles(base_array, unique_sequences=32):
     :return: 2D array with handle IDs
     """
     handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1))
-    handle_array = np.random.randint(1, unique_sequences + 1, size=handle_array.shape)
+    handle_array = np.random.randint(1, unique_sequences + 1, size=handle_array.shape, dtype=np.uint16)
     for i in range(handle_array.shape[2]):
         handle_array[np.any(base_array[..., i:i + 2] == 0, axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
     return handle_array
@@ -23,7 +23,7 @@ def generate_layer_split_handles(base_array, unique_sequences=32):
     :param unique_sequences: Number of possible handle sequences
     :return: 2D array with handle IDs
     """
-    handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1))
+    handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1), dtype=np.uint16)
 
     for i in range(handle_array.shape[2]):
         if i % 2 == 0:
@@ -32,7 +32,7 @@ def generate_layer_split_handles(base_array, unique_sequences=32):
         else:
             h1 = int(unique_sequences / 2) + 1
             h2 = unique_sequences + 1
-        layer_handle_array = np.random.randint(h1, h2, size=(handle_array.shape[0], handle_array.shape[1]))
+        layer_handle_array = np.random.randint(h1, h2, size=(handle_array.shape[0], handle_array.shape[1]), dtype=np.uint16)
         handle_array[..., i] = layer_handle_array
     for i in range(handle_array.shape[2]):
         handle_array[np.any(base_array[..., i:i + 2] == 0,

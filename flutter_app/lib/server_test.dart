@@ -126,11 +126,10 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  //setState(() => randomIntegers.sort());
+                  // setState(() => randomIntegers.sort());
                   NumberSortingServiceClient(getClientChannel())
                       .sortNumbers(NumberArray(numbers: randomIntegers))
-                      .then(
-                          (p0) => setState(() => randomIntegers = p0.numbers));
+                      .then((p0) => setState(() => randomIntegers = p0.numbers));
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize:

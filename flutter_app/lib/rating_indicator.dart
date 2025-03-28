@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-class RatingIndicator extends StatelessWidget {
-  final double rating; // Value from 0 to 100
+class HammingIndicator extends StatelessWidget {
+  final double value; // Value from 0 to 32
 
-  const RatingIndicator({super.key, required this.rating});
+  const HammingIndicator({super.key, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -24,16 +24,16 @@ class RatingIndicator extends StatelessWidget {
           width: 60,
           height: 60,
           child: CircularProgressIndicator(
-            value: rating / 100,
+            value: value / 32,
             strokeWidth: 8,
-            valueColor: AlwaysStoppedAnimation<Color>(_getColor(rating)),
+            valueColor: AlwaysStoppedAnimation<Color>(_getColor(value)),
             backgroundColor: Colors.transparent,
           ),
         ),
 
         // Rating text in center
         Text(
-          "${rating.toInt()}", // Convert double to integer for cleaner display
+          "${(32-value).toInt()}", // Convert double to integer for cleaner display
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -46,9 +46,9 @@ class RatingIndicator extends StatelessWidget {
 
   // Function to determine color based on rating value
   Color _getColor(double rating) {
-    if (rating < 50) {
+    if (rating < 25) {
       return Colors.red;
-    } else if (rating < 80) {
+    } else if (rating < 28) {
       return Colors.orange;
     } else {
       return Colors.green;

@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package evoService;
+
+service HandleEvolve {
+  // Sends the 3D array and parameters, receives a stream of progress updates
+  rpc evolveQuery (EvolveRequest) returns (stream ProgressUpdate);
+  // Allows the client to pause the process
+  rpc PauseProcessing (PauseRequest) returns (PauseRequest);
+  // Allows the client to stop the process, receives final result
+  rpc StopProcessing (StopRequest) returns (FinalResponse);
+  // Allows the client to request a report on the evolution process
+  rpc requestExport (ExportRequest) returns (ExportResponse);
+
+}
+
+message EvolveRequest {
+  repeated Layer3D slatArray = 1;
+  map<string, string> parameters = 2;  // Allows flexible future expansion
+}
+
+message Layer3D {
+  repeated Layer2D layers = 1;
+}
+
+message Layer2D {
+  repeated Layer1D rows = 1;
+}
+
+message Layer1D {
+  repeated int32 values = 1;
+}
+
+message ProgressUpdate {
+  double hamming = 1;
+  double physics = 2;
+}
+
+message StopRequest {
+}
+
+message PauseRequest {
+}
+
+message ExportResponse{
+
+}
+
+message ExportRequest {
+  // folder path for saving results
+  string folderPath = 1;
+}
+
+message FinalResponse {
+  repeated Layer3D handleArray = 1;
+}

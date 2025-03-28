@@ -9,7 +9,8 @@ Future<void> main() async {
   await initializeWindow();
   runApp(MultiProvider(
     providers: [ChangeNotifierProvider(create: (context) => DesignState()),
-      ChangeNotifierProvider(create: (context) => ActionState())],
+      ChangeNotifierProvider(create: (context) => ActionState()),
+      ChangeNotifierProvider(create: (context) => ServerState())],
     child: MaterialApp(
       home: SplitScreen(),
       title: 'Hash-CAD',

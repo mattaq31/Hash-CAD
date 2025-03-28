@@ -5,6 +5,7 @@ from crisscross.helper_functions.simple_plate_visuals import visualize_plate_wit
 
 t1 = os.path.join(base_directory, 'core_plates', 'spec_sheets', 'P3643_specs.xlsx')
 t2 = os.path.join(base_directory, 'cargo_plates', 'spec_sheets', 'P3628_specs.xlsx')
+
 target_files = [t1, t2]
 target_concentrations = [1000, 200]
 
