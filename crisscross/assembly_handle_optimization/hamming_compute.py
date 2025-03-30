@@ -2,22 +2,34 @@ import numpy as np
 from itertools import product
 from collections import defaultdict, OrderedDict
 
-
-def extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer):
+def extract_handle_dicts(handle_array, slat_array, list_indices_only=False):
     """
     Extracts all slats from a design and organizes them into dictionaries of handles and antihandles.
+    If list_indices_only is set to True, the function will return lists of indices instead of the actual handle values.
     :param handle_array: Array of XxYxZ-1 dimensions containing the IDs of all the handles in the design
     :param slat_array: Array of XxYxZ dimensions containing the positions of all slats in the design
-    :param unique_slats_per_layer: A list of slat IDs for each layer
-    :return: Two dictionaries containing the handle sequences for each slat - one for handles and one for antihandles
+    :param list_indices_only: Set to True to return lists of indices instead of the actual handle values
+    :return: Two dictionaries or lists containing the handle sequences (or indices) for each slat
+     - one for handles and one for antihandles
     """
 
-    handle_dict = OrderedDict()
-    antihandle_dict = OrderedDict()
+    # identifies all slats in design
+    unique_slats_per_layer = []
+    for i in range(slat_array.shape[2]):
+        slat_ids = np.unique(slat_array[:, :, i])
+        slat_ids = slat_ids[slat_ids != 0]
+        unique_slats_per_layer.append(slat_ids)
+
+    if list_indices_only:
+        handle_index_list = []
+        antihandle_index_list = []
+    else:
+        handle_dict = OrderedDict()
+        antihandle_dict = OrderedDict()
+
     # extracts handle values for all slats in the design -
     # note that a slat value is only unique within a layer,
     # and so each slat must be identified by both its layer and ID.
-
     for layer_position, layer_slats in enumerate(unique_slats_per_layer):
         # an assumption is made here that the bottom-most slat will always start with handles,
         # then alternate to anti-handles and so on.  Thus, the bottom layer will only have handles
@@ -34,10 +46,20 @@ def extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer):
         # iterate over all slat names in the selected layer, and pulls their handle values into a single list for each slat
         for slat in layer_slats:
             if handles_available:
-                handle_dict[(layer_position + 1, slat)] = handle_array[slat_array[..., layer_position] == slat, layer_position]
+                if list_indices_only:
+                    handle_index_list.append((layer_position, slat, layer_position))
+                else:
+                    handle_dict[(layer_position + 1, slat)] = handle_array[slat_array[..., layer_position] == slat, layer_position]
             if antihandles_available:
-                antihandle_dict[(layer_position + 1, slat)] = handle_array[slat_array[..., layer_position] == slat, layer_position - 1]
-    return handle_dict, antihandle_dict
+                if list_indices_only:
+                    antihandle_index_list.append((layer_position, slat, layer_position - 1))
+                else:
+                    antihandle_dict[(layer_position + 1, slat)] = handle_array[slat_array[..., layer_position] == slat, layer_position - 1]
+
+    if list_indices_only:
+        return handle_index_list, antihandle_index_list
+    else:
+        return handle_dict, antihandle_dict
 
 
 def oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length):
@@ -129,15 +151,8 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     slat_array = np.array(slat_array, dtype=np.uint16) # converts to int to reduce memory usage
     handle_array = np.array(handle_array, dtype=np.uint16)
 
-    # identifies all slats in design, creating a list of slat IDs for each layer
-    unique_slats_per_layer = []
-    for i in range(slat_array.shape[2]):
-        slat_ids = np.unique(slat_array[:, :, i]).astype(int)
-        slat_ids = slat_ids[slat_ids != 0]
-        unique_slats_per_layer.append(slat_ids)
-
     # extract all slats and compute full hamming distance here
-    handle_dict, antihandle_dict = extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer)
+    handle_dict, antihandle_dict = extract_handle_dicts(handle_array, slat_array)
 
     hamming_results = oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length)
 
@@ -268,7 +283,8 @@ def precise_hamming_compute(handle_dict, antihandle_dict, valid_product_indices,
 
 
 def multirule_precise_hamming(slat_array, handle_array, universal_check=True, per_layer_check=False,
-                              specific_slat_groups=None, slat_length=32, request_substitute_risk_score=False, partial_area_score=False):
+                              specific_slat_groups=None, slat_length=32, request_substitute_risk_score=False,
+                              partial_area_score=False):
     """
     Given a slat and handle array, this function computes the hamming distance of all handle/antihandle combinations provided.
     Scores for individual components, such as specific slat groups, can also be requested.
@@ -282,24 +298,16 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
     :param slat_length: The length of a single slat (must be an integer)
     :param request_substitute_risk_score: Set to true to provide a measure of the largest amount of handle duplication between slats of the same type (handle or antihandle)
     :param partial_area_score: Calculates Hamming distance and substitution risk among a subset of provided slats when only considering a subset of the handles.
-    Provide a dictionary with key as a group name and the values as dictionarys with keys "handle" and "antihandle".
+    Provide a dictionary with key as a group name and the values as dictionaries with keys "handle" and "antihandle".
     The corresponding values are dictionaries, where the key is a tuple like so (slat layer, slat ID) and the value is a list of TRUE/FALSE depending on whether that position's handle is included.
-    }
     :return: Dictionary of scores for each of the aspects requested from the design
     """
 
     slat_array = np.array(slat_array, dtype=np.uint16) # converts to int to reduce memory usage
     handle_array = np.array(handle_array, dtype=np.uint16)
 
-    # identifies all slats in design
-    unique_slats_per_layer = []
-    for i in range(slat_array.shape[2]):
-        slat_ids = np.unique(slat_array[:, :, i])
-        slat_ids = slat_ids[slat_ids != 0]
-        unique_slats_per_layer.append(slat_ids)
-
     # extracts handle values for all slats in the design
-    bag_of_slat_handles, bag_of_slat_antihandles = extract_handle_dicts(handle_array, slat_array, unique_slats_per_layer)
+    bag_of_slat_handles, bag_of_slat_antihandles = extract_handle_dicts(handle_array, slat_array)
 
     # in the case that smaller subsets of the entire range of handle/antihandle products are required, this code snippet will remove those products that can be ignored to speed up computation
     valid_product_indices = []
@@ -337,22 +345,16 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
             bag_of_slat_antihandles_partial = OrderedDict()
             
             for (slat_layer, slat_ID), full_slat_handles in bag_of_slat_handles.items():
-                try:
+                if (slat_layer, slat_ID) in slat_dict['handles']:
                     slat_inclusion = slat_dict["handles"][(slat_layer, slat_ID)]
                     partial_slat_handles = np.array([x if y else 0 for x,y in zip(full_slat_handles, slat_inclusion)], dtype=np.uint16)
                     bag_of_slat_handles_partial[(slat_layer, slat_ID)] = partial_slat_handles
-                except KeyError: # Not included - leave it out
-                    continue
-                    #bag_of_slat_handles_partial[(slat_layer, slat_ID)] = full_slat_handles
 
             for (slat_layer, slat_ID), full_slat_antihandles in bag_of_slat_antihandles.items():
-                try:
+                if (slat_layer, slat_ID) in slat_dict['antihandles']:
                     slat_inclusion = slat_dict["antihandles"][(slat_layer, slat_ID)]
                     partial_slat_antihandles = np.array([x if y else 0 for x,y in zip(full_slat_antihandles, slat_inclusion)], dtype=np.uint16)
                     bag_of_slat_antihandles_partial[(slat_layer, slat_ID)] = partial_slat_antihandles
-                except KeyError: # Not included - leave it out
-                    continue
-                    #bag_of_slat_antihandles_partial[(slat_layer, slat_ID)] = full_slat_antihandles
 
                 # Filters out the selection here - everything listed is included
             valid_product_indices_partial = [True for _ in product(bag_of_slat_handles_partial, bag_of_slat_antihandles_partial)] 

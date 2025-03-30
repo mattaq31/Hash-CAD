@@ -13,11 +13,12 @@ import importlib
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, multirule_precise_hamming
 from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.assembly_handle_optimization import generate_random_slat_handles, generate_layer_split_handles
-from crisscross.helper_functions import save_list_dict_to_file
+from crisscross.helper_functions import save_list_dict_to_file, create_dir_if_empty
 
 optuna_spec = importlib.util.find_spec("optuna")  # only imports optuna if this is available
 if optuna_spec is not None:
     import optuna
+
     optuna_available = True
 else:
     optuna_available = False
@@ -64,6 +65,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
     # all parents are members of the next generation and survive
     mutated_handle_arrays.extend(parent_handle_arrays)
 
+    mutation_maps = []
     # prepares masks for each new candidate to allow mutations to occur in select areas
     for i in range(parent_array_count, generation_array_count):
 
@@ -88,7 +90,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
             # locates the target slats for mutation, and prepares a mask
             mask2 = np.full(candidate_handle_arrays[0].shape, False, dtype=bool)
 
-            for layer, slatname in mother_hallofshame_antihandles: # indexing has a -2 since the antihandles always face down (and are 1-indexed)
+            for layer, slatname in mother_hallofshame_antihandles:  # indexing has a -2 since the antihandles always face down (and are 1-indexed)
                 mask2[:, :, layer - 2] = ((slat_array[:, :, layer - 2] == slatname)) | mask2[:, :, layer - 2]
 
         elif random_choice == 'mutate anywhere':
@@ -101,10 +103,9 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         logicforpointmutations = logicforpointmutations & mask & mask2
 
         # The actual mutation happens here
-        if not split_sequence_handles: # just use the entire library for any one handle
-            next_gen_member[logicforpointmutations] = np.random.randint(1, unique_sequences + 1,
-                                                                        size=np.sum(logicforpointmutations))
-        else: # in the split case, only half the library is available for any one layer
+        if not split_sequence_handles:  # just use the entire library for any one handle
+            next_gen_member[logicforpointmutations] = np.random.randint(1, unique_sequences + 1, size=np.sum(logicforpointmutations))
+        else:  # in the split case, only half the library is available for any one layer
             for layer in range(logicforpointmutations.shape[2]):
                 if layer % 2 == 0:
                     h1 = 1
@@ -113,10 +114,11 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                     h1 = int(unique_sequences / 2) + 1
                     h2 = unique_sequences + 1
 
-                next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h1, h2,size=np.sum(logicforpointmutations[:, :, layer]))
+                next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h1, h2, size=np.sum( logicforpointmutations[:, :, layer]))
         mutated_handle_arrays.append(next_gen_member)
+        mutation_maps.append(logicforpointmutations)
 
-    return mutated_handle_arrays
+    return mutated_handle_arrays, mutation_maps
 
 
 def evolve_handles_from_slat_array(slat_array,
@@ -132,6 +134,7 @@ def evolve_handles_from_slat_array(slat_array,
                                    split_sequence_handles=False,
                                    log_tracking_directory=None,
                                    progress_bar_update_iterations=None,
+                                   seed_handle_array=None,
                                    random_seed=8,
                                    optuna_optimization_trial=None):
     """
@@ -155,6 +158,7 @@ def evolve_handles_from_slat_array(slat_array,
     :param progress_bar_update_iterations: Number of iterations before progress bar is updated
     - useful for server output files, but does not seem to work consistently on every system (optional)
     :param random_seed: Random seed to use to ensure consistency
+    :param seed_handle_array: Can initiate the evolution from a specific initial handle array generated from a previous run here.
     :param optuna_optimization_trial: If running an optuna optimization, this is the trial object to report the score to
     :return: The final optimized handle array for the supplied slat array.
     """
@@ -170,11 +174,17 @@ def evolve_handles_from_slat_array(slat_array,
         for j in range(evolution_population):
             candidate_handle_arrays.append(generate_layer_split_handles(slat_array, unique_handle_sequences))
 
+    if seed_handle_array is not None:
+        candidate_handle_arrays[0] = seed_handle_array
+
+    initial_candidates = candidate_handle_arrays.copy()
+
     physical_scores = np.zeros(evolution_population)  # initialize the score variable which will be used as the phenotype for the selection.
     hammings = np.zeros(evolution_population)
     duplicate_risk_scores = np.zeros(evolution_population)
 
     if log_tracking_directory:
+        create_dir_if_empty(log_tracking_directory)
         fig_name = os.path.join(log_tracking_directory, 'hamming_evolution_tracking.pdf')
         metric_tracker = defaultdict(list)
         excel_conditional_formatting = {'type': '3_color_scale',
@@ -194,7 +204,7 @@ def evolve_handles_from_slat_array(slat_array,
 
     # This is the main game/evolution loop where generations are created, evaluated, and mutated
     with tqdm(total=evolution_generations, desc='Evolution Progress', miniters=progress_bar_update_iterations) as pbar:
-        for generation in range(1, evolution_generations+1):
+        for generation in range(1, evolution_generations + 1):
 
             hallofshame_handle_values = []
             hallofshame_antihandle_values = []
@@ -204,7 +214,9 @@ def evolve_handles_from_slat_array(slat_array,
             # refer to the multirule_oneshot_hamming function for details on input arguments
             multiprocess_start = time.time()
             with multiprocessing.Pool(processes=num_processes) as pool:
-                results = pool.starmap(multirule_oneshot_hamming, [(slat_array, candidate_handle_arrays[j], True, True, None, True, slat_length) for j in range(evolution_population)])
+                results = pool.starmap(multirule_oneshot_hamming,
+                                       [(slat_array, candidate_handle_arrays[j], True, True, None, True, slat_length)
+                                        for j in range(evolution_population)])
             multiprocess_time = time.time() - multiprocess_start
 
             # Unpack and store results from multiprocessing
@@ -217,7 +229,7 @@ def evolve_handles_from_slat_array(slat_array,
 
             # TODO: these operations here can probably be optimized
             # compare and find the individual with the best hamming distance i.e. the largest one. Note: there might be several
-            max_hamming_value_of_population = np.max(hammings)
+            max_physics_score_of_population = -np.max(physical_scores)
             # Get the indices of the top 'survivors' largest elements
             indices_of_largest_scores = np.argpartition(physical_scores, -generational_survivors)[-generational_survivors:]
             # Sort the indices based on the scores to get the largest scores in descending order
@@ -227,29 +239,37 @@ def evolve_handles_from_slat_array(slat_array,
             best_physical_scores = physical_scores[sorted_indices_of_largest_scores]
 
             if log_tracking_directory:
-                metric_tracker['Best Hamming'].append(max_hamming_value_of_population)
+                metric_tracker['Best Physics-Based Score'].append(max_physics_score_of_population)
                 # All other metrics should match the specific handle array that has the best hamming distance
-                metric_tracker['Corresponding Physics-Based Score'].append(-physical_scores[np.argmax(hammings)])
-                metric_tracker['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmax(hammings)])
+                metric_tracker['Corresponding Hamming Distance'].append(hammings[np.argmax(physical_scores)])
+                metric_tracker['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmax(physical_scores)])
                 metric_tracker['Hamming Compute Time'].append(multiprocess_time)
                 metric_tracker['Generation'].append(generation)
 
+                similarity_scores = []
+                for candidate in candidate_handle_arrays:
+                    for initial_candidate in initial_candidates:
+                        similarity_scores.append(np.sum(candidate == initial_candidate))
+                metric_tracker['Similarity Score'].append(sum(similarity_scores)/len(similarity_scores))
+
                 # saves the metrics to a csv file for downstream analysis/plotting (will append data if the file already exists)
-                save_list_dict_to_file(log_tracking_directory, 'metrics.csv', metric_tracker, selected_data=generation-1 if generation > 1 else None)
+                save_list_dict_to_file(log_tracking_directory, 'metrics.csv', metric_tracker,
+                                       selected_data=generation - 1 if generation > 1 else None)
 
                 # saves the best handle array to an excel file for downstream analysis
-                if generation % 20 == 0 or generation == evolution_generations or max_hamming_value_of_population >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
+                if generation % 10 == 0 or generation == evolution_generations or max(metric_tracker['Corresponding Hamming Distance']) >= early_hamming_stop:  # TODO: add logic to adjust this output interval and implement file cleanup if necessary
 
-                    fig, ax = plt.subplots(4, 1, figsize=(10, 10))
+                    fig, ax = plt.subplots(5, 1, figsize=(10, 10))
 
-                    # TODO: optimize here
-                    for ind, (name, data) in enumerate(zip(['Candidate with Best Hamming Distance',
-                                                            'Corresponding Physics-Based Partition Score',
+                    for ind, (name, data) in enumerate(zip(['Candidate with Best Physics-Based Partition Score',
+                                                            'Corresponding Hamming Distance',
                                                             'Corresponding Duplication Risk Score',
+                                                            'Similarity of Population to Initial Candidates',
                                                             'Hamming Compute Time (s)'],
-                                                           [metric_tracker['Best Hamming'],
-                                                            metric_tracker['Corresponding Physics-Based Score'],
+                                                           [metric_tracker['Best Physics-Based Score'],
+                                                            metric_tracker['Corresponding Hamming Distance'],
                                                             metric_tracker['Corresponding Duplicate Risk Score'],
+                                                            metric_tracker['Similarity Score'],
                                                             metric_tracker['Hamming Compute Time']])):
                         ax[ind].plot(data, linestyle='--', marker='o')
                         ax[ind].set_xlabel('Iteration')
@@ -257,12 +277,12 @@ def evolve_handles_from_slat_array(slat_array,
                         ax[ind].set_title(name)
                         ax[ind].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-                    ax[1].set_yscale('log')
+                    ax[0].set_yscale('log')
                     plt.tight_layout()
                     plt.savefig(fig_name)
                     plt.close(fig)
 
-                    intermediate_best_array = candidate_handle_arrays[np.argmax(hammings)]
+                    intermediate_best_array = candidate_handle_arrays[np.argmin(physical_scores)]
                     writer = pd.ExcelWriter(
                         os.path.join(log_tracking_directory, f'best_handle_array_generation_{generation}.xlsx'),
                         engine='xlsxwriter')
@@ -272,7 +292,9 @@ def evolve_handles_from_slat_array(slat_array,
                         df = pd.DataFrame(intermediate_best_array[..., layer_index])
                         df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
                         # Apply conditional formatting for easy color-based identification
-                        writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],df.shape[1] - 1, excel_conditional_formatting)
+                        writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],
+                                                                                                df.shape[1] - 1,
+                                                                                                excel_conditional_formatting)
                     writer.close()
 
                 if optuna_optimization_trial:
@@ -287,24 +309,31 @@ def evolve_handles_from_slat_array(slat_array,
                         raise optuna.TrialPruned()
 
                 pbar.update(1)
-                pbar.set_postfix({f'Current best hamming score': max_hamming_value_of_population,
+                pbar.set_postfix({f'Current best hamming score': max(hammings),
                                   'Time for hamming calculation': multiprocess_time,
                                   'Best physics partition scores': best_physical_scores}, refresh=False)
 
-            if early_hamming_stop and max_hamming_value_of_population >= early_hamming_stop:
+            if early_hamming_stop and  max(metric_tracker['Corresponding Hamming Distance']) >= early_hamming_stop:
                 break
 
             #### second step: mutate best handle arrays from previous generation, and create a new population for the next generation
-            candidate_handle_arrays = mutate_handle_arrays(slat_array, candidate_handle_arrays,
-                                                           hallofshame_handle_values,
-                                                           hallofshame_antihandle_values,
-                                                           best_score_indices=indices_of_largest_scores,
-                                                           unique_sequences=unique_handle_sequences,
-                                                           mutation_rate=mutation_rate,
-                                                           mutation_type_probabilities=mutation_type_probabilities,
-                                                           split_sequence_handles=split_sequence_handles)
+            candidate_handle_arrays, mutation_maps = mutate_handle_arrays(slat_array, candidate_handle_arrays,
+                                                                         hallofshame_handle_values,
+                                                                         hallofshame_antihandle_values,
+                                                                         best_score_indices=indices_of_largest_scores,
+                                                                         unique_sequences=unique_handle_sequences,
+                                                                         mutation_rate=mutation_rate,
+                                                                         mutation_type_probabilities=mutation_type_probabilities,
+                                                                         split_sequence_handles=split_sequence_handles)
 
-    return candidate_handle_arrays[np.argmax(hammings)] # returns the best array in terms of hamming distance (which might not necessarily match the physics-based score)
+            # for map_index, map in enumerate(mutation_maps):
+            #     fig, ax = plt.subplots(1, 1)
+            #     ax.imshow(map[:, :, 0])
+            #     plt.savefig(os.path.join(log_tracking_directory, f'mutation_map_{generation}_{map_index}.png'))
+            #     plt.close(fig)
+            z=5
+
+    return candidate_handle_arrays[np.argmax(hammings)]  # returns the best array in terms of hamming distance (which might not necessarily match the physics-based score)
 
 
 if __name__ == '__main__':
@@ -312,22 +341,23 @@ if __name__ == '__main__':
     slat_array, unique_slats_per_layer = generate_standard_square_slats(32)  # standard square
     handle_array = generate_random_slat_handles(slat_array, 32)
 
-    print ('Original Results:')
-    print(multirule_oneshot_hamming(slat_array, handle_array, per_layer_check=True, report_worst_slat_combinations=False, request_substitute_risk_score=True))
+    print('Original Results:')
+    print(
+        multirule_oneshot_hamming(slat_array, handle_array, per_layer_check=True, report_worst_slat_combinations=False,
+                                  request_substitute_risk_score=True))
     print(multirule_precise_hamming(slat_array, handle_array, per_layer_check=True, request_substitute_risk_score=True))
 
-
     ergebnüsse = evolve_handles_from_slat_array(slat_array, unique_handle_sequences=32,
-                                                early_hamming_stop=29, evolution_population=300,
+                                                early_hamming_stop=30, evolution_population=943,
                                                 generational_survivors=2,
-                                                mutation_rate=0.014,
+                                                mutation_rate=0.01427,
                                                 process_count=10,
                                                 evolution_generations=100,
                                                 split_sequence_handles=False,
                                                 progress_bar_update_iterations=2,
                                                 log_tracking_directory='/Users/matt/Desktop')
 
-    print ('New Results:')
-    print(multirule_oneshot_hamming(slat_array, ergebnüsse, per_layer_check=True, report_worst_slat_combinations=False, request_substitute_risk_score=True))
+    print('New Results:')
+    print(multirule_oneshot_hamming(slat_array, ergebnüsse, per_layer_check=True, report_worst_slat_combinations=False,
+                                    request_substitute_risk_score=True))
     print(multirule_precise_hamming(slat_array, ergebnüsse, per_layer_check=True, request_substitute_risk_score=True))
-
