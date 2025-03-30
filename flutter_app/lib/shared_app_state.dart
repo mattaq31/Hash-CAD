@@ -424,6 +424,7 @@ class ServerState extends ChangeNotifier {
   };
 
   bool evoActive = false;
+  String statusIndicator = 'IDLE';
 
   ServerState() {
     // Listen to updates from the client
@@ -437,12 +438,14 @@ class ServerState extends ChangeNotifier {
   void evolveAssemblyHandles(List<List<List<int>>> slatArray) {
     hammingClient.initiateEvolve(slatArray, evoParams);
     evoActive = true;
+    statusIndicator = 'RUNNING';
     notifyListeners();
   }
 
   void pauseEvolve(){
     hammingClient.pauseEvolve();
     evoActive = false;
+    statusIndicator = 'PAUSED';
     notifyListeners();
   }
 
@@ -455,8 +458,8 @@ class ServerState extends ChangeNotifier {
     Future<List<List<List<int>>>> finalArray = hammingClient.stopEvolve();
     hammingMetrics = [];
     physicsMetrics = [];
+    statusIndicator = 'IDLE';
     notifyListeners();
-
     return finalArray;
   }
 

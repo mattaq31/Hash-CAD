@@ -210,6 +210,38 @@ class _SideBarToolsState extends State<SideBarTools> {
                         ],
                       ),
                       SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ActionChip(
+                            label: Text('8'),
+                            onPressed: () {
+                              slatAddCount = 8;
+                              slatAddTextController.text = slatAddCount.toString();
+                              appState.updateSlatAddCount(slatAddCount);
+                            },
+                          ),
+                          SizedBox(width: 10),
+                          ActionChip(
+                            label: Text('16'),
+                            onPressed: () {
+                              slatAddCount = 16;
+                              slatAddTextController.text = slatAddCount.toString();
+                              appState.updateSlatAddCount(slatAddCount);
+                            },
+                          ),
+                          SizedBox(width: 10),
+                          ActionChip(
+                            label: Text('32'),
+                            onPressed: () {
+                              slatAddCount = 32;
+                              slatAddTextController.text = slatAddCount.toString();
+                              appState.updateSlatAddCount(slatAddCount);
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10),
                       Text("Press 'Alt' to rotate slat draw direction!",
                           style: TextStyle(
                               fontSize: 14, color: Colors.grey.shade600)),

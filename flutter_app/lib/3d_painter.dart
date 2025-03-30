@@ -26,6 +26,14 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   Set<String> slatIDs = {};
   Map<String, Map<String, three.Mesh>> slatAccessories = {};
 
+  bool assemblyHandleView = true;
+
+  static const WidgetStateProperty<Icon> assemblyHandleThumbIcon = WidgetStateProperty<Icon>.fromMap(
+    <WidgetStatesConstraint, Icon>{
+      WidgetState.selected: Icon(Icons.check),
+      WidgetState.any: Icon(Icons.close),
+    },
+  );
   @override
   void initState() {
     threeJs = three.ThreeJS(
@@ -173,7 +181,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       existingHandle = slat.h2Handles.containsKey(handlePosition);
     }
 
-    if (existingHandle) {
+    if (existingHandle && assemblyHandleView) {
       if (existingHandleMesh == null) {
         // Create new handle if missing
         createAssemblyHandle(slat.id, handleName, position, color, order, topSide, handleSide);
@@ -181,8 +189,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         // Update existing handle
         updateAssemblyHandle(existingHandleMesh!, position, color, order, topSide, handleSide);
       }
-    } else if (existingHandleMesh != null) {
-      // Remove handle if it was deleted from the slat but still lingering in the scene
+    } else if (existingHandleMesh != null){
+      // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
       threeJs.scene.remove(existingHandleMesh!);
       slatAccessories[slat.id]?.remove(handleName);
     }
@@ -401,14 +409,28 @@ class _ThreeDisplay extends State<ThreeDisplay> {
           Positioned(
             bottom: 16.0,
             right: 16.0,
-            child: ElevatedButton(
-              onPressed: centerOnSlats,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.3),
-                // Semi-transparent
-                foregroundColor: Colors.black, // Text/icon color
-              ),
-              child: const Icon(Icons.filter_center_focus),
+            child: Row(
+              children: [
+                Text("Display Assembly Handles"),
+                Switch(
+                  thumbIcon: assemblyHandleThumbIcon,
+                  value: assemblyHandleView,
+                  onChanged: (bool value) {
+                    setState(() {
+                      assemblyHandleView = value;
+                    });
+                  },
+                ),
+                ElevatedButton(
+                  onPressed: centerOnSlats,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.3),
+                    // Semi-transparent
+                    foregroundColor: Colors.black, // Text/icon color
+                  ),
+                  child: const Icon(Icons.filter_center_focus),
+                ),
+              ],
             ),
           ),
         ],

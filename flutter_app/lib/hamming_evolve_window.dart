@@ -5,6 +5,7 @@ import 'line_chart.dart';
 import 'rating_indicator.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:dotted_border/dotted_border.dart';
 
 
 class HammingEvolveWindow extends StatefulWidget {
@@ -21,6 +22,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
   bool isHovered = false;
   bool animationComplete = true; // only enables item visibility when the animation is complete i.e. box is fully extended
   bool advancedExpanded = false;
+  double hammingTargetValue = 30.0;
 
   final Map<int, String> defaultParams = {
     2: 'mutation_rate',
@@ -33,6 +35,20 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
   };
 
   final Map<String, TextEditingController> controllers = {};
+
+  // Function to determine the color
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case "RUNNING":
+        return Colors.green;
+      case "PAUSED":
+        return Colors.orange;
+      case "IDLE":
+        return Colors.red;
+      default:
+        return Colors.black;
+    }
+  }
 
   @override
   void initState() {
@@ -49,6 +65,18 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  void increaseValue() {
+    setState(() {
+      hammingTargetValue  = (hammingTargetValue < 32) ? hammingTargetValue + 1.0 : 32.0;  // Increment by 1
+    });
+  }
+
+  void decreaseValue() {
+    setState(() {
+      hammingTargetValue = (hammingTargetValue > 0) ? hammingTargetValue - 1.0 : 0.0;  // Ensure non-negative
+    });
   }
 
   @override
@@ -176,21 +204,81 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    // const SizedBox(height: 30),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            text: "Algorithm Status: ",
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            children: [
+                              TextSpan(
+                                text: serverState.statusIndicator,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: _getStatusColor(serverState.statusIndicator),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
                     Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
                         children: [
-                          Text("Current Mismatch Score", style: TextStyle(fontSize: 20)),
-                          SizedBox(width: 20),
-                          HammingIndicator(value: serverState.hammingMetrics.isNotEmpty
-                              ? serverState.hammingMetrics.last
-                              : 0.0,),
-                          SizedBox(width: 50),
-                          Text("Target Mismatch Score", style: TextStyle(fontSize: 20)),
-                          SizedBox(width: 20),
-                          HammingIndicator(value: 30.0),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              DottedBorder(
+                                  color: Colors.grey.shade400,
+                                  strokeWidth: 1,
+                                  radius: Radius.circular(12),
+                                  padding: EdgeInsets.all(25),
+                                  borderType: BorderType.RRect,
+                                  child: Row(
+                                    children: [
+                                      Text("Current Mismatch Score",
+                                          style: TextStyle(fontSize: 16)),
+                                      SizedBox(width: 20),
+                                      HammingIndicator(
+                                        value: serverState.hammingMetrics.isNotEmpty
+                                            ? serverState.hammingMetrics.last
+                                            : 0.0,),
+                                    ],
+                                  )),
+                              SizedBox(width: 50),
+                              DottedBorder(
+                                color: Colors.grey.shade400,
+                                strokeWidth: 1,
+                                radius: Radius.circular(12),
+                                padding: EdgeInsets.all(15),
+                                borderType: BorderType.RRect,
+                                child: Row(
+                                  children: [
+                                    Text("Target Mismatch Score", style: TextStyle(fontSize: 16)),
+                                    SizedBox(width: 20),
+                                    HammingIndicator(value: hammingTargetValue),
+                                    Column(
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.arrow_circle_up),
+                                          onPressed: increaseValue,
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.arrow_circle_down),
+                                          onPressed: decreaseValue,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -205,7 +293,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("Advanced Settings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text("Advanced Settings", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           Icon(advancedExpanded ? Icons.arrow_drop_up : Icons.arrow_drop_down),
                         ],
                       ),

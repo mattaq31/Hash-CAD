@@ -24,7 +24,7 @@ class Client {
 
   Future<void> runStopProcessing() async {
 
-    final stopRequest = StopRequest()..stop = true;
+    final stopRequest = StopRequest();
     // Call the server-side stopProcessing method
     try {
       final response = await stub.stopProcessing(stopRequest);
