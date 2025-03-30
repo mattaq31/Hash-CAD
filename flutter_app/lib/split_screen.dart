@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '3d_painter.dart';
@@ -6,6 +7,7 @@ import 'grid_painter.dart';
 import 'sidebar_tools.dart';
 import 'shared_app_state.dart';
 import 'hamming_evolve_window.dart';
+import 'grpc_client_architecture/server_startup.dart';
 
 class SplitScreen extends StatefulWidget {
   const SplitScreen({super.key});
@@ -14,9 +16,30 @@ class SplitScreen extends StatefulWidget {
   State<SplitScreen> createState() => _SplitScreenState();
 }
 
-class _SplitScreenState extends State<SplitScreen> {
+class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
   // Initial divider position as a fraction of screen width
   double _dividerPosition = 0.5;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Launches python server
+    launchServer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached) {
+      shutdownServerIfAny();
+    }
+  }
+
+  @override
+  Future<AppExitResponse> didRequestAppExit() {
+    shutdownServerIfAny();
+    return super.didRequestAppExit();
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -152,5 +152,5 @@ app.*.symbols
 .gclient_previous_sync_commits
 
 # repo-specific
-
-assets/server_py_flutter_osx
+assets/hamming_server_osx
+python_server/nuitka_package

@@ -28,7 +28,6 @@ class _SideBarToolsState extends State<SideBarTools> {
   bool isCollapsed = false;
   bool collapseAnimation = false;
   String slatModelSelection = 'Add';
-  bool displayAssemblyHandles = false;
   bool preventSelfComplementarySlats = true;
 
   @override
@@ -214,6 +213,15 @@ class _SideBarToolsState extends State<SideBarTools> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           ActionChip(
+                            label: Text('1'),
+                            onPressed: () {
+                              slatAddCount = 1;
+                              slatAddTextController.text = slatAddCount.toString();
+                              appState.updateSlatAddCount(slatAddCount);
+                            },
+                          ),
+                          SizedBox(width: 10),
+                          ActionChip(
                             label: Text('8'),
                             onPressed: () {
                               slatAddCount = 8;
@@ -247,11 +255,10 @@ class _SideBarToolsState extends State<SideBarTools> {
                               fontSize: 14, color: Colors.grey.shade600)),
                       CheckboxListTile(
                         title: const Text('Display Assembly Handles'),
-                        value: displayAssemblyHandles,
+                        value: actionState.displayAssemblyHandles,
                         onChanged: (bool? value) {
                           setState(() {
-                            displayAssemblyHandles = value ?? false;
-                            actionState.setAssemblyHandleDisplay(displayAssemblyHandles);
+                            actionState.setAssemblyHandleDisplay(value ?? false);
                           });
                         },
                       ),
@@ -462,7 +469,6 @@ class _SideBarToolsState extends State<SideBarTools> {
                             onPressed: () {
                               appState.generateRandomAssemblyHandles(uniqueHandleCount, preventSelfComplementarySlats);
                               actionState.setAssemblyHandleDisplay(true);
-                              displayAssemblyHandles = true;
                             },
                             icon: Icon(Icons.shuffle, size: 18),
                             label: Text("Randomize"),

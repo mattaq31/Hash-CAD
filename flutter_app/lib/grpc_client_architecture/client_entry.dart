@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:math' show Random;
-// import 'dart:isolate';
 
 import 'package:grpc/grpc.dart';
 import 'hamming_evolve_communication.pbgrpc.dart';
 
-class Client {
+class CrisscrossClient {
   late HandleEvolveClient stub;
   late ClientChannel channel;
 
@@ -13,7 +12,7 @@ class Client {
   Stream<ProgressUpdate> get updates => _controller.stream;
 
   // Constructor that immediately runs setup
-  Client() {
+  CrisscrossClient() {
     _initialize();
   }
 

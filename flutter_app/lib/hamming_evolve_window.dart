@@ -6,7 +6,7 @@ import 'rating_indicator.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dotted_border/dotted_border.dart';
-
+import 'grpc_client_architecture/server_startup.dart';
 
 class HammingEvolveWindow extends StatefulWidget {
   const HammingEvolveWindow({
@@ -45,6 +45,8 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
         return Colors.orange;
       case "IDLE":
         return Colors.red;
+      case "BACKEND INACTIVE":
+        return Colors.deepPurple;
       default:
         return Colors.black;
     }
@@ -90,6 +92,11 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
     var serverState = context.watch<ServerState>();
+
+    // initiates server healthcheck
+    if (!serverState.serverActive && !serverState.serverCheckInProgress) {
+      serverState.startupServerHealthCheck();
+    }
 
     return Opacity(
       opacity: actionState.evolveMode ? 1.0 : 0.0,
@@ -350,7 +357,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             FilledButton.icon(
-                              onPressed: serverState.evoActive
+                              onPressed: serverState.evoActive || !serverState.serverActive
                                   ? null
                                   : () {
                                 serverState.evolveAssemblyHandles(appState.getSlatArray());
@@ -367,7 +374,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                             ),
                             const SizedBox(width: 12),
                             FilledButton.icon(
-                              onPressed: !serverState.evoActive
+                              onPressed: !serverState.evoActive || !serverState.serverActive
                                   ? null
                                   : () {
                                 serverState.pauseEvolve();
@@ -382,9 +389,10 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                             ),
                             const SizedBox(width: 12),
                             FilledButton.icon(
-                              onPressed: serverState.hammingMetrics.isEmpty ? null :  () {
+                              onPressed: serverState.hammingMetrics.isEmpty  || !serverState.serverActive ? null :  () {
                                 serverState.stopEvolve().then((result) {
                                 appState.assignAssemblyHandleArray(result, null, null);
+                                actionState.setAssemblyHandleDisplay(true);
                               });
                               },
                               icon: const Icon(Icons.stop_circle, size: 18),
@@ -399,7 +407,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                             ),
                             const SizedBox(width: 12),
                             FilledButton.icon(
-                              onPressed: () async {
+                              onPressed: serverState.hammingMetrics.isEmpty  || !serverState.serverActive ? null : () async {
                                 // main user dialog box for file selection
                                 String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
                                 if (selectedDirectory != null) {

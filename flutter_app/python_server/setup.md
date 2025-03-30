@@ -20,6 +20,19 @@ Step 3: Flutter Client
 ```bash
 protoc -I ./python_dart_grpc_protocols/ ./python_dart_grpc_protocols/hamming_evolve_communication.proto --dart_out=grpc:lib/grpc_client_architecture
 ```
+* You also need to generate the corresponding functions for the server health checker as below:
 
-Step 4: Running the Application
+```bash
+protoc -I ./python_dart_grpc_protocols/ ./python_dart_grpc_protocols/health.proto --dart_out=grpc:lib/grpc_client_architecture
+```
+
+Step 4: Bundling Python server with Nuitka
 ---
+
+* The python server can be bundled up into a single executable using Nuitka.  Should use a minimal python environment (`bcc_packaging`) for this to prevent bloat.  Command is as follows:
+* TODO: need a different implementation of the below for each OS type.
+```bash
+python -m nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=$HOME/.nuitka_cache
+```
+* Still unsure on whether the cache filepath is the same on every OS - will need to check.
+* The above bundle will be slow to run for the first time (since it needs to unload its files into a temp directory) but should then be super fast after that.

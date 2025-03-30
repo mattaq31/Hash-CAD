@@ -5,12 +5,16 @@ import time
 import os
 import multiprocessing
 import pandas as pd
+
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 from crisscross.assembly_handle_optimization import generate_random_slat_handles, generate_layer_split_handles
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
-from crisscross.assembly_handle_optimization.handle_evolution import mutate_handle_arrays
+from crisscross.assembly_handle_optimization.handle_mutation import mutate_handle_arrays
 from crisscross.helper_functions import save_list_dict_to_file
 
 from server_architecture import hamming_evolve_communication_pb2_grpc, hamming_evolve_communication_pb2

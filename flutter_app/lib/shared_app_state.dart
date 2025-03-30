@@ -4,6 +4,8 @@ import 'crisscross_core/sparse_to_array_conversion.dart';
 import 'crisscross_core/assembly_handles.dart';
 import 'file_io.dart';
 import 'grpc_client_architecture/client_entry.dart';
+import 'grpc_client_architecture/health.pbgrpc.dart';
+import 'package:grpc/grpc.dart';
 
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
@@ -393,7 +395,14 @@ class ActionState extends ChangeNotifier {
 
 /// State management for communicating with python server
 class ServerState extends ChangeNotifier {
-  final Client hammingClient = Client();
+  // TODO: client channel/port should be customizable
+  final CrisscrossClient hammingClient = CrisscrossClient();
+  final HealthClient healthClient = HealthClient(ClientChannel('127.0.0.1',
+      port: 50055,
+      options:
+          const ChannelOptions(credentials: ChannelCredentials.insecure())));
+  bool serverActive = false;
+  bool serverCheckInProgress = false;
 
   List<double> hammingMetrics = [];
   List<double> physicsMetrics = [];
@@ -424,7 +433,7 @@ class ServerState extends ChangeNotifier {
   };
 
   bool evoActive = false;
-  String statusIndicator = 'IDLE';
+  String statusIndicator = 'BACKEND INACTIVE';
 
   ServerState() {
     // Listen to updates from the client
@@ -474,4 +483,26 @@ class ServerState extends ChangeNotifier {
     super.dispose();
   }
 
+  // TODO: also implement health checks before sending a direct request to the server...
+  Future<void> startupServerHealthCheck() async {
+    if (serverCheckInProgress) return; // Prevent starting the check again
+    serverCheckInProgress = true;
+
+    var request = HealthCheckRequest();
+    while (true) {
+      try {
+        var r = await healthClient.check(request);
+        if (r.status == HealthCheckResponse_ServingStatus.SERVING) {
+          statusIndicator = 'IDLE';
+          serverActive = true;
+          break;
+        } else {
+          serverActive = false;
+        }
+      } catch (_) {
+        serverActive = false;
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+  }
 }
