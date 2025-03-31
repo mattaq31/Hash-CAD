@@ -6,6 +6,7 @@ import 'file_io.dart';
 import 'grpc_client_architecture/client_entry.dart';
 import 'grpc_client_architecture/health.pbgrpc.dart';
 import 'package:grpc/grpc.dart';
+import 'package:flutter/foundation.dart';
 
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
@@ -395,12 +396,11 @@ class ActionState extends ChangeNotifier {
 
 /// State management for communicating with python server
 class ServerState extends ChangeNotifier {
+
   // TODO: client channel/port should be customizable
-  final CrisscrossClient hammingClient = CrisscrossClient();
-  final HealthClient healthClient = HealthClient(ClientChannel('127.0.0.1',
-      port: 50055,
-      options:
-          const ChannelOptions(credentials: ChannelCredentials.insecure())));
+  CrisscrossClient? hammingClient;
+  HealthClient? healthClient;
+
   bool serverActive = false;
   bool serverCheckInProgress = false;
 
@@ -437,34 +437,44 @@ class ServerState extends ChangeNotifier {
 
   ServerState() {
     // Listen to updates from the client
-    hammingClient.updates.listen((update) {
-      hammingMetrics.add(update.hamming);
-      physicsMetrics.add(update.physics);
-      notifyListeners(); // Notify UI elements
-    });
+
+    if (!kIsWeb) {
+      hammingClient = CrisscrossClient();
+      healthClient = HealthClient(ClientChannel('127.0.0.1',
+          port: 50055,
+          options:
+          const ChannelOptions(credentials: ChannelCredentials.insecure())));
+
+      hammingClient?.updates.listen((update) {
+        hammingMetrics.add(update.hamming);
+        physicsMetrics.add(update.physics);
+        notifyListeners(); // Notify UI elements
+      });
+    }
+
   }
 
   void evolveAssemblyHandles(List<List<List<int>>> slatArray) {
-    hammingClient.initiateEvolve(slatArray, evoParams);
+    hammingClient?.initiateEvolve(slatArray, evoParams);
     evoActive = true;
     statusIndicator = 'RUNNING';
     notifyListeners();
   }
 
   void pauseEvolve(){
-    hammingClient.pauseEvolve();
+    hammingClient?.pauseEvolve();
     evoActive = false;
     statusIndicator = 'PAUSED';
     notifyListeners();
   }
 
   void exportRequest(String folderPath){
-    hammingClient.requestExport(folderPath);
+    hammingClient?.requestExport(folderPath);
   }
 
   Future<List<List<List<int>>>> stopEvolve(){
     evoActive = false;
-    Future<List<List<List<int>>>> finalArray = hammingClient.stopEvolve();
+    Future<List<List<List<int>>>> finalArray = hammingClient!.stopEvolve();
     hammingMetrics = [];
     physicsMetrics = [];
     statusIndicator = 'IDLE';
@@ -479,7 +489,9 @@ class ServerState extends ChangeNotifier {
 
   @override
   void dispose() {
-    hammingClient.shutdown(); // Clean up resources
+    if (!kIsWeb) {
+      hammingClient?.shutdown();
+    }// Clean up resources
     super.dispose();
   }
 
@@ -491,8 +503,8 @@ class ServerState extends ChangeNotifier {
     var request = HealthCheckRequest();
     while (true) {
       try {
-        var r = await healthClient.check(request);
-        if (r.status == HealthCheckResponse_ServingStatus.SERVING) {
+        var r = await healthClient?.check(request);
+        if (r?.status == HealthCheckResponse_ServingStatus.SERVING) {
           statusIndicator = 'IDLE';
           serverActive = true;
           break;

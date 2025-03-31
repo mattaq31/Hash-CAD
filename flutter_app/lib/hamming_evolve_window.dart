@@ -6,7 +6,7 @@ import 'rating_indicator.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dotted_border/dotted_border.dart';
-import 'grpc_client_architecture/server_startup.dart';
+import 'package:flutter/foundation.dart';
 
 class HammingEvolveWindow extends StatefulWidget {
   const HammingEvolveWindow({
@@ -94,7 +94,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
     var serverState = context.watch<ServerState>();
 
     // initiates server healthcheck
-    if (!serverState.serverActive && !serverState.serverCheckInProgress) {
+    if (!serverState.serverActive && !serverState.serverCheckInProgress  && !kIsWeb) {
       serverState.startupServerHealthCheck();
     }
 

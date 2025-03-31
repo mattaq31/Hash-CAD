@@ -3,6 +3,8 @@ import 'dart:math' show Random;
 
 import 'package:grpc/grpc.dart';
 import 'hamming_evolve_communication.pbgrpc.dart';
+import 'package:flutter/foundation.dart';
+
 
 class CrisscrossClient {
   late HandleEvolveClient stub;
@@ -13,11 +15,15 @@ class CrisscrossClient {
 
   // Constructor that immediately runs setup
   CrisscrossClient() {
-    _initialize();
+    if (!kIsWeb) {
+      _initialize();
+    }
   }
 
   Future<void> shutdown() async {
-    await channel.shutdown();
+    if (!kIsWeb) {
+      await channel.shutdown();
+    }
   }
 
   Future<void> _initialize() async {

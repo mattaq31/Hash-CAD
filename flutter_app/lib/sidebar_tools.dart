@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'shared_app_state.dart';
@@ -481,7 +482,25 @@ class _SideBarToolsState extends State<SideBarTools> {
                           SizedBox(width: 10),
                           ElevatedButton.icon(
                             onPressed: () {
-                              actionState.activateEvolveMode();
+                              if (!kIsWeb) {
+                                actionState.activateEvolveMode();
+                              } else {
+                                showDialog<String>(
+                                    context: context,
+                                    builder: (BuildContext context) =>
+                                        AlertDialog(
+                                          title:
+                                              const Text('Assembly Handle Evolution'),
+                                          content: const Text('To run assembly handle evolution, please download the desktop version of the app! (LINK TBC)'),
+                                          actions: <Widget>[
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, 'OK'),
+                                              child: const Text('OK'),
+                                            ),
+                                          ],
+                                        ));
+                              }
                             },
                             icon: Icon(Icons.auto_awesome, size: 18),
                             label: Text("Evolve"),

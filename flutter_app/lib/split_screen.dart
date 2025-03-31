@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '3d_painter.dart';
@@ -25,7 +26,9 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // Launches python server
-    launchServer();
+    if (!kIsWeb) {
+      launchServer();
+    }
   }
 
   @override
