@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'ps*'  # This workflow runs when you push a tag that starts with 'ps'
+  workflow_dispatch:
 
 jobs:
   build_desktop:
