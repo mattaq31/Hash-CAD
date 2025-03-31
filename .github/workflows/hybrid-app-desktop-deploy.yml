@@ -45,7 +45,7 @@ jobs:
       - name: Download Linux Python server
         if: runner.os == 'Linux'
         run: |
-          wget --header="Authorization: token $GITHUB_TOKEN" -O ./flutter_app/assets/ "https://github.com/mattaq31/Crisscross-Design/actions/runs/14178684688/artifacts/2853798806"
+          wget --header="Authorization: token $GITHUB_TOKEN" -O ./flutter_app/assets/hamming_server_lnx "https://github.com/mattaq31/Crisscross-Design/actions/runs/14178684688/artifacts/2853798806"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: .
