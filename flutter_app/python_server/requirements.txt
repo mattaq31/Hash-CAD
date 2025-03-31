@@ -1,3 +1,6 @@
 numpy
 grpcio
 grpcio-health-checking
+nuitka
+matplotlib
+pandas

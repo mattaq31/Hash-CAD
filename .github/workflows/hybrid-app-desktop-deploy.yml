@@ -1,0 +1,106 @@
+name: Build and Deploy Desktop Version of Hash-CAD
+
+on:
+  push:
+    branches:
+      - desktop-deploy
+
+jobs:
+  build_desktop:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest, macos-13]
+    runs-on: ${{matrix.os}}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Prepare Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'  # Specify your required Python version
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          conda-version: 'latest'  # Specify the Conda version you want to use
+
+      - name: Install Conda dependencies
+        run: |
+          conda create -n bcc_packaging python=3.11
+          conda activate bcc_packaging
+          conda install -c conda-forge --file requirements.txt
+        working-directory: ./flutter_app/python_server
+
+      - name: Install custom Python library
+        run: |
+          pip install -e .
+        working-directory: .
+
+#      # Bundle Python app using Nuitka
+#      - name: Bundle Python app with Nuitka
+#        run: |
+#          nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=$HOME/.nuitka_cache
+#        working-directory: ./flutter_app/python_server
+#
+#      # Move Nuitka app to Flutter assets folder
+#      - name: Move Nuitka app to Flutter assets
+#        run: |
+#          mv ./flutter_app/python_server/nuitka_package/hamming_server ./flutter_app/assets/
+#        working-directory: .
+#
+#      # Build Flutter app
+#      - name: Setup Flutter
+#        uses: subosito/flutter-action@v2.19.0
+#        with:
+#          channel: stable
+#
+#      - name: Install Linux Dependencies
+#        if: matrix.os == 'ubuntu-latest'
+#        run: |
+#          sudo apt-get update -y
+#          sudo apt-get install -y ninja-build libgtk-3-dev
+#
+#      - name: Clean Flutter Project
+#        run: flutter clean
+#        working-directory: flutter_app
+#
+#      - name: Install Flutter Dependencies
+#        run: flutter pub get
+#        working-directory: flutter_app
+#
+#      - name: Build Flutter Desktop App
+#        run: flutter build linux --release  # You can change 'linux' to 'macos' or 'windows' for respective platforms
+#        working-directory: flutter_app
+#
+#      - name: Upload Artifacts
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: desktop-build
+#          path: flutter_app/build  # Adjust path to the build folder for your platform
+#
+#  deploy_release:
+#    needs: build_desktop
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout Repository
+#        uses: actions/checkout@v4
+#
+#      # Create a new release on GitHub
+#      - name: Create GitHub Release
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          files: |
+#            flutter_app/build/linux/release/bundle/*  # Adjust to your platform build output path
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub automatically provides this token
+#
+#      - name: Upload Build to Release
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          files: |
+#            flutter_app/build/linux/release/bundle/*  # Adjust the path for the desired platform
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
