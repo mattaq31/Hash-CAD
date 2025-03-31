@@ -1,6 +1,6 @@
 numpy
 grpcio
 grpcio-health-checking
-nuitka
+nuitka==2.6.8
 matplotlib
 pandas
