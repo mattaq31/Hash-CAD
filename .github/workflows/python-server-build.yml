@@ -74,9 +74,8 @@ jobs:
         with:
           name: hamming-server-${{ matrix.os }}
           path: |
-            hamming_server_win.exe
-            hamming_server_osx
-            hamming_server_lnx
+            ./flutter_app/assets/hamming_server_win.exe
+            ./flutter_app/assets/hamming_server_osx
+            ./flutter_app/assets/hamming_server_lnx
           compression-level: 0
           overwrite: true
-        working-directory: ./flutter_app/assets/
