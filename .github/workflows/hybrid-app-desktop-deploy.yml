@@ -44,12 +44,11 @@ jobs:
 
       - name: Download Linux Python server
         if: runner.os == 'Linux'
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          github_token: ${{secrets.GITHUB_TOKEN}}
-          name: hamming-server-ubuntu-latest
-          path: ./flutter_app/assets
-          workflow: python-server-build.yml
+        run: |
+          wget --header="Authorization: token $GITHUB_TOKEN" -O ./flutter_app/assets/ "https://github.com/mattaq31/Crisscross-Design/actions/runs/14178684688/artifacts/2853798806"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: .
 
       - name: Build Flutter Desktop App
         run: |
@@ -127,3 +126,13 @@ jobs:
             artifacts/hash-cad-*/Hash-CAD-linux.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# TO ADD LATER
+#      - name: Download Linux Python server
+#        if: runner.os == 'Linux'
+#        uses: dawidd6/action-download-artifact@v9
+#        with:
+#          github_token: ${{secrets.GITHUB_TOKEN}}
+#          name: hamming-server-ubuntu-latest
+#          path: ./flutter_app/assets
+#          workflow: python-server-build.yml
