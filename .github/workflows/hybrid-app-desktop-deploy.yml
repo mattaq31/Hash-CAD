@@ -9,66 +9,11 @@ jobs:
   build_desktop:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest] # [ubuntu-latest, macos-latest, windows-latest, macos-13]
+        os: [ubuntu-latest] # [ubuntu-latest, macos-latest, windows-latest, macos-13]
     runs-on: ${{matrix.os}}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      # Prepare Python environment
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'  # Specify your required Python version
-
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: 'true'
-          miniconda-version: "latest"  # Add this line
-          python-version: '3.11'
-          environment-name: 'bcc_packaging'
-          activate-environment: 'bcc_packaging'
-
-      - name: Install Conda dependencies
-        shell: bash -l {0}  # Important for conda to work properly
-        run: |
-          conda install -c conda-forge --file requirements.txt
-        working-directory: ./flutter_app/python_server
-
-      - name: Install custom Python library
-        shell: bash -l {0}
-        run: |
-          pip install -e .
-        working-directory: .
-
-      # Bundle Python app using Nuitka
-      - name: Bundle Python app with Nuitka
-        shell: bash -l {0}
-        run: |
-          python -m nuitka --version
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec={USERPROFILE}\\.nuitka_cache 
-          elif [ matrix.os == 'macos-13' ]; then
-            echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
-          else
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
-          fi
-        working-directory: ./flutter_app/python_server
-
-      # Move Nuitka app to Flutter assets folder
-      - name: Move Nuitka app to Flutter assets
-        run: |
-          mkdir -p ./flutter_app/assets/
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_win.exe
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_osx
-          else 
-            mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_lnx
-          fi
-        working-directory: .
 
       # Build Flutter app
       - name: Setup Flutter
@@ -114,22 +59,57 @@ jobs:
         run: Compress-Archive -Path build/windows/runner/Release/* -DestinationPath "#-CAD-windows.zip"
         shell: pwsh
 
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hash-cad-${{ matrix.os }}
+          path: |
+            Hash-CAD-macOS.zip
+            Hash-CAD-linux.tar.gz
+            Hash-CAD-windows.zip
+          compression-level: 0
+          overwrite: true
+
+  release:
+    needs: build_desktop
+    runs-on: ubuntu-latest
+    steps:
+#      - name: Download Windows Artifact
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: hash-cad-windows-latest
+#          path: artifacts/
+#
+#      - name: Download Mac Artifact
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: hash-cad-macos-latest
+#          path: artifacts/
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hash-cad-ubuntu-latest
+          path: artifacts/
+
       - name: Get tag name
         id: get_tag
-        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Create Release
-        id: create_release
+      - name: List downloaded files
+        run: ls -R artifacts
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref }}
-          name: Release ${{ steps.get_tag.outputs.TAG }}
+          name: Release ${{ env.TAG }}
           draft: false
           prerelease: true
           generate_release_notes: true
           files: |
-            build/macos/Build/Products/Release/#-CAD-macOS.zip
-            build/linux/x64/release/#-CAD-linux.tar.gz
-            build/windows/runner/Release/#-CAD-windows.zip
+#            artifacts/hash-cad-*/Hash-CAD-macOS.zip
+            artifacts/hash-cad-*/Hash-CAD-linux.tar.gz
+#            artifacts/hash-cad-*/Hash-CAD-windows.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
