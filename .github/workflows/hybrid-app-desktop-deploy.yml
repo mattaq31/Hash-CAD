@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'  # This workflow runs when you push a tag that starts with 'v'
-
+  workflow_dispatch:
 jobs:
   build_desktop:
     strategy:
