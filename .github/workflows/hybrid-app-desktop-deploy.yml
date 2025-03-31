@@ -62,15 +62,15 @@ jobs:
 
       - name: Compress macOS app
         if: runner.os == 'macOS'
-        run: ditto -c -k --sequesterRsrc --keepParent "build/macos/Build/Products/Release/#-CAD.app" "#-CAD-macOS.zip"
+        run: ditto -c -k --sequesterRsrc --keepParent "build/macos/Build/Products/Release/#-CAD.app" "Hash-CAD-macOS.zip"
 
       - name: Compress Linux build
         if: runner.os == 'Linux'
-        run: tar -czvf "#-CAD-linux.tar.gz" -C build/linux/x64/release .
+        run: tar -czvf "Hash-CAD-linux.tar.gz" -C build/linux/x64/release/bundle .
 
       - name: Compress Windows build
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path build/windows/runner/Release/* -DestinationPath "#-CAD-windows.zip"
+        run: Compress-Archive -Path build/windows/runner/Release/* -DestinationPath "Hash-CAD-windows.zip"
         shell: pwsh
 
       - name: Upload Build Artifacts
