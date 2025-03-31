@@ -67,8 +67,8 @@ jobs:
       - name: Compress Linux build
         if: runner.os == 'Linux'
         run: |
-          ls -R build/linux/x64/release
-          tar -czvf "Hash-CAD-linux.tar.gz" -C build/linux/x64/release/bundle/flutter_app .
+          tar -czvf "Hash-CAD-linux.tar.gz" .
+        working-directory: ./flutter_app/build/linux/x64/release/bundle
 
       - name: Compress Windows build
         if: runner.os == 'Windows'
