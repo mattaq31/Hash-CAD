@@ -44,12 +44,10 @@ jobs:
 
       - name: Download Linux Python server
         if: runner.os == 'Linux'
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          github_token: ${{secrets.GITHUB_TOKEN}}
-          name: hamming-server-ubuntu-latest
-          path: ./flutter_app/assets
-          workflow: python-server-build.yml
+        run: |
+          gh run download -n hamming-server-ubuntu-latest -D ./flutter_app/assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Flutter Desktop App
         run: |
