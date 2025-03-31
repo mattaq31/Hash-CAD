@@ -46,10 +46,13 @@ jobs:
       - name: Bundle Python app with Nuitka
         shell: bash -l {0}
         run: |
+          python -m nuitka --version
           if [ "$RUNNER_OS" == "Windows" ]; then
-            python -m nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=%USERPROFILE%/.nuitka_cache 
+            python -m nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=%USERPROFILE%/.nuitka_cache 
+            mv ./nuitka_package/main_server.exe ./nuitka_package/hamming_server.exe
           else
-            python -m nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=$HOME/.nuitka_cache 
+            python -m nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=$HOME/.nuitka_cache 
+            mv ./nuitka_package/main_server ./nuitka_package/hamming_server
           fi
         working-directory: ./flutter_app/python_server
 
