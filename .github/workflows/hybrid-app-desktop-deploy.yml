@@ -49,6 +49,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download Mac Python server
+        if: runner.os == 'macOS'
+        run: |
+          gh run download -n hamming-server-macos-latest -D ./flutter_app/assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build Flutter Desktop App
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
@@ -63,13 +70,14 @@ jobs:
       - name: Compress macOS app
         if: runner.os == 'macOS'
         run: ditto -c -k --sequesterRsrc --keepParent "build/macos/Build/Products/Release/#-CAD.app" "Hash-CAD-macOS.zip"
+        working-directory: .
 
       - name: Compress Linux build
         if: runner.os == 'Linux'
         run: |
           mkdir -p ./tmp/linux_build_copy
           cp -r ./flutter_app/build/linux/x64/release/bundle ./tmp/linux_build_copy
-          tar -czvf "Hash-CAD-linux.tar.gz" -C ./tmp_linux_build_copy .
+          tar -czvf "Hash-CAD-linux.tar.gz" -C ./tmp/linux_build_copy .
         working-directory: .
 
       - name: Compress Windows build
