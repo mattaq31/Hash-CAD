@@ -48,6 +48,7 @@ jobs:
         with:
           name: hamming-server-ubuntu-latest
           path: ./flutter_app/assets
+          workflow: python-server-build.yml
 
       - name: Build Flutter Desktop App
         run: |
