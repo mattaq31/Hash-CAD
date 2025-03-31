@@ -22,14 +22,17 @@ jobs:
           python-version: '3.11'  # Specify your required Python version
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
-          conda-version: 'latest'  # Specify the Conda version you want to use
+          auto-update-conda: 'true'
+          miniconda-version: "latest"  # Add this line
+          python-version: '3.11'
+          environment-name: 'bcc_packaging'
+          activate-environment: 'bcc_packaging'
 
       - name: Install Conda dependencies
+        shell: bash -l {0}  # Important for conda to work properly
         run: |
-          conda create -n bcc_packaging python=3.11
-          conda activate bcc_packaging
           conda install -c conda-forge --file requirements.txt
         working-directory: ./flutter_app/python_server
 
