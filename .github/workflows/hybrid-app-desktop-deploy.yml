@@ -37,12 +37,14 @@ jobs:
         working-directory: ./flutter_app/python_server
 
       - name: Install custom Python library
+        shell: bash -l {0}
         run: |
           pip install -e .
         working-directory: .
 
       # Bundle Python app using Nuitka
       - name: Bundle Python app with Nuitka
+        shell: bash -l {0}
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
             python -m nuitka --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=%USERPROFILE%/.nuitka_cache main_server.py
