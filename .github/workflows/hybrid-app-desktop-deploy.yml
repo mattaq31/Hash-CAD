@@ -44,13 +44,18 @@ jobs:
       # Bundle Python app using Nuitka
       - name: Bundle Python app with Nuitka
         run: |
-          nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=$HOME/.nuitka_cache
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            python -m nuitka --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=%USERPROFILE%/.nuitka_cache main_server.py
+          else
+            python -m nuitka --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec=$HOME/.nuitka_cache main_server.py
+          fi
         working-directory: ./flutter_app/python_server
 
       # Move Nuitka app to Flutter assets folder
       - name: Move Nuitka app to Flutter assets
         run: |
-          mv ./flutter_app/python_server/nuitka_package/hamming_server ./flutter_app/assets/
+          mkdir -p ./flutter_app/assets/
+          mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/
         working-directory: .
 #
 #      # Build Flutter app
