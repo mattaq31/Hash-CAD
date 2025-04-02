@@ -40,6 +40,8 @@ def evolve_handles_from_slat_array(slat_array,
                                    progress_bar_update_iterations=None,
                                    seed_handle_array=None,
                                    random_seed=8,
+                                   hall_of_shame_memory=10,
+                                   mutation_memory_system='special',
                                    optuna_optimization_trial=None):
     """
     Generates an optimal handle array from a slat array using an evolutionary algorithm
@@ -63,6 +65,8 @@ def evolve_handles_from_slat_array(slat_array,
     - useful for server output files, but does not seem to work consistently on every system (optional)
     :param random_seed: Random seed to use to ensure consistency
     :param seed_handle_array: Can initiate the evolution from a specific initial handle array generated from a previous run here.
+    :param hall_of_shame_memory: Memory of previous 'worst' handle combinations to retain when selecting positions to mutate.
+    :param mutation_memory_system: The type of memory system to use for the handle mutation process. Options are 'all', 'best', 'special', or 'off'.
     :param optuna_optimization_trial: If running an optuna optimization, this is the trial object to report the score to
     :return: The final optimized handle array for the supplied slat array.
     """
@@ -71,7 +75,7 @@ def evolve_handles_from_slat_array(slat_array,
 
     # initiate population of handle arrays
     candidate_handle_arrays = []
-    if not split_sequence_handles:
+    if not split_sequence_handles or slat_array.shape[2] < 3:
         for j in range(evolution_population):
             candidate_handle_arrays.append(generate_random_slat_handles(slat_array, unique_handle_sequences))
     else:
@@ -106,12 +110,16 @@ def evolve_handles_from_slat_array(slat_array,
 
     print(Fore.BLUE + f'Will be using {num_processes} core(s) for the handle array evolution.' + Fore.RESET)
 
+    memory_hallofshame = defaultdict(list)
+    memory_best_parent_hallofshame = defaultdict(list)
+    initial_hallofshame = defaultdict(list)
+
     # This is the main game/evolution loop where generations are created, evaluated, and mutated
     with tqdm(total=evolution_generations, desc='Evolution Progress', miniters=progress_bar_update_iterations) as pbar:
         for generation in range(1, evolution_generations + 1):
 
-            hallofshame_handle_values = []
-            hallofshame_antihandle_values = []
+            hallofshame = defaultdict(list)
+
             #### first step: analyze handle array population individual by individual and gather reports of the scores
             # and the bad handles of each
             # multiprocessing will be used to speed up overall computation and parallelize the hamming distance calculations
@@ -128,8 +136,11 @@ def evolve_handles_from_slat_array(slat_array,
                 physical_scores[index] = res['Physics-Informed Partition Score']
                 hammings[index] = res['Universal']
                 duplicate_risk_scores[index] = res['Substitute Risk']
-                hallofshame_handle_values.append(res['Worst combinations handle IDs'])
-                hallofshame_antihandle_values.append(res['Worst combinations antihandle IDs'])
+                hallofshame['handles'].append(res['Worst combinations handle IDs'])
+                hallofshame['antihandles'].append(res['Worst combinations antihandle IDs'])
+                if generation == 1:
+                    initial_hallofshame['handles'].append(res['Worst combinations handle IDs'])
+                    initial_hallofshame['antihandles'].append(res['Worst combinations antihandle IDs'])
 
             # TODO: these operations here can probably be optimized
             # compare and find the individual with the best hamming distance i.e. the largest one. Note: there might be several
@@ -186,20 +197,21 @@ def evolve_handles_from_slat_array(slat_array,
                     plt.savefig(fig_name)
                     plt.close(fig)
 
-                    intermediate_best_array = candidate_handle_arrays[np.argmin(physical_scores)]
-                    writer = pd.ExcelWriter(
-                        os.path.join(log_tracking_directory, f'best_handle_array_generation_{generation}.xlsx'),
-                        engine='xlsxwriter')
+                # logging out best array at each iteration
+                intermediate_best_array = candidate_handle_arrays[np.argmin(physical_scores)]
+                writer = pd.ExcelWriter(
+                    os.path.join(log_tracking_directory, f'best_handle_array_generation_{generation}.xlsx'),
+                    engine='xlsxwriter')
 
-                    # prints out slat dataframes in standard format
-                    for layer_index in range(intermediate_best_array.shape[-1]):
-                        df = pd.DataFrame(intermediate_best_array[..., layer_index])
-                        df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
-                        # Apply conditional formatting for easy color-based identification
-                        writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],
-                                                                                                df.shape[1] - 1,
-                                                                                                excel_conditional_formatting)
-                    writer.close()
+                # prints out slat dataframes in standard format
+                for layer_index in range(intermediate_best_array.shape[-1]):
+                    df = pd.DataFrame(intermediate_best_array[..., layer_index])
+                    df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
+                    # Apply conditional formatting for easy color-based identification
+                    writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],
+                                                                                            df.shape[1] - 1,
+                                                                                            excel_conditional_formatting)
+                writer.close()
 
                 if optuna_optimization_trial:
                     if not optuna_available:
@@ -222,20 +234,26 @@ def evolve_handles_from_slat_array(slat_array,
 
             #### second step: mutate best handle arrays from previous generation, and create a new population for the next generation
             candidate_handle_arrays, mutation_maps = mutate_handle_arrays(slat_array, candidate_handle_arrays,
-                                                                          hallofshame_handle_values,
-                                                                          hallofshame_antihandle_values,
+                                                                          hallofshame = hallofshame,
+                                                                          memory_hallofshame = memory_hallofshame,
+                                                                          memory_best_parent_hallofshame = memory_best_parent_hallofshame,
                                                                           best_score_indices=indices_of_largest_scores,
                                                                           unique_sequences=unique_handle_sequences,
                                                                           mutation_rate=mutation_rate,
+                                                                          use_memory_type=mutation_memory_system,
+                                                                          special_hallofshame=initial_hallofshame,
                                                                           mutation_type_probabilities=mutation_type_probabilities,
                                                                           split_sequence_handles=split_sequence_handles)
 
-            # for map_index, map in enumerate(mutation_maps):
-            #     fig, ax = plt.subplots(1, 1)
-            #     ax.imshow(map[:, :, 0])
-            #     plt.savefig(os.path.join(log_tracking_directory, f'mutation_map_{generation}_{map_index}.png'))
-            #     plt.close(fig)
-            z=5
+            for key, payload in hallofshame.items():
+                memory_hallofshame[key].extend(payload)
+                memory_best_parent_hallofshame[key].extend([payload[i] for i in indices_of_largest_scores])
+
+            if len(memory_hallofshame['handles']) > hall_of_shame_memory*evolution_population:
+                for key in memory_hallofshame.keys():
+                    memory_hallofshame[key] = memory_hallofshame[key][-hall_of_shame_memory*evolution_population:]
+                    memory_best_parent_hallofshame[key] = memory_best_parent_hallofshame[key][-hall_of_shame_memory*generational_survivors:]
+
 
     return candidate_handle_arrays[np.argmax(hammings)]  # returns the best array in terms of hamming distance (which might not necessarily match the physics-based score)
 

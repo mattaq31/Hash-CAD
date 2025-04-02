@@ -1,18 +1,23 @@
 import numpy as np
+import random
 
 
 def mutate_handle_arrays(slat_array, candidate_handle_arrays,
-                         hallofshame_handles, hallofshame_antihandles,
-                         best_score_indices, unique_sequences=32,
+                         hallofshame, best_score_indices, unique_sequences=32,
+                         memory_hallofshame=None, memory_best_parent_hallofshame=None,
+                         special_hallofshame=None,
                          mutation_rate=1.0, mutation_type_probabilities=(0.425, 0.425, 0.15),
+                         use_memory_type=None,
                          split_sequence_handles=False):
     """
     Mutates (randomizes handles) a set of candidate arrays into a new generation,
     while retaining the best scoring arrays  from the previous generation.
     :param slat_array: Base slat array for design
     :param candidate_handle_arrays: Set of candidate handle arrays from previous generation
-    :param hallofshame_handles: Worst handle combinations from previous generation
-    :param hallofshame_antihandles: Worst antihandle combinations from previous generation
+    :param hallofshame: Worst handle/antihandle combinations from previous generation
+    :param memory_hallofshame: List of all the worst handle/antihandle combinations from previous generations
+    :param memory_best_parent_hallofshame: List of the worst handle/antihandle combinations from previous generations (only the ones linked to the best parents)
+    :param special_hallofshame: List of special handle/antihandle combinations from previous generations
     :param best_score_indices: The indices of the best scoring arrays from the previous generation
     :param unique_sequences: Total length of handle library available
     :param mutation_rate: If a handle is selected for mutation, the probability that it will be changed
@@ -29,8 +34,8 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
     parent_handle_arrays = [candidate_handle_arrays[i] for i in best_score_indices]
 
     # these are the combinations that had the worst scores in the previous generation
-    parent_hallofshame_handles = [hallofshame_handles[i] for i in best_score_indices]
-    parent_hallofshame_antihandles = [hallofshame_antihandles[i] for i in best_score_indices]
+    parent_hallofshame_handles = [hallofshame['handles'][i] for i in best_score_indices]
+    parent_hallofshame_antihandles = [hallofshame['antihandles'][i] for i in best_score_indices]
 
     # number of arrays to generate
     generation_array_count = len(candidate_handle_arrays)
@@ -53,8 +58,16 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                                          p=mutation_type_probabilities)
 
         if random_choice == 'mutate handles':
-
-            mother_hallofshame_handles = parent_hallofshame_handles[pick]
+            if use_memory_type is None or use_memory_type == 'off':
+                mother_hallofshame_handles = parent_hallofshame_handles[pick]
+            elif use_memory_type == 'all':
+                mother_hallofshame_handles = random.sample(hallofshame['handles'] + memory_hallofshame['handles'], 1)[0]
+            elif use_memory_type == 'best_memory':
+                mother_hallofshame_handles = random.sample(hallofshame['handles'] + memory_best_parent_hallofshame['handles'], 1)[0]
+            elif use_memory_type == 'special':
+                mother_hallofshame_handles = random.sample(special_hallofshame['handles'], 1)[0]
+            else:
+                raise NotImplementedError
 
             # locates the target slats for mutation, and prepares a mask
             mask2 = np.full(candidate_handle_arrays[0].shape, False, dtype=bool)
@@ -62,7 +75,16 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                 mask2[:, :, layer - 1] = (slat_array[:, :, layer - 1] == slatname) | mask2[:, :, layer - 1]
 
         elif random_choice == 'mutate antihandles':  # or some bad antihandle sequences
-            mother_hallofshame_antihandles = parent_hallofshame_antihandles[pick]
+            if use_memory_type is None or use_memory_type == 'off':
+                mother_hallofshame_antihandles = parent_hallofshame_antihandles[pick]
+            elif use_memory_type == 'all':
+                mother_hallofshame_antihandles = random.sample(hallofshame['antihandles'] + memory_hallofshame['antihandles'], 1)[0]
+            elif use_memory_type == 'best_memory':
+                mother_hallofshame_antihandles = random.sample(hallofshame['antihandles'] + memory_best_parent_hallofshame['antihandles'], 1)[0]
+            elif use_memory_type == 'special':
+                mother_hallofshame_antihandles = random.sample(special_hallofshame['antihandles'], 1)[0]
+            else:
+                raise NotImplementedError
 
             # locates the target slats for mutation, and prepares a mask
             mask2 = np.full(candidate_handle_arrays[0].shape, False, dtype=bool)
@@ -80,7 +102,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         logicforpointmutations = logicforpointmutations & mask & mask2
 
         # The actual mutation happens here
-        if not split_sequence_handles:  # just use the entire library for any one handle
+        if not split_sequence_handles or slat_array.shape[2] < 3:  # just use the entire library for any one handle
             next_gen_member[logicforpointmutations] = np.random.randint(1, unique_sequences + 1, size=np.sum(logicforpointmutations))
         else:  # in the split case, only half the library is available for any one layer
             for layer in range(logicforpointmutations.shape[2]):

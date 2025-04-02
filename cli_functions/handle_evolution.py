@@ -1,5 +1,5 @@
 import rich_click as click
-
+import sys
 
 @click.command(help='This function accepts a .toml config file and will run the handle evolution process for the'
                     ' specified slat array and parameters (all within the config file).')
@@ -32,3 +32,6 @@ def handle_evolve(config_file):
     evolution_params['slat_array'] = slat_array
 
     evolve_handles_from_slat_array(**evolution_params)
+
+if __name__ == '__main__':
+    handle_evolve(sys.argv[1:])  # for use when debugging with pycharm

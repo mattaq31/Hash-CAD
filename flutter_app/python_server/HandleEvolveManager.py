@@ -89,7 +89,7 @@ class EvolveManager:
 
         # initiate population of handle arrays
         candidate_handle_arrays = []
-        if not self.split_sequence_handles:
+        if not self.split_sequence_handles or self.slat_array.shape[2] < 3:
             for j in range(self.evolution_population):
                 candidate_handle_arrays.append(generate_random_slat_handles(self.slat_array, self.number_unique_handles))
         else:
