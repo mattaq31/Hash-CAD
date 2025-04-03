@@ -372,9 +372,28 @@ class ActionState extends ChangeNotifier {
   String slatMode = 'Add';
   bool displayAssemblyHandles = false;
   bool evolveMode = false;
+  bool isSideBarCollapsed = false;
+  int panelMode = 0;
+
+  Map<int, String> panelMap = {
+    0: 'slats',
+    1: 'assembly',
+    2: 'cargo',
+    3: 'settings',
+  }; // FIX HERE!!!
 
   void updateSlatMode(String value) {
     slatMode = value;
+    notifyListeners();
+  }
+
+  void setPanelMode(int value) {
+    panelMode = value;
+    notifyListeners();
+  }
+
+  void setSideBarStatus(bool status){
+    isSideBarCollapsed = status;
     notifyListeners();
   }
 
