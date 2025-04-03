@@ -55,6 +55,7 @@ for seq_count in [32, 64]:
                 evolution_parameters['mutation_type_probabilities'] = [0.0, 0.0, 1.0]
             else:
                 evolution_parameters['mutation_memory_system'] = memory_system
+                evolution_parameters['mutation_type_probabilities'] = [0.425, 0.425, 0.15]
 
             with open(os.path.join(output_folder, f'evolution_config.toml'), "w") as f:
                 toml.dump(evolution_parameters, f)
