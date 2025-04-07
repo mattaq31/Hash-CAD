@@ -170,6 +170,44 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           });
         },
       ),
+      SizedBox(height: 5),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FilledButton.icon(
+            onPressed: () {
+              appState.setGridMode('90');
+            },
+            label: Text("90° Grid"),
+            style: ElevatedButton.styleFrom(
+              // backgroundColor: Colors.red, // Red background
+              // foregroundColor: Colors.white, // White text
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Rounded edges
+              ),
+            ),
+          ),
+          SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: () {
+              appState.setGridMode('60');
+            },
+            label: Text("60° Grid"),
+            style: ElevatedButton.styleFrom(
+              // backgroundColor: Colors.red, // Red background
+              // foregroundColor: Colors.white, // White text
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Rounded edges
+              ),
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: 5),
       FilledButton.icon(
         onPressed: () {
           appState.clearAll();
@@ -196,7 +234,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
         constraints: BoxConstraints(
           maxHeight: min(
             // Height for 5 items, approximating a row having a height of 85
-              5 * 85.0,
+              8 * 85.0,
               // If fewer than 5 items, shrink to fit content
               getOrderedKeys(appState.layerMap).length * 85.0
           ),

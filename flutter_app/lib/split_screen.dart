@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '3d_painter.dart';
 import 'crosshatch_shader.dart';
-import 'grid_painter.dart';
+import 'grid_control.dart';
 import 'sidebar_tools.dart';
 import 'shared_app_state.dart';
 import 'hamming_evolve_window.dart';
@@ -116,7 +116,7 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                   },
                   leading: IconButton(
                     // Custom button above the destinations
-                    icon: Icon(Icons.menu),
+                    icon: actionState.isSideBarCollapsed ? Icon(Icons.menu) : Icon(Icons.close),
                     onPressed: () {
                       actionState.setSideBarStatus(!actionState.isSideBarCollapsed);
                       },

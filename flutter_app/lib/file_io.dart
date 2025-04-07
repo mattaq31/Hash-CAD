@@ -23,7 +23,7 @@ Future<String?> selectSaveLocation(String defaultFileName) async {
 }
 
 
-void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize) async{
+void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize, String gridMode) async{
 
   // TODO: assembly handles should not be created here - should only be drawn from slat system
   Offset minPos;
@@ -71,19 +71,23 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
   metadataSheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('Reversed Slats');
   metadataSheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('Canvas Offset (Min)');
   metadataSheet.cell(CellIndex.indexByString('A5')).value = TextCellValue('Canvas Offset (Max)');
+  metadataSheet.cell(CellIndex.indexByString('A6')).value = TextCellValue('Grid Mode');
+
   metadataSheet.cell(CellIndex.indexByString('B4')).value = DoubleCellValue(minPos.dx);
   metadataSheet.cell(CellIndex.indexByString('C4')).value = DoubleCellValue(minPos.dy);
   metadataSheet.cell(CellIndex.indexByString('B5')).value = DoubleCellValue(maxPos.dx);
   metadataSheet.cell(CellIndex.indexByString('C5')).value = DoubleCellValue(maxPos.dx);
-  for (var l in layerMap.entries){
-    metadataSheet.cell(CellIndex.indexByString('A${l.value['order']+6}')).value = TextCellValue("Layer ${l.key}");
-    metadataSheet.cell(CellIndex.indexByString('B${l.value['order']+6}')).value = TextCellValue(l.value['direction']);
-    metadataSheet.cell(CellIndex.indexByString('C${l.value['order']+6}')).value = TextCellValue(l.value['top_helix']);
-    metadataSheet.cell(CellIndex.indexByString('D${l.value['order']+6}')).value = TextCellValue(l.value['bottom_helix']);
-    metadataSheet.cell(CellIndex.indexByString('E${l.value['order']+6}')).value = IntCellValue(l.value['slat_count']);
-    metadataSheet.cell(CellIndex.indexByString('F${l.value['order']+6}')).value = TextCellValue('#${l.value['color'].value.toRadixString(16).substring(2).toUpperCase()}');
-  }
+  metadataSheet.cell(CellIndex.indexByString('B6')).value = TextCellValue(gridMode);
 
+  int layerStartPoint = 7;
+  for (var l in layerMap.entries){
+    metadataSheet.cell(CellIndex.indexByString('A${l.value['order']+layerStartPoint}')).value = TextCellValue("Layer ${l.key}");
+    metadataSheet.cell(CellIndex.indexByString('B${l.value['order']+layerStartPoint}')).value = IntCellValue(l.value['direction']);
+    metadataSheet.cell(CellIndex.indexByString('C${l.value['order']+layerStartPoint}')).value = TextCellValue(l.value['top_helix']);
+    metadataSheet.cell(CellIndex.indexByString('D${l.value['order']+layerStartPoint}')).value = TextCellValue(l.value['bottom_helix']);
+    metadataSheet.cell(CellIndex.indexByString('E${l.value['order']+layerStartPoint}')).value = IntCellValue(l.value['slat_count']);
+    metadataSheet.cell(CellIndex.indexByString('F${l.value['order']+layerStartPoint}')).value = TextCellValue('#${l.value['color'].value.toRadixString(16).substring(2).toUpperCase()}');
+  }
 
   excel.delete('Sheet1'); // removes useless first sheet
 
@@ -141,7 +145,7 @@ String readExcelString(Sheet workSheet, String cell){
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>)> importDesign() async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDesign() async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
   // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
 
@@ -149,7 +153,6 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>)> importDesign() as
   Map<String, Slat> slats = {};
   String filePath;
   Uint8List fileBytes;
-  int gridSize = 10; // TODO: this should be parameterizable somehow...
 
   // main user dialog box for file selection
   FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -168,7 +171,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>)> importDesign() as
       fileBytes = File(filePath).readAsBytesSync();
     }
   } else { // if nothing picked, return empty maps
-    return (slats, layerMap);
+    return (slats, layerMap, '');
   }
 
   // read in file with Excel package
@@ -181,24 +184,28 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>)> importDesign() as
   double minX = readExcelDouble(metadataSheet, 'B4');
   double minY = readExcelDouble(metadataSheet, 'C4');
 
+  // obtain grid Mode
+  String gridMode = readExcelString(metadataSheet, 'B6').trim();
+
   // Read slat layers
   int numLayers = excel.tables.keys.where((key) => key.startsWith('slat_layer_')).length;
 
   // if no layers found, return empty maps
   if (numLayers == 0) {
-    return (slats, layerMap);
+    return (slats, layerMap, '');
   }
 
+  int layerReadStart = 7;
   // read in layer data
   for (int i = 0; i < numLayers; i++) {
-    String fullKey = readExcelString(metadataSheet, 'A${i+6}');
+    String fullKey = readExcelString(metadataSheet, 'A${i+layerReadStart}');
     layerMap[fullKey.substring('Layer '.length)] = {
-      'direction': readExcelString(metadataSheet, 'B${i+6}'),
-      'top_helix': readExcelString(metadataSheet, 'C${i+6}'),
-      'bottom_helix': readExcelString(metadataSheet, 'D${i+6}'),
-      'slat_count': readExcelInt(metadataSheet, 'E${i+6}'),
+      'direction': readExcelInt(metadataSheet, 'B${i+layerReadStart}'),
+      'top_helix': readExcelString(metadataSheet, 'C${i+layerReadStart}'),
+      'bottom_helix': readExcelString(metadataSheet, 'D${i+layerReadStart}'),
+      'slat_count': readExcelInt(metadataSheet, 'E${i+layerReadStart}'),
       'order': i,
-      'color': Color(int.parse('0xFF${readExcelString(metadataSheet, 'F${i+6}').substring(1)}')),
+      'color': Color(int.parse('0xFF${readExcelString(metadataSheet, 'F${i+layerReadStart}').substring(1)}')),
     };
   }
 
@@ -238,7 +245,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>)> importDesign() as
       for (int j = 0; j < slatArray[i].length; j++) {
         if (slatArray[i][j][slatID.$1] == slatID.$2) {
           // converts the array index into the exact grid position using the grid size and minima extracted from the metadata file
-          slatCoordinates[slatPositionCounter] = Offset((j.toDouble() * gridSize) + minX, (i.toDouble() * gridSize) + minY);
+          slatCoordinates[slatPositionCounter] = Offset(j + minX, i + minY);
           slatPositionCounter += 1;
         }
       }
@@ -279,7 +286,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>)> importDesign() as
             }
 
             // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
-            Offset positionCoord = Offset((col.toDouble() * gridSize) + minX, (row.toDouble() * gridSize) + minY);
+            Offset positionCoord = Offset(col + minX, row + minY);
 
             // assign the exact handle to the slat
             slats[slatID]?.setPlaceholderHandle(slats[slatID]!.slatCoordinateToPosition[positionCoord]!, slatSide, '$value', 'Assembly');
@@ -288,7 +295,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>)> importDesign() as
       }
     }
   }
-  return (slats, layerMap);
+  return (slats, layerMap, gridMode);
 }
 
 

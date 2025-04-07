@@ -7,7 +7,8 @@ import 'grpc_client_architecture/client_entry.dart';
 import 'grpc_client_architecture/health.pbgrpc.dart';
 import 'package:grpc/grpc.dart';
 import 'package:flutter/foundation.dart';
-
+import '2d_painters/helper_functions.dart' as utils;
+import 'dart:math';
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
 String nextCapitalLetter(String current) {
@@ -32,6 +33,26 @@ String nextCapitalLetter(String current) {
 /// State management for the design of the current megastructure
 class DesignState extends ChangeNotifier {
   final double gridSize = 10.0; // do not change
+  late final double y60Jump = gridSize / 2;
+  late final double x60Jump = sqrt(pow(gridSize, 2) - pow(y60Jump, 2));
+  String gridMode = '60';
+
+  Map<(String, int), Offset> slatDirectionGenerators = {
+    ('90', 90): Offset(1, 0),
+    ('90', 180): Offset(0, 1),
+    ('60', 180): Offset(0, 2),
+    ('60', 120): Offset(1, 1),
+    ('60', 240): Offset(-1, 1),
+  };
+
+  Map<(String, int), Offset> multiSlatGenerators = {
+    ('90', 90): Offset(0, 1),
+    ('90', 180): Offset(1, 0),
+    ('60', 180): Offset(1, 1),
+    ('60', 120): Offset(0, 2),
+    ('60', 240): Offset(0, 2),
+  };
+
 
   // good for distinguishing layers quickly, but user can change colours
   List<String> colorPalette = [
@@ -53,7 +74,7 @@ class DesignState extends ChangeNotifier {
   // main properties for each design layer
   Map<String, Map<String, dynamic>> layerMap = {
     'A': {
-      "direction": 'horizontal', // slat default direction
+      "direction": 120, // slat default direction
       'order': 0, // draw order - has to be updated when layers are moved
       'top_helix': 'H5',
       'bottom_helix': 'H2',
@@ -61,7 +82,7 @@ class DesignState extends ChangeNotifier {
       "color": Color(int.parse('0xFFebac23')) // default slat color
     },
     'B': {
-      "direction": 'vertical',
+      "direction": 240,
       'slat_count': 1,
       'top_helix': 'H5',
       'bottom_helix': 'H2',
@@ -90,14 +111,10 @@ class DesignState extends ChangeNotifier {
   int maxY = 0;
 
   /// Adds slats to the design
-  void addSlats(Offset position, String layer,
-      Map<int, Map<int, Offset>> slatCoordinates) {
+  void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
+
     for (var slat in slatCoordinates.entries) {
-      slats['$layer-I${layerMap[layer]?["slat_count"]}'] = Slat(
-          layerMap[layer]?["slat_count"],
-          '$layer-I${layerMap[layer]?["slat_count"]}',
-          layer,
-          slat.value);
+      slats['$layer-I${layerMap[layer]?["slat_count"]}'] = Slat(layerMap[layer]?["slat_count"], '$layer-I${layerMap[layer]?["slat_count"]}',layer, slat.value);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
       occupiedGridPoints.putIfAbsent(layer, () => {});
       occupiedGridPoints[layer]?.addAll({
@@ -113,10 +130,12 @@ class DesignState extends ChangeNotifier {
   void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
     // also need to remove old positions from occupiedGridPoints and add new ones
     String layer = slatID.split('-')[0];
+
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
+
     slats[slatID]?.updateCoordinates(slatCoordinates);
-    occupiedGridPoints[layer]
-        ?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
+    occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
+
     notifyListeners();
   }
 
@@ -125,6 +144,14 @@ class DesignState extends ChangeNotifier {
     selectedLayerKey = value;
     notifyListeners();
   }
+
+  /// updates the grid type (60 or 90)
+  void setGridMode(String value) {
+    gridMode = value;
+    clearAll();
+    notifyListeners();
+  }
+
 
   /// Updates the number of slats to be added with the next 'add' click
   void updateSlatAddCount(int value) {
@@ -166,13 +193,28 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Rotates the direction of a layer from horizontal to vertical or vice versa
-  void rotateLayerDirection() {
-    if (layerMap[selectedLayerKey]?['direction'] == 'horizontal') {
-      layerMap[selectedLayerKey]?['direction'] = 'vertical';
-    } else {
-      layerMap[selectedLayerKey]?['direction'] = 'horizontal';
+  void rotateLayerDirection(String layerKey) {
+    if (gridMode == '90'){
+      if (layerMap[layerKey]?['direction'] == 90) {
+        layerMap[layerKey]?['direction'] = 180;
+      } else {
+        layerMap[layerKey]?['direction'] = 90;
+      }
     }
-
+    else if (gridMode == '60'){
+      if (layerMap[layerKey]?['direction'] == 180) {
+        layerMap[layerKey]?['direction'] = 120;
+      }
+      else if (layerMap[layerKey]?['direction'] == 120){
+        layerMap[layerKey]?['direction'] = 240;
+      }
+      else {
+        layerMap[layerKey]?['direction'] = 180;
+      }
+    }
+    else{
+      throw Exception('Invalid grid mode: $gridMode');
+    }
     notifyListeners();
   }
 
@@ -226,16 +268,9 @@ class DesignState extends ChangeNotifier {
 
   /// Adds an entirely new layer to the design
   void addLayer() {
-    // if last last layerMap value has direction horizontal, next direction should be vertical and vice versa
-    String newDirection;
-    if (layerMap.values.last['direction'] == 'horizontal') {
-      newDirection = 'vertical';
-    } else {
-      newDirection = 'horizontal';
-    }
 
     layerMap[nextLayerKey] = {
-      "direction": newDirection,
+      "direction": layerMap.values.last['direction'],
       'slat_count': 1,
       'top_helix': 'H5',
       'bottom_helix': 'H2',
@@ -243,17 +278,17 @@ class DesignState extends ChangeNotifier {
       "color":
           Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}'))
     };
+    // if last last layerMap value has direction horizontal, next direction should be rotated one step forward
+    rotateLayerDirection(nextLayerKey);
 
     if (nextColorIndex == colorPalette.length - 1) {
       nextColorIndex = 0;
     } else {
       nextColorIndex += 1;
     }
-
     nextLayerKey = nextCapitalLetter(nextLayerKey);
     notifyListeners();
   }
-
 
   void assignAssemblyHandleArray(List<List<List<int>>> handleArray, Offset? minPos, Offset? maxPos){
     if (minPos == null || maxPos == null){
@@ -271,8 +306,8 @@ class DesignState extends ChangeNotifier {
         assemblyLayers.add(layerMap[slat.layer]!['order']);
       }
       for (int i = 0; i < slat.maxLength; i++) {
-        int x = ((slat.slatPositionToCoordinate[i+1]!.dx - minPos!.dx) / gridSize).floor();
-        int y = ((slat.slatPositionToCoordinate[i+1]!.dy - minPos!.dy) / gridSize).floor();
+        int x = (slat.slatPositionToCoordinate[i+1]!.dx - minPos!.dx).toInt();
+        int y = (slat.slatPositionToCoordinate[i+1]!.dy - minPos!.dy).toInt();
         for (var aLayer in assemblyLayers) {
           if (handleArray[x][y][aLayer] != 0) {
             int slatSide;
@@ -327,25 +362,36 @@ class DesignState extends ChangeNotifier {
   }
   void exportCurrentDesign() async {
     /// Exports the current design to an excel file
-    exportDesign(slats, layerMap, gridSize);
+    exportDesign(slats, layerMap, gridSize, gridMode);
   }
 
   void importNewDesign() async{
-    var (newSlats, newLayerMap) = await importDesign();
+    clearAll();
+    var (newSlats, newLayerMap, newGridMode) = await importDesign();
     // check if the maps are empty
     if (newSlats.isEmpty || newLayerMap.isEmpty) {
       return;
     }
     layerMap = newLayerMap;
     slats = newSlats;
+    gridMode = newGridMode;
+
+    for (var slat in slats.values) {
+      occupiedGridPoints.putIfAbsent(slat.layer, () => {});
+      occupiedGridPoints[slat.layer]?.addAll({
+        for (var offset in slat.slatPositionToCoordinate.values) offset: slat.id
+      });
+    }
+
     notifyListeners();
   }
 
   void clearAll() {
     slats = {};
+
     layerMap = {
       'A': {
-        "direction": 'horizontal', // slat default direction
+        "direction": gridMode == '90' ? 90 : 120, // slat default direction
         'order': 0, // draw order - has to be updated when layers are moved
         'top_helix': 'H5',
         'bottom_helix': 'H2',
@@ -353,7 +399,7 @@ class DesignState extends ChangeNotifier {
         "color": Color(int.parse('0xFFebac23')) // default slat color
       },
       'B': {
-        "direction": 'vertical',
+        "direction": 180,
         'slat_count': 1,
         'top_helix': 'H5',
         'bottom_helix': 'H2',
@@ -363,24 +409,42 @@ class DesignState extends ChangeNotifier {
     };
     selectedLayerKey = 'A';
     occupiedGridPoints = {};
+    selectedSlats = [];
     notifyListeners();
+  }
+
+  Offset convertRealSpacetoCoordinateSpace(Offset inputPosition){
+    return utils.convertRealSpacetoCoordinateSpace(inputPosition, gridMode, gridSize, x60Jump, y60Jump);
+  }
+
+  Offset convertCoordinateSpacetoRealSpace(Offset inputPosition){
+    return utils.convertCoordinateSpacetoRealSpace(inputPosition, gridMode, gridSize, x60Jump, y60Jump);
   }
 }
 
 /// State management for action mode and display settings
 class ActionState extends ChangeNotifier {
-  String slatMode = 'Add';
-  bool displayAssemblyHandles = false;
-  bool evolveMode = false;
-  bool isSideBarCollapsed = false;
-  int panelMode = 0;
+  String slatMode;
+  bool displayAssemblyHandles;
+  bool evolveMode;
+  bool isSideBarCollapsed;
+  int panelMode;
+
+
+  ActionState({
+    this.slatMode = 'Add',
+    this.displayAssemblyHandles = false,
+    this.evolveMode = false,
+    this.isSideBarCollapsed = false,
+    this.panelMode = 0,
+  });
 
   Map<int, String> panelMap = {
     0: 'slats',
     1: 'assembly',
     2: 'cargo',
     3: 'settings',
-  }; // FIX HERE!!!
+  };
 
   void updateSlatMode(String value) {
     slatMode = value;

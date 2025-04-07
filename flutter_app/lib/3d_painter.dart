@@ -9,7 +9,7 @@ import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 import 'package:provider/provider.dart';
 import 'package:three_js_helpers/three_js_helpers.dart';
-
+import '2d_painters/helper_functions.dart';
 
 class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
@@ -25,6 +25,11 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   late double HFOV;
   Set<String> slatIDs = {};
   Map<String, Map<String, three.Mesh>> slatAccessories = {};
+
+  double gridSize = 10;
+  late double y60Jump = gridSize / 2;
+  late double x60Jump = math.sqrt(math.pow(gridSize, 2) - math.pow(y60Jump, 2));
+  String gridMode = '60';
 
   bool assemblyHandleView = true;
 
@@ -209,7 +214,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       handleAssembly(
         baseSlat,
         i,
-        baseSlat.slatPositionToCoordinate[i]!,
+        convertCoordinateSpacetoRealSpace(baseSlat.slatPositionToCoordinate[i]!, gridMode, gridSize, x60Jump, y60Jump),
         color,
         order,
         topSide,
@@ -218,7 +223,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       handleAssembly(
         baseSlat,
         i,
-        baseSlat.slatPositionToCoordinate[i]!,
+        convertCoordinateSpacetoRealSpace(baseSlat.slatPositionToCoordinate[i]!, gridMode, gridSize, x60Jump, y60Jump),
         color,
         order,
         topSide,
@@ -242,10 +247,17 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
 
     for (var slat in slats) {
+      var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
+      var p2 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[32]!, gridMode, gridSize, x60Jump, y60Jump);
+      // same angle/extension system used here as in 2D system
+
+      double slatAngle = calculateSlatAngle(p1, p2);
+      Offset slatExtend = calculateSlatExtend(p1, p2, 2*(gridSize * 32/2 - gridSize/2));
+
       // if slat does not exist, recreate from scratch
       if (threeJs.scene.getObjectByName(slat.id) == null) {
         slatIDs.add(slat.id);
-        final geometry = CylinderGeometry(2.5, 2.5, 320, 60); // actual size should be 310, but adding an extra 10 to improve visuals
+        final geometry = CylinderGeometry(2.5, 2.5, gridSize * 32, 60); // actual size should be 310, but adding an extra 10 to improve visuals
         final material = three.MeshPhongMaterial.fromMap({"color": layerMap[slat.layer]?['color'].value & 0x00FFFFFF, "flatShading": true});
         final mesh = three.Mesh(geometry, material);
         mesh.name = slat.id;
@@ -254,13 +266,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         mesh.position.y = layerMap[slat.layer]?['order'].toDouble() * 6.5;
         mesh.rotation.z = math.pi / 2;  // default
 
-        // same angle/extension system used here as in 2D system
-        double slatAngle = calculateSlatAngle(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!);
-        Offset slatExtend = calculateSlatExtend(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!, 2*(320/2 - 5));
-
         mesh.rotation.y = -slatAngle;
-        mesh.position.z = slat.slatPositionToCoordinate[1]!.dy + slatExtend.dy;
-        mesh.position.x = slat.slatPositionToCoordinate[1]!.dx + slatExtend.dx;
+        mesh.position.z = p1.dy + slatExtend.dy;
+        mesh.position.x = p1.dx + slatExtend.dx;
         mesh.updateMatrix();
         mesh.matrixAutoUpdate = false;
         threeJs.scene.add(mesh);
@@ -270,12 +278,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       else{
         bool updateNeeded = false;
         final meshSlat = threeJs.scene.getObjectByName(slat.id);
-        double slatAngle = calculateSlatAngle(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!);
-        Offset slatExtend = calculateSlatExtend(slat.slatPositionToCoordinate[1]!, slat.slatPositionToCoordinate[32]!, 2*(320/2 - 5));
 
         double incomingSlatAngle = -slatAngle;
-        double incomingPositionZ = slat.slatPositionToCoordinate[1]!.dy + slatExtend.dy;
-        double incomingPositionX = slat.slatPositionToCoordinate[1]!.dx + slatExtend.dx;
+        double incomingPositionZ = p1.dy + slatExtend.dy;
+        double incomingPositionX = p1.dx + slatExtend.dx;
         double incomingLayer = layerMap[slat.layer]?['order'].toDouble() * 6.5;
 
         // general position change
@@ -395,6 +401,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   @override
   Widget build(BuildContext context) {
     return Consumer<DesignState>(builder: (context, appState, child) {
+      // TODO: at some point, it would be better if the appState could be directly accessed...
+      gridSize = appState.gridSize;
+      gridMode = appState.gridMode;
+      y60Jump = appState.y60Jump;
+      x60Jump = appState.x60Jump;
+
       manageSlats(appState.slats.values.toList(), appState.layerMap);
       return Stack(
         children: [

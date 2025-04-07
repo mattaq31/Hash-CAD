@@ -8,6 +8,7 @@ class Slat {
   final String layer;
   final int maxLength;
   final int numericID;
+
   bool reversedSlat = false; // flag to indicate if the slat has been reversed
 
   // Maps positions on the slat to coordinates on a 2D grid and vice-versa
