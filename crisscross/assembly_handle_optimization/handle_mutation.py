@@ -6,7 +6,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                          hallofshame, best_score_indices, unique_sequences=32,
                          memory_hallofshame=None, memory_best_parent_hallofshame=None,
                          special_hallofshame=None,
-                         mutation_rate=1.0, mutation_type_probabilities=(0.425, 0.425, 0.15),
+                         mutation_rate=2.0, mutation_type_probabilities=(0.425, 0.425, 0.15),
                          use_memory_type=None,
                          split_sequence_handles=False):
     """
@@ -20,7 +20,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
     :param special_hallofshame: List of special handle/antihandle combinations from previous generations
     :param best_score_indices: The indices of the best scoring arrays from the previous generation
     :param unique_sequences: Total length of handle library available
-    :param mutation_rate: If a handle is selected for mutation, the probability that it will be changed
+    :param mutation_rate: The expected number of mutations per cycle
     :param mutation_type_probabilities: Probability of selecting a specific mutation type for a target handle/antihandle
     (either handle, antihandle or mixed mutations)
     :param split_sequence_handles: Set to true if the handle library needs to be split between subsequent layers
@@ -48,6 +48,10 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
     mutated_handle_arrays.extend(parent_handle_arrays)
 
     mutation_maps = []
+
+    # applies a normalization just in case the input values do not sum to 1
+    normalized_mutation_probabilities = [m/sum(mutation_type_probabilities) for m in mutation_type_probabilities]
+
     # prepares masks for each new candidate to allow mutations to occur in select areas
     for i in range(parent_array_count, generation_array_count):
 
@@ -55,7 +59,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         pick = np.random.randint(0, parent_array_count)
         mother = parent_handle_arrays[pick].copy()
         random_choice = np.random.choice(['mutate handles', 'mutate antihandles', 'mutate anywhere'],
-                                         p=mutation_type_probabilities)
+                                         p=normalized_mutation_probabilities)
 
         if random_choice == 'mutate handles':
             if use_memory_type is None or use_memory_type == 'off':
@@ -90,16 +94,29 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
             mask2 = np.full(candidate_handle_arrays[0].shape, False, dtype=bool)
 
             for layer, slatname in mother_hallofshame_antihandles:  # indexing has a -2 since the antihandles always face down (and are 1-indexed)
-                mask2[:, :, layer - 2] = ((slat_array[:, :, layer - 2] == slatname)) | mask2[:, :, layer - 2]
+                mask2[:, :, layer - 2] = (slat_array[:, :, layer - 1] == slatname) | mask2[:, :, layer - 2]
 
         elif random_choice == 'mutate anywhere':
             mask2 = np.full(candidate_handle_arrays[0].shape, True, dtype=bool)
 
+
         next_gen_member = mother.copy()
-        # This fills an array with true values at random locations with the probability of mutationrate at each location
-        # Mask and mask2 two are the places where mutations are allowed
-        logicforpointmutations = np.random.random(candidate_handle_arrays[0].shape) < mutation_rate
-        logicforpointmutations = logicforpointmutations & mask & mask2
+
+        # The mutation rate is defined as the expected number of mutations in the whole structure.
+        # This can be applied using Binomial and poisson statistics:  [mutation rate] =  [num places to be mutated] * probability
+        positions_to_be_mutated = mask & mask2 # Mask and mask2 two are the places where mutations are allowed
+
+        logicforpointmutations = np.random.random(candidate_handle_arrays[0].shape) < mutation_rate / np.sum(positions_to_be_mutated)
+        logicforpointmutations = logicforpointmutations & positions_to_be_mutated
+
+        # The above can result in no mutations being applied.  In this case, set one at random.
+        if np.sum(logicforpointmutations) == 0:
+            # Get all valid mutation coordinates (multi-dimensional)
+            possible_indices = np.argwhere(positions_to_be_mutated)
+            # Randomly choose one valid coordinate
+            chosen_index = tuple(possible_indices[np.random.choice(len(possible_indices))])
+            # Set mutation at that coordinate
+            logicforpointmutations[chosen_index] = True
 
         # The actual mutation happens here
         if not split_sequence_handles or slat_array.shape[2] < 3:  # just use the entire library for any one handle
@@ -114,6 +131,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                     h2 = unique_sequences + 1
 
                 next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h1, h2, size=np.sum( logicforpointmutations[:, :, layer]))
+
         mutated_handle_arrays.append(next_gen_member)
         mutation_maps.append(logicforpointmutations)
 

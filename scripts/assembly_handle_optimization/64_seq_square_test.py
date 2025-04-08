@@ -3,9 +3,10 @@ from crisscross.helper_functions.slurm_process_and_run import create_o2_slurm_fi
 import os
 import toml
 
-root_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/assembly_handle_optimization'
+batch_name = 'updated_mutation_rate_optimization_calls'
+root_folder = f'/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/assembly_handle_optimization'
 design_folder = os.path.join(root_folder, 'slat_designs')
-batch_file_folder = os.path.join(root_folder, 'generic_design_optimization_calls')
+batch_file_folder = os.path.join(root_folder, batch_name)
 server_base_folder = '/home/maa2818/generic_designs'
 
 create_dir_if_empty(design_folder, batch_file_folder)
@@ -37,10 +38,10 @@ design_1 = 'basic_square.xlsx'
 all_sbatch_commands = []
 
 for seq_count in [32, 64]:
-    for mut_rate in [0.014]:
+    for mut_rate in [2]:
         for memory_system in ['off', 'all', 'best_memory', 'special', 'FULL_RANDOM']:
             exp_name = f'basic_square_{seq_count}_seq_library_mut_{str(mut_rate).replace(".","-")}_memory_{memory_system}'
-            server_experiment_folder = os.path.join(server_base_folder, exp_name)
+            server_experiment_folder = os.path.join(server_base_folder, exp_name, batch_name)
             server_design_folder = os.path.join(server_base_folder)
             server_toml_file = os.path.join(server_experiment_folder, 'evolution_config.toml')
             output_folder = os.path.join(batch_file_folder, exp_name)

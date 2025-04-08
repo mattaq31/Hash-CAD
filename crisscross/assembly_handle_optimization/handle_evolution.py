@@ -31,7 +31,7 @@ def evolve_handles_from_slat_array(slat_array,
                                    evolution_population=30,
                                    process_count=None,
                                    generational_survivors=3,
-                                   mutation_rate=0.0025,
+                                   mutation_rate=2.0,
                                    slat_length=32,
                                    unique_handle_sequences=32,
                                    mutation_type_probabilities=(0.425, 0.425, 0.15),
@@ -54,7 +54,7 @@ def evolve_handles_from_slat_array(slat_array,
     :param evolution_population: Number of handle arrays to mutate in each generation
     :param process_count: Number of threads to use for hamming multiprocessing (if set to default, will use 67% of available cores)
     :param generational_survivors: Number of surviving candidate arrays that persist through each generation
-    :param mutation_rate: Probability of an individual eligible handle being mutated after selection
+    :param mutation_rate: The expected number of mutations per iteration
     :param slat_length: Slat length in terms of number of handles
     :param unique_handle_sequences: Handle library length
     :param mutation_type_probabilities: Probability of selecting a specific mutation type for a target handle/antihandle
@@ -272,7 +272,7 @@ if __name__ == '__main__':
     ergebnüsse = evolve_handles_from_slat_array(slat_array, unique_handle_sequences=32,
                                                 early_hamming_stop=30, evolution_population=943,
                                                 generational_survivors=2,
-                                                mutation_rate=0.01427,
+                                                mutation_rate=2.0,
                                                 process_count=10,
                                                 evolution_generations=100,
                                                 split_sequence_handles=False,

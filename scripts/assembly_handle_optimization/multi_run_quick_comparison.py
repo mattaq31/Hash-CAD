@@ -53,11 +53,11 @@ for ind, (exp, name) in enumerate(zip(experiments, names)):
 fig.tight_layout()
 fig.savefig('/Users/matt/Desktop/comp_fig.pdf', dpi=300)
 
-fig_32.tight_layout()
+fig_32.tight_lfig_64.tight_layout()
+fig_64.savefig('/Users/matt/Desktop/comp_fig_64.pdf', dpi=300)
+plt.tight_layout()
 fig_32.savefig('/Users/matt/Desktop/comp_fig_32.pdf', dpi=300)
 
-fig_64.tight_layout()
-fig_64.savefig('/Users/matt/Desktop/comp_fig_64.pdf', dpi=300)
 # plt.show()
 
 
