@@ -102,7 +102,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     List<Offset> slatCoordinates = [];
     // TODO: there must be a faster way to get this to run properly...
     if (preSelectedSlats){
-      Offset slatOffset =  snapPosition - slatMoveAnchor;
+      Offset slatOffset =  appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor);
       for (var slat in appState.selectedSlats){
         for (var coord in appState.slats[slat]!.slatPositionToCoordinate.values){
           slatCoordinates.add(coord + slatOffset);
