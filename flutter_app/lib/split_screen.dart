@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +20,7 @@ class SplitScreen extends StatefulWidget {
 class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
   // Initial divider position as a fraction of screen width
   double _dividerPosition = 0.5;
-  bool threeViewerActive = !Platform.isLinux;
+  bool threeViewerActive = defaultTargetPlatform != TargetPlatform.linux;
 
   static const WidgetStateProperty<Icon> displayThumbIcon = WidgetStateProperty<Icon>.fromMap(
       <WidgetStatesConstraint, Icon>{
@@ -142,7 +141,7 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
               ],
             ),
           ),
-          if(!Platform.isLinux) ... [
+          if(defaultTargetPlatform != TargetPlatform.linux) ... [
           Positioned(
             top: 16.0,
             right: 16.0,
