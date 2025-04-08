@@ -31,14 +31,30 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   late double x60Jump = math.sqrt(math.pow(gridSize, 2) - math.pow(y60Jump, 2));
   String gridMode = '60';
 
-  bool assemblyHandleView = true;
+  bool assemblyHandleView = false;
 
-  static const WidgetStateProperty<Icon> assemblyHandleThumbIcon = WidgetStateProperty<Icon>.fromMap(
+  // parameters for six-helix bundle view
+  bool helixBundleView = true;
+  final double helixBundleSize = 5/(1 + math.sqrt(3));
+  late double helixBundledX = (math.sqrt(3)/2) * helixBundleSize;
+  late List<List<double>> helixBundlePositions = [
+    [-helixBundledX, -helixBundleSize/2],
+    [helixBundledX, -helixBundleSize/2],
+    [-helixBundledX, helixBundleSize/2],
+    [helixBundledX, helixBundleSize/2],
+    [0, helixBundleSize],
+    [0, -helixBundleSize],
+  ];
+
+  static const WidgetStateProperty<Icon> switchThumbIcon = WidgetStateProperty<Icon>.fromMap(
     <WidgetStatesConstraint, Icon>{
       WidgetState.selected: Icon(Icons.check),
       WidgetState.any: Icon(Icons.close),
     },
   );
+
+  late List<three.Object3D> importantObjects = [];
+
   @override
   void initState() {
     threeJs = three.ThreeJS(
@@ -105,6 +121,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     final ambientLight = three.AmbientLight(0x222222);
     threeJs.scene.add(ambientLight);
 
+    importantObjects = [gridHelper, axesHelper, dirLight1, dirLight2, ambientLight];
+
     threeJs.addAnimationEvent((dt){
       controls.update();
       // logCameraDetails();
@@ -136,9 +154,48 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     return Offset(extX, extY);
   }
 
+  three.Group createSlatBundle(String name, int color, double slatAngle, double height, double centerX, double centerZ){
+
+    final group = three.Group();
+    group.name = name;
+    final material = three.MeshPhongMaterial.fromMap({"color": color, "flatShading": true});
+
+    if (helixBundleView){
+      // full representation of a slat six-helix bundle
+      for (var pos in helixBundlePositions) {
+        final geometry = CylinderGeometry(helixBundleSize/2, helixBundleSize/2, gridSize * 32, 60);
+        final mesh = three.Mesh(geometry, material);
+        mesh.position.setX(pos[1]);
+        mesh.position.setY(0);
+        mesh.position.setZ(pos[0]);
+        group.add(mesh);
+      }
+    }
+    else {
+      // single rod only (in the center)
+      final geometry = CylinderGeometry(2.5, 2.5, gridSize * 32, 60); // actual size should be 310, but adding an extra 10 to improve visuals
+      final mesh = three.Mesh(geometry, material);
+      mesh.position.setX(0);
+      mesh.position.setY(0);
+      mesh.position.setZ(0);
+      group.add(mesh);
+    }
+
+    // a value of 6.5 used for each layer (enough for one slat + a small gap for cargo later on)
+    group.position.y = height;
+    group.position.z = centerZ;
+    group.position.x = centerX;
+
+    group.rotation.z = math.pi / 2;  // default
+    group.rotation.y = -slatAngle;
+
+    return group;
+
+  }
+
   void createAssemblyHandle(String slatID, String name, Offset position, int color, double zOrder, String topSide, String handleSide){
     /// Creates a new handle graphic in the 3D scene.
-    final geometry = CylinderGeometry(2, 2, 1.5, 60);
+    final geometry = CylinderGeometry(helixBundleView ? 0.8 : 2, helixBundleView ? 0.8 : 2, 1.5, 8);
     final material = three.MeshPhongMaterial.fromMap({"color": color, "flatShading": true});
     final mesh = three.Mesh(geometry, material);
     mesh.name = name;
@@ -257,21 +314,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       // if slat does not exist, recreate from scratch
       if (threeJs.scene.getObjectByName(slat.id) == null) {
         slatIDs.add(slat.id);
-        final geometry = CylinderGeometry(2.5, 2.5, gridSize * 32, 60); // actual size should be 310, but adding an extra 10 to improve visuals
-        final material = three.MeshPhongMaterial.fromMap({"color": layerMap[slat.layer]?['color'].value & 0x00FFFFFF, "flatShading": true});
-        final mesh = three.Mesh(geometry, material);
-        mesh.name = slat.id;
+        final meshGroup = createSlatBundle(slat.id, layerMap[slat.layer]?['color'].value & 0x00FFFFFF,
+            slatAngle, layerMap[slat.layer]?['order'].toDouble() * 6.5, p1.dx + slatExtend.dx, p1.dy + slatExtend.dy);
+        meshGroup.updateMatrix();
+        meshGroup.matrixAutoUpdate = false;
+        threeJs.scene.add(meshGroup);
 
-        // a value of 6.5 used for each layer (enough for one slat + a small gap for cargo later on)
-        mesh.position.y = layerMap[slat.layer]?['order'].toDouble() * 6.5;
-        mesh.rotation.z = math.pi / 2;  // default
-
-        mesh.rotation.y = -slatAngle;
-        mesh.position.z = p1.dy + slatExtend.dy;
-        mesh.position.x = p1.dx + slatExtend.dx;
-        mesh.updateMatrix();
-        mesh.matrixAutoUpdate = false;
-        threeJs.scene.add(mesh);
         manageAssemblyHandles(slat, layerMap); // add assembly handles to the slat
       }
       // slat already exists - should check to see if layer position, color, or direction has changed
@@ -322,6 +370,18 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       slatAccessories[id]?.forEach((name, handle) {
         threeJs.scene.remove(handle);
       });
+    }
+  }
+
+  void clearSceneExcept(List<three.Object3D> keepObjects) {
+    for (var object in List.from(threeJs.scene.children)) {
+      if (!keepObjects.contains(object)) {
+        if (object is three.Mesh) {
+          object.geometry?.dispose();
+          (object.material)?.dispose();
+        }
+        threeJs.scene.remove(object);
+      }
     }
   }
 
@@ -423,9 +483,21 @@ class _ThreeDisplay extends State<ThreeDisplay> {
             right: 16.0,
             child: Row(
               children: [
+                Text("Display Slats as 6HBs"),
+                Switch(
+                  thumbIcon: switchThumbIcon,
+                  value: helixBundleView,
+                  onChanged: (bool value) {
+                    setState(() {
+                      helixBundleView = value;
+                      clearSceneExcept(importantObjects);
+                      manageSlats(appState.slats.values.toList(), appState.layerMap);
+                    });
+                  },
+                ),
                 Text("Display Assembly Handles"),
                 Switch(
-                  thumbIcon: assemblyHandleThumbIcon,
+                  thumbIcon: switchThumbIcon,
                   value: assemblyHandleView,
                   onChanged: (bool value) {
                     setState(() {
