@@ -72,16 +72,14 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   /// Function for checking if a slat can be placed at a given coordinate.
   bool checkCoordinateOccupancy(DesignState appState, List<Offset> coordinates){
 
-    // TODO: this is now usable, but I'm sure this can still be optimized
-    Set<Offset> occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys.toSet() ?? {};
-    Set<Offset> hiddenPositions = {};
+    final occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys;
+    if (occupiedPositions == null) return false;
 
-    // hidden slats are not considered for conflicts
-    for (var slat in hiddenSlats){
-      hiddenPositions.addAll(appState.slats[slat]!.slatPositionToCoordinate.values);
+    final hiddenPositions = <Offset>{};
+    for (var slat in hiddenSlats) {
+      hiddenPositions.addAll(appState.slats[slat]?.slatPositionToCoordinate.values ?? {});
     }
 
-    // Check for conflicts in occupied positions
     for (var coord in coordinates) {
       if (occupiedPositions.contains(coord) && !hiddenPositions.contains(coord)) {
         return true;
@@ -233,7 +231,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           // in move mode, a slat can be moved directly with a click and drag - this detects if a slat is under the pointer when clicked
           if(actionState.slatMode == "Move"){
             final Offset snappedPosition = gridSnap(event.position, appState);
-            if (appState.occupiedGridPoints.containsKey(appState.selectedLayerKey) && appState.occupiedGridPoints[appState.selectedLayerKey]!.keys.contains(appState.convertRealSpacetoCoordinateSpace(snappedPosition))) {
+            if (checkCoordinateOccupancy(appState, [appState.convertRealSpacetoCoordinateSpace(snappedPosition)])){
               dragActive = true;  // drag mode is signalled here - panning is now disabled
               slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
             }
@@ -356,9 +354,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 else if (actionState.slatMode == "Delete"){
                   // slats removed from the persistent list here
                   var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
-                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerKey) && appState.occupiedGridPoints[appState.selectedLayerKey]!.keys.contains(coordConvertedPosition)) {
-                    appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!);
-                  }
+                  if (checkCoordinateOccupancy(appState, [coordConvertedPosition])) {
+                      appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!);
+                    }
                 }
               },
 
@@ -367,15 +365,16 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
 
                 if (actionState.slatMode == "Move") {
-                  // TODO: if this could also be made faster, perhaps using a set, that would be great
                   // TODO: on touchpad, the shift click seems to clear the selection instead of add on (probably due to multiple clicks?)
-                  if (appState.occupiedGridPoints.containsKey(appState.selectedLayerKey) && appState.occupiedGridPoints[appState.selectedLayerKey]!.keys.contains(snappedPosition)) {
+
+                  if (checkCoordinateOccupancy(appState, [snappedPosition])){
                     if (appState.selectedSlats.isNotEmpty && !isShiftPressed) {
                       appState.clearSelection();
                     }
                     // this flips a selection if the slat was already clicked (and pressing shift)
                     appState.selectSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![snappedPosition]!);
-                  } else {
+                  }
+                  else {
                     appState.clearSelection();
                   }
                 }
