@@ -1,5 +1,5 @@
 import 'package:provider/provider.dart';
-import 'shared_app_state.dart';
+import '../app_management/shared_app_state.dart';
 import 'slat_design_sidebar.dart';
 import 'assembly_handles_sidebar.dart';
 import 'package:flutter/material.dart';

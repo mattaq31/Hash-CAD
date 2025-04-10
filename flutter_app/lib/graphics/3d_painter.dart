@@ -1,6 +1,6 @@
 import 'dart:math' as math;
-import 'crisscross_core/slats.dart';
-import 'shared_app_state.dart';
+import '../crisscross_core/slats.dart';
+import '../app_management/shared_app_state.dart';
 
 import 'package:flutter/material.dart';
 import 'package:three_js_controls/three_js_controls.dart';
@@ -9,7 +9,7 @@ import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 import 'package:provider/provider.dart';
 import 'package:three_js_helpers/three_js_helpers.dart';
-import '2d_painters/helper_functions.dart';
+import '../2d_painters/helper_functions.dart';
 
 class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
@@ -100,8 +100,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     controls.minDistance = 100;
     // controls.maxDistance = 1000;
-
-    controls.maxPolarAngle = math.pi / 2;
 
     final gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
     threeJs.scene.add(gridHelper);
@@ -200,7 +198,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     final mesh = three.Mesh(geometry, material);
     mesh.name = name;
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
-    mesh.position.setValues(position!.dx, (zOrder * 6.5) + verticalOffset, position!.dy);
+    mesh.position.setValues(position.dx, (zOrder * 6.5) + verticalOffset, position.dy);
     mesh.rotation.z = math.pi;
     mesh.updateMatrix();
     mesh.matrixAutoUpdate = false;
@@ -249,11 +247,11 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         createAssemblyHandle(slat.id, handleName, position, color, order, topSide, handleSide);
       } else {
         // Update existing handle
-        updateAssemblyHandle(existingHandleMesh!, position, color, order, topSide, handleSide);
+        updateAssemblyHandle(existingHandleMesh, position, color, order, topSide, handleSide);
       }
     } else if (existingHandleMesh != null){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
-      threeJs.scene.remove(existingHandleMesh!);
+      threeJs.scene.remove(existingHandleMesh);
       slatAccessories[slat.id]?.remove(handleName);
     }
   }

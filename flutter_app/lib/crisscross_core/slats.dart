@@ -1,4 +1,3 @@
-import 'dart:collection';
 import 'package:flutter/material.dart';
 
 class Slat {
@@ -133,4 +132,7 @@ class Slat {
 
     return totalBases * 327 - (totalBases - 1) * 18.015;
   }
+
+  Slat copy() => Slat(numericID, id, layer, slatPositionToCoordinate, maxLength: maxLength);
+
 }

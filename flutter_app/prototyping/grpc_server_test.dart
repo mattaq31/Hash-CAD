@@ -1,7 +1,5 @@
-import 'dart:math' show Random;
-
 import 'package:grpc/grpc.dart';
-import 'grpc_client_architecture/hamming_evolve_communication.pbgrpc.dart';
+import '../lib/grpc_client_architecture/hamming_evolve_communication.pbgrpc.dart';
 
 class Client {
   late HandleEvolveClient stub;

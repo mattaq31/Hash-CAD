@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'shared_app_state.dart';
+import '../app_management/shared_app_state.dart';
 import 'package:flutter/material.dart';
-import 'rating_indicator.dart';
+import '../graphics/rating_indicator.dart';
 
 class AssemblyHandleDesignTools extends StatefulWidget {
   const AssemblyHandleDesignTools({super.key});
@@ -143,6 +143,15 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           setState(() {
             preventSelfComplementarySlats = value ?? false;
             serverState.updateEvoParam("split_sequence_handles", preventSelfComplementarySlats.toString());
+          });
+        },
+      ),
+      CheckboxListTile(
+        title: const Text('Display Assembly Handles'),
+        value: actionState.displayAssemblyHandles,
+        onChanged: (bool? value) {
+          setState(() {
+            actionState.setAssemblyHandleDisplay(value ?? false);
           });
         },
       ),

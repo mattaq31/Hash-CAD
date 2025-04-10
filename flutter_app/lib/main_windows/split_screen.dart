@@ -2,13 +2,13 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '3d_painter.dart';
-import 'crosshatch_shader.dart';
+import '../graphics/3d_painter.dart';
+import '../graphics/crosshatch_shader.dart';
 import 'grid_control.dart';
-import 'sidebar_tools.dart';
-import 'shared_app_state.dart';
-import 'hamming_evolve_window.dart';
-import 'grpc_client_architecture/server_startup.dart';
+import '../sidebars/sidebar_tools.dart';
+import '../app_management/shared_app_state.dart';
+import '../grpc_client_architecture/hamming_evolve_window.dart';
+import '../grpc_client_architecture/server_startup.dart';
 
 class SplitScreen extends StatefulWidget {
   const SplitScreen({super.key});
@@ -36,6 +36,14 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
     // if (!kIsWeb) {
     //   launchServer();
     // }
+
+  }
+
+  @override
+  void dispose() {
+    // Dispose of the focus nodes when done
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
@@ -102,7 +110,9 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                     // Right half: 3D viewer
                     SizedBox(
                       width: rightPaneWidth,
-                      child: ThreeDisplay(),
+                      child: FocusScope(
+                        canRequestFocus: false,
+                          child: ThreeDisplay()),
                     ),
                   ]
                 ],

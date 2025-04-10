@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'shared_app_state.dart';
+import '../app_management/shared_app_state.dart';
 import 'package:flutter/material.dart';
-import 'honeycomb_pictogram.dart';
+import '../graphics/honeycomb_pictogram.dart';
 import 'dart:math';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
@@ -18,10 +18,39 @@ class SlatDesignTools extends StatefulWidget {
   State<SlatDesignTools> createState() => _SlatDesignTools();
 }
 
+
 class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserver {
+
+  FocusNode slatAddFocusNode = FocusNode();
 
   TextEditingController slatAddTextController = TextEditingController(text: '1');
   int slatAddCount = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      var appState = context.read<DesignState>(); // Use read instead of watch
+      slatAddFocusNode.addListener(() {
+        if (!slatAddFocusNode.hasFocus) {
+          _updateSlatAddCount(appState);
+        }
+      });
+    });
+  }
+
+  void _updateSlatAddCount(DesignState appState) {
+    int? newValue = int.tryParse(slatAddTextController.text);
+    if (newValue != null && newValue >= 1 && newValue <= 32) {
+      slatAddCount = newValue;
+    } else if (newValue != null && newValue < 1) {
+      slatAddCount = 1;
+    } else {
+      slatAddCount = 32;
+    }
+    slatAddTextController.text = slatAddCount.toString();
+    appState.updateSlatAddCount(slatAddCount);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +60,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
     return Column(children: [
       Text("Slat Design",
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-      SizedBox(height: 10),
+      SizedBox(height: 5),
       Text(
         "Slat Edit Mode", // Title above the segmented button
         style:
@@ -39,19 +68,19 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       ),
       SizedBox(height: 5),
       SegmentedButton<String>(
-        segments: const <ButtonSegment<String>>[
+        segments: <ButtonSegment<String>>[
           ButtonSegment<String>(
               value: "Add",
               label: Text('Add'),
-              icon: Icon(Icons.add_circle_outline)),
+              icon: Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.primary)),
           ButtonSegment<String>(
               value: "Delete",
               label: Text('Delete'),
-              icon: Icon(Icons.delete_outline)),
+              icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.primary)),
           ButtonSegment<String>(
               value: 'Move',
               label: Text('Move'),
-              icon: Icon(Icons.pan_tool)),
+              icon: Icon(Icons.pan_tool, color: Theme.of(context).colorScheme.primary)),
         ],
         selected: <String>{actionState.slatMode},
         onSelectionChanged: (Set<String> newSelection) {
@@ -60,8 +89,131 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           });
         },
       ),
-      SizedBox(height: 20),
+      SizedBox(height: 5),
+      Divider(thickness: 1, color: Colors.grey.shade200),
+      Text(
+        "Setup", // Title above the segmented button
+        style:
+        TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      ),
+      SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FilledButton.icon(
+            onPressed: () async {
+              if (appState.gridMode != '90') {
+                final result = await showDialog<bool>(
+                    context: context,
+                    builder: (BuildContext context) =>
+                        AlertDialog(
+                          title:
+                          const Text('Switching Grid Type'),
+                          content: const Text(
+                              'Warning: switching grid type will erase your current design!'),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false), // Cancel
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true), // Confirm
+                              child: const Text('Go ahead'),
+                            ),
+                          ],
+                        ));
+                if (result == true) {
+                  appState.setGridMode('90');
+                }
+              }
+            },
+            label: Text("90° Grid"),
+            style: ElevatedButton.styleFrom(
+              // backgroundColor: Colors.red, // Red background
+              // foregroundColor: Colors.white, // White text
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Rounded edges
+              ),
+            ),
+          ),
+          SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: () async {
+              if (appState.gridMode != '60') {
+                final result = await showDialog<bool>(
+                    context: context,
+                    builder: (BuildContext context) =>
+                        AlertDialog(
+                          title:
+                          const Text('Switching Grid Type'),
+                          content: const Text(
+                              'Warning: switching grid type will erase your current design!'),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false), // Cancel
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true), // Confirm
+                              child: const Text('Go ahead'),
+                            ),
+                          ],
+                        ));
+                if (result == true) {
+                  appState.setGridMode('60');
+                }
+              }
+            },
+            label: Text("60° Grid"),
+            style: ElevatedButton.styleFrom(
+              // backgroundColor: Colors.red, // Red background
+              // foregroundColor: Colors.white, // White text
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Rounded edges
+              ),
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: 5),
+      FilledButton.icon(
+        onPressed: () {
+          appState.clearAll();
+        },
+        icon: Icon(Icons.cleaning_services, size: 18),
+        label: Text("Clear All"),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red, // Red background
+          foregroundColor: Colors.white, // White text
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: TextStyle(fontSize: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8), // Rounded edges
+          ),
+        ),
+      ),
+      CheckboxListTile(
+        title: const Text('Display Assembly Handles'),
+        value: actionState.displayAssemblyHandles,
+        onChanged: (bool? value) {
+          setState(() {
+            actionState.setAssemblyHandleDisplay(value ?? false);
+          });
+        },
+      ),
+      // SizedBox(height: 10),
       // Buttons
+      Divider(thickness: 1, color: Colors.grey.shade200),
+      Text(
+        "Number of Slats to Draw", // Title above the segmented button
+        style:
+        TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      ),
+      SizedBox(height: 10),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -69,28 +221,16 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
             width: 180,
             child: TextField(
               controller: slatAddTextController,
+              focusNode: slatAddFocusNode,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: 'Number of Slats to Draw',
+                labelText: 'Manual Input',
               ),
               textInputAction: TextInputAction.done,
               inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
               onSubmitted: (value) {
-                int? newValue = int.tryParse(value);
-                if (newValue != null &&
-                    newValue >= 1 &&
-                    newValue <= 32) {
-                  slatAddCount = newValue;
-                  slatAddTextController.text = slatAddCount.toString();
-                } else if (newValue != null && newValue < 1) {
-                  slatAddCount = 1;
-                  slatAddTextController.text = '1';
-                } else {
-                  slatAddCount = 32;
-                  slatAddTextController.text = '32';
-                }
-                appState.updateSlatAddCount(slatAddCount);
+                _updateSlatAddCount(appState);
               },
             ),
           ),
@@ -157,74 +297,6 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           ),
         ],
       ),
-      SizedBox(height: 10),
-      Text("Press 'Alt' to rotate slat draw direction!",
-          style: TextStyle(
-              fontSize: 14, color: Colors.grey.shade600)),
-      CheckboxListTile(
-        title: const Text('Display Assembly Handles'),
-        value: actionState.displayAssemblyHandles,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setAssemblyHandleDisplay(value ?? false);
-          });
-        },
-      ),
-      SizedBox(height: 5),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FilledButton.icon(
-            onPressed: () {
-              appState.setGridMode('90');
-            },
-            label: Text("90° Grid"),
-            style: ElevatedButton.styleFrom(
-              // backgroundColor: Colors.red, // Red background
-              // foregroundColor: Colors.white, // White text
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              textStyle: TextStyle(fontSize: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8), // Rounded edges
-              ),
-            ),
-          ),
-          SizedBox(width: 10),
-          FilledButton.icon(
-            onPressed: () {
-              appState.setGridMode('60');
-            },
-            label: Text("60° Grid"),
-            style: ElevatedButton.styleFrom(
-              // backgroundColor: Colors.red, // Red background
-              // foregroundColor: Colors.white, // White text
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              textStyle: TextStyle(fontSize: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8), // Rounded edges
-              ),
-            ),
-          ),
-        ],
-      ),
-      SizedBox(height: 5),
-      FilledButton.icon(
-        onPressed: () {
-          appState.clearAll();
-        },
-        icon: Icon(Icons.cleaning_services, size: 18),
-        label: Text("Clear All"),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red, // Red background
-          foregroundColor: Colors.white, // White text
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: TextStyle(fontSize: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8), // Rounded edges
-          ),
-        ),
-      ),
-      SizedBox(height: 5),
       Divider(thickness: 2, color: Colors.grey.shade300),
       Text("Layer Manager",
           style: TextStyle(
@@ -234,7 +306,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
         constraints: BoxConstraints(
           maxHeight: min(
             // Height for 5 items, approximating a row having a height of 85
-              8 * 85.0,
+              5 * 85.0,
               // If fewer than 5 items, shrink to fit content
               getOrderedKeys(appState.layerMap).length * 85.0
           ),
@@ -397,6 +469,92 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       ),
       SizedBox(height: 10),
       Divider(thickness: 2, color: Colors.grey.shade300),
+      Text("Keyboard Shortcuts",
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+      SizedBox(height: 10),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'R'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Rotate slat draw direction"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'Up/Down arrow keys'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Change layer"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'A'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Add new layer"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'1'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Switch to 'Add' mode"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'2'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Switch to 'Delete' mode"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'3'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Switch to 'Move' mode"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'CMD/Ctrl-Z'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Undo last action"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          Text('(Only slat actions can be be reversed)', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+        ],
+      ),
+      Divider(thickness: 2, color: Colors.grey.shade300),
     ]);
+  }
+
+  @override
+  void dispose() {
+    slatAddFocusNode.dispose();
+    super.dispose();
   }
 }

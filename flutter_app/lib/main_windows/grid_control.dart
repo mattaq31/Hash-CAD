@@ -2,12 +2,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
-import 'shared_app_state.dart';
-import '2d_painters/grid_painter.dart';
-import '2d_painters/slat_hover_painter.dart';
-import '2d_painters/slat_painter.dart';
-import '2d_painters/helper_functions.dart';
-import '2d_painters/delete_painter.dart';
+import '../app_management/shared_app_state.dart';
+import '../2d_painters/grid_painter.dart';
+import '../2d_painters/slat_hover_painter.dart';
+import '../2d_painters/slat_painter.dart';
+import '../2d_painters/helper_functions.dart';
+import '../2d_painters/delete_painter.dart';
 
 /// Class that takes care of painting all 2D objects on the grid, including the grid itself, slats and slat hover effects.
 class GridAndCanvas extends StatefulWidget {
@@ -109,7 +109,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     }
     // preselectedSlats means that the slats are already selected and are being moved
     else {
-      Map<int, Map<int, Offset>> allSlatCoordinates = generateSlatPositions(snapPosition!, false, false, appState);
+      Map<int, Map<int, Offset>> allSlatCoordinates = generateSlatPositions(snapPosition, false, false, appState);
       slatCoordinates = allSlatCoordinates.values.expand((innerMap) => innerMap.values).toList();
     }
 
@@ -226,8 +226,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         },
         // the following three event handlers are specifically setup to handle the slat move mode
         onPointerDown: (event){
-          keyFocusNode.requestFocus(); // I don't know why keyboard focus keeps being lost, but this should help fix the problem
-
           // in move mode, a slat can be moved directly with a click and drag - this detects if a slat is under the pointer when clicked
           if(actionState.slatMode == "Move"){
             final Offset snappedPosition = gridSnap(event.position, appState);
@@ -261,7 +259,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 var convCoordHoverPosition = appState.convertRealSpacetoCoordinateSpace(hoverPosition!);
                 var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
                 for (var slat in appState.selectedSlats){
-                  appState.updateSlatPosition(slat, appState.slats[slat]!.slatPositionToCoordinate.map((key, value) => MapEntry(key, value + convCoordHoverPosition! - convCoordAnchor)));
+                  appState.updateSlatPosition(slat, appState.slats[slat]!.slatPositionToCoordinate.map((key, value) => MapEntry(key, value + convCoordHoverPosition - convCoordAnchor)));
                 }
               }
               dragActive = false;
@@ -271,158 +269,196 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
             });
           }
         },
-
         // this handles keyboard events (only)
-        child: KeyboardListener(
-          focusNode: keyFocusNode,
-          autofocus: true,
-          onKeyEvent: (KeyEvent event) {
-            setState(() {
-              if (event is KeyDownEvent){
-                isShiftPressed = event.logicalKey.keyLabel.contains('Shift');
-                if (event.logicalKey.keyLabel.contains('Alt')){
-                  appState.rotateLayerDirection(appState.selectedLayerKey);
-                }
-              }
-              else{
-                isShiftPressed = false;
-              }
-              if (event is KeyUpEvent){
-                isShiftPressed = false;
-              }
-            });
+        child: CallbackShortcuts(
+          bindings: {
+            // Rotation shortcut
+            SingleActivator(LogicalKeyboardKey.keyR): () {
+              appState.rotateLayerDirection(appState.selectedLayerKey);
+            },
+            // Navigation shortcuts
+            SingleActivator(LogicalKeyboardKey.arrowUp): () {
+                appState.cycleActiveLayer(true);
+            },
+            SingleActivator(LogicalKeyboardKey.arrowDown): () {
+                appState.cycleActiveLayer(false);
+            },
+            // Action shortcuts
+            SingleActivator(LogicalKeyboardKey.keyA): () {
+                appState.addLayer();
+            },
+            SingleActivator(LogicalKeyboardKey.digit1): () {
+                actionState.updateSlatMode('Add');
+            },
+            SingleActivator(LogicalKeyboardKey.digit2): () {
+                actionState.updateSlatMode('Delete');
+            },
+            SingleActivator(LogicalKeyboardKey.digit3): () {
+                actionState.updateSlatMode('Move');
+            },
+
+            // Undo shortcuts (platform-specific)
+            SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                control: true
+            ): () {
+                appState.undoSlatAction();
+            },
+            SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                meta: true
+            ): () {
+                appState.undoSlatAction();
+            },
           },
-          // this handles the hovering function in most modes i.e. having a single slat follow the mouse to indicate where its position will be if dropped
-          child: MouseRegion(
-            cursor: getCursorForSlatMode(actionState.slatMode),  // TODO: it looks better if the cursor changes when hovering over a slat, rather than always being the same in move mode
-            onHover: (event) {
-              keyFocusNode.requestFocus();
-              if (actionState.slatMode == "Add" || actionState.slatMode == "Delete") {
-                setState(() {
-                  var (localHoverPosition, localHoverValid) = hoverCalculator(event.position, appState, actionState, false);
-                  hoverPosition = localHoverPosition;
-                  hoverValid = localHoverValid;
-                });
-              }
-            },
-            onExit: (event) {
+          child: Focus(
+            autofocus: true,
+            focusNode: keyFocusNode,
+            onKeyEvent: (FocusNode node, KeyEvent event) {
               setState(() {
-                hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
-              });
-            },
-            // this handles A) scaling applied via a multi-touch operation and B) the actual placement of a slat on the grid
-            child: GestureDetector(
-              onScaleStart: (details) {
-                initialScale = scale;
-                initialPanOffset = offset;
-                initialGestureFocalPoint = details.focalPoint;
-              },
-              onScaleUpdate: (details) {
-                // turn off scaling completely while moving around with a slat in move mode
-                if (dragActive) {
-                  return;
-                }
-                setState(() {
-                  // this scaling system is identical to the one used for the mouse wheel zoom (see function above)
-                  final newScale = (initialScale * details.scale).clamp(minScale, maxScale);
-                  if (newScale == initialScale) {
-                    offset = initialPanOffset + (details.focalPoint - initialGestureFocalPoint) / scale;
-                  } else {
-                    offset = details.focalPoint - (((details.focalPoint - offset) / scale) * newScale);
+                // Handle the shift key state
+                if (event is KeyDownEvent) {
+                  isShiftPressed = event.logicalKey.keyLabel.contains('Shift');
+                } else if (event is KeyUpEvent) {
+                  if (event.logicalKey.keyLabel.contains('Shift')) {
+                    isShiftPressed = false;
                   }
-                  // TODO: not sure if the fact that pan and zoom cannot be handled simultaneously is a problem... should circle back here if so
-                  scale = newScale;
+                }
+              });
+              // Return false to allow the event to continue to be processed
+              return KeyEventResult.ignored;
+            },
+            // this handles the hovering function in add or delete mode i.e. having a single slat or 'X' follow the mouse to indicate where its position will be if clicked
+            child: MouseRegion(
+            cursor: getCursorForSlatMode(actionState.slatMode),  // TODO: it looks better if the cursor changes when hovering over a slat, rather than always being the same in move mode
+              onHover: (event) {
+                keyFocusNode.requestFocus();  // returns focus back to keyboard shortcuts
+
+                if (actionState.slatMode == "Add" || actionState.slatMode == "Delete") {
+                  setState(() {
+                    var (localHoverPosition, localHoverValid) = hoverCalculator(event.position, appState, actionState, false);
+                    hoverPosition = localHoverPosition;
+                    hoverValid = localHoverValid;
+                  });
+                }
+              },
+              onExit: (event) {
+                setState(() {
+                  hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
                 });
               },
-              // this is the actual point a new slat is being added to the system
-              onTapDown: (details) {
-                keyFocusNode.requestFocus();
-                final Offset snappedPosition = gridSnap(details.localPosition, appState);
-                if (actionState.slatMode == "Add"){
-                  if (!hoverValid) { // cannot place slats if blocked by other slats
+              // this handles A) scaling applied via a multi-touch operation and B) the actual placement of a slat on the grid
+              child: GestureDetector(
+                onScaleStart: (details) {
+                  initialScale = scale;
+                  initialPanOffset = offset;
+                  initialGestureFocalPoint = details.focalPoint;
+                },
+                onScaleUpdate: (details) {
+                  // turn off scaling completely while moving around with a slat in move mode
+                  if (dragActive) {
                     return;
                   }
-                  // slats added to a persistent list here
-                  Map<int, Map<int, Offset>> incomingSlats = {};
-
-                  incomingSlats = generateSlatPositions(snappedPosition, false, false, appState);
-
-                  // if not already taken, can proceed to add a new slat
-                  appState.clearSelection();
-                  appState.addSlats(appState.selectedLayerKey, incomingSlats);
-                }
-                else if (actionState.slatMode == "Delete"){
-                  // slats removed from the persistent list here
-                  var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
-                  if (checkCoordinateOccupancy(appState, [coordConvertedPosition])) {
-                      appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!);
+                  setState(() {
+                    // this scaling system is identical to the one used for the mouse wheel zoom (see function above)
+                    final newScale = (initialScale * details.scale).clamp(minScale, maxScale);
+                    if (newScale == initialScale) {
+                      offset = initialPanOffset + (details.focalPoint - initialGestureFocalPoint) / scale;
+                    } else {
+                      offset = details.focalPoint - (((details.focalPoint - offset) / scale) * newScale);
                     }
-                }
-              },
+                    // TODO: not sure if the fact that pan and zoom cannot be handled simultaneously is a problem... should circle back here if so
+                    scale = newScale;
+                  });
+                },
+                // this is the actual point a new slat is being added to the system
+                onTapDown: (details) {
+                  final Offset snappedPosition = gridSnap(details.localPosition, appState);
+                  if (actionState.slatMode == "Add"){
+                    if (!hoverValid) { // cannot place slats if blocked by other slats
+                      return;
+                    }
+                    // slats added to a persistent list here
+                    Map<int, Map<int, Offset>> incomingSlats = {};
 
-              onTapUp: (TapUpDetails details) {
-                keyFocusNode.requestFocus();
-                final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
+                    incomingSlats = generateSlatPositions(snappedPosition, false, false, appState);
 
-                if (actionState.slatMode == "Move") {
-                  // TODO: on touchpad, the shift click seems to clear the selection instead of add on (probably due to multiple clicks?)
+                    // if not already taken, can proceed to add a new slat
+                    appState.clearSelection();
+                    appState.addSlats(appState.selectedLayerKey, incomingSlats);
+                  }
+                  else if (actionState.slatMode == "Delete"){
+                    // slats removed from the persistent list here
+                    var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
+                    if (checkCoordinateOccupancy(appState, [coordConvertedPosition])) {
+                        appState.removeSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!);
+                      }
+                  }
+                },
 
-                  if (checkCoordinateOccupancy(appState, [snappedPosition])){
-                    if (appState.selectedSlats.isNotEmpty && !isShiftPressed) {
+                onTapUp: (TapUpDetails details) {
+                  final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
+
+                  if (actionState.slatMode == "Move") {
+                    // TODO: on touchpad, the shift click seems to clear the selection instead of add on (probably due to multiple clicks?)
+
+                    if (checkCoordinateOccupancy(appState, [snappedPosition])){
+                      if (appState.selectedSlats.isNotEmpty && !isShiftPressed) {
+                        appState.clearSelection();
+                      }
+                      // this flips a selection if the slat was already clicked (and pressing shift)
+                      appState.selectSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![snappedPosition]!);
+                    }
+                    else {
                       appState.clearSelection();
                     }
-                    // this flips a selection if the slat was already clicked (and pressing shift)
-                    appState.selectSlat(appState.occupiedGridPoints[appState.selectedLayerKey]![snappedPosition]!);
                   }
-                  else {
-                    appState.clearSelection();
-                  }
-                }
-              },
-              // the custom painter here constantly re-applies the grid and slats to the screen while moving around
-              child: Stack(
-                children: [
-                  CustomPaint(
-                    size: Size.infinite,
-                    painter: GridPainter(scale, offset, appState.gridSize, appState.gridMode),
-                    child: Container(),
-                  ),
-                  CustomPaint(
-                    size: Size.infinite,
-                    painter: SlatHoverPainter(
-                        scale,
-                        offset,
-                        appState.layerMap[appState.selectedLayerKey]?['color'],
-                        hoverValid,
-                        (hoverPosition != null  && actionState.slatMode == "Add") ? generateSlatPositions(hoverPosition!, false, true, appState): {},
-                        hoverPosition,
-                        !dragActive,
-                        appState.selectedSlats.map((e) => appState.slats[e]!).toList(),
-                        slatMoveAnchor,
-                        appState
+                },
+                // the custom painter here constantly re-applies the grid and slats to the screen while moving around
+                child: Stack(
+                  children: [
+                    CustomPaint(
+                      size: Size.infinite,
+                      painter: GridPainter(scale, offset, appState.gridSize, appState.gridMode),
+                      child: Container(),
                     ),
-                    child: Container(),
-                  ),
-                  CustomPaint(
-                    size: Size.infinite,
-                    painter: SlatPainter(
-                        scale,
-                        offset,
-                        appState.slats.values.toList(),
-                        appState.layerMap,
-                        appState.selectedLayerKey,
-                        appState.selectedSlats,
-                        hiddenSlats,
-                        actionState.displayAssemblyHandles,
-                        appState),
-                    child: Container(),
-                  ),
-                  CustomPaint(
-                    size: Size.infinite,
-                    painter: DeletePainter(scale, offset, actionState.slatMode == "Delete" ? hoverPosition: null, appState.gridSize),
-                    child: Container(),
-                  ),
-                ],
+                    CustomPaint(
+                      size: Size.infinite,
+                      painter: SlatHoverPainter(
+                          scale,
+                          offset,
+                          appState.layerMap[appState.selectedLayerKey]?['color'],
+                          hoverValid,
+                          (hoverPosition != null  && actionState.slatMode == "Add") ? generateSlatPositions(hoverPosition!, false, true, appState): {},
+                          hoverPosition,
+                          !dragActive,
+                          appState.selectedSlats.map((e) => appState.slats[e]!).toList(),
+                          slatMoveAnchor,
+                          appState
+                      ),
+                      child: Container(),
+                    ),
+                    CustomPaint(
+                      size: Size.infinite,
+                      painter: SlatPainter(
+                          scale,
+                          offset,
+                          appState.slats.values.toList(),
+                          appState.layerMap,
+                          appState.selectedLayerKey,
+                          appState.selectedSlats,
+                          hiddenSlats,
+                          actionState.displayAssemblyHandles,
+                          appState),
+                      child: Container(),
+                    ),
+                    CustomPaint(
+                      size: Size.infinite,
+                      painter: DeletePainter(scale, offset, actionState.slatMode == "Delete" ? hoverPosition: null, appState.gridSize),
+                      child: Container(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

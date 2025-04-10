@@ -3,7 +3,7 @@ import '../crisscross_core/slats.dart';
 import 'helper_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:ui';
-import '../shared_app_state.dart';
+import '../app_management/shared_app_state.dart';
 
 
 /// Custom painter for the slats themselves
@@ -179,7 +179,7 @@ class SlatPainter extends CustomPainter {
               topBaselineOffset = topTextPainter.height;
             }
             else{
-              topBaselineOffset = topTextPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ??0;
+              topBaselineOffset = topTextPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
             }
 
             final topOffset = Offset(

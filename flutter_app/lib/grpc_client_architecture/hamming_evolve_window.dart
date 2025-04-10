@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'shared_app_state.dart';
-import 'line_chart.dart';
-import 'rating_indicator.dart';
+import '../app_management/shared_app_state.dart';
+import '../graphics/line_chart.dart';
+import '../graphics/rating_indicator.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dotted_border/dotted_border.dart';

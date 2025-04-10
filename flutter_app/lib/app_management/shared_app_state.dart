@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'crisscross_core/slats.dart';
-import 'crisscross_core/sparse_to_array_conversion.dart';
-import 'crisscross_core/assembly_handles.dart';
+import '../crisscross_core/slats.dart';
+import '../crisscross_core/sparse_to_array_conversion.dart';
+import '../crisscross_core/assembly_handles.dart';
 import 'file_io.dart';
-import 'grpc_client_architecture/client_entry.dart';
-import 'grpc_client_architecture/health.pbgrpc.dart';
+import '../grpc_client_architecture/client_entry.dart';
+import '../grpc_client_architecture/health.pbgrpc.dart';
 import 'package:grpc/grpc.dart';
 import 'package:flutter/foundation.dart';
-import '2d_painters/helper_functions.dart' as utils;
+import '../2d_painters/helper_functions.dart' as utils;
+import 'slat_undo_stack.dart';
 import 'dart:math';
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
@@ -91,6 +92,8 @@ class DesignState extends ChangeNotifier {
     },
   };
 
+  SlatUndoStack undoStack = SlatUndoStack();
+
   // main slat container
   Map<String, Slat> slats = {};
 
@@ -112,7 +115,7 @@ class DesignState extends ChangeNotifier {
 
   /// Adds slats to the design
   void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
-
+    undoStack.saveState(slats, occupiedGridPoints);
     for (var slat in slatCoordinates.entries) {
       slats['$layer-I${layerMap[layer]?["slat_count"]}'] = Slat(layerMap[layer]?["slat_count"], '$layer-I${layerMap[layer]?["slat_count"]}',layer, slat.value);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
@@ -128,6 +131,7 @@ class DesignState extends ChangeNotifier {
 
   /// Updates the position of a slat
   void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
+    undoStack.saveState(slats, occupiedGridPoints);
     // also need to remove old positions from occupiedGridPoints and add new ones
     String layer = slatID.split('-')[0];
 
@@ -142,6 +146,16 @@ class DesignState extends ChangeNotifier {
   /// Updates the active layer
   void updateActiveLayer(String value) {
     selectedLayerKey = value;
+    notifyListeners();
+  }
+
+  /// Cycles through the layer list and sets the selected layer (either up or down)
+  void cycleActiveLayer(bool upDirection) {
+    if (upDirection) {
+      selectedLayerKey = layerMap.keys.firstWhere((key) => layerMap[key]!['order'] == (layerMap[selectedLayerKey]!['order'] + 1) % layerMap.length);
+    } else {
+      selectedLayerKey = layerMap.keys.firstWhere((key) => layerMap[key]!['order'] == (layerMap[selectedLayerKey]!['order'] - 1 + layerMap.length) % layerMap.length);
+    }
     notifyListeners();
   }
 
@@ -170,6 +184,8 @@ class DesignState extends ChangeNotifier {
 
   /// Removes a slat from the design
   void removeSlat(String ID) {
+    undoStack.saveState(slats, occupiedGridPoints);
+    clearSelection();
     String layer = ID.split('-')[0];
     slats.remove(ID);
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
@@ -184,6 +200,16 @@ class DesignState extends ChangeNotifier {
       selectedSlats.add(ID);
     }
     notifyListeners();
+  }
+
+  void undoSlatAction(){
+    clearSelection();
+    Map<String, dynamic>? previousState = undoStack.undo();
+    if (previousState != null) {
+      slats = previousState['slats'];
+      occupiedGridPoints = previousState['occupiedGridPoints'];
+      notifyListeners();
+    }
   }
 
   /// Clears all selected slats
@@ -306,8 +332,8 @@ class DesignState extends ChangeNotifier {
         assemblyLayers.add(layerMap[slat.layer]!['order']);
       }
       for (int i = 0; i < slat.maxLength; i++) {
-        int x = (slat.slatPositionToCoordinate[i+1]!.dx - minPos!.dx).toInt();
-        int y = (slat.slatPositionToCoordinate[i+1]!.dy - minPos!.dy).toInt();
+        int x = (slat.slatPositionToCoordinate[i+1]!.dx - minPos.dx).toInt();
+        int y = (slat.slatPositionToCoordinate[i+1]!.dy - minPos.dy).toInt();
         for (var aLayer in assemblyLayers) {
           if (handleArray[x][y][aLayer] != 0) {
             int slatSide;
@@ -366,15 +392,28 @@ class DesignState extends ChangeNotifier {
   }
 
   void importNewDesign() async{
-    clearAll();
+
     var (newSlats, newLayerMap, newGridMode) = await importDesign();
     // check if the maps are empty
     if (newSlats.isEmpty || newLayerMap.isEmpty) {
       return;
     }
+    clearAll();
+
     layerMap = newLayerMap;
     slats = newSlats;
     gridMode = newGridMode;
+
+    // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
+    // Get the highest letter key
+    String maxKey = layerMap.keys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+    // Compute the next letter key
+    nextLayerKey = nextCapitalLetter(maxKey);
+
+    nextColorIndex = layerMap.length;
+    if (nextColorIndex > colorPalette.length - 1) {
+      nextColorIndex = 0;
+    }
 
     for (var slat in slats.values) {
       occupiedGridPoints.putIfAbsent(slat.layer, () => {});
@@ -388,7 +427,7 @@ class DesignState extends ChangeNotifier {
 
   void clearAll() {
     slats = {};
-
+    undoStack = SlatUndoStack();
     layerMap = {
       'A': {
         "direction": gridMode == '90' ? 90 : 120, // slat default direction
@@ -410,6 +449,8 @@ class DesignState extends ChangeNotifier {
     selectedLayerKey = 'A';
     occupiedGridPoints = {};
     selectedSlats = [];
+    nextLayerKey = 'C';
+    nextColorIndex = 2;
     notifyListeners();
   }
 

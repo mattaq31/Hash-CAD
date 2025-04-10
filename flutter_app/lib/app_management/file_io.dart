@@ -2,8 +2,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'dart:io';
-import 'crisscross_core/slats.dart';
-import 'crisscross_core/sparse_to_array_conversion.dart';
+import '../crisscross_core/slats.dart';
+import '../crisscross_core/sparse_to_array_conversion.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 
@@ -22,6 +22,29 @@ Future<String?> selectSaveLocation(String defaultFileName) async {
   }
 }
 
+/// hacky function to generate layer map string that matches python system
+String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
+  // Sort layers by 'order' field
+  var sortedLayers = layerMap.entries.toList()
+    ..sort((a, b) => a.value['order'].compareTo(b.value['order']));
+
+  // Extract helix pairs
+  List<List<String>> helixPairs = sortedLayers
+      .map((entry) => [entry.value['bottom_helix'].toString(), entry.value['top_helix'].toString()])
+      .toList();
+
+  // prepare string with first value
+  String result = '[${helixPairs[0][0][1]}, ';
+
+  // run through the remaining values and add them in the required pairs
+  for (int i = 0; i < helixPairs.length-1; i++) {
+    result += '(${helixPairs[i][1][1]}, ${helixPairs[i+1][0][1]}), ';
+  }
+
+  result += '${helixPairs.last[1][1]}]';
+
+  return result;
+}
 
 void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize, String gridMode) async{
 
@@ -71,15 +94,17 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
   metadataSheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('Reversed Slats');
   metadataSheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('Canvas Offset (Min)');
   metadataSheet.cell(CellIndex.indexByString('A5')).value = TextCellValue('Canvas Offset (Max)');
-  metadataSheet.cell(CellIndex.indexByString('A6')).value = TextCellValue('Grid Mode');
 
+  metadataSheet.cell(CellIndex.indexByString('B2')).value = TextCellValue(gridMode);
   metadataSheet.cell(CellIndex.indexByString('B4')).value = DoubleCellValue(minPos.dx);
   metadataSheet.cell(CellIndex.indexByString('C4')).value = DoubleCellValue(minPos.dy);
   metadataSheet.cell(CellIndex.indexByString('B5')).value = DoubleCellValue(maxPos.dx);
   metadataSheet.cell(CellIndex.indexByString('C5')).value = DoubleCellValue(maxPos.dx);
-  metadataSheet.cell(CellIndex.indexByString('B6')).value = TextCellValue(gridMode);
 
-  int layerStartPoint = 7;
+  // starting from the lowermost layer, this prepares a string of format (2, (5,2), (2,5), 5), where each number represents the position of the layer e.g. if layer 1 is (h5, h2) and layer 2 is (h2, h5), the string would be (5, (2,2),5)
+  metadataSheet.cell(CellIndex.indexByString('B1')).value = TextCellValue(generateLayerString(layerMap));
+
+  int layerStartPoint = 6;
   for (var l in layerMap.entries){
     metadataSheet.cell(CellIndex.indexByString('A${l.value['order']+layerStartPoint}')).value = TextCellValue("Layer ${l.key}");
     metadataSheet.cell(CellIndex.indexByString('B${l.value['order']+layerStartPoint}')).value = IntCellValue(l.value['direction']);
@@ -185,7 +210,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
   double minY = readExcelDouble(metadataSheet, 'C4');
 
   // obtain grid Mode
-  String gridMode = readExcelString(metadataSheet, 'B6').trim();
+  String gridMode = readExcelString(metadataSheet, 'B2').trim();
 
   // Read slat layers
   int numLayers = excel.tables.keys.where((key) => key.startsWith('slat_layer_')).length;
@@ -195,7 +220,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
     return (slats, layerMap, '');
   }
 
-  int layerReadStart = 7;
+  int layerReadStart = 6;
   // read in layer data
   for (int i = 0; i < numLayers; i++) {
     String fullKey = readExcelString(metadataSheet, 'A${i+layerReadStart}');
