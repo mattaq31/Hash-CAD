@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'main_windows/split_screen.dart';
 import 'app_management/shared_app_state.dart';
-import 'main_windows/window_manager.dart' if (dart.library.html) 'web_window_manager.dart';
+import 'main_windows/window_manager.dart' if (dart.library.html) 'main_windows/web_window_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
