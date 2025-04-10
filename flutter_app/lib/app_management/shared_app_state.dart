@@ -54,6 +54,13 @@ class DesignState extends ChangeNotifier {
     ('60', 240): Offset(0, 2),
   };
 
+  Map<(String, int), Offset> multiSlatGeneratorsAlternate = {
+    ('90', 90): Offset(0, -1),
+    ('90', 180): Offset(-1, 0),
+    ('60', 180): Offset(-1, 1),
+    ('60', 120): Offset(1, -1),
+    ('60', 240): Offset(-1, -1),
+  };
 
   // good for distinguishing layers quickly, but user can change colours
   List<String> colorPalette = [
@@ -258,12 +265,9 @@ class DesignState extends ChangeNotifier {
 
   /// Multi-slat generation can be flipped to achieve different placement systems
   void flipMultiSlatGenerator(){
-    multiSlatGenerators[('90', 90)] = -multiSlatGenerators[('90', 90)]!;
-    multiSlatGenerators[('90', 180)] = -multiSlatGenerators[('90', 180)]!;
-
-    multiSlatGenerators[('60', 120)] = -multiSlatGenerators[('60', 120)]!;
-    multiSlatGenerators[('60', 180)] = Offset(-multiSlatGenerators[('60', 180)]!.dx, multiSlatGenerators[('60', 180)]!.dy)!;
-    multiSlatGenerators[('60', 240)] = -multiSlatGenerators[('60', 240)]!;
+    Map<(String, int), Offset> settingsTransfer = Map.from(multiSlatGenerators);
+    multiSlatGenerators = Map.from(multiSlatGeneratorsAlternate);
+    multiSlatGeneratorsAlternate = settingsTransfer;
     notifyListeners();
   }
 
