@@ -276,6 +276,10 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
             SingleActivator(LogicalKeyboardKey.keyR): () {
               appState.rotateLayerDirection(appState.selectedLayerKey);
             },
+            // flip shortcut for 60deg layers
+            SingleActivator(LogicalKeyboardKey.keyF): () {
+              appState.flipMultiSlatGenerator();
+            },
             // Navigation shortcuts
             SingleActivator(LogicalKeyboardKey.arrowUp): () {
                 appState.cycleActiveLayer(true);

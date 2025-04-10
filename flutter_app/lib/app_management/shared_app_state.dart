@@ -256,6 +256,17 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Multi-slat generation can be flipped to achieve different placement systems
+  void flipMultiSlatGenerator(){
+    multiSlatGenerators[('90', 90)] = -multiSlatGenerators[('90', 90)]!;
+    multiSlatGenerators[('90', 180)] = -multiSlatGenerators[('90', 180)]!;
+
+    multiSlatGenerators[('60', 120)] = -multiSlatGenerators[('60', 120)]!;
+    multiSlatGenerators[('60', 180)] = Offset(-multiSlatGenerators[('60', 180)]!.dx, multiSlatGenerators[('60', 180)]!.dy)!;
+    multiSlatGenerators[('60', 240)] = -multiSlatGenerators[('60', 240)]!;
+    notifyListeners();
+  }
+
   /// Deletes a layer from the design entirely
   void deleteLayer(String layer) {
     if (!layerMap.containsKey(layer))
