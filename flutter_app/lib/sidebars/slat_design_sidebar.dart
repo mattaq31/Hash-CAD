@@ -18,7 +18,6 @@ class SlatDesignTools extends StatefulWidget {
   State<SlatDesignTools> createState() => _SlatDesignTools();
 }
 
-
 class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserver {
 
   FocusNode slatAddFocusNode = FocusNode();
@@ -339,14 +338,16 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
             return Material(
               key: ValueKey(key),
               child: Stack(
-                  children: [ListTile(
+                  children: [
+                    ListTile(
                     tileColor: isSelected
                         ? Colors.blue.shade100.withValues(alpha: 0.2) // Darker blue when selected
                         : Colors.white, // White when not selected
                     selected: isSelected,
                     selectedTileColor: Colors.blue.shade200.withValues(alpha: 0.2), // Add this
                     selectedColor: Colors.black, // Add this to keep text black when selected
-                    onTap: () {
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 0),
+                      onTap: () {
                       setState(() {
                         appState.updateActiveLayer(key);
                       });
@@ -403,7 +404,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
                             ];
                           },
                           child: Container(
-                            width: 35, // Width of the rectangle
+                            width: 30, // Width of the rectangle
                             height: 20, // Height of the rectangle
                             decoration: BoxDecoration(
                               color: entry["color"],
@@ -420,6 +421,16 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
                           onPressed: () {
                             setState(() {
                               appState.flipLayer(key);
+                            });
+                          },
+                          constraints: BoxConstraints(minWidth: 35, minHeight: 35), // Adjust width/height
+                          padding: EdgeInsets.zero, // Remove default padding
+                        ),
+                        IconButton(
+                          icon: Icon(appState.layerMap[key]!['hidden'] ? Icons.visibility_off : Icons.visibility, color: appState.layerMap[key]!['hidden'] ? Colors.grey: Colors.green),
+                          onPressed: () {
+                            setState(() {
+                                appState.flipLayerVisibility(key);
                             });
                           },
                           constraints: BoxConstraints(minWidth: 35, minHeight: 35), // Adjust width/height

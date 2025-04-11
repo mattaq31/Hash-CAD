@@ -87,7 +87,8 @@ class DesignState extends ChangeNotifier {
       'top_helix': 'H5',
       'bottom_helix': 'H2',
       'slat_count': 1, // used to give an id to a new slat
-      "color": Color(int.parse('0xFFebac23')) // default slat color
+      "color": Color(int.parse('0xFFebac23')), // default slat color
+      "hidden": false
     },
     'B': {
       "direction": 240,
@@ -95,7 +96,8 @@ class DesignState extends ChangeNotifier {
       'top_helix': 'H5',
       'bottom_helix': 'H2',
       'order': 1,
-      "color": Color(int.parse('0xFFb80058'))
+      "color": Color(int.parse('0xFFb80058')),
+      "hidden": false
     },
   };
 
@@ -263,6 +265,13 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+
+  /// Changes the visibility of a layer on the 2D grid
+  void flipLayerVisibility(String layer) {
+    layerMap[layer]?['hidden'] = !layerMap[layer]?['hidden'];
+    notifyListeners();
+  }
+
   /// Multi-slat generation can be flipped to achieve different placement systems
   void flipMultiSlatGenerator(){
     Map<(String, int), Offset> settingsTransfer = Map.from(multiSlatGenerators);
@@ -317,7 +326,8 @@ class DesignState extends ChangeNotifier {
       'bottom_helix': 'H2',
       'order': layerMap.length,
       "color":
-          Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}'))
+          Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}')),
+      "hidden": false
     };
     // if last last layerMap value has direction horizontal, next direction should be rotated one step forward
     rotateLayerDirection(nextLayerKey);
@@ -450,7 +460,8 @@ class DesignState extends ChangeNotifier {
         'top_helix': 'H5',
         'bottom_helix': 'H2',
         'slat_count': 1, // used to give an id to a new slat
-        "color": Color(int.parse('0xFFebac23')) // default slat color
+        "color": Color(int.parse('0xFFebac23')), // default slat color
+        "hidden": false
       },
       'B': {
         "direction": 180,
@@ -458,7 +469,8 @@ class DesignState extends ChangeNotifier {
         'top_helix': 'H5',
         'bottom_helix': 'H2',
         'order': 1,
-        "color": Color(int.parse('0xFFb80058'))
+        "color": Color(int.parse('0xFFb80058')),
+        "hidden": false
       },
     };
     selectedLayerKey = 'A';
@@ -547,7 +559,7 @@ class ServerState extends ChangeNotifier {
   List<double> physicsMetrics = [];
 
   Map<String, String> evoParams = {
-    'mutation_rate': '0.0025',
+    'mutation_rate': '5',
     'mutation_type_probabilities': '0.425, 0.425, 0.15',
     'evolution_generations': '200',
     'evolution_population': '30',

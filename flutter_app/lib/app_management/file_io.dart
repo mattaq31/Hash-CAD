@@ -231,6 +231,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
       'slat_count': readExcelInt(metadataSheet, 'E${i+layerReadStart}'),
       'order': i,
       'color': Color(int.parse('0xFF${readExcelString(metadataSheet, 'F${i+layerReadStart}').substring(1)}')),
+      "hidden": false
     };
   }
 

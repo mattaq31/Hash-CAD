@@ -89,16 +89,20 @@ class SlatPainter extends CustomPainter {
       ..sort((a, b) => layerMap[a.layer]?['order'].compareTo(layerMap[b.layer]?['order']));
 
     for (var slat in sortedSlats) {
-      if(hiddenSlats.contains(slat.id)){
+      if (hiddenSlats.contains(slat.id)){
         continue;
       }
+      if (layerMap[slat.layer]?['hidden']) {
+        continue;
+      }
+
       Paint rodPaint = Paint()
         ..color = layerMap[slat.layer]?['color']
         ..strokeWidth = appState.gridSize / 2
         ..style = PaintingStyle.fill;
-      if (slat.layer != selectedLayer) { // TODO: alpha values can start to overlap when there are loads of layers....
+      if (slat.layer != selectedLayer) {
         rodPaint = Paint()
-          ..color = layerMap[slat.layer]?['color'].withValues(alpha: 0.2)
+          ..color = layerMap[slat.layer]?['color'].withValues(alpha: layerMap[slat.layer]?['color'].a * 0.2)
           ..strokeWidth = appState.gridSize / 2
           ..style = PaintingStyle.fill;
       }
