@@ -86,13 +86,15 @@ class DesignState extends ChangeNotifier {
       'order': 0, // draw order - has to be updated when layers are moved
       'top_helix': 'H5',
       'bottom_helix': 'H2',
-      'slat_count': 1, // used to give an id to a new slat
+      'next_slat_id': 1,
+      'slat_count': 0,
       "color": Color(int.parse('0xFFebac23')), // default slat color
       "hidden": false
     },
     'B': {
       "direction": 240,
-      'slat_count': 1,
+      'next_slat_id': 1,
+      'slat_count': 0,
       'top_helix': 'H5',
       'bottom_helix': 'H2',
       'order': 1,
@@ -100,6 +102,7 @@ class DesignState extends ChangeNotifier {
       "hidden": false
     },
   };
+
 
   SlatUndoStack undoStack = SlatUndoStack();
 
@@ -126,13 +129,14 @@ class DesignState extends ChangeNotifier {
   void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
     undoStack.saveState(slats, occupiedGridPoints);
     for (var slat in slatCoordinates.entries) {
-      slats['$layer-I${layerMap[layer]?["slat_count"]}'] = Slat(layerMap[layer]?["slat_count"], '$layer-I${layerMap[layer]?["slat_count"]}',layer, slat.value);
+      slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}',layer, slat.value);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
       occupiedGridPoints.putIfAbsent(layer, () => {});
       occupiedGridPoints[layer]?.addAll({
         for (var offset in slat.value.values)
-          offset: '$layer-I${layerMap[layer]?["slat_count"]}'
+          offset: '$layer-I${layerMap[layer]?["next_slat_id"]}'
       });
+      layerMap[layer]?["next_slat_id"] += 1;
       layerMap[layer]?["slat_count"] += 1;
     }
     notifyListeners();
@@ -198,6 +202,8 @@ class DesignState extends ChangeNotifier {
     String layer = ID.split('-')[0];
     slats.remove(ID);
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
+    layerMap[layer]?["slat_count"] -= 1;
+
     notifyListeners();
   }
 
@@ -321,7 +327,8 @@ class DesignState extends ChangeNotifier {
 
     layerMap[nextLayerKey] = {
       "direction": layerMap.values.last['direction'],
-      'slat_count': 1,
+      'next_slat_id': 1,
+      'slat_count': 0,
       'top_helix': 'H5',
       'bottom_helix': 'H2',
       'order': layerMap.length,
@@ -459,16 +466,18 @@ class DesignState extends ChangeNotifier {
         'order': 0, // draw order - has to be updated when layers are moved
         'top_helix': 'H5',
         'bottom_helix': 'H2',
-        'slat_count': 1, // used to give an id to a new slat
+        'next_slat_id': 1, // used to give an id to a new slat
+        'slat_count': 0,
         "color": Color(int.parse('0xFFebac23')), // default slat color
         "hidden": false
       },
       'B': {
         "direction": 180,
-        'slat_count': 1,
+        'next_slat_id': 1,
         'top_helix': 'H5',
         'bottom_helix': 'H2',
         'order': 1,
+        'slat_count': 0,
         "color": Color(int.parse('0xFFb80058')),
         "hidden": false
       },

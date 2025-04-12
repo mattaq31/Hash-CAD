@@ -300,7 +300,6 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       Text("Layer Manager",
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.bold)),
-      SizedBox(height: 10),
       Container(
         constraints: BoxConstraints(
           maxHeight: min(
@@ -437,8 +436,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
                           padding: EdgeInsets.zero, // Remove default padding
                         ),
                         IconButton(
-                          icon: Icon(Icons.close, color: Colors.red),
-                          onPressed: () {
+                          icon: Icon(Icons.close, color: appState.layerMap.length == 1 ? Colors.grey : Colors.red),
+                          onPressed: appState.layerMap.length == 1 ? null : () {
                             setState(() {
                               appState.deleteLayer(key);
                             });
@@ -453,7 +452,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
                       bottom: 4,
                       right: 20,
                       child: Text(
-                        "Layer ID: $key",
+                        "Layer ID: $key Slat Count: ${appState.layerMap[key]!['slat_count']}",
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ),
@@ -462,6 +461,9 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
             );
           }).toList(),
         ),
+      ),
+      Text(
+        "Total Slat Count: ${appState.layerMap.values.map((layer) => layer['slat_count']).reduce((a, b) => a + b)}",
       ),
       SizedBox(height: 10),
       FilledButton.icon(

@@ -104,14 +104,30 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
   // starting from the lowermost layer, this prepares a string of format (2, (5,2), (2,5), 5), where each number represents the position of the layer e.g. if layer 1 is (h5, h2) and layer 2 is (h2, h5), the string would be (5, (2,2),5)
   metadataSheet.cell(CellIndex.indexByString('B1')).value = TextCellValue(generateLayerString(layerMap));
 
-  int layerStartPoint = 6;
+  // prepare layer data headers
+  metadataSheet.merge(CellIndex.indexByString('A6'), CellIndex.indexByString('G6'), customValue: TextCellValue('LAYER INFO'));
+  // Apply style to the top-left cell of the merged range
+  metadataSheet.cell(CellIndex.indexByString('A6')).cellStyle = CellStyle(
+    horizontalAlign: HorizontalAlign.Center,
+  );
+
+  metadataSheet.cell(CellIndex.indexByString('A7')).value = TextCellValue('ID');
+  metadataSheet.cell(CellIndex.indexByString('B7')).value = TextCellValue('Default Rotation');
+  metadataSheet.cell(CellIndex.indexByString('C7')).value = TextCellValue('Bottom Helix');
+  metadataSheet.cell(CellIndex.indexByString('D7')).value = TextCellValue('Top Helix');
+  metadataSheet.cell(CellIndex.indexByString('E7')).value = TextCellValue('Next Slat ID');
+  metadataSheet.cell(CellIndex.indexByString('F7')).value = TextCellValue('Slat Count');
+  metadataSheet.cell(CellIndex.indexByString('G7')).value = TextCellValue('Colour');
+
+  int layerStartPoint = 8;
   for (var l in layerMap.entries){
     metadataSheet.cell(CellIndex.indexByString('A${l.value['order']+layerStartPoint}')).value = TextCellValue("Layer ${l.key}");
     metadataSheet.cell(CellIndex.indexByString('B${l.value['order']+layerStartPoint}')).value = IntCellValue(l.value['direction']);
     metadataSheet.cell(CellIndex.indexByString('C${l.value['order']+layerStartPoint}')).value = TextCellValue(l.value['top_helix']);
     metadataSheet.cell(CellIndex.indexByString('D${l.value['order']+layerStartPoint}')).value = TextCellValue(l.value['bottom_helix']);
-    metadataSheet.cell(CellIndex.indexByString('E${l.value['order']+layerStartPoint}')).value = IntCellValue(l.value['slat_count']);
-    metadataSheet.cell(CellIndex.indexByString('F${l.value['order']+layerStartPoint}')).value = TextCellValue('#${l.value['color'].value.toRadixString(16).substring(2).toUpperCase()}');
+    metadataSheet.cell(CellIndex.indexByString('E${l.value['order']+layerStartPoint}')).value = IntCellValue(l.value['next_slat_id']);
+    metadataSheet.cell(CellIndex.indexByString('F${l.value['order']+layerStartPoint}')).value = IntCellValue(l.value['slat_count']);
+    metadataSheet.cell(CellIndex.indexByString('G${l.value['order']+layerStartPoint}')).value = TextCellValue('#${l.value['color'].value.toRadixString(16).substring(2).toUpperCase()}');
   }
 
   excel.delete('Sheet1'); // removes useless first sheet
@@ -220,7 +236,8 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
     return (slats, layerMap, '');
   }
 
-  int layerReadStart = 6;
+
+  int layerReadStart = 8;
   // read in layer data
   for (int i = 0; i < numLayers; i++) {
     String fullKey = readExcelString(metadataSheet, 'A${i+layerReadStart}');
@@ -228,9 +245,10 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
       'direction': readExcelInt(metadataSheet, 'B${i+layerReadStart}'),
       'top_helix': readExcelString(metadataSheet, 'C${i+layerReadStart}'),
       'bottom_helix': readExcelString(metadataSheet, 'D${i+layerReadStart}'),
-      'slat_count': readExcelInt(metadataSheet, 'E${i+layerReadStart}'),
+      'next_slat_id': readExcelInt(metadataSheet, 'E${i+layerReadStart}'),
       'order': i,
-      'color': Color(int.parse('0xFF${readExcelString(metadataSheet, 'F${i+layerReadStart}').substring(1)}')),
+      'slat_count': 0,
+      'color': Color(int.parse('0xFF${readExcelString(metadataSheet, 'G${i+layerReadStart}').substring(1)}')),
       "hidden": false
     };
   }
@@ -266,6 +284,8 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
     String layer = layerMap.entries.firstWhere((element) => element.value['order'] == slatID.$1).key;
     Map<int, Offset> slatCoordinates = {};
     int slatPositionCounter = 1;
+
+    layerMap[layer]!['slat_count'] += 1; // populates slat count from the true number of slats found in the design
 
     for (int i = 0; i < slatArray.length; i++) {
       for (int j = 0; j < slatArray[i].length; j++) {

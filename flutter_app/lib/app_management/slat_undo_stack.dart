@@ -6,7 +6,7 @@ class SlatUndoStack {
   final List<Map<String, Map<Offset, String>>> _gridHistory = [];
 
   int _currentIndex = -1;
-  static const int _maxHistory = 10;
+  static const int _maxHistory = 50;
 
   void saveState(Map<String, Slat> slats, Map<String, Map<Offset, String>> occupiedGridPoints) {
 

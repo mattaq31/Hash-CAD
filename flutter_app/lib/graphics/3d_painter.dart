@@ -25,6 +25,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   late double HFOV;
   Set<String> slatIDs = {};
   Map<String, Map<String, three.Mesh>> slatAccessories = {};
+  Map<String, three.MeshPhongMaterial> layerMaterials = {};
 
   double gridSize = 10;
   late double y60Jump = gridSize / 2;
@@ -152,11 +153,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     return Offset(extX, extY);
   }
 
-  three.Group createSlatBundle(String name, int color, double slatAngle, double height, double centerX, double centerZ){
+  three.Group createSlatBundle(String name, three.MeshPhongMaterial material, double slatAngle, double height, double centerX, double centerZ){
 
     final group = three.Group();
     group.name = name;
-    final material = three.MeshPhongMaterial.fromMap({"color": color, "flatShading": true});
 
     if (helixBundleView){
       // full representation of a slat six-helix bundle
@@ -191,10 +191,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   }
 
-  void createAssemblyHandle(String slatID, String name, Offset position, int color, double zOrder, String topSide, String handleSide){
+  void createAssemblyHandle(String slatID, String name, Offset position, three.MeshPhongMaterial material, double zOrder, String topSide, String handleSide){
     /// Creates a new handle graphic in the 3D scene.
     final geometry = CylinderGeometry(helixBundleView ? 0.8 : 2, helixBundleView ? 0.8 : 2, 1.5, 8);
-    final material = three.MeshPhongMaterial.fromMap({"color": color, "flatShading": true});
     final mesh = three.Mesh(geometry, material);
     mesh.name = name;
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
@@ -206,7 +205,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     slatAccessories[slatID]?[name] = mesh;
   }
 
-  void updateAssemblyHandle(three.Object3D handleMesh, Offset newPosition, int newColor, double newZOrder, String newTopSide, String newHandleSide){
+  void updateAssemblyHandle(three.Object3D handleMesh, Offset newPosition, double newZOrder, String newTopSide, String newHandleSide){
     /// Makes updates to the position and color of an existing handle in the 3D scene, if necessary.  Regenerating from scratch is slow so an update is preferred instead.
 
     double verticalOffset = (newTopSide == newHandleSide) ? 2.5 : -2.5;
@@ -216,11 +215,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       handleMesh.position.x = newPosition.dx;
       handleMesh.position.y = (newZOrder * 6.5) + verticalOffset;
       handleMesh.position.z = newPosition.dy;
-      updateNeeded = true;
-    }
-
-    if (newColor != handleMesh.material?.color.getHex()) {
-      handleMesh.material?.color.setFromHex32(newColor);
       updateNeeded = true;
     }
 
@@ -244,10 +238,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     if (existingHandle && assemblyHandleView) {
       if (existingHandleMesh == null) {
         // Create new handle if missing
-        createAssemblyHandle(slat.id, handleName, position, color, order, topSide, handleSide);
+        createAssemblyHandle(slat.id, handleName, position, layerMaterials[slat.layer]!, order, topSide, handleSide);
       } else {
         // Update existing handle
-        updateAssemblyHandle(existingHandleMesh, position, color, order, topSide, handleSide);
+        updateAssemblyHandle(existingHandleMesh, position, order, topSide, handleSide);
       }
     } else if (existingHandleMesh != null){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
@@ -258,10 +252,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
 
   void manageAssemblyHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap) {
+
     /// Adds, updates or removes assembly handles from the 3D scene based on the current state of the slat.
     if (!slatAccessories.containsKey(baseSlat.id)) {
       slatAccessories[baseSlat.id] = {};
     }
+
     final topSide = (layerMap[baseSlat.layer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
     final color = layerMap[baseSlat.layer]?['color'].value & 0x00FFFFFF;
     final order = layerMap[baseSlat.layer]?['order'].toDouble();
@@ -295,6 +291,29 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     Set localIDs = slats.map((slat) => slat.id).toSet();
     Set removedIDs = slatIDs.difference(localIDs);
 
+
+    // prepares the material for each layer in the system
+    for (var layer in layerMap.keys) {
+      if (!layerMaterials.containsKey(layer)) {
+        layerMaterials[layer] = three.MeshPhongMaterial.fromMap({"color": layerMap[layer]?['color'].value & 0x00FFFFFF, "flatShading": true});
+      }
+      else if (layerMaterials[layer]?.color.getHex() != (layerMap[layer]?['color'].value & 0x00FFFFFF)){
+        layerMaterials[layer]?.color.setFromHex32(layerMap[layer]?['color'].value & 0x00FFFFFF);
+      }
+    }
+
+    // removes associated material if a layer has been deleted
+    final keysToRemove = <String>[];
+    for (var layer in layerMaterials.keys) {
+      if (!layerMap.containsKey(layer)) {
+        keysToRemove.add(layer);
+      }
+    }
+    for (var key in keysToRemove) {
+      layerMaterials[key]?.dispose();
+      layerMaterials.remove(key);
+    }
+
     // deletes slats that are no longer in the list
     for (var id in removedIDs) {
       removeSlat(id);
@@ -312,7 +331,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       // if slat does not exist, recreate from scratch
       if (threeJs.scene.getObjectByName(slat.id) == null) {
         slatIDs.add(slat.id);
-        final meshGroup = createSlatBundle(slat.id, layerMap[slat.layer]?['color'].value & 0x00FFFFFF,
+        final meshGroup = createSlatBundle(slat.id, layerMaterials[slat.layer]!,
             slatAngle, layerMap[slat.layer]?['order'].toDouble() * 6.5, p1.dx + slatExtend.dx, p1.dy + slatExtend.dy);
         meshGroup.updateMatrix();
         meshGroup.matrixAutoUpdate = false;
@@ -344,11 +363,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
           updateNeeded = true;
         }
 
-        // color change
-        if (layerMap[slat.layer]?['color'].value & 0x00FFFFFF != meshSlat?.material?.color.getHex()) {
-          meshSlat?.material?.color.setFromHex32(layerMap[slat.layer]?['color'].value & 0x00FFFFFF);
-          updateNeeded = true;
-        }
         manageAssemblyHandles(slat, layerMap); // add/update/remove assembly handles
 
         // request update if necessary
