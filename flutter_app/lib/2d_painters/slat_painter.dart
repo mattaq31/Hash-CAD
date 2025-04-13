@@ -167,6 +167,7 @@ class SlatPainter extends CustomPainter {
                 text: topText,
                 style: TextStyle(
                   color: Colors.white,
+                  fontFamily: 'Roboto',
                   fontSize: halfHeight * 0.8,
                   // Adjust font size to fit half the rectangle
                   fontWeight: FontWeight.bold,
