@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
 from server_architecture import hamming_evolve_communication_pb2_grpc, hamming_evolve_communication_pb2
 

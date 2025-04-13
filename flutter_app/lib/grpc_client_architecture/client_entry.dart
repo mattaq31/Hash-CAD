@@ -13,9 +13,9 @@ class CrisscrossClient {
   Stream<ProgressUpdate> get updates => _controller.stream;
 
   // Constructor that immediately runs setup
-  CrisscrossClient() {
+  CrisscrossClient(int serverPort) {
     if (!kIsWeb) {
-      _initialize();
+      _initialize(serverPort);
     }
   }
 
@@ -25,9 +25,9 @@ class CrisscrossClient {
     }
   }
 
-  Future<void> _initialize() async {
+  Future<void> _initialize(int serverPort) async {
     channel = ClientChannel('127.0.0.1',
-        port: 50055,
+        port: serverPort,
         options:
             const ChannelOptions(credentials: ChannelCredentials.insecure()));
     stub = HandleEvolveClient(channel,

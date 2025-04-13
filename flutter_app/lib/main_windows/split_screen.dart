@@ -32,11 +32,15 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Launches python server
-    // if (!kIsWeb) {
-    //   launchServer();
-    // }
+    final serverNotifier = Provider.of<ServerState>(context, listen: false);
 
+    // Launches python server
+    if (!kIsWeb) {
+      launchServer().then((port) {
+        serverNotifier.launchClients(port);
+      });
+    }
+    // serverNotifier.launchClients(50055);
   }
 
   @override

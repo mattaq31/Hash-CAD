@@ -1,3 +1,9 @@
+# attempts to ensure matplotlib remains headless
+import matplotlib
+matplotlib.use('Agg')
+import os
+os.environ["MPLBACKEND"] = "Agg"
+
 import sys
 from concurrent import futures
 import grpc

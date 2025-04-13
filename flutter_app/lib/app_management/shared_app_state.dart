@@ -583,9 +583,10 @@ class ActionState extends ChangeNotifier {
 /// State management for communicating with python server
 class ServerState extends ChangeNotifier {
 
-  // TODO: client channel/port should be customizable
   CrisscrossClient? hammingClient;
   HealthClient? healthClient;
+
+  int serverPort = 50055;
 
   bool serverActive = false;
   bool serverCheckInProgress = false;
@@ -622,27 +623,7 @@ class ServerState extends ChangeNotifier {
   bool evoActive = false;
   String statusIndicator = 'BACKEND INACTIVE';
 
-  ServerState() {
-    // Listen to updates from the client
-
-    if (!kIsWeb) {
-      hammingClient = CrisscrossClient();
-      healthClient = HealthClient(ClientChannel('127.0.0.1',
-          port: 50055,
-          options:
-          const ChannelOptions(credentials: ChannelCredentials.insecure())));
-
-      hammingClient?.updates.listen((update) {
-        hammingMetrics.add(update.hamming);
-        physicsMetrics.add(update.physics);
-        if(update.isComplete){
-          statusIndicator = 'EVOLUTION COMPLETE - MAKE SURE TO SAVE RESULT';
-          evoActive = false;
-        }
-        notifyListeners(); // Notify UI elements
-      });
-    }
-  }
+  ServerState();
 
   void evolveAssemblyHandles(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray) {
     hammingClient?.initiateEvolve(slatArray, handleArray, evoParams);
@@ -677,6 +658,28 @@ class ServerState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void launchClients(int port){
+    serverPort = port;
+    if (!kIsWeb) {
+      hammingClient = CrisscrossClient(serverPort);
+      healthClient = HealthClient(ClientChannel('127.0.0.1',
+          port: serverPort,
+          options:
+          const ChannelOptions(credentials: ChannelCredentials.insecure())));
+
+      hammingClient?.updates.listen((update) {
+        hammingMetrics.add(update.hamming);
+        physicsMetrics.add(update.physics);
+        if(update.isComplete){
+          statusIndicator = 'EVOLUTION COMPLETE - MAKE SURE TO SAVE RESULT';
+          evoActive = false;
+        }
+        notifyListeners(); // Notify UI elements
+      });
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     if (!kIsWeb) {
@@ -687,8 +690,13 @@ class ServerState extends ChangeNotifier {
 
   // TODO: also implement health checks before sending a direct request to the server...
   Future<void> startupServerHealthCheck() async {
+
     if (serverCheckInProgress) return; // Prevent starting the check again
     serverCheckInProgress = true;
+
+    while (healthClient == null){
+      await Future.delayed(const Duration(seconds: 1));
+    }
 
     var request = HealthCheckRequest();
     while (true) {

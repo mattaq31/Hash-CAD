@@ -8,7 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 
 
-Future<void> launchServer() async {
+Future<int> launchServer() async {
+
   var dir = await getApplicationSupportDirectory();
 
   var filePath = File(p.join(dir.path, _getAssetName())).path;
@@ -27,18 +28,32 @@ Future<void> launchServer() async {
 
     // Only replace the file if the hash is different (asset has changed)
     if (hash != existingFileHash) {
-      print('updated python server.');
+      if (kDebugMode) {
+        print('updated python server.');
+      }
       await file.writeAsBytes(bytes, flush: true);
     }
   }
 
   await shutdownServerIfAny();
 
-  if (defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.linux) {
+  if (defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.linux) {
     await Process.run("chmod", ["u+x", filePath]);
   }
-  var process = await Process.start(filePath, []);
+
+  List<String> serverParams = [];
+
+  // if in debug mode, just use the default port 50055, but in a deployment best to check for a free port
+  int port = 50055;
+
+  if (!kDebugMode) {
+    var serverSocket = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    port = serverSocket.port;
+    serverSocket.close();
+    serverParams.add(port.toString());
+  }
+
+  var process = await Process.start(filePath, serverParams);
 
   int? exitCode;
 
@@ -50,6 +65,8 @@ Future<void> launchServer() async {
   if (exitCode != null) {
     throw 'The python server failed to load. Exit code provided: $exitCode';
   }
+
+  return port;
 }
 
 /// Searches for any processes that match the python server and kills them
