@@ -5,7 +5,7 @@ import warnings
 
 from . import hamming_evolve_communication_pb2 as hamming__evolve__communication__pb2
 
-GRPC_GENERATED_VERSION = '1.67.1'
+GRPC_GENERATED_VERSION = '1.71.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 

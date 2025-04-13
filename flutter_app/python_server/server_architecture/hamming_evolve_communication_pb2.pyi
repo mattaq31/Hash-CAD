@@ -6,7 +6,7 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class EvolveRequest(_message.Message):
-    __slots__ = ("slatArray", "parameters")
+    __slots__ = ("slatArray", "handleArray", "parameters")
     class ParametersEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -15,10 +15,12 @@ class EvolveRequest(_message.Message):
         value: str
         def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
     SLATARRAY_FIELD_NUMBER: _ClassVar[int]
+    HANDLEARRAY_FIELD_NUMBER: _ClassVar[int]
     PARAMETERS_FIELD_NUMBER: _ClassVar[int]
     slatArray: _containers.RepeatedCompositeFieldContainer[Layer3D]
+    handleArray: _containers.RepeatedCompositeFieldContainer[Layer3D]
     parameters: _containers.ScalarMap[str, str]
-    def __init__(self, slatArray: _Optional[_Iterable[_Union[Layer3D, _Mapping]]] = ..., parameters: _Optional[_Mapping[str, str]] = ...) -> None: ...
+    def __init__(self, slatArray: _Optional[_Iterable[_Union[Layer3D, _Mapping]]] = ..., handleArray: _Optional[_Iterable[_Union[Layer3D, _Mapping]]] = ..., parameters: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class Layer3D(_message.Message):
     __slots__ = ("layers",)
@@ -39,12 +41,14 @@ class Layer1D(_message.Message):
     def __init__(self, values: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class ProgressUpdate(_message.Message):
-    __slots__ = ("hamming", "physics")
+    __slots__ = ("hamming", "physics", "isComplete")
     HAMMING_FIELD_NUMBER: _ClassVar[int]
     PHYSICS_FIELD_NUMBER: _ClassVar[int]
+    ISCOMPLETE_FIELD_NUMBER: _ClassVar[int]
     hamming: float
     physics: float
-    def __init__(self, hamming: _Optional[float] = ..., physics: _Optional[float] = ...) -> None: ...
+    isComplete: bool
+    def __init__(self, hamming: _Optional[float] = ..., physics: _Optional[float] = ..., isComplete: bool = ...) -> None: ...
 
 class StopRequest(_message.Message):
     __slots__ = ()

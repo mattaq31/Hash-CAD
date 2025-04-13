@@ -16,11 +16,15 @@ import 'package:protobuf/protobuf.dart' as $pb;
 class EvolveRequest extends $pb.GeneratedMessage {
   factory EvolveRequest({
     $core.Iterable<Layer3D>? slatArray,
+    $core.Iterable<Layer3D>? handleArray,
     $core.Map<$core.String, $core.String>? parameters,
   }) {
     final $result = create();
     if (slatArray != null) {
       $result.slatArray.addAll(slatArray);
+    }
+    if (handleArray != null) {
+      $result.handleArray.addAll(handleArray);
     }
     if (parameters != null) {
       $result.parameters.addAll(parameters);
@@ -33,7 +37,8 @@ class EvolveRequest extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'EvolveRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
     ..pc<Layer3D>(1, _omitFieldNames ? '' : 'slatArray', $pb.PbFieldType.PM, protoName: 'slatArray', subBuilder: Layer3D.create)
-    ..m<$core.String, $core.String>(2, _omitFieldNames ? '' : 'parameters', entryClassName: 'EvolveRequest.ParametersEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('evoService'))
+    ..pc<Layer3D>(2, _omitFieldNames ? '' : 'handleArray', $pb.PbFieldType.PM, protoName: 'handleArray', subBuilder: Layer3D.create)
+    ..m<$core.String, $core.String>(3, _omitFieldNames ? '' : 'parameters', entryClassName: 'EvolveRequest.ParametersEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('evoService'))
     ..hasRequiredFields = false
   ;
 
@@ -62,7 +67,10 @@ class EvolveRequest extends $pb.GeneratedMessage {
   $core.List<Layer3D> get slatArray => $_getList(0);
 
   @$pb.TagNumber(2)
-  $core.Map<$core.String, $core.String> get parameters => $_getMap(1);
+  $core.List<Layer3D> get handleArray => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.Map<$core.String, $core.String> get parameters => $_getMap(2);
 }
 
 class Layer3D extends $pb.GeneratedMessage {
@@ -201,6 +209,7 @@ class ProgressUpdate extends $pb.GeneratedMessage {
   factory ProgressUpdate({
     $core.double? hamming,
     $core.double? physics,
+    $core.bool? isComplete,
   }) {
     final $result = create();
     if (hamming != null) {
@@ -208,6 +217,9 @@ class ProgressUpdate extends $pb.GeneratedMessage {
     }
     if (physics != null) {
       $result.physics = physics;
+    }
+    if (isComplete != null) {
+      $result.isComplete = isComplete;
     }
     return $result;
   }
@@ -218,6 +230,7 @@ class ProgressUpdate extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ProgressUpdate', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
     ..a<$core.double>(1, _omitFieldNames ? '' : 'hamming', $pb.PbFieldType.OD)
     ..a<$core.double>(2, _omitFieldNames ? '' : 'physics', $pb.PbFieldType.OD)
+    ..aOB(3, _omitFieldNames ? '' : 'isComplete', protoName: 'isComplete')
     ..hasRequiredFields = false
   ;
 
@@ -259,6 +272,15 @@ class ProgressUpdate extends $pb.GeneratedMessage {
   $core.bool hasPhysics() => $_has(1);
   @$pb.TagNumber(2)
   void clearPhysics() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get isComplete => $_getBF(2);
+  @$pb.TagNumber(3)
+  set isComplete($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasIsComplete() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearIsComplete() => clearField(3);
 }
 
 class StopRequest extends $pb.GeneratedMessage {

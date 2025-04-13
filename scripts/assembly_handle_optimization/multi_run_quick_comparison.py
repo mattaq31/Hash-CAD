@@ -8,7 +8,9 @@ import numpy as np
 
 sns.set_style('whitegrid')
 
-exp_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/assembly_handle_optimization/testing_mutation_memory/experiments'
+# exp_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/assembly_handle_optimization/testing_mutation_memory/experiments'
+exp_folder = '/Users/matt/Desktop/updated_mutation_rate_optimization_calls'
+
 cmap = matplotlib.colormaps['autumn']
 qual_map = matplotlib.cm.get_cmap('tab20')
 
@@ -51,12 +53,11 @@ for ind, (exp, name) in enumerate(zip(experiments, names)):
                          label=name)
 
 fig.tight_layout()
-fig.savefig('/Users/matt/Desktop/comp_fig.pdf', dpi=300)
-
-fig_32.tight_lfig_64.tight_layout()
-fig_64.savefig('/Users/matt/Desktop/comp_fig_64.pdf', dpi=300)
-plt.tight_layout()
-fig_32.savefig('/Users/matt/Desktop/comp_fig_32.pdf', dpi=300)
+fig_32.tight_layout()
+fig_64.tight_layout()
+fig.savefig(os.path.join(exp_folder, 'comp_fig.pdf'), dpi=300)
+fig_64.savefig(os.path.join(exp_folder, 'comp_fig_64.pdf'), dpi=300)
+fig_32.savefig(os.path.join(exp_folder, 'comp_fig_32.pdf'), dpi=300)
 
 # plt.show()
 

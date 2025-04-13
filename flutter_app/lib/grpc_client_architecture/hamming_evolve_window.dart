@@ -31,7 +31,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
     3: 'evolution_population',
     4: 'process_count',
     5: 'generational_survivors',
-    7: 'seed'
+    7: 'random_seed'
   };
 
   final Map<String, TextEditingController> controllers = {};
@@ -47,6 +47,8 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
         return Colors.red;
       case "BACKEND INACTIVE":
         return Colors.deepPurple;
+      case "EVOLUTION COMPLETE - MAKE SURE TO SAVE RESULT":
+        return Colors.blue;
       default:
         return Colors.black;
     }
@@ -69,15 +71,17 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
     super.dispose();
   }
 
-  void increaseValue() {
+  void increaseValue(ServerState serverState) {
     setState(() {
-      hammingTargetValue  = (hammingTargetValue < 32) ? hammingTargetValue + 1.0 : 32.0;  // Increment by 1
+      hammingTargetValue  = (hammingTargetValue < 32) ? hammingTargetValue + 1.0 : 32.0;
+      serverState.updateEvoParam('early_hamming_stop', hammingTargetValue.toString());// Increment by 1
     });
   }
 
-  void decreaseValue() {
+  void decreaseValue(ServerState serverState) {
     setState(() {
       hammingTargetValue = (hammingTargetValue > 0) ? hammingTargetValue - 1.0 : 0.0;  // Ensure non-negative
+      serverState.updateEvoParam('early_hamming_stop', hammingTargetValue.toString());// Increment by 1
     });
   }
 
@@ -193,7 +197,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                             Expanded(
                                 child: StandardLineChart(
                                     'Evo. Iteration',
-                                    'Worst Slat Mismatch Score',
+                                    'Worst Mismatch\n Score',
                                     List.generate(
                                         serverState.hammingMetrics.length,
                                         (index) => FlSpot(
@@ -201,7 +205,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                             32-serverState
                                                 .hammingMetrics[index])))),
                             const SizedBox(width: 16),
-                            Expanded(child: StandardLineChart('Evo. Iteration', 'Physics Score', List.generate(
+                            Expanded(child: StandardLineChart('Evo. Iteration', 'Partition Score', List.generate(
                                 serverState.physicsMetrics.length,
                                     (index) => FlSpot(
                                     index.toDouble(),
@@ -273,11 +277,15 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                       children: [
                                         IconButton(
                                           icon: Icon(Icons.arrow_circle_up),
-                                          onPressed: increaseValue,
+                                          onPressed: serverState.statusIndicator != 'IDLE' ? null : (){
+                                            increaseValue(serverState);
+                                          },
                                         ),
                                         IconButton(
                                           icon: Icon(Icons.arrow_circle_down),
-                                          onPressed: decreaseValue,
+                                          onPressed: serverState.statusIndicator != 'IDLE' ? null : () {
+                                            decreaseValue(serverState);
+                                            },
                                         ),
                                       ],
                                     ),
@@ -357,10 +365,10 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             FilledButton.icon(
-                              onPressed: serverState.evoActive || !serverState.serverActive
+                              onPressed: serverState.evoActive || !serverState.serverActive || appState.slats.isEmpty || serverState.statusIndicator == 'EVOLUTION COMPLETE - MAKE SURE TO SAVE RESULT'
                                   ? null
                                   : () {
-                                serverState.evolveAssemblyHandles(appState.getSlatArray());
+                                serverState.evolveAssemblyHandles(appState.getSlatArray(), appState.getHandleArray());
                               },
                               icon: const Icon(Icons.play_arrow, size: 18),
                               label: const Text("Start"),
@@ -392,6 +400,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                               onPressed: serverState.hammingMetrics.isEmpty  || !serverState.serverActive ? null :  () {
                                 serverState.stopEvolve().then((result) {
                                 appState.assignAssemblyHandleArray(result, null, null);
+                                appState.updateDesignHammingValue();
                                 actionState.setAssemblyHandleDisplay(true);
                               });
                               },

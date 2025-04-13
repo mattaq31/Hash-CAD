@@ -41,7 +41,7 @@ for seq_count in [32, 64]:
     for mut_rate in [2]:
         for memory_system in ['off', 'all', 'best_memory', 'special', 'FULL_RANDOM']:
             exp_name = f'basic_square_{seq_count}_seq_library_mut_{str(mut_rate).replace(".","-")}_memory_{memory_system}'
-            server_experiment_folder = os.path.join(server_base_folder, exp_name, batch_name)
+            server_experiment_folder = os.path.join(server_base_folder, batch_name, exp_name)
             server_design_folder = os.path.join(server_base_folder)
             server_toml_file = os.path.join(server_experiment_folder, 'evolution_config.toml')
             output_folder = os.path.join(batch_file_folder, exp_name)

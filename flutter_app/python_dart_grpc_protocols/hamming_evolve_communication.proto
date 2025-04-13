@@ -16,7 +16,8 @@ service HandleEvolve {
 
 message EvolveRequest {
   repeated Layer3D slatArray = 1;
-  map<string, string> parameters = 2;  // Allows flexible future expansion
+  repeated Layer3D handleArray = 2; // Optional, to allow an initial seed array to be set
+  map<string, string> parameters = 3;  // Allows flexible future expansion
 }
 
 message Layer3D {
@@ -34,6 +35,7 @@ message Layer1D {
 message ProgressUpdate {
   double hamming = 1;
   double physics = 2;
+  bool isComplete = 3;
 }
 
 message StopRequest {
@@ -43,7 +45,6 @@ message PauseRequest {
 }
 
 message ExportResponse{
-
 }
 
 message ExportRequest {

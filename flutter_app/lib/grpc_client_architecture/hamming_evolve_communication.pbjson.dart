@@ -18,7 +18,8 @@ const EvolveRequest$json = {
   '1': 'EvolveRequest',
   '2': [
     {'1': 'slatArray', '3': 1, '4': 3, '5': 11, '6': '.evoService.Layer3D', '10': 'slatArray'},
-    {'1': 'parameters', '3': 2, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.ParametersEntry', '10': 'parameters'},
+    {'1': 'handleArray', '3': 2, '4': 3, '5': 11, '6': '.evoService.Layer3D', '10': 'handleArray'},
+    {'1': 'parameters', '3': 3, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.ParametersEntry', '10': 'parameters'},
   ],
   '3': [EvolveRequest_ParametersEntry$json],
 };
@@ -36,9 +37,10 @@ const EvolveRequest_ParametersEntry$json = {
 /// Descriptor for `EvolveRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List evolveRequestDescriptor = $convert.base64Decode(
     'Cg1Fdm9sdmVSZXF1ZXN0EjEKCXNsYXRBcnJheRgBIAMoCzITLmV2b1NlcnZpY2UuTGF5ZXIzRF'
-    'IJc2xhdEFycmF5EkkKCnBhcmFtZXRlcnMYAiADKAsyKS5ldm9TZXJ2aWNlLkV2b2x2ZVJlcXVl'
-    'c3QuUGFyYW1ldGVyc0VudHJ5UgpwYXJhbWV0ZXJzGj0KD1BhcmFtZXRlcnNFbnRyeRIQCgNrZX'
-    'kYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+    'IJc2xhdEFycmF5EjUKC2hhbmRsZUFycmF5GAIgAygLMhMuZXZvU2VydmljZS5MYXllcjNEUgto'
+    'YW5kbGVBcnJheRJJCgpwYXJhbWV0ZXJzGAMgAygLMikuZXZvU2VydmljZS5Fdm9sdmVSZXF1ZX'
+    'N0LlBhcmFtZXRlcnNFbnRyeVIKcGFyYW1ldGVycxo9Cg9QYXJhbWV0ZXJzRW50cnkSEAoDa2V5'
+    'GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlSBXZhbHVlOgI4AQ==');
 
 @$core.Deprecated('Use layer3DDescriptor instead')
 const Layer3D$json = {
@@ -82,13 +84,14 @@ const ProgressUpdate$json = {
   '2': [
     {'1': 'hamming', '3': 1, '4': 1, '5': 1, '10': 'hamming'},
     {'1': 'physics', '3': 2, '4': 1, '5': 1, '10': 'physics'},
+    {'1': 'isComplete', '3': 3, '4': 1, '5': 8, '10': 'isComplete'},
   ],
 };
 
 /// Descriptor for `ProgressUpdate`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List progressUpdateDescriptor = $convert.base64Decode(
     'Cg5Qcm9ncmVzc1VwZGF0ZRIYCgdoYW1taW5nGAEgASgBUgdoYW1taW5nEhgKB3BoeXNpY3MYAi'
-    'ABKAFSB3BoeXNpY3M=');
+    'ABKAFSB3BoeXNpY3MSHgoKaXNDb21wbGV0ZRgDIAEoCFIKaXNDb21wbGV0ZQ==');
 
 @$core.Deprecated('Use stopRequestDescriptor instead')
 const StopRequest$json = {

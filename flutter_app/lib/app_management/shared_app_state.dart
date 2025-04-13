@@ -117,6 +117,8 @@ class DesignState extends ChangeNotifier {
   String nextLayerKey = 'C';
   int nextColorIndex = 2;
   int slatAddCount = 1;
+  int currentHamming = 0;
+  bool hammingValueValid = true;
 
   // useful to keep track of occupancy and speed up grid checks
   Map<String, Map<Offset, String>> occupiedGridPoints = {};
@@ -139,6 +141,7 @@ class DesignState extends ChangeNotifier {
       layerMap[layer]?["next_slat_id"] += 1;
       layerMap[layer]?["slat_count"] += 1;
     }
+    hammingValueValid = false;
     notifyListeners();
   }
 
@@ -152,7 +155,7 @@ class DesignState extends ChangeNotifier {
 
     slats[slatID]?.updateCoordinates(slatCoordinates);
     occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
-
+    hammingValueValid = false;
     notifyListeners();
   }
 
@@ -203,7 +206,7 @@ class DesignState extends ChangeNotifier {
     slats.remove(ID);
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
     layerMap[layer]?["slat_count"] -= 1;
-
+    hammingValueValid = false;
     notifyListeners();
   }
 
@@ -382,6 +385,19 @@ class DesignState extends ChangeNotifier {
     }
   }
 
+  void updateDesignHammingValue() {
+    if (slats.isEmpty) {
+      currentHamming = 0;
+    } else {
+      currentHamming = hammingCompute(slats, layerMap, 32);
+      if (currentHamming == 50 || currentHamming == 32) { // 50 (calculation never attempted) or 32 (no handle overlap) are exception values
+        currentHamming = 0;
+      }
+    }
+    hammingValueValid = true;
+    notifyListeners();
+  }
+
   // TODO: assembly handles are still causing performance issues - it's probably the 3D system - need to investigate
   void generateRandomAssemblyHandles(int uniqueHandleCount, bool splitLayerHandles) {
     Offset minPos;
@@ -410,12 +426,20 @@ class DesignState extends ChangeNotifier {
     return slatArray;
   }
 
+  List<List<List<int>>> getHandleArray(){
+    Offset minPos;
+    Offset maxPos;
+    (minPos, maxPos) = extractGridBoundary(slats);
+    return extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
+  }
+
   void cleanAllHandles(){
     /// Removes all handles from the slats
     /// TODO: PROBLEM WHEN SHIFTING SLAT LAYERS - ASSEMBLY HANDLES ARE CARRIED OVER!
     for (var slat in slats.values) {
       slat.clearAllHandles();
     }
+    hammingValueValid = false;
     notifyListeners();
   }
   void exportCurrentDesign() async {
@@ -453,7 +477,7 @@ class DesignState extends ChangeNotifier {
         for (var offset in slat.slatPositionToCoordinate.values) offset: slat.id
       });
     }
-
+    updateDesignHammingValue();
     notifyListeners();
   }
 
@@ -487,6 +511,8 @@ class DesignState extends ChangeNotifier {
     selectedSlats = [];
     nextLayerKey = 'C';
     nextColorIndex = 2;
+    currentHamming = 0;
+    hammingValueValid = true;
     notifyListeners();
   }
 
@@ -574,8 +600,9 @@ class ServerState extends ChangeNotifier {
     'evolution_population': '30',
     'process_count': 'DEFAULT',
     'generational_survivors': '3',
-    'seed': '8',
-    'number_unique_handles': '32',
+    'random_seed': '8',
+    'unique_handle_sequences': '32',
+    'early_hamming_stop': '30',
     'split_sequence_handles': 'true'
   };
 
@@ -587,7 +614,7 @@ class ServerState extends ChangeNotifier {
     'evolution_population': 'Evolution Population',
     'process_count': 'Number of Threads',
     'generational_survivors': 'Generational Survivors',
-    'seed': 'Random Seed',
+    'random_seed': 'Random Seed',
     'number_unique_handles': 'Unique Handle Count',
     'split_sequence_handles': 'Split Sequence Handles',
   };
@@ -608,14 +635,17 @@ class ServerState extends ChangeNotifier {
       hammingClient?.updates.listen((update) {
         hammingMetrics.add(update.hamming);
         physicsMetrics.add(update.physics);
+        if(update.isComplete){
+          statusIndicator = 'EVOLUTION COMPLETE - MAKE SURE TO SAVE RESULT';
+          evoActive = false;
+        }
         notifyListeners(); // Notify UI elements
       });
     }
-
   }
 
-  void evolveAssemblyHandles(List<List<List<int>>> slatArray) {
-    hammingClient?.initiateEvolve(slatArray, evoParams);
+  void evolveAssemblyHandles(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray) {
+    hammingClient?.initiateEvolve(slatArray, handleArray, evoParams);
     evoActive = true;
     statusIndicator = 'RUNNING';
     notifyListeners();

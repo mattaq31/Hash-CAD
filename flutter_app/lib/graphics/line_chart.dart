@@ -68,9 +68,11 @@ class StandardLineChart extends StatelessWidget {
                 child: Text(
                   yAxisText,
                   textAlign: TextAlign.center,
+                  overflow: TextOverflow.visible,
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 16,
+                    height: 0.99,
                   ),
                 ),
               ),

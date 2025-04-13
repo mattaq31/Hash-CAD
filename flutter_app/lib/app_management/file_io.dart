@@ -63,7 +63,7 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     Sheet sheet = excel['slat_layer_${layer+1}'];
     for (int row = 0; row < slatArray.length; row++) {
       for (int col = 0; col < slatArray[row].length; col++) {
-        // TODO: for some reason col/row are flipped - need to investigate
+        // column/row are flipped in the internal representation - the flip-back to normal values is done here
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(slatArray[row][col][layer]);
         if (slatArray[row][col][layer] != 0) {
           Color layerColor = layerMap.entries.firstWhere((element) => element.value['order'] == layer).value['color'];
@@ -78,7 +78,7 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     Sheet sheet = excel['handle_interface_${layer+1}'];
     for (int row = 0; row < handleArray.length; row++) {
       for (int col = 0; col < handleArray[row].length; col++) {
-        // TODO: for some reason col/row are flipped - need to investigate
+        // column/row are flipped in the internal representation - the flip-back to normal values is done here
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(handleArray[row][col][layer]);
         if (handleArray[row][col][layer] != 0) {
           sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle =CellStyle(backgroundColorHex: '#1AFF1A'.excelColor);
@@ -113,8 +113,8 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
 
   metadataSheet.cell(CellIndex.indexByString('A7')).value = TextCellValue('ID');
   metadataSheet.cell(CellIndex.indexByString('B7')).value = TextCellValue('Default Rotation');
-  metadataSheet.cell(CellIndex.indexByString('C7')).value = TextCellValue('Bottom Helix');
-  metadataSheet.cell(CellIndex.indexByString('D7')).value = TextCellValue('Top Helix');
+  metadataSheet.cell(CellIndex.indexByString('C7')).value = TextCellValue('Top Helix');
+  metadataSheet.cell(CellIndex.indexByString('D7')).value = TextCellValue('Bottom Helix');
   metadataSheet.cell(CellIndex.indexByString('E7')).value = TextCellValue('Next Slat ID');
   metadataSheet.cell(CellIndex.indexByString('F7')).value = TextCellValue('Slat Count');
   metadataSheet.cell(CellIndex.indexByString('G7')).value = TextCellValue('Colour');
@@ -279,7 +279,6 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
   // prepares slat class objects from all slats found in the array
   // TODO: could this be combined with the above loops to speed up the operation?
   for (var slatID in slatIDs) {
-
     // identifies slat layer
     String layer = layerMap.entries.firstWhere((element) => element.value['order'] == slatID.$1).key;
     Map<int, Offset> slatCoordinates = {};
@@ -291,6 +290,9 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
       for (int j = 0; j < slatArray[i].length; j++) {
         if (slatArray[i][j][slatID.$1] == slatID.$2) {
           // converts the array index into the exact grid position using the grid size and minima extracted from the metadata file
+
+          // column/row are flipped in the internal representation - the flip-back from normal to internal values is done here
+
           slatCoordinates[slatPositionCounter] = Offset(j + minX, i + minY);
           slatPositionCounter += 1;
         }

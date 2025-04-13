@@ -6,7 +6,7 @@ import sys
 @click.option('--config_file', '-c', default=None,
               help='[String] Name or path of the evolution config file to be read in.')
 def handle_evolve(config_file):
-    from crisscross.assembly_handle_optimization.handle_evolution import evolve_handles_from_slat_array
+    from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
     import toml
     import pandas as pd
     import numpy as np
@@ -31,7 +31,16 @@ def handle_evolve(config_file):
 
     evolution_params['slat_array'] = slat_array
 
-    evolve_handles_from_slat_array(**evolution_params)
+    if 'logging_interval' in evolution_params:
+        logging_interval = evolution_params['logging_interval']
+        del evolution_params['logging_interval']
+    else:
+        logging_interval = None
+
+    evolve_manager = EvolveManager(**evolution_params)
+
+    evolve_manager.run_full_experiment(logging_interval)
+
 
 if __name__ == '__main__':
     handle_evolve(sys.argv[1:])  # for use when debugging with pycharm

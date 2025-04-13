@@ -24,22 +24,80 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
     var serverState = context.watch<ServerState>();
 
     return Column(children: [
-      Text("Assembly Handles",
+      Text("Assembly Handle Generation", textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.bold)),
-      SizedBox(height: 10),
-      Text(
-        "Handle Generation", // Title above the segmented button
-        style:
-        TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      SizedBox(height: 15),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text("Handle library size", style: TextStyle(fontSize: 16)),
+          SizedBox(width: 10),
+          Padding(
+            padding: const EdgeInsets.only(right: 25.0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 60,
+                child: TextField(
+                  controller: handleAddTextController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  textInputAction: TextInputAction.done,
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.digitsOnly
+                  ],
+                  onSubmitted: (value) {
+                    int? newValue = int.tryParse(value);
+                    if (newValue != null &&
+                        newValue >= 1 &&
+                        newValue <= 997) {
+                      uniqueHandleCount = newValue;
+                      handleAddTextController.text = uniqueHandleCount.toString();
+                    } else if (newValue != null && newValue < 1) {
+                      uniqueHandleCount = 1;
+                      handleAddTextController.text = '1';
+                    } else {
+                      uniqueHandleCount = 997;
+                      handleAddTextController.text = '997';
+                    }
+                    serverState.updateEvoParam('unique_handle_sequences', uniqueHandleCount.toString());
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      SizedBox(height: 5),
+      CheckboxListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
+        title: const Text('Prevent self-complementary slats', textAlign: TextAlign.center),
+        value: preventSelfComplementarySlats,
+        onChanged: (bool? value) {
+          setState(() {
+            preventSelfComplementarySlats = value ?? false;
+            serverState.updateEvoParam("split_sequence_handles", preventSelfComplementarySlats.toString());
+          });
+        },
+      ),
+      CheckboxListTile(
+        title: const Text('Display Assembly Handles'),
+        value: actionState.displayAssemblyHandles,
+        onChanged: (bool? value) {
+          setState(() {
+            actionState.setAssemblyHandleDisplay(value ?? false);
+          });
+        },
+      ),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton.icon(
             onPressed: () {
               appState.generateRandomAssemblyHandles(uniqueHandleCount, preventSelfComplementarySlats);
+              appState.updateDesignHammingValue();
               actionState.setAssemblyHandleDisplay(true);
             },
             icon: Icon(Icons.shuffle, size: 18),
@@ -83,78 +141,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           ),
         ],
       ),
-      SizedBox(height: 15),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Text("Handle library size", style: TextStyle(fontSize: 16)),
-          SizedBox(width: 10),
-          Padding(
-            padding: const EdgeInsets.only(right: 25.0),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: 60,
-                child: TextField(
-                  controller: handleAddTextController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
-                  textInputAction: TextInputAction.done,
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.digitsOnly
-                  ],
-                  onSubmitted: (value) {
-                    int? newValue = int.tryParse(value);
-                    if (newValue != null &&
-                        newValue >= 1 &&
-                        newValue <= 997) {
-                      uniqueHandleCount = newValue;
-                      handleAddTextController.text = uniqueHandleCount.toString();
-                    } else if (newValue != null && newValue < 1) {
-                      uniqueHandleCount = 1;
-                      handleAddTextController.text = '1';
-                    } else {
-                      uniqueHandleCount = 997;
-                      handleAddTextController.text = '997';
-                    }
-                    serverState.updateEvoParam('number_unique_handles', uniqueHandleCount.toString());
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      CheckboxListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
-        title: const Text('Reset current handles', textAlign: TextAlign.center),
-        value: true,
-        onChanged: (bool? value) {
-          setState(() {});
-        },
-      ),
-      CheckboxListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
-        title: const Text('Prevent self-complementary slats', textAlign: TextAlign.center),
-        value: preventSelfComplementarySlats,
-        onChanged: (bool? value) {
-          setState(() {
-            preventSelfComplementarySlats = value ?? false;
-            serverState.updateEvoParam("split_sequence_handles", preventSelfComplementarySlats.toString());
-          });
-        },
-      ),
-      CheckboxListTile(
-        title: const Text('Display Assembly Handles'),
-        value: actionState.displayAssemblyHandles,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setAssemblyHandleDisplay(value ?? false);
-          });
-        },
-      ),
+      SizedBox(height: 10),
       FilledButton.icon(
         onPressed: () {
           appState.cleanAllHandles();
@@ -167,6 +154,11 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           textStyle: TextStyle(fontSize: 16),
         ),
       ),
+      SizedBox(height: 10),
+      Divider(thickness: 2, color: Colors.grey.shade300),
+      Text("Mismatch Score Calculation", textAlign: TextAlign.center,
+          style: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.bold)),
       SizedBox(height: 20),
       Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -174,16 +166,32 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Design Hamming Score",
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              Column(
+                children: [
+                  Text("Worst Mismatch Score",
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    appState.hammingValueValid ? "Up-to-date" : "Out-of-date",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 16,
+                        color: appState.hammingValueValid
+                            ? Colors.green
+                            : Colors.red),
+                  ),
+                ],
+              ),
+
               SizedBox(width: 20),
-              HammingIndicator(value: 0.0),
+              HammingIndicator(value: appState.currentHamming.toDouble()),
             ],
           ),
           SizedBox(height: 10),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: appState.hammingValueValid ? null : () {
+              appState.updateDesignHammingValue();
+            },
             label: Text("Recalculate Score"),
             style: ElevatedButton.styleFrom(
               padding: EdgeInsets.symmetric(

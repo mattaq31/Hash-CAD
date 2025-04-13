@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'slats.dart';
 
 List<List<List<int>>> generateRandomSlatHandles(List<List<List<int>>> baseArray, int uniqueSequences, {int seed=8}) {
   int xSize = baseArray.length;
@@ -53,4 +54,88 @@ List<List<List<int>>> generateLayerSplitHandles(List<List<List<int>>> baseArray,
   }
 
   return handleArray;
+}
+
+List<int> shiftLeftWithZeros(List<int> lst, int shift) {
+  return List.generate(lst.length, (i) => (i + shift < lst.length) ? lst[i + shift] : 0);
+}
+List<int> shiftRightWithZeros(List<int> lst, int shift) {
+  return List.generate(lst.length, (i) => (i - shift >= 0) ? lst[i - shift] : 0);
+}
+
+int hammingCompute(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, int slatLength) {
+  /// Computes the hamming distance of the current design in view.
+  /// Function not optimized but will be infrequently called so slowdown is expected to be minimal.
+  ///  Mimics logic in 'precise hamming compute' in the python library.
+
+  Map<String, List<int>> handleDict = {};
+  Map<String, List<int>> antihandleDict = {};
+
+  //BE CAREFUL, THIS MAKES THE ASSUMPTION THAT HANDLES ARE ALWAYS ON THE TOP OF A SLAT AND VICE VERSA
+  // curates all handles/antihandles into two dicts
+  for (final slat in slats.values) {
+    final layerInfo = layerMap[slat.layer]!;
+    final h5OnTop = layerInfo['top_helix'] == 'H5';
+    final topBottomOrder = h5OnTop ? ['H2', 'H5'] : ['H5', 'H2'];
+
+    final order = layerInfo['order'];
+    final isFirstLayer = order == 0;
+    final isLastLayer = order == layerMap.length - 1;
+
+    final includeHandle = !isLastLayer;
+    final includeAntiHandle = !isFirstLayer;
+
+    for (var tb = 0; tb < 2; tb++) {
+      final isTop = tb == 1;
+      final include = (isTop && includeHandle) || (!isTop && includeAntiHandle);
+      if (!include) continue;
+
+      final isHandle = isTop ? true : false; // handles on top of slat, antihandles on the bottom of a slat
+      final dict = isHandle ? handleDict : antihandleDict;
+      final List<int> descriptorList = List.filled(slat.maxLength, 0);
+      final useH5 = topBottomOrder[tb] == 'H5';
+
+      for (var i = 0; i < slat.maxLength; i++) {
+        final handleData = useH5 ? slat.h5Handles[i + 1] : slat.h2Handles[i + 1];
+        if (handleData != null) {
+          descriptorList[i] = int.parse(handleData['descriptor']);
+        }
+      }
+
+      dict[slat.id] = descriptorList;
+    }
+  }
+
+  // Computes hamming by running through the usual motions - generate 4 * 32 candidates per handle/antihandle slat pair and check all rotations/translations
+  // As opposed to the python version, everything is calculated on the fly here since loops are much faster to compute than Python.
+  final handleKeys = handleDict.keys.toList();
+  final antihandleKeys = antihandleDict.keys.toList();
+  int minValue = 50;
+  for (int i = 0; i < handleKeys.length; i++) {
+    final handle = handleDict[handleKeys[i]]!;
+    final reversedHandle = handle.reversed.toList();
+
+    for (int j = 0; j < antihandleKeys.length; j++) {
+      final antihandle = antihandleDict[antihandleKeys[j]]!;
+
+      for (int shift = 0; shift < slatLength; shift++) {
+        final List<List<int>> candidates = [
+          shiftLeftWithZeros(handle, shift),
+          shiftRightWithZeros(handle, shift),
+          shiftLeftWithZeros(reversedHandle, shift),
+          shiftRightWithZeros(reversedHandle, shift),
+        ];
+        for (final candidate in candidates) {
+          int dist = 0;
+          for (int k = 0; k < slatLength; k++) {
+            final a = candidate[k];
+            final b = antihandle[k];
+            if (a == 0 || b == 0 || a != b) dist++;
+          }
+          minValue = min(minValue, dist);
+        }
+      }
+    }
+  }
+  return minValue;
 }

@@ -314,8 +314,7 @@ def multirule_precise_hamming(slat_array, handle_array, universal_check=True, pe
     final_combination_index = 0
     layer_indices = defaultdict(list)
     group_indices = defaultdict(list)
-    for i, ((hkey, handle_slat), (antihkey, antihandle_slat)) in enumerate(
-            product(bag_of_slat_handles.items(), bag_of_slat_antihandles.items())):
+    for i, ((hkey, handle_slat), (antihkey, antihandle_slat)) in enumerate(product(bag_of_slat_handles.items(), bag_of_slat_antihandles.items())):
         valid_product = False
         if universal_check:
             valid_product = True
