@@ -180,7 +180,7 @@ class SlatPainter extends CustomPainter {
 
             double topBaselineOffset;
 
-            if (isWeb){
+            if (isWeb || defaultTargetPlatform == TargetPlatform.windows){
               topBaselineOffset = topTextPainter.height;
             }
             else{
@@ -209,7 +209,7 @@ class SlatPainter extends CustomPainter {
             bottomTextPainter.layout();
 
             double bottomBaselineOffset;
-            if (isWeb) {
+            if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
               bottomBaselineOffset = bottomTextPainter.height;
             } else {
               bottomBaselineOffset =
