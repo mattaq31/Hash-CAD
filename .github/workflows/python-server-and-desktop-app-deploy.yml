@@ -133,7 +133,7 @@ jobs:
           if [ "$RUNNER_OS" == "Windows" ]; then
             flutter build windows --release  
           elif [ "$RUNNER_OS" == "macOS" ]; then
-            flutter build macos --release  
+            flutter build macos --release --no-codesign
           else
             flutter build linux --release  
           fi
