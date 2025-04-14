@@ -35,7 +35,7 @@ def handle_evolve(config_file):
         logging_interval = evolution_params['logging_interval']
         del evolution_params['logging_interval']
     else:
-        logging_interval = None
+        logging_interval = 10
 
     evolve_manager = EvolveManager(**evolution_params)
 

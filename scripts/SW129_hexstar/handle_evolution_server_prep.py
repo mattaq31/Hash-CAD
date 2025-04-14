@@ -3,7 +3,7 @@ from crisscross.helper_functions.slurm_process_and_run import create_o2_slurm_fi
 import os
 import toml
 
-batch_name = 'sw129_hexstar'
+batch_name = 'first_evolution_round'
 root_folder = f'/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/3D_stacking/SW129_hexstar'
 design_folder = root_folder
 batch_file_folder = os.path.join(root_folder, 'handle_evolution')
