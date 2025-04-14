@@ -96,6 +96,7 @@ msix_config:
   msix_version: 1.0.0.0
   architecture: x64
   identity_name: dfci.harvard.edu.hashcad
+  sign_msix: false
   store: false
   app_installer: #<-- app installer configuration
     publish_folder_path: C:\Users\Owner\Documents\Crisscross-Design\flutter_app\build\windows\MSIX_build
