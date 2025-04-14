@@ -34,7 +34,6 @@ jobs:
         with:
           path: ./flutter_app/assets
           key: ${{ matrix.os }}-python-server-${{ hashFiles('./flutter_app/python_server/**', './crisscross/assembly_handle_optimization/**') }}
-        working-directory: .
 
       - name: Set up Conda
         if: steps.cache-python-build.outputs.cache-hit != 'true'
