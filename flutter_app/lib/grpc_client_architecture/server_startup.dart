@@ -91,6 +91,8 @@ String _getAssetName() {
 
   if (defaultTargetPlatform == TargetPlatform.windows) {
     name += 'hamming_server_win.exe';
+    name += 'hamming_server_win';
+    name += 'hamming_server';
   } else if (defaultTargetPlatform == TargetPlatform.macOS) {
     name += 'hamming_server_osx';
   } else if (defaultTargetPlatform == TargetPlatform.linux) {
