@@ -42,14 +42,14 @@ jobs:
           auto-update-conda: 'true'
           miniconda-version: "latest"
           python-version: '3.11'
-          environment-name: 'bcc_packaging'
           activate-environment: 'bcc_packaging'
 
-      - name: Install pip dependencies
+      - name: Install environment dependencies
         if: steps.cache-python-build.outputs.cache-hit != 'true'
         shell: bash -l {0}  # Important for conda terminal to be accessible
         run: |
           pip install -r requirements.txt
+          conda install -c conda-forge libpython-static
         working-directory: ./flutter_app/python_server
 
       - name: Install custom Python library
