@@ -240,7 +240,7 @@ class EvolveManager:
         plt.close(fig)
 
         # saves the metrics to a csv file for downstream analysis/plotting
-        save_list_dict_to_file(output_folder, 'metrics.csv', self.metrics, selected_data=None)
+        save_list_dict_to_file(output_folder, 'metrics.csv', self.metrics, append=False)
 
         writer = pd.ExcelWriter(
             os.path.join(output_folder, f'best_handle_array_generation_{self.current_generation}.xlsx'),

@@ -9,7 +9,7 @@ import numpy as np
 sns.set_style('whitegrid')
 
 # exp_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/assembly_handle_optimization/testing_mutation_memory/experiments'
-exp_folder = '/Users/matt/Desktop/updated_mutation_rate_optimization_calls'
+exp_folder = '/Users/matt/Desktop/sw129_hexstar/first_evolution_round'
 
 cmap = matplotlib.colormaps['autumn']
 qual_map = matplotlib.cm.get_cmap('tab20')
@@ -42,7 +42,7 @@ for ind, (exp, name) in enumerate(zip(experiments, names)):
         for ax in plot_axs:
             # Adding plots for each dataset with different markers and colors
             sns.lineplot(data=metrics, x='Generation',
-                         y='Best Physics-Based Score', color=qual_map.colors[ind],
+                         y='Best (Log) Physics-Based Score', color=qual_map.colors[ind],
                          ax=ax[0],
                          label=name)
             ax[0].set_yscale('log')
