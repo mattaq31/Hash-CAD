@@ -21,7 +21,23 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Ensure assets directory exists
+        run: |
+          mkdir -p ./flutter_app/assets/
+        shell: bash
+        working-directory: .
+
+      # Cache the Python server build
+      - name: Cache Python server build
+        id: cache-python-build
+        uses: actions/cache@v3
+        with:
+          path: ./flutter_app/assets
+          key: ${{ matrix.os }}-python-server-${{ hashFiles('./flutter_app/python_server/**', './crisscross/assembly_handle_optimization/**') }}
+        working-directory: .
+
       - name: Set up Conda
+        if: steps.cache-python-build.outputs.cache-hit != 'true'
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: 'true'
@@ -30,13 +46,15 @@ jobs:
           environment-name: 'bcc_packaging'
           activate-environment: 'bcc_packaging'
 
-      - name: Install Conda dependencies
+      - name: Install pip dependencies
+        if: steps.cache-python-build.outputs.cache-hit != 'true'
         shell: bash -l {0}  # Important for conda terminal to be accessible
         run: |
-          conda install -c conda-forge --file requirements.txt
+          pip install -r requirements.txt
         working-directory: ./flutter_app/python_server
 
       - name: Install custom Python library
+        if: steps.cache-python-build.outputs.cache-hit != 'true'
         shell: bash -l {0}
         run: |
           pip install -e .
@@ -44,21 +62,24 @@ jobs:
 
       # Bundle Python app using Nuitka
       - name: Bundle Python app with Nuitka
+        if: steps.cache-python-build.outputs.cache-hit != 'true'
         shell: bash -l {0} # Important for conda terminal to be accessible
         run: |
           python -m nuitka --version
           if [ "$RUNNER_OS" == "Windows" ]; then
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --onefile-tempdir-spec={USERPROFILE}\\.nuitka_cache 
-          elif [ matrix.os == 'macos-13' ]; then
+            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --onefile-tempdir-spec="{HOME}\\.nuitka_cache" --enable-plugin=no-qt
+          elif [${{ matrix.os }} == 'macos-13' ]; then
             echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
+            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
           else
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --include-package=matplotlib.backends --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
+            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
           fi
         working-directory: ./flutter_app/python_server
 
       # Move Nuitka app to Flutter assets folder
       - name: Move Nuitka app to Flutter assets
+        if: steps.cache-python-build.outputs.cache-hit != 'true'
+        shell: bash -l {0}
         run: |
           mkdir -p ./flutter_app/assets/
           if [ "$RUNNER_OS" == "Windows" ]; then
@@ -70,13 +91,26 @@ jobs:
           fi
         working-directory: .
 
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: hamming-server-${{ matrix.os }}
-          path: |
-            ./flutter_app/assets/hamming_server_win.exe
-            ./flutter_app/assets/hamming_server_osx
-            ./flutter_app/assets/hamming_server_lnx
-          compression-level: 0
-          overwrite: true
+      - name: Verify python server build exists in flutter app
+        shell: bash -l {0}
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ls -la ./flutter_app/assets/hamming_server_win.exe
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            ls -la ./flutter_app/assets/hamming_server_osx
+          else 
+            ls -la ./flutter_app/assets/hamming_server_lnx
+          fi
+        working-directory: .
+
+
+#      - name: Upload Build Artifacts
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: hamming-server-${{ matrix.os }}
+#          path: |
+#            ./flutter_app/assets/hamming_server_win.exe
+#            ./flutter_app/assets/hamming_server_osx
+#            ./flutter_app/assets/hamming_server_lnx
+#          compression-level: 0
+#          overwrite: true
