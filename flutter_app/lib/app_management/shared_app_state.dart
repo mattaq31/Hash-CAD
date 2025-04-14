@@ -33,6 +33,7 @@ String nextCapitalLetter(String current) {
 
 /// State management for the design of the current megastructure
 class DesignState extends ChangeNotifier {
+
   final double gridSize = 10.0; // do not change
   late final double y60Jump = gridSize / 2;
   late final double x60Jump = sqrt(pow(gridSize, 2) - pow(y60Jump, 2));
@@ -103,17 +104,16 @@ class DesignState extends ChangeNotifier {
     },
   };
 
-
   SlatUndoStack undoStack = SlatUndoStack();
 
   // main slat container
   Map<String, Slat> slats = {};
 
-  // to highlight on grid painter
-  List<String> selectedSlats = [];
+
 
   // default values for new layers and slats
   String selectedLayerKey = 'A';
+  List<String> selectedSlats = [];   // to highlight on grid painter
   String nextLayerKey = 'C';
   int nextColorIndex = 2;
   int slatAddCount = 1;
@@ -129,7 +129,10 @@ class DesignState extends ChangeNotifier {
 
   /// Adds slats to the design
   void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
-    undoStack.saveState(slats, occupiedGridPoints);
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex});
     for (var slat in slatCoordinates.entries) {
       slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}',layer, slat.value);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
@@ -147,7 +150,10 @@ class DesignState extends ChangeNotifier {
 
   /// Updates the position of a slat
   void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
-    undoStack.saveState(slats, occupiedGridPoints);
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex});
     // also need to remove old positions from occupiedGridPoints and add new ones
     String layer = slatID.split('-')[0];
 
@@ -179,6 +185,7 @@ class DesignState extends ChangeNotifier {
   void setGridMode(String value) {
     gridMode = value;
     clearAll();
+    undoStack = SlatUndoStack();
     notifyListeners();
   }
 
@@ -200,7 +207,10 @@ class DesignState extends ChangeNotifier {
 
   /// Removes a slat from the design
   void removeSlat(String ID) {
-    undoStack.saveState(slats, occupiedGridPoints);
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex});
     clearSelection();
     String layer = ID.split('-')[0];
     slats.remove(ID);
@@ -220,12 +230,19 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void undoSlatAction(){
+  void undo2DAction(){
+    // reverses actions taken on the 2D portion of the design - could potentially improve code here, but it works well as-is
     clearSelection();
+    hammingValueValid = false;
     Map<String, dynamic>? previousState = undoStack.undo();
     if (previousState != null) {
       slats = previousState['slats'];
       occupiedGridPoints = previousState['occupiedGridPoints'];
+      layerMap = previousState['layerMap'];
+      selectedLayerKey = previousState['layerMetaData']['selectedLayerKey'];
+      nextLayerKey = previousState['layerMetaData']['nextLayerKey'];
+      nextColorIndex = previousState['layerMetaData']['nextColorIndex'];
+
       notifyListeners();
     }
   }
@@ -319,6 +336,11 @@ class DesignState extends ChangeNotifier {
 
   /// Reorders the positions of the layers based on a new order
   void reOrderLayers(List<String> newOrder) {
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex});
+
     for (int i = 0; i < newOrder.length; i++) {
       layerMap[newOrder[i]]!['order'] = i; // Assign new order values
     }
@@ -327,6 +349,10 @@ class DesignState extends ChangeNotifier {
 
   /// Adds an entirely new layer to the design
   void addLayer() {
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex});
 
     layerMap[nextLayerKey] = {
       "direction": layerMap.values.last['direction'],
@@ -406,7 +432,7 @@ class DesignState extends ChangeNotifier {
     List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
     List<List<List<int>>> handleArray;
 
-    if (splitLayerHandles) {
+    if (splitLayerHandles && layerMap.length > 2) {
       handleArray = generateLayerSplitHandles(slatArray, uniqueHandleCount,
           seed: DateTime.now().millisecondsSinceEpoch % 1000);
     } else {
@@ -455,6 +481,7 @@ class DesignState extends ChangeNotifier {
       return;
     }
     clearAll();
+    undoStack = SlatUndoStack();
 
     layerMap = newLayerMap;
     slats = newSlats;
@@ -482,8 +509,11 @@ class DesignState extends ChangeNotifier {
   }
 
   void clearAll() {
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex});
     slats = {};
-    undoStack = SlatUndoStack();
     layerMap = {
       'A': {
         "direction": gridMode == '90' ? 90 : 120, // slat default direction
@@ -506,6 +536,8 @@ class DesignState extends ChangeNotifier {
         "hidden": false
       },
     };
+
+    // state reset
     selectedLayerKey = 'A';
     occupiedGridPoints = {};
     selectedSlats = [];
@@ -513,6 +545,7 @@ class DesignState extends ChangeNotifier {
     nextColorIndex = 2;
     currentHamming = 0;
     hammingValueValid = true;
+
     notifyListeners();
   }
 

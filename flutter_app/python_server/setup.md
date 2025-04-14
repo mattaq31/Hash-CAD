@@ -6,7 +6,14 @@ Step 1: gRPC Protocol
 
 Step 2: Python Server
 ---
-* When the proto file is defined, the next step is to generate the Python server code that utilizes the defined protocol (need to have the grpc packages installed first - see requirements.txt).  Use the below command (from the base flutter app directory):
+* When the proto file is defined, the next step is to generate the Python server code that utilizes the defined protocol.  First install the required python packages (ideally in a unique environment):
+```bash
+cd ../.. 
+pip install -e .
+cd ./flutter_app/python_server
+pip install -r requirements.txt
+```
+* Next, use the below command to generate the server code (from the base flutter app directory):
 ```bash
 python -m grpc_tools.protoc -I./python_dart_grpc_protocols --python_out=./python_server/server_architecture --pyi_out=./python_server/server_architecture --grpc_python_out=./python_server/server_architecture ./python_dart_grpc_protocols/hamming_evolve_communication.proto
 ```
@@ -29,10 +36,14 @@ protoc -I ./python_dart_grpc_protocols/ ./python_dart_grpc_protocols/health.prot
 Step 4: Bundling Python server with Nuitka
 ---
 
-* The python server can be bundled up into a single executable using Nuitka.  Should use a minimal python environment (`bcc_packaging`) for this to prevent bloat.  Command is as follows:
-* TODO: need a different implementation of the below for each OS type.
+* The python server can be bundled up into a single executable using Nuitka.  Should use a minimal python environment (`bcc_packaging`) for this to prevent bloat.  Command for Mac/Linux is as follows:
 ```bash
 python -m nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --onefile-tempdir-spec={HOME}/.nuitka_cache --nofollow-import-to=matplotlib.backends.backend_macosx
 ```
+For Windows use the following:
+```bash
+python -m nuitka main_server.py --standalone --onefile --output-dir=./nuitka_package --output-filename=hamming_server --include-module=matplotlib.backends.backend_pdf --onefile-tempdir-spec="{HOME}\\.nuitka_cache" --enable-plugin=no-qt
+```
+
 * Still unsure on whether the cache filepath is the same on every OS - will need to check.
 * The above bundle will be slow to run for the first time (since it needs to unload its files into a temp directory) but should then be super fast after that.

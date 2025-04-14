@@ -306,13 +306,13 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 LogicalKeyboardKey.keyZ,
                 control: true
             ): () {
-                appState.undoSlatAction();
+                appState.undo2DAction();
             },
             SingleActivator(
                 LogicalKeyboardKey.keyZ,
                 meta: true
             ): () {
-                appState.undoSlatAction();
+                appState.undo2DAction();
             },
           },
           child: Focus(
