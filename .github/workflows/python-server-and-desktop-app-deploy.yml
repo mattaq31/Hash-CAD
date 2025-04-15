@@ -37,7 +37,7 @@ jobs:
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
           gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
           gstreamer1.0-plugins-ugly gstreamer1.0-tools
-          sudo apt-get install libpython3.11-dev
+#          sudo apt-get install libpython3.11-dev
 
       # Cache the Python server build
       - name: Cache Python server build
