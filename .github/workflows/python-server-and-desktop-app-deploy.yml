@@ -29,6 +29,16 @@ jobs:
         shell: bash
         working-directory: .
 
+      - name: Install Linux Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev \
+          libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+          gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+          gstreamer1.0-plugins-ugly gstreamer1.0-tools
+          sudo apt-get install libpython3.11-dev
+
       # Cache the Python server build
       - name: Cache Python server build
         id: cache-python-build
@@ -50,7 +60,6 @@ jobs:
         if: steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
           pip install -r requirements.txt
-          pip install libpython-static
         working-directory: ./flutter_app/python_server
 
       - name: Install custom Python library
@@ -120,15 +129,6 @@ jobs:
         uses: subosito/flutter-action@v2.19.0
         with:
           channel: stable
-
-      - name: Install Linux Dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev \
-          libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-          gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
-          gstreamer1.0-plugins-ugly gstreamer1.0-tools
 
       - name: Clean Flutter Project
         run: flutter clean
