@@ -68,7 +68,7 @@ jobs:
         run: |
           python -m nuitka --version
           if [ "$RUNNER_OS" == "Windows" ]; then
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --onefile-tempdir-spec="{HOME}\\.nuitka_cache" --enable-plugin=no-qt
+            echo "SKIPPING THIS STEP FOR WINDOWS"
           elif [${{ matrix.os }} == 'macos-13' ]; then
             echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
             python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
@@ -76,6 +76,22 @@ jobs:
             python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
           fi
         working-directory: ./flutter_app/python_server
+
+      # Alternative for Windows
+      - name: Bundle Python app with Nuitka (Windows)
+        uses: Nuitka/Nuitka-Action@main
+        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'
+        shell: bash -l {0} # Important for conda terminal to be accessible
+        with:
+          nuitka-version: main
+          script-name: main_server.py
+          mode: app
+          include-module: matplotlib.backends.backend_pdf
+          onefile-tempdir-spec: "{HOME}\\.nuitka_cache"
+          enable-plugins: no-qt
+          working-directory: ./flutter_app/python_server
+          output-file: hamming_server
+          output-dir: ./nuitka_package
 
       # Move Nuitka app to Flutter assets folder
       - name: Move Nuitka app to Flutter assets
