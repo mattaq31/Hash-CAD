@@ -37,7 +37,6 @@ jobs:
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
           gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
           gstreamer1.0-plugins-ugly gstreamer1.0-tools
-#          sudo apt-get install libpython3.11-dev
 
       # Cache the Python server build
       - name: Cache Python server build
@@ -47,26 +46,11 @@ jobs:
           path: ./flutter_app/assets
           key: ${{ matrix.os }}-python-server-${{ hashFiles('./flutter_app/python_server/**', './crisscross/assembly_handle_optimization/**') }}
 
-#      - name: Set up Conda
-#        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
-#        uses: conda-incubator/setup-miniconda@v3
-#        with:
-#          auto-update-conda: 'true'
-#          miniconda-version: "latest"
-#          python-version: '3.11'
-#          activate-environment: 'bcc_packaging'
-
       - name: Install environment dependencies
         if: steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
           pip install -r requirements.txt
         working-directory: ./flutter_app/python_server
-
-#      - name: Install additional dependency for linux
-#        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
-#        run: |
-#          conda install -c conda-forge libpython-static
-#        working-directory: ./flutter_app/python_server
 
       - name: Install custom Python library
         if: steps.cache-python-build.outputs.cache-hit != 'true'
@@ -80,21 +64,6 @@ jobs:
         run: |
             echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
         working-directory: ./flutter_app/python_server
-
-      # Bundle Python app using Nuitka
-#      - name: Bundle Python app with Nuitka
-#        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
-#        run: |
-#          python -m nuitka --version
-#          if [ "$RUNNER_OS" == "Windows" ]; then
-#            echo "SKIPPING THIS STEP FOR WINDOWS"
-#          elif [${{ matrix.os }} == 'macos-13' ]; then
-#            echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-#            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache
-#          else
-#            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache
-#          fi
-#        working-directory: ./flutter_app/python_server
 
         # Bundle Python app using Nuitka
       - name: Bundle Python app with Nuitka
@@ -127,28 +96,49 @@ jobs:
           output-dir: ./nuitka_package
 
       # Move Nuitka app to Flutter assets folder
-      - name: Move Nuitka app to Flutter assets
-        if: steps.cache-python-build.outputs.cache-hit != 'true'
+      # Linux
+      - name: Move Nuitka app to Flutter assets (Linux)
+        if: matrix.os == 'ubuntu-latest' && steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
           mkdir -p ./flutter_app/assets/
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_win.exe
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_osx
-          else 
-            mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_lnx
-          fi
+          mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_lnx
+        shell: bash
         working-directory: .
 
-      - name: Verify python server build exists in flutter app
+      # macOS
+      - name: Move Nuitka app to Flutter assets (macOS)
+        if: (matrix.os == 'macos-13' || matrix.os == 'macos-latest') && steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            ls -la ./flutter_app/assets/hamming_server_win.exe
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            ls -la ./flutter_app/assets/hamming_server_osx
-          else 
-            ls -la ./flutter_app/assets/hamming_server_lnx
-          fi
+          mkdir -p ./flutter_app/assets/
+          mv ./flutter_app/python_server/nuitka_package/hamming_server* ./flutter_app/assets/hamming_server_osx
+        shell: bash
+        working-directory: .
+
+      # Windows
+      - name: Move Nuitka app to Flutter assets (Windows)
+        if: matrix.os == 'windows-latest' && steps.cache-python-build.outputs.cache-hit != 'true'
+        run: |
+          mkdir flutter_app/assets/
+          move flutter_app/python_server/nuitka_package/hamming_server* flutter_app/assets/hamming_server_win.exe
+        shell: pwsh
+        working-directory: .
+
+      - name: Verify python server build exists (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: ls -la ./flutter_app/assets/hamming_server_lnx
+        shell: bash
+        working-directory: .
+
+      - name: Verify python server build exists (macOS)
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+        run: ls -la ./flutter_app/assets/hamming_server_osx
+        shell: bash
+        working-directory: .
+
+      - name: Verify python server build exists (Windows)
+        if: matrix.os == 'windows-latest'
+        run: Get-ChildItem -Path ./flutter_app/assets/hamming_server_win.exe
+        shell: pwsh
         working-directory: .
 
 ########### FLUTTER APP COMPILATION STARTS HERE ###########
@@ -166,15 +156,22 @@ jobs:
         run: flutter pub get
         working-directory: flutter_app
 
-      - name: Build Flutter Desktop App
+      - name: Build Flutter Desktop App (Windows)
+        if: matrix.os == 'windows-latest'
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            flutter build windows --release  
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            flutter build macos --release 
-          else
-            flutter build linux --release  
-          fi
+          flutter build windows --release
+        working-directory: flutter_app
+
+      - name: Build Flutter Desktop App (Mac)
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
+        run: |
+          flutter build macos --release
+        working-directory: flutter_app
+
+      - name: Build Flutter Desktop App (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          flutter build linux --release
         working-directory: flutter_app
 
       - name: Compress macOS app
