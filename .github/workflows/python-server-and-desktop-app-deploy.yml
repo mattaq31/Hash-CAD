@@ -48,7 +48,7 @@ jobs:
           key: ${{ matrix.os }}-python-server-${{ hashFiles('./flutter_app/python_server/**', './crisscross/assembly_handle_optimization/**') }}
 
 #      - name: Set up Conda
-#        if: steps.cache-python-build.outputs.cache-hit != 'true'
+#        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
 #        uses: conda-incubator/setup-miniconda@v3
 #        with:
 #          auto-update-conda: 'true'
@@ -62,26 +62,54 @@ jobs:
           pip install -r requirements.txt
         working-directory: ./flutter_app/python_server
 
+#      - name: Install additional dependency for linux
+#        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
+#        run: |
+#          conda install -c conda-forge libpython-static
+#        working-directory: ./flutter_app/python_server
+
       - name: Install custom Python library
         if: steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
           pip install -e .
         working-directory: .
 
-      # Bundle Python app using Nuitka
-      - name: Bundle Python app with Nuitka
-        if: steps.cache-python-build.outputs.cache-hit != 'true'
+      # prepping for intel mac build
+      - name: MacOS 13 Prep
+        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os == 'macos-13'
         run: |
-          python -m nuitka --version
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            echo "SKIPPING THIS STEP FOR WINDOWS"
-          elif [${{ matrix.os }} == 'macos-13' ]; then
             echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
-          else
-            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache 
-          fi
         working-directory: ./flutter_app/python_server
+
+      # Bundle Python app using Nuitka
+#      - name: Bundle Python app with Nuitka
+#        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
+#        run: |
+#          python -m nuitka --version
+#          if [ "$RUNNER_OS" == "Windows" ]; then
+#            echo "SKIPPING THIS STEP FOR WINDOWS"
+#          elif [${{ matrix.os }} == 'macos-13' ]; then
+#            echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+#            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache
+#          else
+#            python -m nuitka main_server.py --standalone --onefile --output-filename=hamming_server --disable-ccache --output-dir=./nuitka_package --include-module=matplotlib.backends.backend_pdf --nofollow-import-to=matplotlib.backends.macosx --onefile-tempdir-spec={HOME}/.nuitka_cache
+#          fi
+#        working-directory: ./flutter_app/python_server
+
+        # Bundle Python app using Nuitka
+      - name: Bundle Python app with Nuitka
+        uses: Nuitka/Nuitka-Action@main
+        if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
+        with:
+          nuitka-version: main
+          script-name: main_server.py
+          mode: app
+          include-module: matplotlib.backends.backend_pdf
+          onefile-tempdir-spec: {HOME}/.nuitka_cache
+          enable-plugins: no-qt
+          working-directory: ./flutter_app/python_server
+          output-file: hamming_server
+          output-dir: ./nuitka_package
 
       # Alternative for Windows
       - name: Bundle Python app with Nuitka (Windows)
