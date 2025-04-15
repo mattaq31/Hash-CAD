@@ -37,26 +37,24 @@ jobs:
           path: ./flutter_app/assets
           key: ${{ matrix.os }}-python-server-${{ hashFiles('./flutter_app/python_server/**', './crisscross/assembly_handle_optimization/**') }}
 
-      - name: Set up Conda
-        if: steps.cache-python-build.outputs.cache-hit != 'true'
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: 'true'
-          miniconda-version: "latest"
-          python-version: '3.11'
-          activate-environment: 'bcc_packaging'
+#      - name: Set up Conda
+#        if: steps.cache-python-build.outputs.cache-hit != 'true'
+#        uses: conda-incubator/setup-miniconda@v3
+#        with:
+#          auto-update-conda: 'true'
+#          miniconda-version: "latest"
+#          python-version: '3.11'
+#          activate-environment: 'bcc_packaging'
 
       - name: Install environment dependencies
         if: steps.cache-python-build.outputs.cache-hit != 'true'
-        shell: bash -l {0}  # Important for conda terminal to be accessible
         run: |
           pip install -r requirements.txt
-          conda install -c conda-forge libpython-static
+          pip install libpython-static
         working-directory: ./flutter_app/python_server
 
       - name: Install custom Python library
         if: steps.cache-python-build.outputs.cache-hit != 'true'
-        shell: bash -l {0}
         run: |
           pip install -e .
         working-directory: .
@@ -64,7 +62,6 @@ jobs:
       # Bundle Python app using Nuitka
       - name: Bundle Python app with Nuitka
         if: steps.cache-python-build.outputs.cache-hit != 'true'
-        shell: bash -l {0} # Important for conda terminal to be accessible
         run: |
           python -m nuitka --version
           if [ "$RUNNER_OS" == "Windows" ]; then
@@ -81,7 +78,6 @@ jobs:
       - name: Bundle Python app with Nuitka (Windows)
         uses: Nuitka/Nuitka-Action@main
         if: steps.cache-python-build.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'
-        shell: bash -l {0} # Important for conda terminal to be accessible
         with:
           nuitka-version: main
           script-name: main_server.py
@@ -96,7 +92,6 @@ jobs:
       # Move Nuitka app to Flutter assets folder
       - name: Move Nuitka app to Flutter assets
         if: steps.cache-python-build.outputs.cache-hit != 'true'
-        shell: bash -l {0}
         run: |
           mkdir -p ./flutter_app/assets/
           if [ "$RUNNER_OS" == "Windows" ]; then
@@ -109,7 +104,6 @@ jobs:
         working-directory: .
 
       - name: Verify python server build exists in flutter app
-        shell: bash -l {0}
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
             ls -la ./flutter_app/assets/hamming_server_win.exe
