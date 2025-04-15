@@ -41,7 +41,7 @@ jobs:
       # Cache the Python server build
       - name: Cache Python server build
         id: cache-python-build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ./flutter_app/assets
           key: ${{ matrix.os }}-python-server-${{ hashFiles('./flutter_app/python_server/**', './crisscross/assembly_handle_optimization/**') }}
