@@ -118,7 +118,6 @@ jobs:
       - name: Move Nuitka app to Flutter assets (Windows)
         if: matrix.os == 'windows-latest' && steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
-          mkdir flutter_app/assets/
           move flutter_app/python_server/nuitka_package/hamming_server* flutter_app/assets/hamming_server_win.exe
         shell: pwsh
         working-directory: .
