@@ -188,7 +188,7 @@ jobs:
 
       - name: Compress Windows build
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path build/windows/runner/Release/* -DestinationPath "Hash-CAD-windows.zip"
+        run: Compress-Archive -Path ".\flutter_app\build\windows\x64\runner\Release\*" -DestinationPath "Hash-CAD-windows.zip"
         shell: pwsh
         working-directory: .
 
