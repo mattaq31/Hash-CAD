@@ -3,7 +3,7 @@ from collections import defaultdict
 from string import ascii_uppercase
 import pandas as pd
 
-from crisscross.plate_mapping import plate_constants
+from crisscross.helper_functions import plate96, plate384
 
 
 def add_data_to_plate_df(letters, column_total, data_dict):
@@ -34,9 +34,9 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
     :return: Dataframe containing all data
     """
     if plate_size == 96:
-        plate = plate_constants.plate96
+        plate = plate96
     else:
-        plate = plate_constants.plate384
+        plate = plate384
 
     # this format consists of each sequence in a 2D array, with names and descriptions in separate sheets
     if data_type == '2d_excel':
@@ -88,11 +88,11 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
     :return: final dataframe that's saved to file
     """
     if plate_size == 96:
-        plate = plate_constants.plate96
+        plate = plate96
         max_col = 12
         letters = [a for a in ascii_uppercase[:8]]
     else:
-        plate = plate_constants.plate384
+        plate = plate384
         max_col = 24
         letters = [a for a in ascii_uppercase[:16]]
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     for inn, outn, sheetn in zip(in_name, out_name, sheet_name):
         seed_plate_corner = read_dna_plate_mapping('/Users/matt/Desktop/%s' % inn, data_type='IDT_order')
 
-        plate = plate_constants.plate384
+        plate = plate384
         max_row = 24
         letters = [a for a in ascii_uppercase[:16]]
 

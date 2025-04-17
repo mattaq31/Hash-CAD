@@ -3,7 +3,7 @@ import copy
 import pandas as pd
 import os
 from colorama import Fore, Style
-from crisscross.plate_mapping.plate_constants import plate96, plate384, plate96_center_pattern
+from crisscross.helper_functions import plate96, plate384, plate96_center_pattern
 from crisscross.plate_mapping.plate_concentrations import apply_well_exceptions, concentration_library
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch

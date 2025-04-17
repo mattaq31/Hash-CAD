@@ -9,7 +9,14 @@ import math
 from crisscross.plate_mapping.plate_concentrations import concentration_library
 
 
-uppercase_alphabet = string.ascii_uppercase
+def next_excel_column_name(n):
+    """Given a 0-based index, return the Excel-style column name."""
+    result = ""
+    while n >= 0:
+        result = chr(n % 26 + ord('A')) + result
+        n = n // 26 - 1
+    return result
+
 red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
 orange_fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
 blue_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
@@ -322,13 +329,13 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
 
     # merge and center
     for cell in ['A2', 'A10', 'A12', 'A14', 'A15', 'A16', 'A17', 'A21']:
-        ws.merge_cells(f'{cell}:{uppercase_alphabet[len(full_data_groups)]}{cell[1:]}')
+        ws.merge_cells(f'{cell}:{next_excel_column_name(len(full_data_groups))}{cell[1:]}')
         ws[cell].alignment = Alignment(horizontal='center', vertical='center')
         ws[cell].font = Font(bold=True)
 
     # fills in the equations and data for each group
     for position, group in enumerate(full_data_groups.keys()):
-        column = uppercase_alphabet[position+1]
+        column = next_excel_column_name(position+1)
         # block 1 - slat counts and volumes
         full_data_groups[group][f'{column}1'] = group
         try:
@@ -371,8 +378,8 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
         full_data_groups[group][f'{column}28'] = f'={column}27/{column}7*100'
 
     # sidebar definitions
-    sidebar_col_start = uppercase_alphabet[position+3]
-    sidebar_col_2 = uppercase_alphabet[position + 4]
+    sidebar_col_start = next_excel_column_name(position+3)
+    sidebar_col_2 = next_excel_column_name(position + 4)
     ws[f'{sidebar_col_start}3'].fill = red_fill
     ws[f'{sidebar_col_2}3'] = 'If these cells are red, then your slat mixture is over the 2µM limit - there is a high chance the mixture will aggregate.'
     ws[f'{sidebar_col_start}5'].fill = blue_fill

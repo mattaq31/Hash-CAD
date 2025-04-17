@@ -29,15 +29,16 @@ evolution_parameters = {
     'split_sequence_handles': True,
     'mutation_type_probabilities': [0.425, 0.425, 0.15],
     'progress_bar_update_iterations': 10,
+    'mutation_memory_system': "off",
     'random_seed': 8,
 }
 
-design_1 = 'square_tiles.xlsx'
+design_1 = 'square_tiles_single_tile_for_evo.xlsx'
 
 all_sbatch_commands = []
 
 for seq_count in [64]:
-    for mut_rate in [0.03]:
+    for mut_rate in [2]:
         exp_name = f'version_3_{seq_count}_seq_library_mut_{str(mut_rate).replace(".","-")}'
 
         server_experiment_folder = os.path.join(server_base_folder, exp_name)

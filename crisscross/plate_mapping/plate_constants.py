@@ -1,11 +1,6 @@
-from itertools import product
-from string import ascii_uppercase
 from os.path import join
 from crisscross.helper_functions import base_directory
 
-plate96 = [x + str(y) for x, y in product(ascii_uppercase[:8], range(1, 12 + 1))]
-plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1))]
-plate96_center_pattern = [x + str(y) for x, y in product(ascii_uppercase[:8], range(3, 10 + 1))]
 
 core_plate_folder = join(base_directory, 'core_plates')
 assembly_handle_folder = join(base_directory, 'assembly_handle_plates')

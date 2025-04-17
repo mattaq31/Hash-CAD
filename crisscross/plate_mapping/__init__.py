@@ -23,6 +23,7 @@ class BasePlate:
     the slat side (H2 or H5) and the cargo ID (which can vary according to the specific plate in question).
     """
 
+
     def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_style='2d_excel', plate_size=384,
                  delay_well_identification=False):
 

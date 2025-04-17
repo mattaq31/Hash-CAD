@@ -10,6 +10,8 @@ sns.set_style('whitegrid')
 
 # exp_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/assembly_handle_optimization/testing_mutation_memory/experiments'
 exp_folder = '/Users/matt/Desktop/sw129_hexstar/first_evolution_round'
+exp_folder = '/Users/matt/Desktop/hash_cad_validation_designs/hexagon'
+# exp_folder = '/Users/matt/Desktop/hash_cad_validation_designs/recycling'
 
 cmap = matplotlib.colormaps['autumn']
 qual_map = matplotlib.cm.get_cmap('tab20')
@@ -33,6 +35,7 @@ fig_32, axs_32 = plt.subplots(2, 1, figsize=(10, 10))
 for ind, (exp, name) in enumerate(zip(experiments, names)):
     if os.path.exists(os.path.join(exp, 'metrics.csv')):
         metrics = pd.read_csv(os.path.join(exp, 'metrics.csv'))
+        metrics['Generation'] = np.arange(1, len(metrics) + 1)
         plot_axs = [axs]
         if '32' in name:
             plot_axs.append(axs_32)
