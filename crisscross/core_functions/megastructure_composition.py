@@ -281,8 +281,9 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
         for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data,
                                                           ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
-            all_plates_needed.add(handle_data['plate'])
-            if 'plate' not in handle_data:
+            try:
+                all_plates_needed.add(handle_data['plate'])
+            except KeyError: #if 'plate' not in handle_data:
                 if output_empty_wells:  # this is the case where a placeholder handle is used (no plate available).
                     #  If the user indicates they want to manually add in these handles,
                     #  this will output placeholders for the specific wells that need manual handling.
