@@ -31,7 +31,7 @@ jobs:
         working-directory: flutter_app
 
       - name: Build Flutter Web
-        run: flutter build web --release --base-href="/Crisscross-Design/"
+        run: flutter build web --release --base-href="/Hash-CAD/"
         working-directory: flutter_app
         
       - name: Deploy to GitHub Pages
