@@ -36,7 +36,7 @@ for g_index, group in enumerate([src_002_df_h2.iloc[0:16], src_002_df_h2.iloc[16
             name_dict[l][updated_column] = row['name']
             desc_dict[l][updated_column] = row['description'] + f', duplicate {l_index+1}'
             idt_order_dict['WellPosition'].append(l+updated_column)
-            idt_order_dict['Name'].append(row['name'])
+            idt_order_dict['Name'].append(row['name'] + f', duplicate {l_index+1}')
             idt_order_dict['Sequence'].append(row['sequence'])
             idt_order_dict['Notes'].append(row['description'] + f', duplicate {l_index+1}')
 

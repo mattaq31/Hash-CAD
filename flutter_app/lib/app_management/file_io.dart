@@ -2,10 +2,25 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'dart:io';
+import '../crisscross_core/cargo.dart';
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/sparse_to_array_conversion.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
+import 'dart:math';
+
+final Random _rand = Random();
+
+final List<Color> qualitativeCargoColors = [
+  Color(0xFF1B9E77), // Teal
+  Color(0xFFD95F02), // Orange
+  Color(0xFF7570B3), // Purple
+  Color(0xFFE7298A), // Pink
+  Color(0xFF66A61E), // Green
+  Color(0xFFE6AB02), // Mustard
+  Color(0xFFA6761D), // Brown
+  Color(0xFF0034FF), // Blue
+];
 
 Future<String?> selectSaveLocation(String defaultFileName) async {
   String? filePath = await FilePicker.platform.saveFile(
@@ -46,9 +61,8 @@ String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
   return result;
 }
 
-void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize, String gridMode) async{
+void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette, Map<String, Map<Offset, String>> occupiedCargoPoints,  double gridSize, String gridMode) async{
 
-  // TODO: assembly handles should not be created here - should only be drawn from slat system
   Offset minPos;
   Offset maxPos;
   (minPos, maxPos) = extractGridBoundary(slats);
@@ -58,22 +72,53 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
 
   var excel = Excel.createExcel();
 
-  // Write the array to the sheet
+  // Write the slat arrays to individual sheets
+  // cargo export is also integrated within this same system
   for (int layer = 0; layer < slatArray[0][0].length; layer++) {
     Sheet sheet = excel['slat_layer_${layer+1}'];
+    String layerID = layerMap.entries.firstWhere((element) => element.value['order'] == layer).key;
     for (int row = 0; row < slatArray.length; row++) {
       for (int col = 0; col < slatArray[row].length; col++) {
+
+        // first, assign the slat array
         // column/row are flipped in the internal representation - the flip-back to normal values is done here
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(slatArray[row][col][layer]);
         if (slatArray[row][col][layer] != 0) {
           Color layerColor = layerMap.entries.firstWhere((element) => element.value['order'] == layer).value['color'];
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle =CellStyle(backgroundColorHex: layerColor.toHexString().excelColor);
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: layerColor.toHexString().excelColor);
+        }
+
+        // next, assign the cargo arrays
+        String slatId = '$layerID-I${slatArray[row][col][layer]}';
+        Slat? slat;
+        if (slatArray[row][col][layer] != 0){
+          slat = slats[slatId]!;
+        }
+        for (var side in ['lower', 'upper']) {
+          if (occupiedCargoPoints['$layerID-${side == 'lower' ? 'bottom' : 'top'}'] == null || occupiedCargoPoints['$layerID-${side == 'lower' ? 'bottom' : 'top'}']!.isEmpty) {
+            continue; // skip the sheet entirely if  there is no cargo on this layer (to reduce file complexity)
+          }
+          String helixSide = layerMap[layerID]?['${side == 'lower' ? 'bottom' : 'top'}_helix'].toLowerCase();
+          Sheet cargoSheet = excel['cargo_layer_${layer + 1}_${side}_$helixSide'];
+          if (slat == null) {
+            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(0);
+            continue;
+          }
+          var slatHandleDict = helixSide == 'h2' ? slat.h2Handles : slat.h5Handles;
+          var position = slat.slatCoordinateToPosition[Offset(row.toDouble(), col.toDouble()) + minPos]!;
+          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'Cargo' ){
+            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['descriptor']);
+            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: cargoPalette[slatHandleDict[position]!['descriptor']]!.color.toHexString().excelColor);
+          }
+          else{
+            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(0);
+          }
         }
       }
     }
   }
 
-  // Write the array to the sheet
+  // Write the handle arrays to individual sheets
   for (int layer = 0; layer < handleArray[0][0].length; layer++) {
     Sheet sheet = excel['handle_interface_${layer+1}'];
     for (int row = 0; row < handleArray.length; row++) {
@@ -92,6 +137,7 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
   metadataSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer Interface Orientations');
   metadataSheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('Connection Angle');
   metadataSheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('Reversed Slats');
+  metadataSheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('[]'); // TODO: update with actual reversed slats when this is implemented
   metadataSheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('Canvas Offset (Min)');
   metadataSheet.cell(CellIndex.indexByString('A5')).value = TextCellValue('Canvas Offset (Max)');
 
@@ -130,10 +176,28 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     metadataSheet.cell(CellIndex.indexByString('G${l.value['order']+layerStartPoint}')).value = TextCellValue('#${l.value['color'].value.toRadixString(16).substring(2).toUpperCase()}');
   }
 
+  // CARGO METADATA
+  int cargoStartPoint = layerStartPoint + layerMap.length;
+  metadataSheet.merge(CellIndex.indexByString('A$cargoStartPoint'), CellIndex.indexByString('G$cargoStartPoint'), customValue: TextCellValue('CARGO INFO'));
+  metadataSheet.cell(CellIndex.indexByString('A$cargoStartPoint')).cellStyle = CellStyle(
+    horizontalAlign: HorizontalAlign.Center,
+  );
+  // export all cargo info from the palette (need a loop)
+  metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint+1}')).value = TextCellValue('ID');
+  metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint+1}')).value = TextCellValue('Short Name');
+  metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint+1}')).value = TextCellValue('Colour');
+  int cIndex = 2;
+  for (var c in cargoPalette.entries){
+    metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.name);
+    metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.shortName);
+    metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint + cIndex}')).value = TextCellValue('#${c.value.color.value.toRadixString(16).substring(2).toUpperCase()}');
+    cIndex += 1;
+  }
+
   excel.delete('Sheet1'); // removes useless first sheet
 
   if (kIsWeb){
-    // TODO: allow user to change filename in-app somehow
+    // TODO: allow user to change filename in-app for web somehow
     excel.save(fileName: 'Megastructure.xlsx');
   }
   else {
@@ -186,12 +250,14 @@ String readExcelString(Sheet workSheet, String cell){
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDesign() async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>)> importDesign() async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
   // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
+  Map<String, Cargo> cargoPalette = {};
+
   String filePath;
   Uint8List fileBytes;
 
@@ -204,7 +270,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
 
   if (result != null) {
     // web has a different file-opening procedure to the desktop app
-    if (kIsWeb){
+    if (kIsWeb) {
       fileBytes = result.files.first.bytes!;
     }
     else {
@@ -212,7 +278,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
       fileBytes = File(filePath).readAsBytesSync();
     }
   } else { // if nothing picked, return empty maps
-    return (slats, layerMap, '');
+    return (slats, layerMap, '', cargoPalette);
   }
 
   // read in file with Excel package
@@ -229,47 +295,76 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
   String gridMode = readExcelString(metadataSheet, 'B2').trim();
 
   // Read slat layers
-  int numLayers = excel.tables.keys.where((key) => key.startsWith('slat_layer_')).length;
+  int numLayers = excel.tables.keys
+      .where((key) => key.startsWith('slat_layer_'))
+      .length;
 
   // if no layers found, return empty maps
   if (numLayers == 0) {
-    return (slats, layerMap, '');
+    return (slats, layerMap, '', cargoPalette);
   }
 
 
   int layerReadStart = 8;
   // read in layer data
   for (int i = 0; i < numLayers; i++) {
-    String fullKey = readExcelString(metadataSheet, 'A${i+layerReadStart}');
+    String fullKey = readExcelString(metadataSheet, 'A${i + layerReadStart}');
     layerMap[fullKey.substring('Layer '.length)] = {
-      'direction': readExcelInt(metadataSheet, 'B${i+layerReadStart}'),
-      'top_helix': readExcelString(metadataSheet, 'C${i+layerReadStart}'),
-      'bottom_helix': readExcelString(metadataSheet, 'D${i+layerReadStart}'),
-      'next_slat_id': readExcelInt(metadataSheet, 'E${i+layerReadStart}'),
+      'direction': readExcelInt(metadataSheet, 'B${i + layerReadStart}'),
+      'top_helix': readExcelString(metadataSheet, 'C${i + layerReadStart}'),
+      'bottom_helix': readExcelString(metadataSheet, 'D${i + layerReadStart}'),
+      'next_slat_id': readExcelInt(metadataSheet, 'E${i + layerReadStart}'),
       'order': i,
       'slat_count': 0,
-      'color': Color(int.parse('0xFF${readExcelString(metadataSheet, 'G${i+layerReadStart}').substring(1)}')),
+      'color': Color(int.parse(
+          '0xFF${readExcelString(metadataSheet, 'G${i + layerReadStart}')
+              .substring(1)}')),
       "hidden": false
     };
   }
+  int cargoReadStart = layerReadStart + numLayers + 2;
+  int cargoCount = 0;
+  // read in cargo data, if available (older design files didn't have this metadata)
+  while (readExcelString(metadataSheet, 'A${cargoReadStart + cargoCount}')
+      .trim()
+      .isNotEmpty) {
+    String cargoName = readExcelString(
+        metadataSheet, 'A${cargoReadStart + cargoCount}');
+    String cargoShortName = readExcelString(
+        metadataSheet, 'B${cargoReadStart + cargoCount}');
+    Color cargoColor = Color(int.parse(
+        '0xFF${readExcelString(metadataSheet, 'C${cargoReadStart + cargoCount}')
+            .substring(1)}'));
+    cargoPalette[cargoName] =
+        Cargo(name: cargoName, shortName: cargoShortName, color: cargoColor);
+    cargoCount += 1;
+  }
 
   // prepares slat array from metadata information
-  List<List<List<int>>> slatArray = List.generate(excel.tables['slat_layer_1']!.maxRows,(_) => List.generate(excel.tables['slat_layer_1']!.maxColumns, (_) => List.filled(numLayers, 0)));
+  List<List<List<int>>> slatArray = List.generate(
+      excel.tables['slat_layer_1']!.maxRows, (_) =>
+      List.generate(excel.tables['slat_layer_1']!.maxColumns, (_) =>
+          List.filled(numLayers, 0)));
 
   // set to keep track of slat IDs (both layer ID and slat ID required to ensure a unique ID)
   Set<(int, int)> slatIDs = {};
 
   // extracts slat positional data into array
-  for (var table in excel.tables.keys.where((key) => key.startsWith('slat_layer_'))) {
-    var layerIndex = int.parse(table.split('_').last) - 1;
+  for (var table in excel.tables.keys.where((key) =>
+      key.startsWith('slat_layer_'))) {
+    var layerIndex = int.parse(table
+        .split('_')
+        .last) - 1;
     var sheet = excel.tables[table]!;
     for (var row = 0; row < sheet.maxRows; row++) {
       for (var col = 0; col < sheet.maxColumns; col++) {
-        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
+        var cell = sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
+            .value;
         int value = cell is IntCellValue ? cell.value : 0;
         slatArray[row][col][layerIndex] = value;
         // adds ID to set if a slat is found
-        if (value != 0){
+        if (value != 0) {
           slatIDs.add((layerIndex, value));
         }
       }
@@ -280,11 +375,14 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
   // TODO: could this be combined with the above loops to speed up the operation?
   for (var slatID in slatIDs) {
     // identifies slat layer
-    String layer = layerMap.entries.firstWhere((element) => element.value['order'] == slatID.$1).key;
+    String layer = layerMap.entries
+        .firstWhere((element) => element.value['order'] == slatID.$1)
+        .key;
     Map<int, Offset> slatCoordinates = {};
     int slatPositionCounter = 1;
 
-    layerMap[layer]!['slat_count'] += 1; // populates slat count from the true number of slats found in the design
+    layerMap[layer]!['slat_count'] +=
+    1; // populates slat count from the true number of slats found in the design
 
     for (int i = 0; i < slatArray.length; i++) {
       for (int j = 0; j < slatArray[i].length; j++) {
@@ -299,51 +397,110 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String)> importDes
       }
     }
     // slats generated using the usual formatting system
-    slats["${layer}-I${slatID.$2}"] = Slat(slatID.$2, "${layer}-I${slatID.$2}", layer, slatCoordinates);
+    slats["${layer}-I${slatID.$2}"] =
+        Slat(slatID.$2, "${layer}-I${slatID.$2}", layer, slatCoordinates);
   }
 
   // extracts assembly handles and assigns them to slats
   // TODO: as before, need to handle errors and problematic cases more gracefully...
-  for (var table in excel.tables.keys.where((key) => key.startsWith('handle_interface_'))) {
+  for (var table in excel.tables.keys.where((key) =>
+      key.startsWith('handle_interface_'))) {
     // runs through each handle layer sheet
-    var handleLayerIndex = int.parse(table.split('_').last) - 1;
+    var handleLayerIndex = int.parse(table
+        .split('_')
+        .last) - 1;
     var sheet = excel.tables[table]!;
     // there are always 2 slat layers to address for each handle (bottom and top)
     for (var layer in [handleLayerIndex, handleLayerIndex + 1]) {
       // extract actual layerID
-      String layerID = layerMap.entries.firstWhere((element) => element.value['order'] == layer).key;
+      String layerID = layerMap.entries
+          .firstWhere((element) => element.value['order'] == layer)
+          .key;
       // loop through the whole array
       for (var row = 0; row < sheet.maxRows; row++) {
         for (var col = 0; col < sheet.maxColumns; col++) {
           // extract cell handle data
-          var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
+          var cell = sheet
+              .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
+              .value;
           int value = cell is IntCellValue ? cell.value : 0;
           int slatSide;
 
           // if a handle is found, assign it to the slat
-          if (value != 0){
+          if (value != 0) {
             // build up slat ID from layer and slat value
             String slatID = "$layerID-I${slatArray[row][col][layer]}";
 
             // determine which side of the slat the handle is on
-            if (layer == handleLayerIndex){
-              slatSide = int.parse(layerMap[layerID]?['top_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+            if (layer == handleLayerIndex) {
+              slatSide = int.parse(layerMap[layerID]?['top_helix'].replaceAll(
+                  RegExp(r'[^0-9]'), ''));
             }
-            else{
-              slatSide = int.parse(layerMap[layerID]?['bottom_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+            else {
+              slatSide = int.parse(
+                  layerMap[layerID]?['bottom_helix'].replaceAll(
+                      RegExp(r'[^0-9]'), ''));
             }
 
             // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
             Offset positionCoord = Offset(col + minX, row + minY);
 
             // assign the exact handle to the slat
-            slats[slatID]?.setPlaceholderHandle(slats[slatID]!.slatCoordinateToPosition[positionCoord]!, slatSide, '$value', 'Assembly');
+            slats[slatID]?.setPlaceholderHandle(
+                slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
+                slatSide, '$value', 'Assembly');
           }
         }
       }
     }
   }
-  return (slats, layerMap, gridMode);
+
+
+  // extracts cargo handles and assigns them to slats
+  // TODO: as before, need to handle errors and problematic cases more gracefully...
+  for (var table in excel.tables.keys.where((key) => key.startsWith('cargo'))) {
+    // runs through each handle layer sheet
+    int cargoLayerIndex = int.parse(table.split('_')[2])-1;
+    int cargoLayerSide = int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
+    var sheet = excel.tables[table]!;
+
+    // extract layerID
+    String layerID = layerMap.entries
+        .firstWhere((element) => element.value['order'] == cargoLayerIndex)
+        .key;
+
+    // loop through the whole array
+    for (var row = 0; row < sheet.maxRows; row++) {
+      for (var col = 0; col < sheet.maxColumns; col++) {
+        // extract cell handle data
+        var cellValue = sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
+            .value;
+        String value = (cellValue is TextCellValue)
+            ? cellValue.value.text ?? ''
+            : '';
+        if (value == '0' || value == '') {
+          continue;
+        }
+
+        // this is the case where old design files are used, which didn't have a specific metadata system for cargo
+        if (!cargoPalette.containsKey(value)){
+          // choose a random color
+          cargoPalette[value] = Cargo(name: value, shortName: generateShortName(value), color: qualitativeCargoColors[_rand.nextInt(qualitativeCargoColors.length)]);
+        }
+
+        String slatID = "$layerID-I${slatArray[row][col][cargoLayerIndex]}";
+        // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
+        Offset positionCoord = Offset(col + minX, row + minY);
+
+        // assign the exact handle to the slat
+        slats[slatID]?.setPlaceholderHandle(
+            slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
+            cargoLayerSide, value, 'Cargo');
+      }
+    }
+  }
+  return (slats, layerMap, gridMode, cargoPalette);
 }
 
 

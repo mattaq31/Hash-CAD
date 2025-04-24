@@ -10,6 +10,7 @@ import 'package:three_js_math/three_js_math.dart' as tmath;
 import 'package:provider/provider.dart';
 import 'package:three_js_helpers/three_js_helpers.dart';
 import '../2d_painters/helper_functions.dart';
+import '../crisscross_core/cargo.dart';
 
 class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
@@ -26,6 +27,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   Set<String> slatIDs = {};
   Map<String, Map<String, three.Mesh>> slatAccessories = {};
   Map<String, three.MeshPhongMaterial> layerMaterials = {};
+  Map<String, three.MeshPhongMaterial> cargoMaterials = {};
 
   double gridSize = 10;
   late double y60Jump = gridSize / 2;
@@ -33,6 +35,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   String gridMode = '60';
 
   bool assemblyHandleView = false;
+  bool cargoHandleView = true;
 
   // parameters for six-helix bundle view
   bool helixBundleView = true;
@@ -191,9 +194,18 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   }
 
-  void createAssemblyHandle(String slatID, String name, Offset position, three.MeshPhongMaterial material, double zOrder, String topSide, String handleSide){
+  void createHandle(String slatID, String name, Offset position, three.MeshPhongMaterial material, double zOrder, String topSide, String handleSide, String handleType){
     /// Creates a new handle graphic in the 3D scene.
-    final geometry = CylinderGeometry(helixBundleView ? 0.8 : 2, helixBundleView ? 0.8 : 2, 1.5, 8);
+
+    three.BufferGeometry geometry;
+
+    if (handleType == 'Assembly') {
+      geometry = CylinderGeometry(helixBundleView ? 0.8 : 2, helixBundleView ? 0.8 : 2, 1.5, 8);
+    }
+    else {
+      geometry = three.SphereGeometry(2, 32, 32);
+    }
+
     final mesh = three.Mesh(geometry, material);
     mesh.name = name;
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
@@ -205,9 +217,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     slatAccessories[slatID]?[name] = mesh;
   }
 
-  void updateAssemblyHandle(three.Object3D handleMesh, Offset newPosition, double newZOrder, String newTopSide, String newHandleSide){
+  void updateHandle(three.Object3D handleMesh, Offset newPosition, double newZOrder, String newTopSide, String newHandleSide){
     /// Makes updates to the position and color of an existing handle in the 3D scene, if necessary.  Regenerating from scratch is slow so an update is preferred instead.
 
+    // TODO: switching from cargo to assembly handle is not currently catered for properly!
     double verticalOffset = (newTopSide == newHandleSide) ? 2.5 : -2.5;
     bool updateNeeded = false;
     // general position change
@@ -228,20 +241,31 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     final existingHandleMesh = threeJs.scene.getObjectByName(handleName);
 
     bool existingHandle = false;
+    String handleType = 'Assembly';
+    var cargoName = 'Assembly';
+
     if (handleSide == 'H5'){
       existingHandle = slat.h5Handles.containsKey(handlePosition);
+      if (existingHandle) {
+        handleType = slat.h5Handles[handlePosition]!['category'];
+        cargoName = slat.h5Handles[handlePosition]!['descriptor'];
+      }
     }
     else if (handleSide == 'H2'){
       existingHandle = slat.h2Handles.containsKey(handlePosition);
+      if (existingHandle) {
+        handleType = slat.h2Handles[handlePosition]!['category'];
+        cargoName = slat.h2Handles[handlePosition]!['descriptor'];
+      }
     }
 
-    if (existingHandle && assemblyHandleView) {
+    if (existingHandle && (assemblyHandleView && handleType == 'Assembly' || cargoHandleView && handleType == 'Cargo')) {
       if (existingHandleMesh == null) {
         // Create new handle if missing
-        createAssemblyHandle(slat.id, handleName, position, layerMaterials[slat.layer]!, order, topSide, handleSide);
+        createHandle(slat.id, handleName, position, handleType == 'Assembly' ? layerMaterials[slat.layer]!: cargoMaterials[cargoName]!, order, topSide, handleSide, handleType);
       } else {
         // Update existing handle
-        updateAssemblyHandle(existingHandleMesh, position, order, topSide, handleSide);
+        updateHandle(existingHandleMesh, position, order, topSide, handleSide);
       }
     } else if (existingHandleMesh != null){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
@@ -251,7 +275,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   }
 
 
-  void manageAssemblyHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap) {
+  void manageHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap) {
 
     /// Adds, updates or removes assembly handles from the 3D scene based on the current state of the slat.
     if (!slatAccessories.containsKey(baseSlat.id)) {
@@ -284,7 +308,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   }
 
   /// Adds all provided slats into the 3D scene, updating existing slats if necessary.
-  void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap){
+  void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette){
 
     if (!isSetupComplete || threeJs.scene == null) return;
 
@@ -299,6 +323,16 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       }
       else if (layerMaterials[layer]?.color.getHex() != (layerMap[layer]?['color'].value & 0x00FFFFFF)){
         layerMaterials[layer]?.color.setFromHex32(layerMap[layer]?['color'].value & 0x00FFFFFF);
+      }
+    }
+
+    // prepares the material for each cargo type in the palette
+    for (var cargoKey in cargoPalette.keys) {
+      if (!cargoMaterials.containsKey(cargoKey)) {
+        cargoMaterials[cargoKey] = three.MeshPhongMaterial.fromMap({"color": cargoPalette[cargoKey]!.color.value & 0x00FFFFFF, "flatShading": true});
+      }
+      else if (cargoMaterials[cargoKey]?.color.getHex() != (cargoPalette[cargoKey]!.color.value & 0x00FFFFFF)){
+        cargoMaterials[cargoKey]?.color.setFromHex32(cargoPalette[cargoKey]!.color.value & 0x00FFFFFF);
       }
     }
 
@@ -337,7 +371,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         meshGroup.matrixAutoUpdate = false;
         threeJs.scene.add(meshGroup);
 
-        manageAssemblyHandles(slat, layerMap); // add assembly handles to the slat
+        manageHandles(slat, layerMap); // add assembly handles to the slat
       }
       // slat already exists - should check to see if layer position, color, or direction has changed
       else{
@@ -363,7 +397,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
           updateNeeded = true;
         }
 
-        manageAssemblyHandles(slat, layerMap); // add/update/remove assembly handles
+        manageHandles(slat, layerMap); // add/update/remove assembly handles
 
         // request update if necessary
         if(updateNeeded) {
@@ -479,7 +513,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       y60Jump = appState.y60Jump;
       x60Jump = appState.x60Jump;
 
-      manageSlats(appState.slats.values.toList(), appState.layerMap);
+      manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
       return Stack(
         children: [
           LayoutBuilder(
@@ -503,7 +537,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                     setState(() {
                       helixBundleView = value;
                       clearSceneExcept(importantObjects);
-                      manageSlats(appState.slats.values.toList(), appState.layerMap);
+                      manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
                     });
                   },
                 ),
@@ -514,6 +548,16 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   onChanged: (bool value) {
                     setState(() {
                       assemblyHandleView = value;
+                    });
+                  },
+                ),
+                Text("Display Cargo Handles"),
+                Switch(
+                  thumbIcon: switchThumbIcon,
+                  value: cargoHandleView,
+                  onChanged: (bool value) {
+                    setState(() {
+                      cargoHandleView = value;
                     });
                   },
                 ),

@@ -133,6 +133,21 @@ class Slat {
     return totalBases * 327 - (totalBases - 1) * 18.015;
   }
 
-  Slat copy() => Slat(numericID, id, layer, slatPositionToCoordinate, maxLength: maxLength);
+  Slat copy() {
+    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength);
+    newSlat.reversedSlat = reversedSlat;
 
+    newSlat.h2Handles = {
+      for (var entry in h2Handles.entries)
+        entry.key: Map.from(entry.value)
+    };
+    newSlat.h5Handles = {
+      for (var entry in h5Handles.entries)
+        entry.key: Map.from(entry.value)
+    };
+
+    newSlat.placeholderList = List.from(placeholderList);
+
+    return newSlat;
+  }
 }

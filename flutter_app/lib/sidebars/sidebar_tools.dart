@@ -2,6 +2,8 @@ import 'package:provider/provider.dart';
 import '../app_management/shared_app_state.dart';
 import 'slat_design_sidebar.dart';
 import 'assembly_handles_sidebar.dart';
+import 'cargo_sidebar.dart';
+
 import 'package:flutter/material.dart';
 
 
@@ -89,6 +91,8 @@ class _SideBarToolsState extends State<SideBarTools> {
                         SlatDesignTools(),
                       if (actionState.panelMode == 1)
                         AssemblyHandleDesignTools(),
+                      if (actionState.panelMode == 2)
+                        CargoDesignTools(),
                     ],
                   ),
                 )

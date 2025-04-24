@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import '../2d_painters/helper_functions.dart' as utils;
 import 'slat_undo_stack.dart';
 import 'dart:math';
+import  '../crisscross_core/cargo.dart';
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
 String nextCapitalLetter(String current) {
@@ -109,8 +110,6 @@ class DesignState extends ChangeNotifier {
   // main slat container
   Map<String, Slat> slats = {};
 
-
-
   // default values for new layers and slats
   String selectedLayerKey = 'A';
   List<String> selectedSlats = [];   // to highlight on grid painter
@@ -119,51 +118,168 @@ class DesignState extends ChangeNotifier {
   int slatAddCount = 1;
   int currentHamming = 0;
   bool hammingValueValid = true;
+  int cargoAddCount = 1;
+  String? cargoAdditionType;
+  List<Offset> selectedCargoPositions = [];
+
+  Map<String, Map<Offset, String>> occupiedCargoPoints = {};
 
   // useful to keep track of occupancy and speed up grid checks
   Map<String, Map<Offset, String>> occupiedGridPoints = {};
-  int minX = -1;
-  int minY = -1;
-  int maxX = 0;
-  int maxY = 0;
 
-  /// Adds slats to the design
-  void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex});
-    for (var slat in slatCoordinates.entries) {
-      slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}',layer, slat.value);
-      // add the slat to the list by adding a map of all coordinate offsets to the slat ID
-      occupiedGridPoints.putIfAbsent(layer, () => {});
-      occupiedGridPoints[layer]?.addAll({
-        for (var offset in slat.value.values)
-          offset: '$layer-I${layerMap[layer]?["next_slat_id"]}'
-      });
-      layerMap[layer]?["next_slat_id"] += 1;
-      layerMap[layer]?["slat_count"] += 1;
+  Map<String, Cargo> cargoPalette = {
+    'CARGO-1': Cargo(name: 'CARGO-1', shortName: 'C1', color: Colors.red),
+  };
+
+  // GENERAL OPERATIONS //
+
+  Offset convertRealSpacetoCoordinateSpace(Offset inputPosition){
+    return utils.convertRealSpacetoCoordinateSpace(inputPosition, gridMode, gridSize, x60Jump, y60Jump);
+  }
+
+  Offset convertCoordinateSpacetoRealSpace(Offset inputPosition){
+    return utils.convertCoordinateSpacetoRealSpace(inputPosition, gridMode, gridSize, x60Jump, y60Jump);
+  }
+  void resetDefaults(){
+    selectedLayerKey = 'A';
+    selectedSlats = [];   // to highlight on grid painter
+    nextLayerKey = 'C';
+    nextColorIndex = 2;
+    slatAddCount = 1;
+    currentHamming = 0;
+    hammingValueValid = true;
+    cargoAddCount = 1;
+    cargoAdditionType = null;
+    occupiedGridPoints = {};
+    cargoPalette = {};
+    occupiedCargoPoints = {};
+    selectedCargoPositions = [];
+  }
+
+  /// updates the grid type (60 or 90)
+  void setGridMode(String value) {
+    gridMode = value;
+    clearAll();
+    undoStack = SlatUndoStack();
+    notifyListeners();
+  }
+
+
+  void exportCurrentDesign() async {
+    /// Exports the current design to an excel file
+    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, gridSize, gridMode);
+  }
+
+  void importNewDesign() async{
+
+    var (newSlats, newLayerMap, newGridMode, newCargoPalette) = await importDesign();
+    // check if the maps are empty
+    if (newSlats.isEmpty || newLayerMap.isEmpty) {
+      return;
     }
-    hammingValueValid = false;
+    clearAll();
+    undoStack = SlatUndoStack();
+
+    layerMap = newLayerMap;
+    slats = newSlats;
+    gridMode = newGridMode;
+    cargoPalette = newCargoPalette;
+
+    // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
+    // Get the highest letter key
+    String maxKey = layerMap.keys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+    // Compute the next letter key
+    nextLayerKey = nextCapitalLetter(maxKey);
+
+    nextColorIndex = layerMap.length;
+    if (nextColorIndex > colorPalette.length - 1) {
+      nextColorIndex = 0;
+    }
+
+    for (var slat in slats.values) {
+      occupiedGridPoints.putIfAbsent(slat.layer, () => {});
+      occupiedGridPoints[slat.layer]?.addAll({
+        for (var offset in slat.slatPositionToCoordinate.values) offset: slat.id
+      });
+    }
+
+    // fill up occupiedCargoPoints
+    for (var slat in slats.values) {
+      var layer = slat.layer;
+      var topHelix = layerMap[layer]?['top_helix'];
+      for (var i = 0; i < slat.maxLength; i++) {
+        if (slat.h2Handles[i+1] != null && slat.h2Handles[i+1]!['category'] == 'Cargo'){
+          var occupancyID = topHelix == 'H2' ? 'top' : 'bottom';
+          occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
+          occupiedCargoPoints['$layer-$occupancyID']![slat.slatPositionToCoordinate[i+1]!] =  slat.id;
+        }
+        if (slat.h5Handles[i+1] != null && slat.h5Handles[i+1]!['category'] == 'Cargo'){
+          var occupancyID = topHelix == 'H5' ? 'top' : 'bottom';
+          occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
+          occupiedCargoPoints['$layer-$occupancyID']![slat.slatPositionToCoordinate[i+1]!] =  slat.id;
+        }
+      }
+    }
+
+    updateDesignHammingValue();
     notifyListeners();
   }
 
-  /// Updates the position of a slat
-  void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
+  void clearAll() {
     undoStack.saveState(slats, occupiedGridPoints, layerMap,
         {'selectedLayerKey': selectedLayerKey,
           'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex});
-    // also need to remove old positions from occupiedGridPoints and add new ones
-    String layer = slatID.split('-')[0];
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    slats = {};
+    layerMap = {
+      'A': {
+        "direction": gridMode == '90' ? 90 : 120, // slat default direction
+        'order': 0, // draw order - has to be updated when layers are moved
+        'top_helix': 'H5',
+        'bottom_helix': 'H2',
+        'next_slat_id': 1, // used to give an id to a new slat
+        'slat_count': 0,
+        "color": Color(int.parse('0xFFebac23')), // default slat color
+        "hidden": false
+      },
+      'B': {
+        "direction": 180,
+        'next_slat_id': 1,
+        'top_helix': 'H5',
+        'bottom_helix': 'H2',
+        'order': 1,
+        'slat_count': 0,
+        "color": Color(int.parse('0xFFb80058')),
+        "hidden": false
+      },
+    };
 
-    occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
+    // state reset
+    resetDefaults();
 
-    slats[slatID]?.updateCoordinates(slatCoordinates);
-    occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
-    hammingValueValid = false;
     notifyListeners();
   }
+
+  void undo2DAction(){
+    // reverses actions taken on the 2D portion of the design - could potentially improve code here, but it works well as-is
+    clearSelection();
+    hammingValueValid = false;
+    Map<String, dynamic>? previousState = undoStack.undo();
+    if (previousState != null) {
+      slats = previousState['slats'];
+      occupiedGridPoints = previousState['occupiedGridPoints'];
+      occupiedCargoPoints = previousState['occupiedCargoPoints'];
+      cargoPalette = previousState['cargoPalette'];
+      layerMap = previousState['layerMap'];
+      selectedLayerKey = previousState['layerMetaData']['selectedLayerKey'];
+      nextLayerKey = previousState['layerMetaData']['nextLayerKey'];
+      nextColorIndex = previousState['layerMetaData']['nextColorIndex'];
+      cargoAdditionType = null;
+      notifyListeners();
+    }
+  }
+
+  // LAYER OPERATIONS //
 
   /// Updates the active layer
   void updateActiveLayer(String value) {
@@ -181,70 +297,13 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// updates the grid type (60 or 90)
-  void setGridMode(String value) {
-    gridMode = value;
-    clearAll();
-    undoStack = SlatUndoStack();
-    notifyListeners();
-  }
-
-
-  /// Updates the number of slats to be added with the next 'add' click
-  void updateSlatAddCount(int value) {
-    slatAddCount = value;
-    notifyListeners();
-  }
-
   /// Updates the color of a layer
-  void updateColor(String layer, Color color) {
+  void updateLayerColor(String layer, Color color) {
     layerMap[layer] = {
       ...?layerMap[layer],
       "color": color,
     };
     notifyListeners();
-  }
-
-  /// Removes a slat from the design
-  void removeSlat(String ID) {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex});
-    clearSelection();
-    String layer = ID.split('-')[0];
-    slats.remove(ID);
-    occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
-    layerMap[layer]?["slat_count"] -= 1;
-    hammingValueValid = false;
-    notifyListeners();
-  }
-
-  /// Selects or deselects a slat
-  void selectSlat(String ID) {
-    if (selectedSlats.contains(ID)) {
-      selectedSlats.remove(ID);
-    } else {
-      selectedSlats.add(ID);
-    }
-    notifyListeners();
-  }
-
-  void undo2DAction(){
-    // reverses actions taken on the 2D portion of the design - could potentially improve code here, but it works well as-is
-    clearSelection();
-    hammingValueValid = false;
-    Map<String, dynamic>? previousState = undoStack.undo();
-    if (previousState != null) {
-      slats = previousState['slats'];
-      occupiedGridPoints = previousState['occupiedGridPoints'];
-      layerMap = previousState['layerMap'];
-      selectedLayerKey = previousState['layerMetaData']['selectedLayerKey'];
-      nextLayerKey = previousState['layerMetaData']['nextLayerKey'];
-      nextColorIndex = previousState['layerMetaData']['nextColorIndex'];
-
-      notifyListeners();
-    }
   }
 
   /// Clears all selected slats
@@ -279,7 +338,8 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// flips the H2-H5 direction of a layer (currently unused)
+  /// flips the H2-H5 direction of a layer
+  /// TODO: add undo state check here too
   void flipLayer(String layer) {
     if (layerMap[layer]?['top_helix'] == 'H5') {
       layerMap[layer]?['top_helix'] = 'H2';
@@ -288,6 +348,15 @@ class DesignState extends ChangeNotifier {
       layerMap[layer]?['top_helix'] = 'H5';
       layerMap[layer]?['bottom_helix'] = 'H2';
     }
+
+    // swaps occupancy grid points to match layer flip
+    occupiedCargoPoints.putIfAbsent('$layer-top', () => {});
+    occupiedCargoPoints.putIfAbsent('$layer-bottom', () => {});
+
+    var temp = occupiedCargoPoints['$layer-top']!;
+    occupiedCargoPoints['$layer-top'] = occupiedCargoPoints['$layer-bottom']!;
+    occupiedCargoPoints['$layer-bottom'] = temp;
+
     notifyListeners();
   }
 
@@ -310,6 +379,11 @@ class DesignState extends ChangeNotifier {
   void deleteLayer(String layer) {
     if (!layerMap.containsKey(layer))
       return; // Ensure the layer exists before deleting
+
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
 
     layerMap.remove(layer); // Remove the layer
 
@@ -339,7 +413,7 @@ class DesignState extends ChangeNotifier {
     undoStack.saveState(slats, occupiedGridPoints, layerMap,
         {'selectedLayerKey': selectedLayerKey,
           'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex});
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
 
     for (int i = 0; i < newOrder.length; i++) {
       layerMap[newOrder[i]]!['order'] = i; // Assign new order values
@@ -352,7 +426,7 @@ class DesignState extends ChangeNotifier {
     undoStack.saveState(slats, occupiedGridPoints, layerMap,
         {'selectedLayerKey': selectedLayerKey,
           'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex});
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
 
     layerMap[nextLayerKey] = {
       "direction": layerMap.values.last['direction'],
@@ -362,7 +436,7 @@ class DesignState extends ChangeNotifier {
       'bottom_helix': 'H2',
       'order': layerMap.length,
       "color":
-          Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}')),
+      Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}')),
       "hidden": false
     };
     // if last last layerMap value has direction horizontal, next direction should be rotated one step forward
@@ -374,6 +448,77 @@ class DesignState extends ChangeNotifier {
       nextColorIndex += 1;
     }
     nextLayerKey = nextCapitalLetter(nextLayerKey);
+    notifyListeners();
+  }
+
+  // SLAT OPERATIONS //
+
+  /// Adds slats to the design
+  void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    for (var slat in slatCoordinates.entries) {
+      slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}',layer, slat.value);
+      // add the slat to the list by adding a map of all coordinate offsets to the slat ID
+      occupiedGridPoints.putIfAbsent(layer, () => {});
+      occupiedGridPoints[layer]?.addAll({
+        for (var offset in slat.value.values)
+          offset: '$layer-I${layerMap[layer]?["next_slat_id"]}'
+      });
+      layerMap[layer]?["next_slat_id"] += 1;
+      layerMap[layer]?["slat_count"] += 1;
+    }
+    hammingValueValid = false;
+    notifyListeners();
+  }
+
+  /// Updates the position of a slat
+  void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    // also need to remove old positions from occupiedGridPoints and add new ones
+    String layer = slatID.split('-')[0];
+
+    occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
+
+    slats[slatID]?.updateCoordinates(slatCoordinates);
+    occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
+    hammingValueValid = false;
+    notifyListeners();
+  }
+
+  /// Removes a slat from the design
+  void removeSlat(String ID) {
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    clearSelection();
+    String layer = ID.split('-')[0];
+    slats.remove(ID);
+    occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
+    layerMap[layer]?["slat_count"] -= 1;
+    hammingValueValid = false;
+    notifyListeners();
+  }
+
+  /// Selects or deselects a slat
+  void selectSlat(String ID) {
+    if (selectedSlats.contains(ID)) {
+      selectedSlats.remove(ID);
+    } else {
+      selectedSlats.add(ID);
+    }
+    notifyListeners();
+  }
+
+  /// Updates the number of slats to be added with the next 'add' click
+  void updateSlatAddCount(int value) {
+    slatAddCount = value;
     notifyListeners();
   }
 
@@ -460,6 +605,10 @@ class DesignState extends ChangeNotifier {
   }
 
   void cleanAllHandles(){
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
     /// Removes all handles from the slats
     /// TODO: PROBLEM WHEN SHIFTING SLAT LAYERS - ASSEMBLY HANDLES ARE CARRIED OVER!
     for (var slat in slats.values) {
@@ -468,111 +617,103 @@ class DesignState extends ChangeNotifier {
     hammingValueValid = false;
     notifyListeners();
   }
-  void exportCurrentDesign() async {
-    /// Exports the current design to an excel file
-    exportDesign(slats, layerMap, gridSize, gridMode);
-  }
 
-  void importNewDesign() async{
+  // CARGO OPERATIONS //
 
-    var (newSlats, newLayerMap, newGridMode) = await importDesign();
-    // check if the maps are empty
-    if (newSlats.isEmpty || newLayerMap.isEmpty) {
-      return;
-    }
-    clearAll();
-    undoStack = SlatUndoStack();
-
-    layerMap = newLayerMap;
-    slats = newSlats;
-    gridMode = newGridMode;
-
-    // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
-    // Get the highest letter key
-    String maxKey = layerMap.keys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
-    // Compute the next letter key
-    nextLayerKey = nextCapitalLetter(maxKey);
-
-    nextColorIndex = layerMap.length;
-    if (nextColorIndex > colorPalette.length - 1) {
-      nextColorIndex = 0;
-    }
-
-    for (var slat in slats.values) {
-      occupiedGridPoints.putIfAbsent(slat.layer, () => {});
-      occupiedGridPoints[slat.layer]?.addAll({
-        for (var offset in slat.slatPositionToCoordinate.values) offset: slat.id
-      });
-    }
-    updateDesignHammingValue();
-    notifyListeners();
-  }
-
-  void clearAll() {
+  // this is just adding another available cargo type to the list (and not attaching it to any slats)
+  void addCargoType(Cargo cargo){
     undoStack.saveState(slats, occupiedGridPoints, layerMap,
         {'selectedLayerKey': selectedLayerKey,
           'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex});
-    slats = {};
-    layerMap = {
-      'A': {
-        "direction": gridMode == '90' ? 90 : 120, // slat default direction
-        'order': 0, // draw order - has to be updated when layers are moved
-        'top_helix': 'H5',
-        'bottom_helix': 'H2',
-        'next_slat_id': 1, // used to give an id to a new slat
-        'slat_count': 0,
-        "color": Color(int.parse('0xFFebac23')), // default slat color
-        "hidden": false
-      },
-      'B': {
-        "direction": 180,
-        'next_slat_id': 1,
-        'top_helix': 'H5',
-        'bottom_helix': 'H2',
-        'order': 1,
-        'slat_count': 0,
-        "color": Color(int.parse('0xFFb80058')),
-        "hidden": false
-      },
-    };
-
-    // state reset
-    selectedLayerKey = 'A';
-    occupiedGridPoints = {};
-    selectedSlats = [];
-    nextLayerKey = 'C';
-    nextColorIndex = 2;
-    currentHamming = 0;
-    hammingValueValid = true;
-
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    cargoPalette[cargo.name] = cargo;
     notifyListeners();
   }
 
-  Offset convertRealSpacetoCoordinateSpace(Offset inputPosition){
-    return utils.convertRealSpacetoCoordinateSpace(inputPosition, gridMode, gridSize, x60Jump, y60Jump);
+  void deleteCargoType(String cargoName){
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    cargoPalette.remove(cargoName);
+    cargoAdditionType = null;
+    notifyListeners();
   }
 
-  Offset convertCoordinateSpacetoRealSpace(Offset inputPosition){
-    return utils.convertCoordinateSpacetoRealSpace(inputPosition, gridMode, gridSize, x60Jump, y60Jump);
+  /// Updates the number of cargo to be added with the next 'add' click
+  void updateCargoAddCount(int value) {
+    cargoAddCount = value;
+    notifyListeners();
+  }
+
+  void selectCargoType(String ID){
+    if (cargoAdditionType == ID) {
+      cargoAdditionType = null;
+    } else {
+      cargoAdditionType = ID;
+    }
+    notifyListeners();
+  }
+
+  void attachCargo(Cargo cargo, String layerID, String slatSide, Map<int, Offset> coordinates){
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    occupiedCargoPoints.putIfAbsent('$layerID-$slatSide', () => {});
+    for (var coord in coordinates.values){
+      if (!occupiedGridPoints[layerID]!.containsKey(coord)) {
+        // no slat at this position
+        return;
+      }
+      var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
+      int position = slat.slatCoordinateToPosition[coord]!;
+      int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+      slat.setPlaceholderHandle(position, integerSlatSide, cargo.name, 'Cargo');
+      occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
+    }
+    notifyListeners();
+  }
+
+  void removeCargo(String slatID, String slatSide, Offset coordinate){
+    undoStack.saveState(slats, occupiedGridPoints, layerMap,
+        {'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    var slat = slats[slatID]!;
+    int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+    if (integerSlatSide == 2){
+      slat.h2Handles.remove(slat.slatCoordinateToPosition[coordinate]!);
+    }
+    else{
+      slat.h5Handles.remove(slat.slatCoordinateToPosition[coordinate]!);
+    }
+    occupiedCargoPoints['${slat.layer}-$slatSide']?.remove(coordinate);
+    notifyListeners();
   }
 }
 
 /// State management for action mode and display settings
 class ActionState extends ChangeNotifier {
   String slatMode;
+  String cargoMode;
   bool displayAssemblyHandles;
+  bool displayCargoHandles;
   bool evolveMode;
   bool isSideBarCollapsed;
   int panelMode;
+  String cargoAttachMode;
 
 
   ActionState({
     this.slatMode = 'Add',
+    this.cargoMode = 'Add',
     this.displayAssemblyHandles = false,
+    this.displayCargoHandles = true,
     this.evolveMode = false,
     this.isSideBarCollapsed = false,
     this.panelMode = 0,
+    this.cargoAttachMode = 'top'
   });
 
   Map<int, String> panelMap = {
@@ -584,6 +725,11 @@ class ActionState extends ChangeNotifier {
 
   void updateSlatMode(String value) {
     slatMode = value;
+    notifyListeners();
+  }
+
+  void updateCargoMode(String value) {
+    cargoMode = value;
     notifyListeners();
   }
 
@@ -602,6 +748,11 @@ class ActionState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setCargoHandleDisplay(bool value){
+    displayCargoHandles = value;
+    notifyListeners();
+  }
+
   void activateEvolveMode(){
     evolveMode = true;
     notifyListeners();
@@ -609,6 +760,11 @@ class ActionState extends ChangeNotifier {
 
   void deactivateEvolveMode(){
     evolveMode = false;
+    notifyListeners();
+  }
+
+  void updateCargoAttachMode(String value){
+    cargoAttachMode = value;
     notifyListeners();
   }
 }

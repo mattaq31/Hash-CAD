@@ -394,7 +394,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
                                   pickerColor: entry["color"],
                                   onColorChanged: (color) {
                                     setState(() {
-                                      appState.updateColor(key, color);
+                                      appState.updateLayerColor(key, color);
                                     });
                                   },
                                   pickerAreaHeightPercent: 0.5,
