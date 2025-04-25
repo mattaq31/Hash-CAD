@@ -148,7 +148,7 @@ jobs:
           security create-keychain -p "temp_password" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "temp_password" build.keychain
-          security import dev_cert.p12 -k build.keychain -P "$MAC_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security import dev_cert.p12 -k build.keychain -P "$MAC_CERTIFICATE_PASSWORD" -T /usr/bin/codesign || (echo "Certificate import failed" && exit 1)
           security set-key-partition-list -S apple-tool:,apple: -s -k "temp_password" build.keychain
 
       - name: Setup Flutter
