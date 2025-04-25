@@ -173,11 +173,33 @@ jobs:
           flutter build windows --release
         working-directory: flutter_app
 
+      - name: Disable automatic code signing (mac)
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
+        run: |
+          PLIST="./flutter_app/macos/Runner.xcodeproj/project.pbxproj"
+          # Backup first
+          cp "$PLIST" "$PLIST.bak"
+          # Disable code signing by setting CODE_SIGN_IDENTITY to empty
+          sed -i '' 's/CODE_SIGN_IDENTITY = .*;/CODE_SIGN_IDENTITY = "";/g' "$PLIST"
+          sed -i '' 's/DEVELOPMENT_TEAM = .*;/DEVELOPMENT_TEAM = "";/g' "$PLIST"
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = .*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PLIST"
+        working-directory: .
+
       - name: Build Flutter Desktop App (Mac)
         if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
         run: |
           flutter build macos --release
         working-directory: flutter_app
+
+      - name: Sign macOS App (Manual Deep Sign)
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
+        env:
+          CODESIGN_EMAIL: ${{ secrets.CODESIGN_EMAIL }}
+          CODESIGN_ID: ${{ secrets.CODESIGN_ID }}
+        run: |
+          APP_PATH="flutter_app/build/macos/Build/Products/Release/#-CAD.app"
+          codesign --force --options runtime --sign "Apple Development: $CODESIGN_EMAIL ($CODESIGN_ID)" --deep "$APP_PATH"
+        working-directory: .
 
       - name: Build Flutter Desktop App (Linux)
         if: matrix.os == 'ubuntu-latest'
