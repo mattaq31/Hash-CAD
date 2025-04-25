@@ -203,12 +203,15 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       geometry = CylinderGeometry(helixBundleView ? 0.8 : 2, helixBundleView ? 0.8 : 2, 1.5, 8);
     }
     else {
-      geometry = three.SphereGeometry(2, 32, 32);
+      geometry = three.BoxGeometry(4, 6, 4);
     }
 
     final mesh = three.Mesh(geometry, material);
     mesh.name = name;
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
+    if (handleType == 'Cargo'){
+      verticalOffset += (topSide == handleSide) ? 2 : -2;
+    }
     mesh.position.setValues(position.dx, (zOrder * 6.5) + verticalOffset, position.dy);
     mesh.rotation.z = math.pi;
     mesh.updateMatrix();
@@ -217,11 +220,14 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     slatAccessories[slatID]?[name] = mesh;
   }
 
-  void updateHandle(three.Object3D handleMesh, Offset newPosition, double newZOrder, String newTopSide, String newHandleSide){
+  void updateHandle(three.Object3D handleMesh, Offset newPosition, double newZOrder, String newTopSide, String newHandleSide, String handleType){
     /// Makes updates to the position and color of an existing handle in the 3D scene, if necessary.  Regenerating from scratch is slow so an update is preferred instead.
 
     // TODO: switching from cargo to assembly handle is not currently catered for properly!
     double verticalOffset = (newTopSide == newHandleSide) ? 2.5 : -2.5;
+    if (handleType == 'Cargo'){
+      verticalOffset += (newTopSide == newHandleSide) ? 2 : -2;
+    }
     bool updateNeeded = false;
     // general position change
     if (handleMesh.position.x != newPosition.dx || handleMesh.position.y != (newZOrder * 6.5) + verticalOffset || handleMesh.position.z != newPosition.dy) {
@@ -265,7 +271,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         createHandle(slat.id, handleName, position, handleType == 'Assembly' ? layerMaterials[slat.layer]!: cargoMaterials[cargoName]!, order, topSide, handleSide, handleType);
       } else {
         // Update existing handle
-        updateHandle(existingHandleMesh, position, order, topSide, handleSide);
+        updateHandle(existingHandleMesh, position, order, topSide, handleSide, handleType);
       }
     } else if (existingHandleMesh != null){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
