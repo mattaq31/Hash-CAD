@@ -72,7 +72,7 @@ jobs:
         with:
           nuitka-version: main
           script-name: main_server.py
-          mode: app
+          mode: onefile
           include-module: matplotlib.backends.backend_pdf
           onefile-tempdir-spec: '{HOME}/.nuitka_cache'
           enable-plugins: no-qt
