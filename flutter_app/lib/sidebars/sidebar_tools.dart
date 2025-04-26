@@ -1,11 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import 'echo_sidebar.dart';
 import '../app_management/shared_app_state.dart';
 import 'slat_design_sidebar.dart';
 import 'assembly_handles_sidebar.dart';
 import 'cargo_sidebar.dart';
-
-import 'package:flutter/material.dart';
-
 
 class SideBarTools extends StatefulWidget {
   const SideBarTools({super.key});
@@ -93,6 +93,8 @@ class _SideBarToolsState extends State<SideBarTools> {
                         AssemblyHandleDesignTools(),
                       if (actionState.panelMode == 2)
                         CargoDesignTools(),
+                      if (actionState.panelMode == 3)
+                        EchoTools(),
                     ],
                   ),
                 )

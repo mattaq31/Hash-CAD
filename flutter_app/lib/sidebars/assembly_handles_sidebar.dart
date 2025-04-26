@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../app_management/shared_app_state.dart';
 import 'package:flutter/material.dart';
 import '../graphics/rating_indicator.dart';
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AssemblyHandleDesignTools extends StatefulWidget {
   const AssemblyHandleDesignTools({super.key});
@@ -120,7 +122,23 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                         AlertDialog(
                           title:
                           const Text('Assembly Handle Evolution'),
-                          content: const Text('To run assembly handle evolution, please download the desktop version of the app! (LINK TBC)'),
+                          content: RichText(
+                            text: TextSpan(
+                              style: TextStyle(color: Colors.black87, fontSize: 16),
+                              children: [
+                                const TextSpan(text: 'To run assembly handle evolution, please download the desktop version of the app ('),
+                                TextSpan(
+                                  text: 'https://github.com/mattaq31/Hash-CAD/releases',
+                                  style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      launchUrl(Uri.parse('https://github.com/mattaq31/Hash-CAD/releases'));
+                                    },
+                                ),
+                                const TextSpan(text: ')!'),
+                              ],
+                            ),
+                          ),
                           actions: <Widget>[
                             TextButton(
                               onPressed: () =>

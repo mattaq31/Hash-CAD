@@ -52,6 +52,7 @@ dependencies:
   fl_chart: ^0.70.2
   dotted_border: ^2.1.0
   crypto: ^3.0.6
+  url_launcher: ^6.3.1
 
 dependency_overrides:
   three_js_core_loaders:

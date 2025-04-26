@@ -152,7 +152,7 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                     NavigationRailDestination(icon: Icon(Icons.brush), label: Text('Slat\n Design', textAlign: TextAlign.center)),
                     NavigationRailDestination(icon: Icon(Icons.developer_board), label: Text('Assembly\n Handles', textAlign: TextAlign.center)),
                     NavigationRailDestination(icon: Icon(Icons.add_box), label: Text('Cargo', textAlign: TextAlign.center)),
-                    NavigationRailDestination(icon: Icon(Icons.ios_share), label: Text('Export\n Settings', textAlign: TextAlign.center)),
+                    NavigationRailDestination(icon: Icon(Icons.precision_manufacturing), label: Text('Echo\n Config', textAlign: TextAlign.center)),
                   ],
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
