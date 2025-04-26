@@ -247,11 +247,11 @@ jobs:
           name: hash-cad-windows-latest
           path: artifacts/
 
-      - name: Download Mac Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: hash-cad-macos-latest
-          path: artifacts/
+#      - name: Download Mac Artifact
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: hash-cad-macos-latest
+#          path: artifacts/
 
       - name: Download Linux Artifact
         uses: actions/download-artifact@v4
