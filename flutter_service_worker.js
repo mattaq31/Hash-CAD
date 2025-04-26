@@ -8,10 +8,10 @@ const RESOURCES = {"assets/AssetManifest.json": "922fa6104081f71d1b489a265732c77
 "assets/FontManifest.json": "1475fbed41037b57eabe6ded9ad156ae",
 "assets/fonts/Roboto/Roboto-Regular.ttf": "303c6d9e16168364d3bc5b7f766cfff4",
 "assets/fonts/Roboto/Roboto-Bold.ttf": "8c9110ec6a1737b15a5611dc810b0f92",
-"assets/fonts/MaterialIcons-Regular.otf": "9d121d654f1b98260b93671dd80eeb5f",
+"assets/fonts/MaterialIcons-Regular.otf": "d0be2d7c12d8e5e7c605acc020367875",
 "assets/AssetManifest.bin.json": "dfebbbb08f8329e634d8cf77c7228a30",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
-"assets/NOTICES": "c9b13d229226c907fef1595ad0d88cd1",
+"assets/NOTICES": "8cc78816d811791237479b637e2724ea",
 "assets/packages/three_js_controls/assets/joystick_knob.png": "bb0811554c35e7d74df6d80fb5ff5cd5",
 "assets/packages/three_js_controls/assets/joystick_background.png": "8c9aa78348b48e03f06bb97f74b819c9",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "33b7d9392238c04c131b6ce224e13711",
@@ -32,13 +32,13 @@ const RESOURCES = {"assets/AssetManifest.json": "922fa6104081f71d1b489a265732c77
 "canvaskit/skwasm_st.js.symbols": "c7e7aac7cd8b612defd62b43e3050bdd",
 "index.html": "163330d450f64728ffd261a7d3c56189",
 "/": "163330d450f64728ffd261a7d3c56189",
-"flutter_bootstrap.js": "ff5e3ba254e37bb8cf0a9c31ac8ee2aa",
+"flutter_bootstrap.js": "476bd5fb71758505070ae969dfea2f79",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
-"main.dart.js": "20c2e86dc126e40423444691e9221805"};
+"main.dart.js": "e0be30066e286eb5bc9a0f7e24112b13"};
 // The application shell files that are downloaded before a service worker can
 // start.
 const CORE = ["main.dart.js",
