@@ -5,12 +5,12 @@ from flask import render_template, send_file
 from flask_socketio import Namespace, emit
 from werkzeug.utils import secure_filename
 
-from GUI.backend_functions.server_helper_functions import (positional_3d_array_to_dict,
-                                                           positional_2d_array_and_layer_to_dict,
-                                                           cargo_to_inventory,
-                                                           convert_dict_handle_orientations_to_string,
-                                                           convert_design_dictionaries_into_arrays,
-                                                           combine_megastructure_arrays)
+from prototype_gui.backend_functions.server_helper_functions import (positional_3d_array_to_dict,
+                                                                     positional_2d_array_and_layer_to_dict,
+                                                                     cargo_to_inventory,
+                                                                     convert_dict_handle_orientations_to_string,
+                                                                     convert_design_dictionaries_into_arrays,
+                                                                     combine_megastructure_arrays)
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
 from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands

@@ -4,7 +4,7 @@ from flask_socketio import SocketIO
 import sys
 import os
 
-from GUI.backend_functions.debugging_error_preview import DualStreamHandler
+from prototype_gui.backend_functions.debugging_error_preview import DualStreamHandler
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping.plate_constants import base_directory
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
                         app.config['USER_PLATE_FOLDER'], app.config['OUTPUT_FOLDER'])
 
     with app.app_context():
-        from GUI.backend_functions.routing_and_sockets import SocketNamespace
+        from prototype_gui.backend_functions.routing_and_sockets import SocketNamespace
 
         namespace = SocketNamespace('/crisscross')
         socketio_instance.on_namespace(namespace)

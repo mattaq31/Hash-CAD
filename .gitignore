@@ -133,5 +133,5 @@ scratch/*
 ~$*
 
 # GUI node modules
-/GUI/node_modules
-/GUI/temp_files
+/prototype_gui/node_modules
+/prototype_gui/temp_files

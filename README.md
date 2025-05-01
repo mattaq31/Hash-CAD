@@ -24,7 +24,7 @@
 ## Python API
 
 ### Installation and Requirements
-To install python interface, navigate to the root directory and run:
+To install the python interface, navigate to the root directory and run:
 
 `pip install -e .`
 
