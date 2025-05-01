@@ -4,6 +4,8 @@ from tqdm import tqdm
 import numpy as np
 import os
 
+# To use this system you will need to install the optuna package (https://optuna.org) first.
+
 optuna_spec = importlib.util.find_spec("optuna")  # only imports optuna if this is available
 if optuna_spec is not None:
     import optuna
