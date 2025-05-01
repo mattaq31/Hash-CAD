@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crisscross"
+dynamic = ["version"]
+description = "Package for designing, evolving and configuring a crisscross megastructure for laboratory assembly."
+authors = [
+    { name = "Matthew Aquilina" },
+    { name = "Florian Katzmeier" },
+    { name = "Siyuan Stella Wang" },
+    { name = "Corey Becker" },
+    { name = "Yichen Zhao" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+
+[project.urls]
+Homepage = "https://github.com/mattaq31/Hash-CAD"
+
+[project.scripts]
+handle_evolve = "crisscross.cli_functions.handle_evolution:handle_evolve"
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "node-and-date"
+
+[tool.setuptools]
+packages = ["crisscross"]
