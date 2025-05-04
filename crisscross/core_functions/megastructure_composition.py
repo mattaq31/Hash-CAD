@@ -209,7 +209,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param destination_plate_name: The name of the design's destination output plate
     :param output_folder: The output folder to save the file to
     :param output_filename: The name of the output file
-    :param default_transfer_volume: The default transfer volume for each handle
+    :param default_transfer_volume: The default transfer volume for each handle (in nL)
     :param transfer_volume_multiplier_for_slats: Dictionary assigning a special transfer multiplier for specified slats (will be applied to all special plate volumes too)
     :param source_plate_type: The physical plate type in use
     :param output_empty_wells: Outputs an empty row for a well if a handle is only a placeholder
