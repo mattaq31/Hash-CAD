@@ -2,9 +2,9 @@ from os.path import join
 from crisscross.helper_functions import base_directory
 
 
-core_plate_folder = join(base_directory, 'core_plates')
-assembly_handle_folder = join(base_directory, 'assembly_handle_plates')
-cargo_plate_folder = join(base_directory, 'cargo_plates')
+core_plate_folder = join(base_directory, 'dna_source_plates', 'core_plates')
+assembly_handle_folder = join(base_directory, 'dna_source_plates', 'assembly_handle_plates')
+cargo_plate_folder = join(base_directory, 'dna_source_plates', 'cargo_plates')
 old_format_cargo_plate_folder = join(cargo_plate_folder, 'old_format')
 
 # ASSEMBLY HANDLE PLATES
@@ -37,6 +37,7 @@ cckz_h2_antihandle_plates = ['P3655_MA_H2_antihandles_S1A', 'P3656_MA_H2_antihan
 
 seed_core = 'sw_src001_seedcore'  # this contains all the seed sequences, including the socket sequences
 slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, including the control sequences (no handle)
+slat_core_latest = 'sw_src009_control_max'  # this contains the slat control sequences with 4 duplicates per staple to reduce echo errors
 
 seed_slat_purification_handles = "sw_src004_polyAgridiron" # this contains toehold-polyA extensions on gridiron seed staples for attachment to polyT beads and toehold-3letter code sequences for slat attachment to beads
 

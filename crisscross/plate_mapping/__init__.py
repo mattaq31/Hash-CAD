@@ -5,7 +5,7 @@ from crisscross.plate_mapping.plate_constants import (sanitize_plate_map, base_d
                                                       seed_plug_plate_corner, seed_plug_plate_center,
                                                       seed_plug_plate_all, cargo_plate_folder,
                                                       nelson_quimby_antihandles,
-                                                      octahedron_patterning_v1,
+                                                      octahedron_patterning_v1, slat_core_latest,
                                                       simpsons_mixplate_antihandles, seed_slat_purification_handles,
                                                       cckz_h5_handle_plates, cckz_h2_antihandle_plates,
                                                       cckz_h5_sample_handle_plates, cckz_h2_sample_antihandle_plates,
@@ -127,6 +127,24 @@ def get_standard_plates(handle_library_v2=False):
     all_8064_seed_plugs = get_plateclass('CombinedSeedPlugPlate',seed_plug_plate_all_8064, core_plate_folder)
     return (core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate,
             combined_seed_plate, all_8064_seed_plugs)
+
+def get_cutting_edge_plates():
+    """
+    Generates standard plates used commonly in most designs.  These are the most updated plates in the current library.
+    """
+    core_plate = get_plateclass('ControlPlateWithDuplicates', slat_core_latest, core_plate_folder)
+
+    crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
+                                                    cckz_h2_antihandle_plates,
+                                                    assembly_handle_folder, plate_slat_sides=[2] * 6)
+
+    crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
+                                                cckz_h5_handle_plates,
+                                                assembly_handle_folder, plate_slat_sides=[5] * 6)
+
+    all_8064_seed_plugs = get_plateclass('CombinedSeedPlugPlate',seed_plug_plate_all_8064, core_plate_folder)
+
+    return core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, all_8064_seed_plugs
 
 
 def get_cargo_plates():

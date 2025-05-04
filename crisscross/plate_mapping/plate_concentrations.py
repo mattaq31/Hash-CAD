@@ -40,6 +40,7 @@ concentration_library = {
     'sw_src004': 200,
     'sw_src005': 200,
     'sw_src007': 200,
+    'sw_src009': 500,
     # seed plates
     'P3555_SSW': 500,
     'P3339_JL': 500,
