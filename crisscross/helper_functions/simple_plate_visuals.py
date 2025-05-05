@@ -1,5 +1,5 @@
 import os
-from crisscross.plate_mapping.plate_constants import plate96, plate384
+from crisscross.helper_functions import plate96, plate384
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch
 from string import ascii_uppercase
