@@ -1,0 +1,1 @@
+Thanks apple for making txt file creation as painful as possible
