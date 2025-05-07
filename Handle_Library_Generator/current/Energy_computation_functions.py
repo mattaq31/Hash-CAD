@@ -51,6 +51,9 @@ def nupack_compute_energy(seq1, seq2, samples = 10, type = 'total'):
         print(f"The following error occurred: {e}")
         return -1.0
 
+def get_library_path():
+    return "pre_computed_energies/interactions_matrix.pkl"
+
 def nupack_compute_energy_precompute_library(seq1, seq2, samples = 1, type = 'total', Use_Library= False, fivep_ext="TT", threep_ext=""):
 
     #use total for the total gibbs free energy
@@ -63,7 +66,7 @@ def nupack_compute_energy_precompute_library(seq1, seq2, samples = 1, type = 'to
         #check if the precopute library was already loaded. if not open it
         if not hasattr(nupack_compute_energy_precompute_library, "library_cache"):
             #load library form here
-            file_name = "pre_computed_energies/interactions_matrix.pkl"
+            file_name = get_library_path()
             #if it exists load it else create a new one
             if os.path.exists(file_name):
                 with open(file_name, "rb") as file:
@@ -119,12 +122,15 @@ def compute_ontarget_energies(handles):
         energies[i] = nupack_compute_energy_precompute_library(handles[i], revcom(handles[i]), samples=100, type='total')
     return energies
 
+
+
+# helper function for parralel computing
 def compute_pair_energy(i, j, seq1, seq2, Use_Library):
     # return i, j, nupack_compute_energy(seq1, seq2)
     return i, j, nupack_compute_energy_precompute_library(seq1, seq2, Use_Library=Use_Library)
 
 
-def compute_offarget_energies(sequences, Report_energies=True, Use_Library= True):
+def compute_offarget_energies(sequences, Use_Library= True):
     handles = sequences
     antihandles = [revcom(seq) for seq in sequences]
 
@@ -139,8 +145,7 @@ def compute_offarget_energies(sequences, Report_energies=True, Use_Library= True
     # Define a function for parallel processing
     def parallel_energy_computation(seqs1, seqs2, energy_matrix, condition):
         max_workers = max(1, os.cpu_count() * 3// 4)
-        print('calculating with ... cores')
-        print(max_workers)
+        print(f'Calculating with {max_workers} cores...')
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = []
             for i, seq1 in enumerate(seqs1):
@@ -174,8 +179,9 @@ def compute_offarget_energies(sequences, Report_energies=True, Use_Library= True
     min_handle_antihandle_energy = np.min(crosscorrelated_handle_antihandle_energies)
     minimum_energy = min(min_handle_handle_energy, min_handle_antihandle_energy)
 
+    #update the precompute library to  make things faster in the futur
     if Use_Library:
-        file_name = "pre_computed_energies/interactions_matrix.pkl"
+        file_name = get_library_path()
         if os.path.exists(file_name):
             with open(file_name, "rb") as file:
                 library1 = pickle.load(file)
@@ -206,45 +212,36 @@ def compute_offarget_energies(sequences, Report_energies=True, Use_Library= True
             pickle.dump(library1, file)
 
     # Report energies if required
-    if Report_energies:
-        return {
+
+    return{
             'handle_handle_energies': crosscorrelated_handle_handle_energies,
             'antihandle_handle_energies': crosscorrelated_handle_antihandle_energies,
-            'antihandle_antihandle_energies': crosscorrelated_antihandle_antihandle_energies,
-            'all_energies': all_combined,
-            'min_energy': minimum_energy
-        }
-    else:
-        return {'min_energy': minimum_energy}
+            'antihandle_antihandle_energies': crosscorrelated_antihandle_antihandle_energies
+            }
+
 
 
 if __name__ == "__main__":
     # run test to see if the functions above work
 
-    testseq = 'ATGCCCGTCG'
-    print(revcom(testseq))
-
-    testenergy= nupack_compute_energy_precompute_library(testseq, revcom(testseq))
+    testseq1 = 'ATGCCCGTCG'
+    print(revcom(testseq1))
+    testseq2 = 'GTAGCCATGC'
+    testenergy= nupack_compute_energy_precompute_library(testseq1, revcom(testseq1),Use_Library=False)
     print(testenergy)
 
-    testenergy= nupack_compute_energy_precompute_library(testseq, revcom(testseq),samples=100)
+    testenergy= nupack_compute_energy_precompute_library(testseq1, testseq2,samples=1,Use_Library=False)
     print(testenergy)
 
-    testenergy= nupack_compute_energy_precompute_library(testseq, testseq,samples=100)
+    testenergy= nupack_compute_energy_precompute_library(testseq1, testseq2,samples=100,Use_Library=False)
     print(testenergy)
 
-    with open(os.path.join('.', 'core_32_sequences.pkl'), 'rb') as f:
-        antihandles, handles = pickle.load(f)
-    print(handles)
-    test_energy_list = compute_ontarget_energies(handles)
-    print(test_energy_list)
-    print('here')
+
     test_sequence_list = ['ACATGTA','ATGCCCGTCG']
 
-    result= compute_offarget_energies(test_sequence_list, Report_energies=True,Use_Library=False)
+    result= compute_offarget_energies(test_sequence_list,Use_Library=False)
 
     print(result)
-    print(result['all_energies'])
     print(result['handle_handle_energies'])
 
     more_test_sequences = [
@@ -268,27 +265,9 @@ if __name__ == "__main__":
         'TTCAGGATAG', 'CCGTAGGTCA', 'TAGCGTAGAT', 'ACGTAGCGTA', 'GCTTAGTACC',
         'CTAGGCTAGC', 'ATGCGGTACC', 'TTAGCTAGGA', 'GTAGCTGTAC', 'CGATGTACTT',
         'GATCCGTAGT', 'TTCAGTTACC', 'CCGTAGCTGA', 'TAGCTAGATC', 'ACGTTAGCAT',
-        'GGTACGTACC', 'TACGGCTAGT', 'CTAGGTAGAT', 'AGCTGTAGCC', 'GATCGTAGAT',
-        'TTAGCGGATG', 'CATGCTGGTA', 'GTAGCCTAGT', 'CGATGTTAGC', 'ATGCGTTACC',
-        'TAGCGTACCA', 'ACGTAGTCCA', 'GCTAGCATGA', 'TTGATGCTAA', 'CCGTAGGATC',
-        'CTAGTTGACC', 'GATCGCTAGT', 'TTCAGGTAGC', 'CGTACGTGAT', 'TAGCTAGCTA',
-        'GCTAGTCGTA', 'ATGCGTAGCA', 'ACGTTCGATG', 'GTAGTTAGCA', 'TTCAGCGTAC',
-        'GATCGTTACC', 'CCGTAGTGCA', 'TACGGATCGT', 'AGTACGGTAA', 'GCTTAGCTGA',
-        'TAGGATCGTA', 'ACGTTGATGC', 'GTACGATGTC', 'CTAGGCTGTA', 'CGTAGGCTAA',
-        'ATCGTGATAC', 'TTAGGCGTAC', 'CATGGTAGTA', 'GTAGCGATGC', 'CGATCGTAGT',
-        'GATACGTGAT', 'TTCAGTGCTA', 'CCGTAGTAGC', 'TAGCTGGTAA', 'ACGTAGTACC',
-        'GCTTAGGATG', 'CTAGCGGTAC', 'AGCTGCTAGC', 'TGCATCGTAC', 'CGGTAGCTTA',
-        'ATCGGATAGC', 'GATCGTACTG', 'TTAGCTGATC', 'AGGCTAGTAC', 'GTAGGCTAAT',
-        'TCCGATAGTC', 'CTAGGATGTC', 'CGTACGCTGA', 'GCTAGTAGCA', 'ATGCCGTACC',
-        'TAGGATAGCT', 'ACGTTCGTGA', 'GATACGGTAC', 'TTCAGCTGTC', 'CCGATGCTAT',
-        'AGTACGCTGA', 'GTTCAGTACC', 'TACGTGATCG', 'CTAGTGGATG', 'GCTAGGTAGC',
-        'ATCGTTAGCT', 'CGTACGGATT', 'TTAGCGTATT', 'AGCTAGTTCT', 'GATAGCTACT',
-        'TTCAGGATAC', 'CCGTAGGTCT', 'TAGCGTAGAC', 'ACGTAGCGTT', 'GCTTAGTACA',
-        'CTAGGCTAGT', 'ATGCGGTACC', 'TTAGCTAGAT', 'GTAGCTGTAA', 'CGATGTACTG',
-        'GATCCGTAGC', 'TTCAGTTACA', 'CCGTAGCTGT', 'TAGCTAGATT', 'ACGTTAGCAA',
-        'GGTACGTACA', 'TACGGCTAGA', 'CTAGGTAGAG', 'AGCTGTAGCT', 'GATCGTAGAC'
+        'GGTACGTACC', 'TACGGCTAGT', 'CTAGGTAGAT', 'AGCTGTAGCC', 'GATCGTAGAT'
     ]
-
-    cresult = compute_offarget_energies(more_test_sequences, Report_energies=True, Use_Library=True)
+# run twice to see if use_library makes a difference
+    cresult = compute_offarget_energies(more_test_sequences, Use_Library=True)
     print(cresult)
     print(cresult['all_energies'])
