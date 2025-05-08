@@ -1,16 +1,272 @@
+import 'dart:collection';
 import 'dart:math' as math;
-import '../crisscross_core/slats.dart';
-import '../app_management/shared_app_state.dart';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:three_js_helpers/three_js_helpers.dart';
 import 'package:three_js_controls/three_js_controls.dart';
 import 'package:three_js_core/three_js_core.dart' as three;
 import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
-import 'package:provider/provider.dart';
-import 'package:three_js_helpers/three_js_helpers.dart';
+import 'package:three_js_helpers/camera_helper.dart';
+
 import '../2d_painters/helper_functions.dart';
 import '../crisscross_core/cargo.dart';
+import '../crisscross_core/slats.dart';
+import '../app_management/shared_app_state.dart';
+
+bool approxEqual(double a, double b, [double epsilon = 1e-4]) {
+  return (a - b).abs() < epsilon;
+}
+
+three.BufferGeometry createHoneyCombSlat(List<List<double>> helixBundlePositions, double helixBundleSize, double gridSize) {
+
+  final mergedGeometry = three.BufferGeometry();
+  final mergedPositions = <double>[];
+  final mergedNormals = <double>[];
+  final mergedIndices = <int>[];
+
+  int indexOffset = 0;
+
+  for (var pos in helixBundlePositions) {
+
+    // Create cylinder geometry
+    CylinderGeometry geometry = CylinderGeometry(helixBundleSize/2, helixBundleSize/2, gridSize * 32, 20);
+
+    // Translate the geometry to its position
+    geometry.translate(pos[1], 0, pos[0]);
+
+    final posAttr = geometry.attributes['position'] as tmath.BufferAttribute;
+    final normAttr = geometry.attributes['normal'] as tmath.BufferAttribute;
+
+    // Copy positions and normals
+    for (int i = 0; i < posAttr.count; i++) {
+      mergedPositions.add(posAttr.getX(i)!.toDouble());
+      mergedPositions.add(posAttr.getY(i)!.toDouble());
+      mergedPositions.add(posAttr.getZ(i)!.toDouble());
+    }
+
+    for (int i = 0; i < normAttr.count; i++) {
+      mergedNormals.add(normAttr.getX(i)!.toDouble());
+      mergedNormals.add(normAttr.getY(i)!.toDouble());
+      mergedNormals.add(normAttr.getZ(i)!.toDouble());
+    }
+
+    if (geometry.index != null) {
+      final idx = geometry.index!;
+      for (int i = 0; i < idx.count; i++) {
+        mergedIndices.add(idx.getX(i)!.toInt() + indexOffset);
+      }
+    } else {
+      for (int i = 0; i < posAttr.count; i++) {
+        mergedIndices.add(i + indexOffset);
+      }
+    }
+
+    indexOffset += posAttr.count;
+  }
+
+  // Set attributes and index
+  mergedGeometry.setAttributeFromString('position', tmath.Float32BufferAttribute.fromList(mergedPositions, 3));
+  mergedGeometry.setAttributeFromString('normal', tmath.Float32BufferAttribute.fromList(mergedNormals, 3));
+  mergedGeometry.setIndex(tmath.Uint16BufferAttribute.fromList(mergedIndices, 1));
+
+  return mergedGeometry;
+}
+
+
+class InstanceMetrics {
+  int nextIndex;
+  int maxIndex;
+  int indexMultiplier;
+  late three.InstancedMesh mesh;
+  final three.Material material = three.MeshStandardMaterial.fromMap({"color": 0x00FFFFFF, "flatShading": false});
+  final three.BufferGeometry geometry;
+  final Queue<int> recycledIndices;
+  final Map<String, int> nameIndex;
+  final Map<String, tmath.Vector3> positionIndex;
+  final Map<String, tmath.Euler> rotationIndex;
+  final Map<String, Color> colorIndex;
+  final three.Object3D dummy = three.Object3D();
+  final three.ThreeJS threeJs;
+
+  InstanceMetrics({required this.geometry, required this.threeJs, this.nextIndex = 0, this.maxIndex = 1000, this.indexMultiplier = 1000})
+      : recycledIndices = Queue<int>(),
+        nameIndex = {},
+        positionIndex = {},
+        rotationIndex = {},
+        colorIndex = {}
+  {
+    createMesh();
+  }
+
+  void createMesh({bool updateOld=false}){
+    if (updateOld){
+      threeJs.scene.remove(mesh);
+    }
+    mesh = three.InstancedMesh(geometry, material, maxIndex);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    final colors = tmath.Float32Array(maxIndex * 3);
+    final colorAttr = tmath.InstancedBufferAttribute(colors, 3);
+    mesh.instanceColor = colorAttr;
+
+    final initDummy = three.Object3D();
+    initDummy.position.setValues(99999, 99999, 99999); // place out of sight
+    initDummy.rotation.set(0, 0, 0);
+    initDummy.updateMatrix();
+    for (int i = 0; i < maxIndex; i++) {
+      mesh.setMatrixAt(i, initDummy.matrix);
+    }
+
+    threeJs.scene.add(mesh);
+  }
+
+  void _expandCapacity(int newCapacity) {
+    if (newCapacity <= maxIndex) return;
+
+    // Backup old state
+    final oldNameIndex = Map<String, int>.from(nameIndex);
+    final oldPositionIndex = Map<String, tmath.Vector3>.from(positionIndex);
+    final oldRotationIndex = Map<String, tmath.Euler>.from(rotationIndex);
+    final oldColorIndex = Map<String, Color>.from(colorIndex);
+
+    maxIndex = newCapacity;
+    recycledIndices.clear();
+    nameIndex.clear();
+    positionIndex.clear();
+    rotationIndex.clear();
+    colorIndex.clear();
+
+    createMesh(updateOld: true);
+
+    // Reapply old instance data
+    for (final entry in oldNameIndex.entries) {
+
+
+      final name = entry.key;
+
+      // Allocate the old index
+      nameIndex[name] = entry.value;
+
+      // Restore position/rotation
+      final position = oldPositionIndex[name]!;
+      final rotation = oldRotationIndex[name]!;
+
+      setPositionRotation(name, position, rotation);
+
+      // Restore color
+      final color = oldColorIndex[name];
+      if (color != null) {
+        setColor(name, color);
+      }
+    }
+  }
+
+  /// Allocates an index, reusing recycled ones if available.
+  int allocateIndex(String name) {
+    if (nameIndex.containsKey(name)) {
+      return nameIndex[name]!;
+    }
+
+    int index;
+    if (recycledIndices.isNotEmpty) {
+      index = recycledIndices.removeFirst();
+    } else if (nextIndex < maxIndex) {
+      index = nextIndex++;
+    } else {
+      _expandCapacity(maxIndex + indexMultiplier);
+      index = nextIndex++;
+    }
+
+    nameIndex[name] = index;
+    return index;
+  }
+
+  void setPositionRotation(String name, tmath.Vector3 position, tmath.Euler rotation){
+    positionIndex[name] = position;
+    rotationIndex[name] = rotation;
+    dummy.position = position;
+    dummy.rotation.set(rotation.x, rotation.y, rotation.z);
+    dummy.updateMatrix();
+
+    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    mesh.instanceMatrix?.needsUpdate = true;
+  }
+
+  void setPosition(String name, tmath.Vector3 position) {
+    positionIndex[name] = position;
+    dummy.position = position;
+    dummy.updateMatrix();
+    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    mesh.instanceMatrix?.needsUpdate = true;
+  }
+
+  void setRotation(String name, tmath.Euler rotation) {
+    rotationIndex[name] = rotation;
+    dummy.rotation.set(rotation.x, rotation.y, rotation.z);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    mesh.instanceMatrix?.needsUpdate = true;
+  }
+
+  void setColor(String name, Color color) {
+    colorIndex[name] = color;
+    mesh.instanceColor?.setXYZ(nameIndex[name]!, color.r, color.g, color.b);
+    mesh.instanceColor!.needsUpdate = true;
+  }
+
+  void hideAndRecycle(String name){
+    dummy.position.setValues(99999, 99999, 99999); // place out of sight
+    dummy.updateMatrix();
+    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    mesh.instanceMatrix?.needsUpdate = true;
+    recycleIndex(name);
+  }
+
+  /// Recycles a previously used index and removes its name mapping.
+  void recycleIndex(String name) {
+    final index = nameIndex.remove(name);
+    positionIndex.remove(name);
+    rotationIndex.remove(name);
+    colorIndex.remove(name);
+
+    if (index != null) {
+      recycledIndices.add(index);
+    }
+  }
+
+  void recycleAllIndices(){
+    dummy.position.setValues(99999, 99999, 99999); // place out of sight
+    dummy.updateMatrix();
+    for (var name in nameIndex.keys.toList()) {
+      final index = nameIndex.remove(name);
+      positionIndex.remove(name);
+      rotationIndex.remove(name);
+      colorIndex.remove(name);
+
+      if (index != null) {
+        recycledIndices.add(index);
+      }
+
+      mesh.setMatrixAt(index!, dummy.matrix.clone());
+      mesh.instanceMatrix?.needsUpdate = true;
+    }
+  }
+
+  /// Gets the index for a given name, or null if not found.
+  int? getIndex(String name) => nameIndex[name];
+
+  tmath.Vector3? getPosition(String name) => positionIndex[name];
+
+  tmath.Euler? getRotation(String name) => rotationIndex[name];
+
+  Color? getColor(String name) => colorIndex[name];
+
+  /// Checks if an index is currently available.
+  bool hasAvailable() => recycledIndices.isNotEmpty || nextIndex < maxIndex;
+}
+
 
 class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
@@ -24,10 +280,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   bool isSetupComplete = false;
   double VFOV = 70;
   late double HFOV;
+
   Set<String> slatIDs = {};
-  Map<String, Map<String, three.Mesh>> slatAccessories = {};
-  Map<String, three.MeshPhongMaterial> layerMaterials = {};
-  Map<String, three.MeshPhongMaterial> cargoMaterials = {};
+  Map<String, Map<String, String>> handleIDs = {};
+
+  // instancing preparation
+  Map<String, InstanceMetrics> instanceManager = {};
 
   double gridSize = 10;
   late double y60Jump = gridSize / 2;
@@ -57,8 +315,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     },
   );
 
-  late List<three.Object3D> importantObjects = [];
-
   @override
   void initState() {
     threeJs = three.ThreeJS(
@@ -68,7 +324,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
           });
         },
         setup: setup,
-        settings: three.Settings(renderOptions: {
+        settings: three.Settings(
+          // useOpenGL: true,
+            renderOptions: {
           "minFilter": tmath.LinearFilter,
           "magFilter": tmath.LinearFilter,
           "format": tmath.RGBAFormat,
@@ -111,26 +369,45 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     final axesHelper = AxesHelper(1000);
     threeJs.scene.add(axesHelper);
 
-    // TODO: set better lighting
-    final dirLight1 = three.DirectionalLight(0xffffff, 0.5);
-    dirLight1.position.setValues(1, 1, 1);
+    // main shadow-generating camera
+    final dirLight1 = three.DirectionalLight(0xffffff, 0.8);
+    dirLight1.position.setValues(0, 200, 0);
+    dirLight1.castShadow = true;
+    final shadowCam = dirLight1.shadow?.camera as three.OrthographicCamera;
+    shadowCam.left = -500;
+    shadowCam.right = 500;
+    shadowCam.top = 500;
+    shadowCam.bottom = -500;
+    shadowCam.near = 0.5;
+    shadowCam.far = 1000;
+    shadowCam.updateProjectionMatrix();
     threeJs.scene.add(dirLight1);
 
-    final dirLight2 = three.DirectionalLight(0x002288, 0.3);
-    dirLight2.position.setValues(-1, -1, -1);
-    threeJs.scene.add(dirLight2);
+    // ambient light (to light up underside of design)
+    final ambientLight = three.AmbientLight(0xffffff, 0.3);
 
-    final ambientLight = three.AmbientLight(0x222222);
     threeJs.scene.add(ambientLight);
 
-    importantObjects = [gridHelper, axesHelper, dirLight1, dirLight2, ambientLight];
+    threeJs.renderer?.shadowMap.type = tmath.PCFSoftShadowMap; // to generate soft shadows
+
+    threeJs.renderer?.shadowMap.enabled = true;
 
     threeJs.addAnimationEvent((dt){
       controls.update();
       // logCameraDetails();
     });
 
+    // preparing instancing meshes for slats and handles
+    var baseSlatGeometry = CylinderGeometry(2.5, 2.5, gridSize * 32, 20); // actual size should be 310, but adding an extra 10 to improve visuals
+
+    instanceManager['slat'] = InstanceMetrics(geometry: baseSlatGeometry, threeJs: threeJs, maxIndex: 1000);
+    instanceManager['honeyCombSlat'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize), threeJs: threeJs, maxIndex: 1000);
+
+    instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
+    instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
+    instanceManager['cargoHandle'] = InstanceMetrics(geometry: three.BoxGeometry(4, 6, 4), threeJs: threeJs, maxIndex: 1000);
   }
+
 
   void logCameraDetails() {
     final pos = threeJs.camera.position;
@@ -156,95 +433,84 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     return Offset(extX, extY);
   }
 
-  three.Group createSlatBundle(String name, three.MeshPhongMaterial material, double slatAngle, double height, double centerX, double centerZ){
+  void positionSlatInstance(String name, Color color, double slatAngle, double height, double centerX, double centerZ){
 
-    final group = three.Group();
-    group.name = name;
+    var position = tmath.Vector3(centerX, height, centerZ);
+    var rotation = tmath.Euler(0, -slatAngle, math.pi / 2);
 
     if (helixBundleView){
-      // full representation of a slat six-helix bundle
-      for (var pos in helixBundlePositions) {
-        final geometry = CylinderGeometry(helixBundleSize/2, helixBundleSize/2, gridSize * 32, 60);
-        final mesh = three.Mesh(geometry, material);
-        mesh.position.setX(pos[1]);
-        mesh.position.setY(0);
-        mesh.position.setZ(pos[0]);
-        group.add(mesh);
-      }
+      instanceManager['honeyCombSlat']!.allocateIndex(name);
+      instanceManager['honeyCombSlat']!.setPositionRotation(name, position, rotation);
+      instanceManager['honeyCombSlat']!.setColor(name, color);
     }
     else {
-      // single rod only (in the center)
-      final geometry = CylinderGeometry(2.5, 2.5, gridSize * 32, 60); // actual size should be 310, but adding an extra 10 to improve visuals
-      final mesh = three.Mesh(geometry, material);
-      mesh.position.setX(0);
-      mesh.position.setY(0);
-      mesh.position.setZ(0);
-      group.add(mesh);
+
+      instanceManager['slat']!.allocateIndex(name);
+      instanceManager['slat']!.setPositionRotation(name, position, rotation);
+      instanceManager['slat']!.setColor(name, color);
     }
-
-    // a value of 6.5 used for each layer (enough for one slat + a small gap for cargo later on)
-    group.position.y = height;
-    group.position.z = centerZ;
-    group.position.x = centerX;
-
-    group.rotation.z = math.pi / 2;  // default
-    group.rotation.y = -slatAngle;
-
-    return group;
-
   }
 
-  void createHandle(String slatID, String name, Offset position, three.MeshPhongMaterial material, double zOrder, String topSide, String handleSide, String handleType){
-    /// Creates a new handle graphic in the 3D scene.
+  void positionHandleInstance(String slatName, String name, Offset position, Color color, double zOrder, String topSide, String handleSide, String handleType, bool updateOnly){
+    /// Creates or updates a handle graphic in the 3D scene.
 
-    three.BufferGeometry geometry;
-
-    if (handleType == 'Assembly') {
-      geometry = CylinderGeometry(helixBundleView ? 0.8 : 2, helixBundleView ? 0.8 : 2, 1.5, 8);
-    }
-    else {
-      geometry = three.BoxGeometry(4, 6, 4);
-    }
-
-    final mesh = three.Mesh(geometry, material);
-    mesh.name = name;
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
     if (handleType == 'Cargo'){
       verticalOffset += (topSide == handleSide) ? 2 : -2;
     }
-    mesh.position.setValues(position.dx, (zOrder * 6.5) + verticalOffset, position.dy);
-    mesh.rotation.z = math.pi;
-    mesh.updateMatrix();
-    mesh.matrixAutoUpdate = false;
-    threeJs.scene.add(mesh);
-    slatAccessories[slatID]?[name] = mesh;
+
+    var vecPosition = tmath.Vector3(position.dx, (zOrder * 6.5) + verticalOffset, position.dy);
+    var euRotation = tmath.Euler(0, 0, math.pi);
+
+    String instanceType;
+    if (handleType == 'Cargo') {
+      instanceType = 'cargoHandle';
+    }
+    else{
+      if (helixBundleView){
+        instanceType = 'honeyCombAssHandle';
+      }
+      else{
+        instanceType = 'assHandle';
+      }
+    }
+
+    if (updateOnly) {
+      // in the situation where the handle changes type, delete the old one and prepare for a new handle type
+      if (instanceManager[instanceType]!.getIndex(name) == null) {
+        instanceManager[handleIDs[slatName]![name]]!.hideAndRecycle(name);
+        handleIDs[slatName]![name] = instanceType;
+      }
+      else {
+        // trigger an update if the handle position or color changes (e.g. due to a slat moving)
+        tmath.Vector3 currentPosition = instanceManager[instanceType]!.getPosition(name)!;
+        Color currentColor = instanceManager[instanceType]!.getColor(name)!;
+        if (approxEqual(currentPosition.x, vecPosition.x) &&
+            approxEqual(currentPosition.y, vecPosition.y) &&
+            approxEqual(currentPosition.z, vecPosition.z) &&
+            currentColor == color) {
+          return;
+        }
+      }
+    }
+    else{
+      handleIDs[slatName]![name] = instanceType; // prepare a new handle
+    }
+    // execute handle positioning and color setup
+    instanceManager[instanceType]!.allocateIndex(name);
+    instanceManager[instanceType]!.setPositionRotation(name, vecPosition, euRotation);
+    instanceManager[instanceType]!.setColor(name, color);
   }
 
-  void updateHandle(three.Object3D handleMesh, Offset newPosition, double newZOrder, String newTopSide, String newHandleSide, String handleType){
-    /// Makes updates to the position and color of an existing handle in the 3D scene, if necessary.  Regenerating from scratch is slow so an update is preferred instead.
-
-    // TODO: switching from cargo to assembly handle is not currently catered for properly!
-    double verticalOffset = (newTopSide == newHandleSide) ? 2.5 : -2.5;
-    if (handleType == 'Cargo'){
-      verticalOffset += (newTopSide == newHandleSide) ? 2 : -2;
-    }
-    bool updateNeeded = false;
-    // general position change
-    if (handleMesh.position.x != newPosition.dx || handleMesh.position.y != (newZOrder * 6.5) + verticalOffset || handleMesh.position.z != newPosition.dy) {
-      handleMesh.position.x = newPosition.dx;
-      handleMesh.position.y = (newZOrder * 6.5) + verticalOffset;
-      handleMesh.position.z = newPosition.dy;
-      updateNeeded = true;
-    }
-
-    if (updateNeeded) {
-      handleMesh.updateMatrix();
-    }
-  }
-
-  void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide) {
+  void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette) {
+    /// Adds, deletes or updates all handles for a slat (both H2 and H5)
     final handleName = '${slat.id}-handle-$handlePosition-$handleSide';
-    final existingHandleMesh = threeJs.scene.getObjectByName(handleName);
+
+    if (!handleIDs.containsKey(slat.id)) {
+      handleIDs[slat.id] = {};
+    }
+
+    bool handleInstanceExists = handleIDs[slat.id]!.containsKey(handleName);
 
     bool existingHandle = false;
     String handleType = 'Assembly';
@@ -266,27 +532,17 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
 
     if (existingHandle && (assemblyHandleView && handleType == 'Assembly' || cargoHandleView && handleType == 'Cargo')) {
-      if (existingHandleMesh == null) {
-        // Create new handle if missing
-        createHandle(slat.id, handleName, position, handleType == 'Assembly' ? layerMaterials[slat.layer]!: cargoMaterials[cargoName]!, order, topSide, handleSide, handleType);
-      } else {
-        // Update existing handle
-        updateHandle(existingHandleMesh, position, order, topSide, handleSide, handleType);
-      }
-    } else if (existingHandleMesh != null){
+      positionHandleInstance(slat.id, handleName, position, handleType == 'Assembly' ? layerMap[slat.layer]!['color']: cargoPalette[cargoName]!.color, order, topSide, handleSide, handleType, handleInstanceExists);
+    } else if (handleInstanceExists){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
-      threeJs.scene.remove(existingHandleMesh);
-      slatAccessories[slat.id]?.remove(handleName);
+      instanceManager[handleIDs[slat.id]![handleName]]!.hideAndRecycle(handleName);
+      handleIDs[slat.id]!.remove(handleName);
     }
   }
 
 
-  void manageHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap) {
-
+  void manageHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette) {
     /// Adds, updates or removes assembly handles from the 3D scene based on the current state of the slat.
-    if (!slatAccessories.containsKey(baseSlat.id)) {
-      slatAccessories[baseSlat.id] = {};
-    }
 
     final topSide = (layerMap[baseSlat.layer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
     final color = layerMap[baseSlat.layer]?['color'].value & 0x00FFFFFF;
@@ -300,6 +556,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         order,
         topSide,
         'H2',
+        layerMap,
+        cargoPalette
       );
       handleAssembly(
         baseSlat,
@@ -309,6 +567,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         order,
         topSide,
         'H5',
+        layerMap,
+        cargoPalette
       );
     }
   }
@@ -319,40 +579,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     if (!isSetupComplete || threeJs.scene == null) return;
 
     Set localIDs = slats.map((slat) => slat.id).toSet();
+
     Set removedIDs = slatIDs.difference(localIDs);
-
-
-    // prepares the material for each layer in the system
-    for (var layer in layerMap.keys) {
-      if (!layerMaterials.containsKey(layer)) {
-        layerMaterials[layer] = three.MeshPhongMaterial.fromMap({"color": layerMap[layer]?['color'].value & 0x00FFFFFF, "flatShading": true});
-      }
-      else if (layerMaterials[layer]?.color.getHex() != (layerMap[layer]?['color'].value & 0x00FFFFFF)){
-        layerMaterials[layer]?.color.setFromHex32(layerMap[layer]?['color'].value & 0x00FFFFFF);
-      }
-    }
-
-    // prepares the material for each cargo type in the palette
-    for (var cargoKey in cargoPalette.keys) {
-      if (!cargoMaterials.containsKey(cargoKey)) {
-        cargoMaterials[cargoKey] = three.MeshPhongMaterial.fromMap({"color": cargoPalette[cargoKey]!.color.value & 0x00FFFFFF, "flatShading": true});
-      }
-      else if (cargoMaterials[cargoKey]?.color.getHex() != (cargoPalette[cargoKey]!.color.value & 0x00FFFFFF)){
-        cargoMaterials[cargoKey]?.color.setFromHex32(cargoPalette[cargoKey]!.color.value & 0x00FFFFFF);
-      }
-    }
-
-    // removes associated material if a layer has been deleted
-    final keysToRemove = <String>[];
-    for (var layer in layerMaterials.keys) {
-      if (!layerMap.containsKey(layer)) {
-        keysToRemove.add(layer);
-      }
-    }
-    for (var key in keysToRemove) {
-      layerMaterials[key]?.dispose();
-      layerMaterials.remove(key);
-    }
 
     // deletes slats that are no longer in the list
     for (var id in removedIDs) {
@@ -361,103 +589,113 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
 
     for (var slat in slats) {
-      var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
-      var p2 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[32]!, gridMode, gridSize, x60Jump, y60Jump);
+      var p1 = convertCoordinateSpacetoRealSpace(
+          slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump,
+          y60Jump);
+      var p2 = convertCoordinateSpacetoRealSpace(
+          slat.slatPositionToCoordinate[32]!, gridMode, gridSize, x60Jump,
+          y60Jump);
       // same angle/extension system used here as in 2D system
 
       double slatAngle = calculateSlatAngle(p1, p2);
-      Offset slatExtend = calculateSlatExtend(p1, p2, 2*(gridSize * 32/2 - gridSize/2));
+      Offset slatExtend = calculateSlatExtend(
+          p1, p2, 2 * (gridSize * 32 / 2 - gridSize / 2));
 
-      // if slat does not exist, recreate from scratch
-      if (threeJs.scene.getObjectByName(slat.id) == null) {
+      String slatType = helixBundleView ? 'honeyCombSlat' : 'slat';
+
+      if (instanceManager[slatType]?.getIndex(slat.id) == null) {
         slatIDs.add(slat.id);
-        final meshGroup = createSlatBundle(slat.id, layerMaterials[slat.layer]!,
-            slatAngle, layerMap[slat.layer]?['order'].toDouble() * 6.5, p1.dx + slatExtend.dx, p1.dy + slatExtend.dy);
-        meshGroup.updateMatrix();
-        meshGroup.matrixAutoUpdate = false;
-        threeJs.scene.add(meshGroup);
-
-        manageHandles(slat, layerMap); // add assembly handles to the slat
+        positionSlatInstance(slat.id, layerMap[slat.layer]?['color'], slatAngle,
+            layerMap[slat.layer]?['order'].toDouble() * 6.5,
+            p1.dx + slatExtend.dx, p1.dy + slatExtend.dy);
       }
-      // slat already exists - should check to see if layer position, color, or direction has changed
-      else{
-        bool updateNeeded = false;
-        final meshSlat = threeJs.scene.getObjectByName(slat.id);
 
+      else {
         double incomingSlatAngle = -slatAngle;
         double incomingPositionZ = p1.dy + slatExtend.dy;
         double incomingPositionX = p1.dx + slatExtend.dx;
         double incomingLayer = layerMap[slat.layer]?['order'].toDouble() * 6.5;
 
-        // general position change
-        if (meshSlat?.position.x != incomingPositionX || meshSlat?.position.z != incomingPositionZ || meshSlat?.rotation.y != incomingSlatAngle) {
-          meshSlat?.position.x = incomingPositionX;
-          meshSlat?.position.z = incomingPositionZ;
-          meshSlat?.rotation.y = incomingSlatAngle;
-          updateNeeded = true;
-        }
+        tmath.Vector3 currentPosition = instanceManager[slatType]!.getPosition(
+            slat.id)!;
+        tmath.Euler currentRotation = instanceManager[slatType]!.getRotation(
+            slat.id)!;
+        Color currentColor = instanceManager[slatType]!.getColor(slat.id)!;
 
-        // layer change
-        if (meshSlat?.position.y != incomingLayer) {
-          meshSlat?.position.y = incomingLayer;
-          updateNeeded = true;
-        }
-
-        manageHandles(slat, layerMap); // add/update/remove assembly handles
-
-        // request update if necessary
-        if(updateNeeded) {
-          meshSlat?.updateMatrix();
+        if (!approxEqual(currentPosition.x, incomingPositionX) ||
+            !approxEqual(currentPosition.y, incomingLayer) ||
+            !approxEqual(currentPosition.z, incomingPositionZ) ||
+            !approxEqual(currentRotation.y, incomingSlatAngle) ||
+            currentColor != layerMap[slat.layer]?['color']) {
+          positionSlatInstance(
+              slat.id, layerMap[slat.layer]?['color'], slatAngle, incomingLayer,
+              incomingPositionX, incomingPositionZ);
         }
       }
+      manageHandles(slat, layerMap, cargoPalette);
     }
   }
 
   /// Removes a slat from the 3D scene
   void removeSlat(String id){
-    final slat = threeJs.scene.getObjectByName(id);
-    if (slat != null) {
-      threeJs.scene.remove(slat);
-
-      slatAccessories[id]?.forEach((name, handle) {
-        threeJs.scene.remove(handle);
-      });
+    if (helixBundleView) {
+      instanceManager['honeyCombSlat']!.hideAndRecycle(id);
     }
-  }
-
-  void clearSceneExcept(List<three.Object3D> keepObjects) {
-    for (var object in List.from(threeJs.scene.children)) {
-      if (!keepObjects.contains(object)) {
-        if (object is three.Mesh) {
-          object.geometry?.dispose();
-          (object.material)?.dispose();
-        }
-        threeJs.scene.remove(object);
+    else{
+      instanceManager['slat']!.hideAndRecycle(id);
+    }
+    if (handleIDs.containsKey(id)) {
+      for (var handleInstance in handleIDs[id]!.entries) {
+        instanceManager[handleInstance.value]!.hideAndRecycle(handleInstance.key);
       }
+      handleIDs.remove(id);
     }
   }
 
-  void centerOnSlats(){
+  void clearScene() {
+    instanceManager['slat']!.recycleAllIndices();
+    instanceManager['honeyCombSlat']!.recycleAllIndices();
+    instanceManager['cargoHandle']!.recycleAllIndices();
+    instanceManager['honeyCombAssHandle']!.recycleAllIndices();
+    instanceManager['assHandle']!.recycleAllIndices();
+    slatIDs.clear();
+    handleIDs.clear();
+  }
+
+  void centerOnSlats(InstanceMetrics slatInstances){
     if (!isSetupComplete) return;
 
-    // Get all slats in the scene
-    List<three.Object3D> slats = threeJs.scene.children
-        .where((obj) => obj.name.contains("-"))
-        .toList();
+    final positions = slatInstances.positionIndex;
+    final rotations = slatInstances.rotationIndex;
+    if (positions.isEmpty) return;
 
-    // nothing to focus on
-    if (slats.isEmpty) return;
+    // Get local geometry bounding box
+    final localBox = tmath.BoundingBox();
+    localBox.setFromBuffer(slatInstances.geometry.attributes["position"]!);
 
-    // Compute bounding box of all slats
-    var boundingBox = tmath.BoundingBox();
+    // Start global bounding box
+    final boundingBox = tmath.BoundingBox();
 
-    for (var slat in slats) {
-      var slatBox = tmath.BoundingBox().setFromObject(slat);
-      boundingBox.expandByPoint(slatBox.min);
-      boundingBox.expandByPoint(slatBox.max);
+    // Reuse a dummy Object3D to apply transforms
+    final dummy = three.Object3D();
+
+    for (final name in positions.keys) {
+      final position = positions[name]!;
+      final rotation = rotations[name] ?? tmath.Euler(0, 0, 0);
+
+      dummy.position = position;
+      dummy.rotation.set(rotation.x, rotation.y, rotation.z);
+      dummy.updateMatrix();
+
+      // Transform a clone of the local box
+      final transformedBox = localBox.clone();
+      transformedBox.applyMatrix4(dummy.matrix);
+
+      // Merge into global bounding box
+      boundingBox.expandByPoint(transformedBox.min);
+      boundingBox.expandByPoint(transformedBox.max);
     }
 
-    // Compute centroid of the bounding box
     tmath.Vector3 center = tmath.Vector3(0, 0, 0);
     boundingBox.getCenter(center);
 
@@ -542,7 +780,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   onChanged: (bool value) {
                     setState(() {
                       helixBundleView = value;
-                      clearSceneExcept(importantObjects);
+                      clearScene();
                       manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
                     });
                   },
@@ -568,7 +806,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   },
                 ),
                 ElevatedButton(
-                  onPressed: centerOnSlats,
+                  onPressed: () {
+                    centerOnSlats(instanceManager[helixBundleView ? 'honeyCombSlat' : 'slat']!);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.3),
                     // Semi-transparent

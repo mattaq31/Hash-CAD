@@ -186,7 +186,7 @@ prepare_all_standard_sheets(megastructure.slats, 'output_file_name.xlsx',
 
 **More Details on the Experiment Pipeline TBC**
 #### Graphics Generation
-The Python API also allows you to automatically generate various graphics linked to your megastructure design.  These include 2D schematics for each slat layer, an x-ray view of your design, 2D schematics of your assembly handles, a spinning 3D model video and a blender file which can be configured with an animation showing the expected crisscross assembly process.  An example of how to generate these files for a typical design is provided below:
+The Python API also allows you to automatically generate various graphics linked to your megastructure design.  These include 2D schematics for each slat layer, an x-ray view of your design, 2D schematics of your assembly handles, a spinning 3D model video (requires `pyvista`) and a blender file (requires `bpy`) which can be configured with an animation showing the expected crisscross assembly process.  An example of how to generate these files for a typical design is provided below:
 ```python
 megastructure.create_standard_graphical_report('output_folder', generate_3d_video=True)
 megastructure.create_blender_3D_view('output_folder', camera_spin=False, correct_slat_entrance_direction=True,
