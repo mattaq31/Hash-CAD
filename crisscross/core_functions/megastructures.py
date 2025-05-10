@@ -40,6 +40,7 @@ class Megastructure:
         the connecting interface will have H5 handles and the top layer will have H2 handles again.
         TODO: how to enforce slat length?  Will this need to change in the future?
         TODO: how do we consider the additional 12nm/6nm on either end of the slat?
+        TODO: revisit import system to include metadata provided from #-CAD - things such as H5/H2 positioning, colour, etc.
         """
 
         # reads in all design details from file if available

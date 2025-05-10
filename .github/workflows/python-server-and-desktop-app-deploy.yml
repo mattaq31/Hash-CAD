@@ -165,6 +165,10 @@ jobs:
           security import dev_cert.p12 -k build.keychain -P "$MAC_CERTIFICATE_PASSWORD" -T /usr/bin/codesign || (echo "Certificate import failed" && exit 1)
           security set-key-partition-list -S apple-tool:,apple: -s -k "temp_password" build.keychain
 
+      - name: Update Version from Git
+        run: dart run ./lib/app_management/git_version_updater.dart
+        working-directory: flutter_app
+
       - name: Install Flutter Dependencies
         run: flutter pub get
         working-directory: flutter_app

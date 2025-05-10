@@ -9,6 +9,8 @@ import '../sidebars/sidebar_tools.dart';
 import '../app_management/shared_app_state.dart';
 import '../grpc_client_architecture/hamming_evolve_window.dart';
 import '../grpc_client_architecture/server_startup.dart';
+import '../app_management/version_tracker.dart';
+
 
 class SplitScreen extends StatefulWidget {
   const SplitScreen({super.key});
@@ -154,6 +156,29 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                     NavigationRailDestination(icon: Icon(Icons.add_box), label: Text('Cargo', textAlign: TextAlign.center)),
                     NavigationRailDestination(icon: Icon(Icons.precision_manufacturing), label: Text('Echo\n Config', textAlign: TextAlign.center)),
                   ],
+                  trailing: Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          VersionInfo.version,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          VersionInfo.buildCommit,
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
               ],

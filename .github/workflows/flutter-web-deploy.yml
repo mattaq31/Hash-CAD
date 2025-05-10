@@ -26,6 +26,10 @@ jobs:
         run: flutter clean
         working-directory: flutter_app
 
+      - name: Update Version from Git
+        run: dart run ./lib/app_management/git_version_updater.dart
+        working-directory: flutter_app
+
       - name: Install Dependencies
         run: flutter pub get
         working-directory: flutter_app
