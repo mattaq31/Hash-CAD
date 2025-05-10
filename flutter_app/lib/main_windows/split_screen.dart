@@ -180,6 +180,30 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
             ),
           )],
           HammingEvolveWindow(),
+          // Overlay spinner when loading
+          if (appState.currentlyLoadingDesign)
+            Container(
+              color: Colors.black.withValues(alpha:0.4),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!kIsWeb) ...[
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                    ],
+                    Text(
+                      'Importing design...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

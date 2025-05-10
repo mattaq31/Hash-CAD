@@ -97,7 +97,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton.icon(
-            onPressed: () {
+            onPressed: appState.currentlycomputingHamming ? null : () {
               appState.generateRandomAssemblyHandles(uniqueHandleCount, preventSelfComplementarySlats);
               appState.updateDesignHammingValue();
               actionState.setAssemblyHandleDisplay(true);
@@ -112,7 +112,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           ),
           SizedBox(width: 10),
           ElevatedButton.icon(
-            onPressed: () {
+            onPressed: appState.currentlycomputingHamming ? null : () {
               if (!kIsWeb) {
                 actionState.activateEvolveMode();
               } else {
@@ -187,16 +187,22 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               Column(
                 children: [
                   Text("Worst Mismatch Score",
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   Text(
-                    appState.hammingValueValid ? "Up-to-date" : "Out-of-date",
+                    appState.currentlycomputingHamming
+                        ? 'Computing...'
+                        : appState.hammingValueValid
+                            ? "Up-to-date"
+                            : "Out-of-date",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         fontSize: 16,
-                        color: appState.hammingValueValid
-                            ? Colors.green
-                            : Colors.red),
+                        color: appState.currentlycomputingHamming
+                            ? Colors.yellow
+                            : appState.hammingValueValid
+                                ? Colors.green
+                                : Colors.red),
                   ),
                 ],
               ),
@@ -207,7 +213,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           ),
           SizedBox(height: 10),
           ElevatedButton.icon(
-            onPressed: appState.hammingValueValid ? null : () {
+            onPressed: appState.hammingValueValid || appState.currentlycomputingHamming ? null : () {
               appState.updateDesignHammingValue();
             },
             label: Text("Recalculate Score"),

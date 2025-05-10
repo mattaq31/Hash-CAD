@@ -250,36 +250,13 @@ String readExcelString(Sheet workSheet, String cell){
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>)> importDesign() async {
-  /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
-  // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
+
+
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>)> parseDesignInIsolate(Uint8List fileBytes) async {
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
   Map<String, Cargo> cargoPalette = {};
-
-  String filePath;
-  Uint8List fileBytes;
-
-  // main user dialog box for file selection
-  FilePickerResult? result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['xlsx'],
-  );
-
-
-  if (result != null) {
-    // web has a different file-opening procedure to the desktop app
-    if (kIsWeb) {
-      fileBytes = result.files.first.bytes!;
-    }
-    else {
-      filePath = result.files.single.path!;
-      fileBytes = File(filePath).readAsBytesSync();
-    }
-  } else { // if nothing picked, return empty maps
-    return (slats, layerMap, '', cargoPalette);
-  }
 
   // read in file with Excel package
   var excel = Excel.decodeBytes(fileBytes);
@@ -501,6 +478,43 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   return (slats, layerMap, gridMode, cargoPalette);
+}
+
+
+
+
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>)> importDesign() async {
+  /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
+  // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
+
+  Map<String, Map<String, dynamic>> layerMap = {};
+  Map<String, Slat> slats = {};
+  Map<String, Cargo> cargoPalette = {};
+
+  String filePath;
+  Uint8List fileBytes;
+
+  // main user dialog box for file selection
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['xlsx'],
+  );
+
+
+  if (result != null) {
+    // web has a different file-opening procedure to the desktop app
+    if (kIsWeb) {
+      fileBytes = result.files.first.bytes!;
+    }
+    else {
+      filePath = result.files.single.path!;
+      fileBytes = File(filePath).readAsBytesSync();
+    }
+  } else { // if nothing picked, return empty maps
+    return (slats, layerMap, '', cargoPalette);
+  }
+  // run isolate function
+  return await compute(parseDesignInIsolate, fileBytes);
 }
 
 

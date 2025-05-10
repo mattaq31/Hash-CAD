@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
+
 import 'slats.dart';
 
 List<List<List<int>>> generateRandomSlatHandles(List<List<List<int>>> baseArray, int uniqueSequences, {int seed=8}) {
@@ -63,7 +65,59 @@ List<int> shiftRightWithZeros(List<int> lst, int shift) {
   return List.generate(lst.length, (i) => (i - shift >= 0) ? lst[i - shift] : 0);
 }
 
-int hammingCompute(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, int slatLength) {
+class HammingInnerArgs {
+  /// these arguments are combined so they can be transferred to the isolate function
+  final Map<String, List<int>> handleDict;
+  final Map<String, List<int>> antihandleDict;
+  final int slatLength;
+
+  HammingInnerArgs(this.handleDict, this.antihandleDict, this.slatLength);
+}
+
+int hammingInnerCompute(HammingInnerArgs args) {
+  /// this part of the compute is split off so it can be run inside an isolate
+  final handleDict = args.handleDict;
+  final antihandleDict = args.antihandleDict;
+  final slatLength = args.slatLength;
+
+  // Computes hamming by running through the usual motions - generate 4 * 32 candidates per handle/antihandle slat pair and check all rotations/translations
+  // As opposed to the python version, everything is calculated on the fly here since loops are much faster to compute than Python.
+  final handleKeys = handleDict.keys.toList();
+  final antihandleKeys = antihandleDict.keys.toList();
+
+  int minValue = 50;
+
+  for (int i = 0; i < handleKeys.length; i++) {
+    final handle = handleDict[handleKeys[i]]!;
+    final reversedHandle = handle.reversed.toList();
+
+    for (int j = 0; j < antihandleKeys.length; j++) {
+      final antihandle = antihandleDict[antihandleKeys[j]]!;
+
+      for (int shift = 0; shift < slatLength; shift++) {
+        final List<List<int>> candidates = [
+          shiftLeftWithZeros(handle, shift),
+          shiftRightWithZeros(handle, shift),
+          shiftLeftWithZeros(reversedHandle, shift),
+          shiftRightWithZeros(reversedHandle, shift),
+        ];
+        for (final candidate in candidates) {
+          int dist = 0;
+          for (int k = 0; k < slatLength; k++) {
+            final a = candidate[k];
+            final b = antihandle[k];
+            if (a == 0 || b == 0 || a != b) dist++;
+          }
+          minValue = min(minValue, dist);
+        }
+      }
+    }
+  }
+  return minValue;
+}
+
+
+Future<int> hammingCompute(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, int slatLength) async {
   /// Computes the hamming distance of the current design in view.
   /// Function not optimized but will be infrequently called so slowdown is expected to be minimal.
   ///  Mimics logic in 'precise hamming compute' in the python library.
@@ -105,37 +159,6 @@ int hammingCompute(Map<String, Slat> slats, Map<String, Map<String, dynamic>> la
       dict[slat.id] = descriptorList;
     }
   }
-
-  // Computes hamming by running through the usual motions - generate 4 * 32 candidates per handle/antihandle slat pair and check all rotations/translations
-  // As opposed to the python version, everything is calculated on the fly here since loops are much faster to compute than Python.
-  final handleKeys = handleDict.keys.toList();
-  final antihandleKeys = antihandleDict.keys.toList();
-  int minValue = 50;
-  for (int i = 0; i < handleKeys.length; i++) {
-    final handle = handleDict[handleKeys[i]]!;
-    final reversedHandle = handle.reversed.toList();
-
-    for (int j = 0; j < antihandleKeys.length; j++) {
-      final antihandle = antihandleDict[antihandleKeys[j]]!;
-
-      for (int shift = 0; shift < slatLength; shift++) {
-        final List<List<int>> candidates = [
-          shiftLeftWithZeros(handle, shift),
-          shiftRightWithZeros(handle, shift),
-          shiftLeftWithZeros(reversedHandle, shift),
-          shiftRightWithZeros(reversedHandle, shift),
-        ];
-        for (final candidate in candidates) {
-          int dist = 0;
-          for (int k = 0; k < slatLength; k++) {
-            final a = candidate[k];
-            final b = antihandle[k];
-            if (a == 0 || b == 0 || a != b) dist++;
-          }
-          minValue = min(minValue, dist);
-        }
-      }
-    }
-  }
-  return minValue;
+  final args = HammingInnerArgs(handleDict, antihandleDict, slatLength);
+  return await compute(hammingInnerCompute, args);
 }

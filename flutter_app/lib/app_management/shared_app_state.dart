@@ -124,6 +124,9 @@ class DesignState extends ChangeNotifier {
 
   Map<String, Map<Offset, String>> occupiedCargoPoints = {};
 
+  bool currentlyLoadingDesign = false;
+  bool currentlycomputingHamming = false;
+
   // useful to keep track of occupancy and speed up grid checks
   Map<String, Map<Offset, String>> occupiedGridPoints = {};
 
@@ -172,9 +175,14 @@ class DesignState extends ChangeNotifier {
 
   void importNewDesign() async{
 
+    currentlyLoadingDesign = true;
+    notifyListeners();
+
     var (newSlats, newLayerMap, newGridMode, newCargoPalette) = await importDesign();
     // check if the maps are empty
     if (newSlats.isEmpty || newLayerMap.isEmpty) {
+      currentlyLoadingDesign = false;
+      notifyListeners();
       return;
     }
     clearAll();
@@ -222,6 +230,7 @@ class DesignState extends ChangeNotifier {
     }
 
     updateDesignHammingValue();
+    currentlyLoadingDesign = false;
     notifyListeners();
   }
 
@@ -556,16 +565,19 @@ class DesignState extends ChangeNotifier {
     }
   }
 
-  void updateDesignHammingValue() {
+  void updateDesignHammingValue() async {
+    currentlycomputingHamming = true;
+    notifyListeners();
     if (slats.isEmpty) {
       currentHamming = 0;
     } else {
-      currentHamming = hammingCompute(slats, layerMap, 32);
+      currentHamming = await hammingCompute(slats, layerMap, 32);
       if (currentHamming == 50 || currentHamming == 32) { // 50 (calculation never attempted) or 32 (no handle overlap) are exception values
         currentHamming = 0;
       }
     }
     hammingValueValid = true;
+    currentlycomputingHamming = false;
     notifyListeners();
   }
 
