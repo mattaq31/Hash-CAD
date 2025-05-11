@@ -214,6 +214,15 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           });
         },
       ),
+      CheckboxListTile(
+        title: const Text('Isolate Current Layer'),
+        value: actionState.isolateSlatLayerView,
+        onChanged: (bool? value) {
+          setState(() {
+            actionState.setIsolateSlatLayerView(value ?? false);
+          });
+        },
+      ),
       // Buttons
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(

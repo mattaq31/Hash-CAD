@@ -712,6 +712,7 @@ class ActionState extends ChangeNotifier {
   bool displayAssemblyHandles;
   bool displayCargoHandles;
   bool displaySlatIDs;
+  bool isolateSlatLayerView;
   bool evolveMode;
   bool isSideBarCollapsed;
   int panelMode;
@@ -724,6 +725,7 @@ class ActionState extends ChangeNotifier {
     this.displayAssemblyHandles = false,
     this.displayCargoHandles = true,
     this.displaySlatIDs = false,
+    this.isolateSlatLayerView = false,
     this.evolveMode = false,
     this.isSideBarCollapsed = false,
     this.panelMode = 0,
@@ -769,6 +771,10 @@ class ActionState extends ChangeNotifier {
 
   void setCargoHandleDisplay(bool value){
     displayCargoHandles = value;
+    notifyListeners();
+  }
+  void setIsolateSlatLayerView(bool value){
+    isolateSlatLayerView = value;
     notifyListeners();
   }
 

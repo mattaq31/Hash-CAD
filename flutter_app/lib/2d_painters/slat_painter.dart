@@ -100,6 +100,10 @@ class SlatPainter extends CustomPainter {
         continue;
       }
 
+      if (actionState.isolateSlatLayerView && slat.layer != selectedLayer) {
+        continue;
+      }
+
       Paint rodPaint = Paint()
         ..color = layerMap[slat.layer]?['color']
         ..strokeWidth = appState.gridSize / 2
@@ -300,7 +304,7 @@ class SlatPainter extends CustomPainter {
       if (actionState.displaySlatIDs && slat.layer == selectedLayer){
         final textPainter = TextPainter(
           text: TextSpan(
-            text: slat.id,
+            text: slat.id.replaceFirst('-I', '-'),
             style: TextStyle(
               color: Colors.white,
               fontFamily: 'Roboto',
@@ -315,7 +319,7 @@ class SlatPainter extends CustomPainter {
 
         double baselineOffset;
         if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
-          baselineOffset = textPainter.height;
+          baselineOffset = textPainter.height + 0.5;
         } else {
           baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
         }
@@ -338,7 +342,7 @@ class SlatPainter extends CustomPainter {
 
         final baseRect = Rect.fromCenter(
           center: Offset.zero,
-          width: appState.gridSize * 1.8,
+          width: appState.gridSize * 2,
           height: appState.gridSize * 0.85,
         );
 
