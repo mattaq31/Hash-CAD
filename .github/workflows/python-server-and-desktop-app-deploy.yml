@@ -166,8 +166,8 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "temp_password" build.keychain
 
       - name: Update Version from Git
-        run: dart run ./lib/app_management/git_version_updater.dart
-        working-directory: flutter_app
+        run: dart run ./flutter_app/lib/app_management/git_version_updater.dart
+        working-directory: .
 
       - name: Install Flutter Dependencies
         run: flutter pub get
