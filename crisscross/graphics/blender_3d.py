@@ -247,7 +247,7 @@ def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, gr
         material = create_slat_material(cargo_color_values_rgb[unique_cargo_name] + (1,), f'Cargo Material')
         cargo_materials[unique_cargo_name] = material
 
-    for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
+    for ((x_cargo, y_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
 
         top_layer_side = layer_interface_orientations[cargo_layer]
         if isinstance(top_layer_side, tuple):
@@ -304,8 +304,8 @@ def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid
         pos1 = (sx, sy)
         pos2 = (ex, ey)
 
-        start_point = (pos1[1] * grid_xd, pos1[0] * grid_yd, layer - 1)
-        end_point = (pos2[1] * grid_xd, pos2[0] * grid_yd, layer - 1)
+        start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
+        end_point = (pos2[0] * grid_xd, pos2[1] * grid_yd, layer - 1)
         blender_vec_1 = mathutils.Vector(start_point)
         blender_vec_2 = mathutils.Vector(end_point)
 
@@ -360,7 +360,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     if slats is None:
         slats = convert_slat_array_into_slat_objects(slat_array)
 
-    grid_xd, grid_yd = connection_angles[connection_angle][0], connection_angles[connection_angle][1]
+    grid_yd, grid_xd = connection_angles[connection_angle][0], connection_angles[connection_angle][1] # Grid Y/X are swapped here as the blender axes are swapped w.r.t numpy/python
 
     # Clear existing objects in the scene
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -414,8 +414,9 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         length = slat.max_length
 
         # Z-height is assumed to be precisely 1 for each layer - this could be changed to indicate the positions of assembly handles
-        start_point = (pos1[1] * grid_xd, pos1[0] * grid_yd, layer - 1)
-        end_point = (pos2[1] * grid_xd, pos2[0] * grid_yd, layer - 1)
+        start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
+        end_point = (pos2[0] * grid_xd, pos2[1] * grid_yd, layer - 1)
+
         blender_vec_1 = mathutils.Vector(start_point)
         blender_vec_2 = mathutils.Vector(end_point)
 

@@ -41,8 +41,8 @@ def interpret_seed_system(seed_layer_and_array, seed_length, grid_xd, grid_yd, s
         pos1 = (sx, sy)
         pos2 = (ex, ey)
 
-        start_point = (pos1[1] * grid_xd, pos1[0] * grid_yd, layer - 1)
-        end_point = (pos2[1] * grid_xd, pos2[0] * grid_yd, layer - 1)
+        start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
+        end_point = (pos2[0] * grid_xd, pos2[1] * grid_yd, layer - 1)
 
         # Calculate the center and direction from start and end points
         center = ((start_point[0] + end_point[0]) / 2, (start_point[1] + end_point[1]) / 2, layer - 1)
@@ -81,7 +81,7 @@ def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, gr
             cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
         cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
 
-    for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
+    for ((x_cargo, y_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
 
         top_layer_side = layer_interface_orientations[cargo_layer]
         if isinstance(top_layer_side, tuple):
@@ -123,7 +123,7 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
 
     if slats is None:
         slats = convert_slat_array_into_slat_objects(slat_array)
-    grid_xd, grid_yd = connection_angles[connection_angle][0], connection_angles[connection_angle][1]
+    grid_yd, grid_xd = connection_angles[connection_angle][0], connection_angles[connection_angle][1]
 
     plotter = pv.Plotter(window_size=window_size, off_screen=True)
 
@@ -144,8 +144,8 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
             layer_color = mpl.colormaps[colormap].colors[layer - 1]
 
         # TODO: can we represent the cylinders with the precise dimensions of the real thing i.e. with the 12/6nm extension on either end?
-        start_point = (pos1[1] * grid_xd, pos1[0] * grid_yd, layer - 1)
-        end_point = (pos2[1] * grid_xd, pos2[0] * grid_yd, layer - 1)
+        start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
+        end_point = (pos2[0] * grid_xd, pos2[1] * grid_yd, layer - 1)
 
         # Calculate the center and direction from start and end points
         center = ((start_point[0] + end_point[0]) / 2, (start_point[1] + end_point[1]) / 2, layer - 1)
