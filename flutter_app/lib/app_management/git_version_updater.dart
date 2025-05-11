@@ -20,22 +20,24 @@ void main() async {
   File versionFile = File('./lib/app_management/version_tracker.dart');
   String content = await versionFile.readAsString();
 
-  // Replace placeholders with actual values
-  content = content.replaceAll(
-      "static const String version = '1.0.0';",
-      "static const String version = '$version';"
+  content = content.replaceAllMapped(
+    RegExp(r"static const String version\s*=\s*'.*';"),
+        (_) => "static const String version = '$version';",
   );
-  content = content.replaceAll(
-      "static const String buildNumber = '1';",
-      "static const String buildNumber = '$buildNumber';"
+
+  content = content.replaceAllMapped(
+    RegExp(r"static const String buildNumber\s*=\s*'.*';"),
+        (_) => "static const String buildNumber = '$buildNumber';",
   );
-  content = content.replaceAll(
-      "static const String buildCommit = 'unknown';",
-      "static const String buildCommit = '$gitHash';"
+
+  content = content.replaceAllMapped(
+    RegExp(r"static const String buildCommit\s*=\s*'.*';"),
+        (_) => "static const String buildCommit = '$gitHash';",
   );
-  content = content.replaceAll(
-      "static const String buildDate = 'unknown';",
-      "static const String buildDate = '$buildDate';"
+
+  content = content.replaceAllMapped(
+    RegExp(r"static const String buildDate\s*=\s*'.*';"),
+        (_) => "static const String buildDate = '$buildDate';",
   );
 
   // Write the updated content back to the file
@@ -58,8 +60,6 @@ void main() async {
 
   await pubspecFile.writeAsString(pubspecContent);
   print('Pubspec.yaml file updated successfully!');
-
-
 }
 
 Future<String> _runCommand(String command) async {
