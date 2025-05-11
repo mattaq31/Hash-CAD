@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../crisscross_core/slats.dart';
 import 'helper_functions.dart';
@@ -271,9 +273,7 @@ class SlatPainter extends CustomPainter {
                 bottomBaselineOffset = bottomTextPainter.height;
               } else {
                 bottomBaselineOffset =
-                    bottomTextPainter.computeDistanceToActualBaseline(
-                            TextBaseline.alphabetic) ??
-                        0;
+                    bottomTextPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
               }
 
               final bottomOffset = Offset(
@@ -295,6 +295,66 @@ class SlatPainter extends CustomPainter {
             }
           }
         }
+      }
+
+      if (actionState.displaySlatIDs && slat.layer == selectedLayer){
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: slat.id,
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'Roboto',
+              fontSize: appState.gridSize * 0.6,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center
+        );
+        textPainter.layout();
+
+        double baselineOffset;
+        if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
+          baselineOffset = textPainter.height;
+        } else {
+          baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
+        }
+
+        Offset centerExtend = calculateSlatExtend(p1, p2, 2 * (appState.gridSize * 32 / 2 - appState.gridSize / 2));
+        Offset center = Offset(
+          p1.dx + centerExtend.dx,
+          p1.dy + centerExtend.dy,
+        );
+
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+
+        double angle = calculateSlatAngle(p1, p2);
+        // Flip upside-down labels
+        if (angle > pi / 2 || angle < -pi / 2) {
+          angle += pi;
+        }
+        canvas.rotate(angle);
+
+        final baseRect = Rect.fromCenter(
+          center: Offset.zero,
+          width: appState.gridSize * 1.8,
+          height: appState.gridSize * 0.85,
+        );
+
+        final textOffset = Offset(
+          - textPainter.width / 2 - 0.1,
+          - baselineOffset / 2 - 0.9,
+        );
+
+        canvas.drawRect(
+          baseRect,
+          Paint()
+            ..color = Colors.black
+            ..style = PaintingStyle.fill,
+        );
+        textPainter.paint(canvas, textOffset);
+        canvas.restore();
       }
 
       if (selectedSlats.contains(slat.id)) {

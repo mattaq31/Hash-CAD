@@ -205,6 +205,15 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
         },
       ),
       // SizedBox(height: 10),
+      CheckboxListTile(
+        title: const Text('Display Slat IDs'),
+        value: actionState.displaySlatIDs,
+        onChanged: (bool? value) {
+          setState(() {
+            actionState.setSlatIDDisplay(value ?? false);
+          });
+        },
+      ),
       // Buttons
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(

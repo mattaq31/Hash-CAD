@@ -589,17 +589,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
 
     for (var slat in slats) {
-      var p1 = convertCoordinateSpacetoRealSpace(
-          slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump,
-          y60Jump);
-      var p2 = convertCoordinateSpacetoRealSpace(
-          slat.slatPositionToCoordinate[32]!, gridMode, gridSize, x60Jump,
-          y60Jump);
+      var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
+      var p2 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[32]!, gridMode, gridSize, x60Jump, y60Jump);
       // same angle/extension system used here as in 2D system
 
       double slatAngle = calculateSlatAngle(p1, p2);
-      Offset slatExtend = calculateSlatExtend(
-          p1, p2, 2 * (gridSize * 32 / 2 - gridSize / 2));
+      Offset slatExtend = calculateSlatExtend(p1, p2, 2 * (gridSize * 32 / 2 - gridSize / 2));
 
       String slatType = helixBundleView ? 'honeyCombSlat' : 'slat';
 

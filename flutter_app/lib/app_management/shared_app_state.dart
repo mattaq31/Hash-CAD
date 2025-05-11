@@ -711,6 +711,7 @@ class ActionState extends ChangeNotifier {
   String cargoMode;
   bool displayAssemblyHandles;
   bool displayCargoHandles;
+  bool displaySlatIDs;
   bool evolveMode;
   bool isSideBarCollapsed;
   int panelMode;
@@ -722,6 +723,7 @@ class ActionState extends ChangeNotifier {
     this.cargoMode = 'Add',
     this.displayAssemblyHandles = false,
     this.displayCargoHandles = true,
+    this.displaySlatIDs = false,
     this.evolveMode = false,
     this.isSideBarCollapsed = false,
     this.panelMode = 0,
@@ -757,6 +759,11 @@ class ActionState extends ChangeNotifier {
 
   void setAssemblyHandleDisplay(bool value){
     displayAssemblyHandles = value;
+    notifyListeners();
+  }
+
+  void setSlatIDDisplay(bool value){
+    displaySlatIDs = value;
     notifyListeners();
   }
 
