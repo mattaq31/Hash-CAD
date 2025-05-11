@@ -1,6 +1,6 @@
 import pickle
 import os
-
+import itertools
 from matplotlib.style.core import library
 from nupack import *
 import numpy as np
@@ -18,6 +18,9 @@ def revcom(sequence):
     dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
     return "".join(dna_complement[n] for n in reversed(sequence))
 
+# Function to check if a sequence contains four consecutive G's, C's, A's, or T's
+def has_four_consecutive_bases(seq):
+    return 'GGGG' in seq or 'CCCC' in seq or 'AAAA' in seq or 'TTTT' in seq
 
 def sorted_key(seq1, seq2):
     return (min(seq1, seq2), max(seq1, seq2))
@@ -54,7 +57,7 @@ def nupack_compute_energy(seq1, seq2, samples = 10, type = 'total'):
 def get_library_path():
     return "pre_computed_energies/interactions_matrix.pkl"
 
-def nupack_compute_energy_precompute_library(seq1, seq2, samples = 1, type = 'total', Use_Library= False, fivep_ext="TT", threep_ext=""):
+def nupack_compute_energy_precompute_library(seq1, seq2, samples = 1, type = 'total', Use_Library= True, fivep_ext="TT", threep_ext=""):
 
     #use total for the total gibbs free energy
     # use minimum for the minimum free energy of the secondary strucutre
@@ -113,22 +116,75 @@ def nupack_compute_energy_precompute_library(seq1, seq2, samples = 1, type = 'to
             return -1.0
 
 
-def compute_ontarget_energies(handles):
-    #computes the binding energy of a sequence of with its reverse complement
-    energies = np.zeros(len(handles))
-    #print(handles)
-    for i in range((len(handles))):
-        #print(i)
-        energies[i] = nupack_compute_energy_precompute_library(handles[i], revcom(handles[i]), samples=100, type='total')
+
+
+
+def preselect_sequences_and_analize(lenght=7,fivep_ext="TT", threep_ext="",avoid_gggg=True,Use_Library=True):
+    # Define the DNA bases
+    bases = ['A', 'T', 'G', 'C']
+    n_mers = [''.join(mer) for mer in itertools.product(bases, repeat=lenght)]
+    unique_seven_mers = []
+    for mer in n_mers:
+        rc_mer = revcom(mer)
+        if mer not in unique_seven_mers and rc_mer not in unique_seven_mers:
+            unique_seven_mers.append(mer)
+
+    # remove GGGG and CCCC and etc
+    if avoid_gggg==True:
+        filtered_final_list = []
+        for mer in unique_seven_mers:
+            if not has_four_consecutive_bases(mer):
+                filtered_final_list.append(mer)
+    else:
+        filtered_final_list = unique_seven_mers
+
+
+    return compute_ontarget_energies(filtered_final_list,fivep_ext=fivep_ext,threep_ext=threep_ext,Use_Library=Use_Library)
+
+
+def compute_ontarget_energies(sequence_list, fivep_ext="TT", threep_ext="",Use_Library=True):
+    # Preallocate array for better performance
+    energies = np.zeros(len(sequence_list))
+
+    # Fill the array with computed energies
+    print(f"Computing energies for {len(sequence_list)} sequences...")
+
+    # Wrap the loop in a tqdm progress bar
+    for i, seq in tqdm(enumerate(sequence_list), total=len(sequence_list)):
+        on_energy = nupack_compute_energy_precompute_library(
+            seq,
+            revcom(seq),
+            samples=1,
+            type='total',
+            Use_Library=Use_Library,
+            fivep_ext=fivep_ext,
+            threep_ext=threep_ext
+        )
+        energies[i] = on_energy
+
+    # update the precompute library to  make things faster in the future
+    if Use_Library:
+        file_name = get_library_path()
+        if os.path.exists(file_name):
+            with open(file_name, "rb") as file:
+                library1 = pickle.load(file)
+        else:
+            library1 = {}
+
+        for i, seq in enumerate(sequence_list):
+            library1[sorted_key(seq, revcom(seq))] = energies[i]
+       # Save the updated dictionary
+        print(library1)
+        with open(file_name, "wb") as file:
+            pickle.dump(library1, file)
+
+
     return energies
-
-
 
 # helper function for parralel computing
 def compute_pair_energy(i, j, seq1, seq2, Use_Library):
     # return i, j, nupack_compute_energy(seq1, seq2)
     return i, j, nupack_compute_energy_precompute_library(seq1, seq2, Use_Library=Use_Library)
-
 
 def compute_offarget_energies(sequences, Use_Library= True):
     handles = sequences
@@ -223,6 +279,10 @@ def compute_offarget_energies(sequences, Use_Library= True):
 
 if __name__ == "__main__":
     # run test to see if the functions above work
+
+
+    ontarget6mer=preselect_sequences_and_analize(lenght=5,fivep_ext="TT", threep_ext="",avoid_gggg=True,Use_Library=True)
+
 
     testseq1 = 'ATGCCCGTCG'
     print(revcom(testseq1))

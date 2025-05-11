@@ -8,15 +8,34 @@ def has_four_consecutive_bases(seq):
     return 'GGGG' in seq or 'CCCC' in seq or 'AAAA' in seq or 'TTTT' in seq
 
 
+def preselect_sequences_and_analize(lenght=7,fivep_ext="TT", threep_ext="",avoid_gggg=True):
+    # Define the DNA bases
+    bases = ['A', 'T', 'G', 'C']
+    n_mers = [''.join(mer) for mer in itertools.product(bases, repeat=lenght)]
+    unique_seven_mers = []
+    for mer in seven_mers:
+        rc_mer = revcom(mer)
+        if mer not in unique_seven_mers and rc_mer not in unique_seven_mers:
+            unique_seven_mers.append(mer)
+
+    # remove GGGG and CCCC and etc
+    if avoid_gggg==True:
+        filtered_final_list = []
+        for mer in unique_seven_mers:
+            if not has_four_consecutive_bases(mer):
+                filtered_final_list.append(mer)
+    else:
+        filtered_final_list = unique_seven_mers
 
 
+    return energies
 if __name__ == "__main__":
+
 
 
     # Define the DNA bases
     bases = ['A', 'T', 'G', 'C']
     seven_mers = [''.join(mer) for mer in itertools.product(bases, repeat=7)]
-
 
 
 
