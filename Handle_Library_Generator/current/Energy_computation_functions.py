@@ -195,9 +195,10 @@ def compute_pair_energy(i, j, seq1, seq2, Use_Library):
     # return i, j, nupack_compute_energy(seq1, seq2)
     return i, j, nupack_compute_energy_precompute_library(seq1, seq2, Use_Library=Use_Library)
 
-def compute_offarget_energies(sequences, Use_Library= True):
-    handles = sequences
-    antihandles = [revcom(seq) for seq in sequences]
+def compute_offarget_energies(sequence_pairs, Use_Library= True):
+    # Extract handles and antihandles from the tuple pairs
+    handles = [seq for seq, rc_seq in sequence_pairs]
+    antihandles = [rc_seq for seq, rc_seq in sequence_pairs]
 
     crosscorrelated_handle_handle_energies = np.zeros((len(handles), len(handles)))
     crosscorrelated_antihandle_antihandle_energies = np.zeros((len(antihandles), len(antihandles)))
@@ -290,9 +291,24 @@ if __name__ == "__main__":
     # run test to see if the functions above work
 
 
-    ontarget7mer=create_sequence_pairs_pool(length=7,fivep_ext="TT", threep_ext="",avoid_gggg=True)
+    ontarget7mer=create_sequence_pairs_pool(length=7,fivep_ext="TT", threep_ext="AA",avoid_gggg=True)
 
-    e = compute_ontarget_energies(ontarget7mer, Use_Library=True)
+    on_e = compute_ontarget_energies(ontarget7mer, Use_Library=True)
+
+    # Select a random subset if there are more than 400 pairs
+
+    # Set a fixed random seed for reproducibility
+    RANDOM_SEED = 42
+    random.seed(RANDOM_SEED)
+    if len(ontarget7mer) > 200:
+        subset = random.sample(ontarget7mer, 200)
+        print(f"Selected random subset of 200 pairs from {len(ontarget7mer)} available pairs.")
+    else:
+        subset = ontarget7mer
+        print(f"Using all {len(ontarget7mer)} available pairs (less than 200).")
+
+    # Compute the off-target energies for the subset
+    off_e = compute_offarget_energies(subset, Use_Library=True)
 
     testseq1 = 'ATGCCCGTCG'
     print(revcom(testseq1))
