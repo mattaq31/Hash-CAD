@@ -1,3 +1,5 @@
+# NOW SUPERSEDED BY CLI FUNCTION (plate_resuspension.py)
+
 import os
 from crisscross.helper_functions import base_directory, create_dir_if_empty
 import pandas as pd
@@ -7,10 +9,21 @@ from math import floor
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import platform
 
-plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+
+# consistent figure formatting between mac, windows and linux
+if platform.system() == 'Darwin':
+    plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+elif platform.system() == 'Windows':
+    plt.rcParams.update({'font.sans-serif': 'Arial'})
+else:
+    plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
+
 
 input_dir = os.path.join(base_directory, 'assembly_handle_plates/new_assembly_handle_library_orders/maximal_order/IDT_spec_sheets')
+input_dir = '/Users/matt/Desktop/input_sheets'
+
 # get all excel files in the above directory
 input_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.xlsx')]
 target_concentrations = [1000] * len(input_files)

@@ -18,7 +18,7 @@ echo_folder = os.path.join(experiment_folder, 'echo_commands')
 lab_helper_folder = os.path.join(experiment_folder, 'lab_helper_sheets')
 create_dir_if_empty(echo_folder, lab_helper_folder)
 
-regen_graphics = True
+regen_graphics = False
 generate_echo = True
 generate_lab_helpers = True
 
@@ -31,6 +31,7 @@ for file, design_name in zip(base_design_import_files, shorthand_names):
     print('Hamming distance from imported array: %s, Duplication Risk: %s' % (hamming_results['Universal'], hamming_results['Substitute Risk']))
     ########## PATCHING PLATES
     core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, _, _, _, all_8064_seed_plugs = get_standard_plates(handle_library_v2=True)
+
     src_004, src_005, src_007, P3518, P3510,_ = get_cargo_plates()
 
     megastructure.patch_placeholder_handles(
@@ -60,3 +61,7 @@ for file, design_name in zip(base_design_import_files, shorthand_names):
     ########## OPTIONAL EXPORTS
     if regen_graphics:
         megastructure.create_standard_graphical_report(os.path.join(experiment_folder, f'{design_name}_graphics'), generate_3d_video=True)
+        megastructure.create_blender_3D_view(os.path.join(experiment_folder, f'{design_name}_graphics'),
+                                             camera_spin=False, correct_slat_entrance_direction=True, colormap='Dark2',
+                                   cargo_colormap='Set1', seed_color=(1, 0, 0),
+                                   include_bottom_light=False)

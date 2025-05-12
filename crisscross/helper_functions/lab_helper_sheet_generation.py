@@ -4,9 +4,27 @@ from colorama import Fore
 from openpyxl import Workbook
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
-import string
 import math
+import matplotlib.pyplot as plt
+import platform
+import os
+import pandas as pd
+from tqdm import tqdm
+from math import floor
+import seaborn as sns
+
 from crisscross.plate_mapping.plate_concentrations import concentration_library
+from crisscross.helper_functions import create_dir_if_empty, base_directory
+from crisscross.helper_functions.simple_plate_visuals import visualize_plate_with_color_labels
+
+
+# consistent figure formatting between mac, windows and linux
+if platform.system() == 'Darwin':
+    plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+elif platform.system() == 'Windows':
+    plt.rcParams.update({'font.sans-serif': 'Arial'})
+else:
+    plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
 
 
 def next_excel_column_name(n):
@@ -495,3 +513,153 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
     prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, slat_mixture_volume,
                                    wb, echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)
     wb.save(save_filepath)
+
+
+def prepare_liquid_handle_plates_multiple_files(output_directory, file_list=None, extract_all_from_folder=None,
+                                                target_concentration_uM=1000, volume_cap_ul=120,
+                                                target_concentration_per_plate=None,
+                                                max_commands_per_file=None,
+                                                plot_distribution_per_plate=True):
+    """
+    Generates resuspension maps for all provided DNA spec files.
+    :param output_directory: Output folder to save results.
+    :param file_list: Specific list of filepaths to assess.
+    :param extract_all_from_folder: Alternatively, specify a folder and all excel sheets will be extracted from the folder.
+    :param target_concentration_uM: Target concentration for plate resuspension.
+    :param volume_cap_ul: Maximum volume to resuspend (after which the volume is kept constant and the concentration is raised instead).
+    :param target_concentration_per_plate: Set to a dictionary of concentrations per plate if different concentrations are desired for different plates.
+    :param max_commands_per_file: Maximum commands that can be taken in by the liquid handler in one go.  If this is exceeded, files are split into different components.
+    :param plot_distribution_per_plate: If true, generate a volume distribution plot for each plate.
+    :return: N/A
+    """
+
+    if file_list is None and extract_all_from_folder is None:
+        raise ValueError("You must provide either a list of files or a folder to extract files from.")
+
+    if file_list is None or len(file_list) == 0:
+        file_list = [os.path.join(extract_all_from_folder, f) for f in os.listdir(extract_all_from_folder) if f.endswith('.xlsx')]
+
+
+    for target_file in tqdm(file_list, total=len(file_list), desc='Processing files...'):
+        prepare_liquid_handler_plate_resuspension_map(target_file, output_directory, target_concentration_uM=target_concentration_uM,
+                                                      volume_cap_ul=volume_cap_ul, max_commands_per_file=max_commands_per_file,
+                                                      target_concentration_per_plate=target_concentration_per_plate,
+                                                      plot_distribution_per_plate=plot_distribution_per_plate)
+
+
+def prepare_liquid_handler_plate_resuspension_map(filename, output_directory, target_concentration_uM=1000,
+                                                  volume_cap_ul=120, max_commands_per_file=None,
+                                                  plot_distribution_per_plate=True, target_concentration_per_plate=None):
+    """
+    Generates a visual plate map and resuspension instructions for an entire plate of DNA oligos.
+    The amount of DNA per well should be specified in an excel file using the standard IDT format.
+    :param filename: Excel file containing DNA spec sheets (can contain multiples plates per sheet).
+    :param output_directory: Output folder to save results.
+    :param target_concentration_uM: Target concentration for plate resuspension.
+    :param volume_cap_ul: Maximum volume to resuspend (after which the volume is kept constant and the concentration is raised instead).
+    :param max_commands_per_file: Maximum commands that can be taken in by the liquid handler in one go.  If this is exceeded, files are split into different components.
+    :param plot_distribution_per_plate: If true, generate a volume distribution plot for each plate.
+    :param target_concentration_per_plate: Set to a dictionary of concentrations per plate if different concentrations are desired for different plates.
+    :return: Distribution of volumes generated from the specified file.
+    """
+
+    # prepare output folders
+    map_directory = os.path.join(output_directory, 'maps')
+    script_directory = os.path.join(output_directory, 'scripts')
+    create_dir_if_empty(output_directory, map_directory, script_directory)
+
+    min_volume = np.inf
+    max_volume = 0
+    volume_dist = []
+
+    spec_df = pd.read_excel(filename, sheet_name=None)['Plate Specs']
+    # get all unique names in the 'Plate Name' column
+    plate_names = spec_df['Plate Name'].unique()
+
+    # run through all available plates
+    for plate_name in plate_names:
+        # extract information
+        selected_plate_df = spec_df[spec_df['Plate Name'] == plate_name]
+        nmole_values = selected_plate_df['nmoles'].values
+        plate_wells = selected_plate_df['Well Position'].values
+
+        if target_concentration_per_plate and plate_name in target_concentration_per_plate:
+            plate_target_conc = target_concentration_per_plate[plate_name]
+        else:
+            plate_target_conc = target_concentration_uM
+
+        volume_required = (nmole_values / plate_target_conc) * 1000
+
+        # cap all volumes to selected ceiling
+        volume_required[volume_required > volume_cap_ul] = volume_cap_ul
+
+        visual_dict = {}
+        numeric_dict = {}
+
+        max_volume = max(max_volume, np.max(volume_required))
+        min_volume = min(min_volume, np.min(volume_required))
+
+        volume_dist.extend(volume_required.tolist())
+
+        for well_index, vol in enumerate(volume_required):
+            well_name = plate_wells[well_index]
+            if well_name[1] == '0':
+                well_name = well_name[0] + well_name[2]
+            visual_dict[well_name] = '#40E0D0'
+
+            # how to use the floor function in python
+            numeric_dict[well_name] = floor(vol * 10) / 10
+
+        visualize_plate_with_color_labels('384', visual_dict,
+                                          direct_show=False,
+                                          well_label_dict=numeric_dict,
+                                          plate_title=f'{plate_name} (numbers = μl of UPW to add to achieve a target concentration of {plate_target_conc}μM)',
+                                          save_file=f'{plate_name}_resuspension_map', save_folder=map_directory)
+
+        # convert the well position and volumes to a pandas df and save to csv file
+        output_volume_df = pd.DataFrame.from_dict(numeric_dict, orient='index', columns=['Volume'])
+        output_volume_df = output_volume_df.reset_index()
+        output_volume_df.columns = ['Destination', 'Volume']
+        output_volume_df['Rack'] = 1
+        output_volume_df['Source'] = 1
+        output_volume_df['Rack 2'] = 1
+        output_volume_df['Tool'] = 2
+        output_volume_df = output_volume_df[['Rack', 'Source', 'Rack 2', 'Destination', 'Volume', 'Tool']]
+
+        if max_commands_per_file and len(output_volume_df) > max_commands_per_file:
+            # export in groups of the specified max command size
+            for index, i in enumerate(range(0, len(output_volume_df), max_commands_per_file)):
+                output_volume_df.iloc[i:i + max_commands_per_file].to_csv(
+                    os.path.join(script_directory, f'{plate_name}_resuspension_volumes_{index + 1}.csv'),
+                    header=['Rack', 'Source', 'Rack', 'Destination', 'Volume', 'Tool'], index=False)
+        else:
+            output_volume_df.to_csv(os.path.join(script_directory, f'{plate_name}_resuspension_volumes.csv'),
+                                    header=['Rack', 'Source', 'Rack', 'Destination', 'Volume', 'Tool'], index=False)
+
+        if plot_distribution_per_plate:
+            visualize_plate_volume_distribution(os.path.join(map_directory, f'{plate_name}_volume_distribution.png'), volume_dist, plate_target_conc)
+
+    return volume_dist
+
+def visualize_plate_volume_distribution(file_output, volume_dist, target_concentration_uM):
+    """
+    Visualizes the distribution of resuspension volumes for a given list.
+    :param file_output: Output filename
+    :param volume_dist: List of volumes (in ul)
+    :param target_concentration_uM: Target concentration used for this particular plate
+    :return: N/A
+    """
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    # Overlay bar plot (make sure alpha is higher than KDE plot)
+    sns.histplot(volume_dist, ax=ax, bins=40, kde=True, line_kws={'linewidth': 6})
+
+    plt.xlabel('Volume (μl)', fontsize=20)
+    plt.ylabel('Frequency', fontsize=20)
+    plt.title(f'Distribution of resuspension volumes (target concentration {target_concentration_uM}μM,\n max vol {max(volume_dist)}μl, min vol {min(volume_dist)}μl)', fontsize=22)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
+    plt.tight_layout()
+    plt.savefig(file_output, dpi=300)
+    plt.close(fig)

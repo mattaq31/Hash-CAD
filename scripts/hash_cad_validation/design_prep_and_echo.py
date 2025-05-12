@@ -14,9 +14,9 @@ experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/ha
 target_designs = ['hexagon', 'recycling', 'bird']
 
 base_design_import_files = [os.path.join(experiment_folder, f, f'{f}_design.xlsx') for f in target_designs]
-regen_graphics = False
-generate_echo = True
-generate_lab_helpers = True
+regen_graphics = True
+generate_echo = False
+generate_lab_helpers = False
 
 ########## LOADING AND CHECKING DESIGN
 for file, design_name in zip(base_design_import_files, target_designs):
@@ -61,3 +61,40 @@ for file, design_name in zip(base_design_import_files, target_designs):
     ########## OPTIONAL EXPORTS
     if regen_graphics:
         megastructure.create_standard_graphical_report(os.path.join(experiment_folder, design_name, f'{design_name}_graphics'), generate_3d_video=True)
+
+        megastructure.create_blender_3D_view(os.path.join(experiment_folder, design_name, f'{design_name}_graphics'),
+                                             camera_spin=False, correct_slat_entrance_direction=True, colormap='Dark2',
+                                   cargo_colormap='Set1', seed_color=(1, 0, 0),
+                                   include_bottom_light=False)
+
+        if design_name == 'bird': # animation creation
+            custom_animation_dict = {}
+
+            groups = [['layer2-slat%s' % x for x in range(145, 161)],
+                      ['layer3-slat%s' % x for x in range(1, 33)],
+                      ['layer2-slat%s' % x for x in range(49, 65)],
+                      ['layer4-slat%s' % x for x in range(1, 33)],
+                      ['layer5-slat%s' % x for x in range(1, 17)] + ['layer5-slat%s' % x for x in range(129, 145)],
+                      ['layer2-slat%s' % x for x in range(1, 17)] + ['layer5-slat%s' % x for x in range(65, 81)],
+                      ['layer1-slat%s' % x for x in range(261, 276)] + ['layer1-slat%s' % x for x in range(277, 278)] + ['layer6-slat%s' % x for x in range(33, 41)] + ['layer6-slat%s' % x for x in range(42, 48)] + ['layer6-slat%s' % x for x in range(49, 51)],
+                      ['layer4-slat%s' % x for x in range(49, 65)] + ['layer3-slat%s' % x for x in range(113, 129)],
+                      ['layer2-slat%s' % x for x in range(113, 129)] + ['layer5-slat%s' % x for x in range(97, 113)],
+                      ['layer4-slat%s' % x for x in range(81, 97)] + ['layer3-slat%s' % x for x in range(129, 145)],
+                      ['layer2-slat%s' % x for x in range(129, 145)] + ['layer5-slat%s' % x for x in range(113, 129)],
+                      ['layer1-slat%s' % x for x in range(205, 229)] + ['layer6-slat%s' % x for x in range(1, 25)],
+                      ]
+            for order, group in enumerate(groups):
+                for slat in group:
+                    custom_animation_dict[slat] = order
+
+            megastructure.create_blender_3D_view(
+                                      os.path.join(experiment_folder, design_name, f'{design_name}_graphics', 'animation'),
+                                      colormap=['#930B0B', '#EB7F23', '#F9CD3C', '#39AF5D', '#1197E9', '#1A1DBA'],
+                                      cargo_colormap='Dark2',
+                                      animate_assembly=True,
+                                      correct_slat_entrance_direction=True,
+                                      seed_color=(1.0, 0.0, 0.0),
+                                      custom_assembly_groups=custom_animation_dict,
+                                      animation_type='translate',
+                                      camera_spin=True)
+

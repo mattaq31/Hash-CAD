@@ -29,13 +29,13 @@ def look_at(obj, target):
     obj.rotation_euler = rot_quat.to_euler()
 
 
-def create_slat_material(color, mat_name, metallic_strength=0.3, alpha_animation=False):
+def create_slat_material(color, mat_name, metallic_strength=0.8, alpha_animation=False):
     """
-    :param color: RGB color code (4-value, with the last value being the alpha)
-    :param mat_name: The name to assign to the material
-    :param metallic_strength: How metallic the final material should be (default is slightly metallic)
-    :param alpha_animation: Set to True to enable alpha animation (for slat wipe-in animations)
-    :return: The complete material object
+    :param color: RGB color code (4-value, with the last value being the alpha).
+    :param mat_name: The name to assign to the material.
+    :param metallic_strength: How metallic the final material should be (default is pretty metallic).
+    :param alpha_animation: Set to True to enable alpha animation (for slat wipe-in animations).
+    :return: The complete material object.
     """
 
     material = bpy.data.materials.new(name=mat_name)
@@ -121,14 +121,14 @@ def set_slat_wipe_in_animation(frame_start, frame_end, slat_id, slat_cylinder, s
 def set_slat_translate_animation(frame_start, frame_end, slat_cylinder, slat_center, slat_rotation, slat_length,
                                  extension_length=2.0):
     """
-    Sets up a translation-based entry animation for a slat
-    :param frame_start: The frame from which to start the animation
-    :param frame_end: The frame at which the animation ends
-    :param slat_cylinder: The slat cylinder object pre-created in Blender
-    :param slat_center: The center of the slat
-    :param slat_rotation: The slat's orientation
-    :param slat_length: The slat's length
-    :param extension_length: The distance that the slat will move to complete the animation
+    Sets up a translation-based entry animation for a slat.
+    :param frame_start: The frame from which to start the animation.
+    :param frame_end: The frame at which the animation ends.
+    :param slat_cylinder: The slat cylinder object pre-created in Blender.
+    :param slat_center: The center of the slat.
+    :param slat_rotation: The slat's orientation.
+    :param slat_length: The slat's length.
+    :param extension_length: The distance that the slat will move to complete the animation.
     :return: N/A
     """
 
@@ -325,6 +325,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
                                  animate_delay_frames=40, connection_angle='90', seed_layer_and_array=None,
                                  seed_color=(1, 0, 0), camera_spin=False, animation_type='translate',
                                  specific_slat_translate_distances=None, correct_slat_entrance_direction=True,
+                                 force_slat_color_by_layer=True,
                                  colormap='Set1', cargo_colormap='Dark2', cargo_dict=None, slat_flip_list=None,
                                  layer_interface_orientations=None, include_bottom_light=False):
     """
@@ -344,6 +345,7 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     from the default value of 2.
     :param correct_slat_entrance_direction: If set to true, will attempt to correct the slat entrance animation to
     always start from a place that is supported.
+    :param force_slat_color_by_layer: Forces a slat to be colored by layer rather than by animation group (if animation is on).
     :param colormap: Colormap to extract layer colors from
     :param cargo_colormap: Colormap to extract cargo colors from.
     :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
@@ -370,13 +372,17 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     materials = {}
     if animation_type == 'translate' and animate_slat_group_dict is not None:
         for key, value in animate_slat_group_dict.items():
-            if value not in materials:
-                layer_id = slats[key].layer
+            layer_id = slats[key].layer
+            if force_slat_color_by_layer:
+                dict_key = (layer_id, value)
+            else:
+                dict_key = value
+            if dict_key not in materials:
                 if isinstance(colormap, list):
                     color = mpl.colors.to_rgb(colormap[layer_id - 1])
                 else:
                     color = mpl.colormaps[colormap].colors[layer_id - 1]
-                materials[value] = create_slat_material(color + (1,), f'Material Group {value}, Layer{layer_id}', alpha_animation=True)
+                materials[dict_key] = create_slat_material(color + (1,), f'Material Group {value}, Layer{layer_id}', alpha_animation=True)
     else:
         num_materials = slat_array.shape[2] # TODO: this does not work with crossbars
         for i in range(num_materials):
@@ -442,7 +448,10 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
         if animation_type != 'translate' or animate_slat_group_dict is None:
             bpy.context.object.data.materials.append(materials[layer])
         elif animation_type == 'translate' and animate_slat_group_dict is not None:
-            bpy.context.object.data.materials.append(materials[animate_slat_group_dict[slat_id]])
+            if force_slat_color_by_layer:
+                bpy.context.object.data.materials.append(materials[(slat.layer, animate_slat_group_dict[slat_id])])
+            else:
+                bpy.context.object.data.materials.append(materials[animate_slat_group_dict[slat_id]])
 
         if animate_slat_group_dict is not None:
             frame_start = animate_slat_group_dict[slat_id] * animate_delay_frames
