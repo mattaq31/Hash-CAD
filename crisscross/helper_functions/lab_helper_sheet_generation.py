@@ -260,8 +260,8 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
     return wb
 
 def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_concentration_uM=2,
-                                   slat_mixture_volume=50,
-                                   workbook=None, echo_sheet=None, special_slat_groups=None):
+                                   slat_mixture_volume=50, workbook=None,
+                                   echo_sheet=None, special_slat_groups=None, peg_concentration=2,):
     """
     Prepares standard instructions for combining and purifying slat mixtures using PEG purification.  Also prepares lists of slat groups as a reference for when in the lab.
     :param slat_dict: Dictionary of slats with slat names as keys and slat objects as values.
@@ -271,6 +271,7 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
     :param workbook: The workbook to which the new excel sheet should be added.
     :param echo_sheet: Exact list of commands sent to the Echo robot for this group of slats.
     :param special_slat_groups: IDs of slats that should be separated from the general slat groups and placed in their own group.
+    :param peg_concentration: PEG concentration (in terms of X) to be used as the stock solution for the purification step.
     :return: Workbook with new sheet included.
     """
     if workbook is not None:
@@ -327,8 +328,8 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
     ws['A9'] = 'Target Final Mg conc (mM)'
     ws['A10'] = 'Step 1: Add 1M Mg'
     ws['A11'] = 'Amount of 1M Mg to add (µl)'
-    ws['A12'] = 'Step 2: Add 2X PEG'
-    ws['A13'] = 'Amount of 2X PEG to add (µl)'
+    ws['A12'] = f'Step 2: Add {peg_concentration}X PEG'
+    ws['A13'] = f'Amount of {peg_concentration}X PEG to add (µl)'
     ws['A14'] = 'Step 3: SPIN FOR 30 MINS AT 16KG, RT'
     ws['A15'] = 'Step 4: REMOVE SUPERNATANT AND ADD 150ul of RESUS1'
     ws['A16'] = 'Step 5: SPIN AGAIN FOR 30 MINS AT 16KG, RT'
@@ -370,9 +371,9 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
         full_data_groups[group][f'{column}7'] = f"={column}5*{column}6/1000"
         full_data_groups[group][f'{column}8'] = 6
         ws[f'{column}8'].fill = orange_fill
-        full_data_groups[group][f'{column}9'] = 20
+        full_data_groups[group][f'{column}9'] = 10 * (peg_concentration/(peg_concentration-1))
         full_data_groups[group][f'{column}11'] = f"=round(({column}9-{column}8)*{column}5/(1000-{column}9),2)"
-        full_data_groups[group][f'{column}13'] = f"={column}11 + {column}5"
+        full_data_groups[group][f'{column}13'] = f"=({column}11 + {column}5)/({peg_concentration}-1)"
 
         # block 3 - resuspension calculations
         full_data_groups[group][f'{column}18'] = 100
@@ -481,6 +482,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
                                 reference_single_handle_concentration=500,
                                 slat_mixture_volume=50,
                                 peg_groups_per_layer=2,
+                                peg_concentration=2,
                                 echo_sheet=None,
                                 max_slat_concentration_uM=2,
                                 unique_transfer_volume_plates=None,
@@ -494,6 +496,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
     All concentration values will be referenced to this value.
     :param slat_mixture_volume: Reaction volume (in uL) for a single slat annealing mixture. Can be set to 'max' to use up all available handle mix.
     :param peg_groups_per_layer: Number of PEG groups to use per crisscross layer.  You might want to adjust this if you have too many slats together in one group.
+    :param peg_concentration: PEG concentration (in terms of X) to be used as the stock solution for the purification step.
     :param echo_sheet: Exact echo commands to use as a reference for calculating slat concentrations.
     :param max_slat_concentration_uM: Maximum concentration of slats in a combined PEG mixture (in UM) before a warning is triggered.
     :param unique_transfer_volume_plates: Plates that have special non-standard volumes.  This will be ignored if the echo sheet is provided with the exact details.
@@ -511,7 +514,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
 
     # prepares slat purification details
     prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, slat_mixture_volume,
-                                   wb, echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)
+                                   wb, peg_concentration=peg_concentration, echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)
     wb.save(save_filepath)
 
 
