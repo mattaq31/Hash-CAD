@@ -40,7 +40,6 @@ orange_fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="s
 blue_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
 green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
 
-
 def apply_box_border(ws, top_left, top_right, bottom_left, bottom_right, style='thick'):
     """
     Applies a thick border to an excel sheet surrounding the specified cells.
@@ -330,24 +329,26 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
     ws['A11'] = 'Amount of 1M Mg to add (µl)'
     ws['A12'] = f'Step 2: Add {peg_concentration}X PEG'
     ws['A13'] = f'Amount of {peg_concentration}X PEG to add (µl)'
-    ws['A14'] = 'Step 3: SPIN FOR 30 MINS AT 16KG, RT'
-    ws['A15'] = 'Step 4: REMOVE SUPERNATANT AND ADD 150ul of RESUS1'
-    ws['A16'] = 'Step 5: SPIN AGAIN FOR 30 MINS AT 16KG, RT'
-    ws['A17'] = 'Step 6: REMOVE SUPERNATANT AND RESUSPEND IN RESUS2 AS BELOW'
-    ws['A18'] = 'Desired final concentration (nM, per slat)'
-    ws['A19'] = 'Resuspend with Resus2 to achieve target concentration for each slat (µl)'
-    ws['A20'] = 'Expected total slat concentration (µM)'
-    ws['A21'] = 'Step 7: SHAKE AT 33C FOR 1 HOUR AT 1000RPM, THEN NANODROP'
-    ws['A22'] = 'Final Nanodrop (1x dilution - ng/µl dsDNA)'
-    ws['A23'] = 'Average slat molecular weight (Da)'
-    ws['A24'] = 'Total concentration from Nanodrop (µM)'
-    ws['A25'] = 'Estimated concentration of each individual slat (nM)'
-    ws['A26'] = 'Total amount of each slat (pmol)'
-    ws['A27'] = 'Total origami (pmol)'
-    ws['A28'] = 'PEG Yield (%)'
+    ws['A14'] = 'Final volume (DNA + Mg +PEG combined) (µl)'
+
+    ws['A15'] = 'Step 3: SPIN FOR 30 MINS AT 16KG, RT'
+    ws['A16'] = 'Step 4: REMOVE SUPERNATANT AND ADD 150ul of RESUS1'
+    ws['A17'] = 'Step 5: SPIN AGAIN FOR 30 MINS AT 16KG, RT'
+    ws['A18'] = 'Step 6: REMOVE SUPERNATANT AND RESUSPEND IN RESUS2 AS BELOW'
+    ws['A19'] = 'Desired final concentration (nM, per slat)'
+    ws['A20'] = 'Resuspend with Resus2 to achieve target concentration for each slat (µl)'
+    ws['A21'] = 'Expected total slat concentration (µM)'
+    ws['A22'] = 'Step 7: SHAKE AT 33C FOR 1 HOUR AT 1000RPM, THEN NANODROP'
+    ws['A23'] = 'Final Nanodrop (1x dilution - ng/µl dsDNA)'
+    ws['A24'] = 'Average slat molecular weight (Da)'
+    ws['A25'] = 'Total concentration from Nanodrop (µM)'
+    ws['A26'] = 'Estimated concentration of each individual slat (nM)'
+    ws['A27'] = 'Total amount of each slat (pmol)'
+    ws['A28'] = 'Total origami (pmol)'
+    ws['A29'] = 'PEG Yield (%)'
 
     # merge and center
-    for cell in ['A2', 'A10', 'A12', 'A14', 'A15', 'A16', 'A17', 'A21']:
+    for cell in ['A2', 'A10', 'A12', 'A15', 'A16', 'A17', 'A18', 'A22']:
         ws.merge_cells(f'{cell}:{next_excel_column_name(len(full_data_groups))}{cell[1:]}')
         ws[cell].alignment = Alignment(horizontal='center', vertical='center')
         ws[cell].font = Font(bold=True)
@@ -374,27 +375,29 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
         full_data_groups[group][f'{column}9'] = 10 * (peg_concentration/(peg_concentration-1))
         full_data_groups[group][f'{column}11'] = f"=round(({column}9-{column}8)*{column}5/(1000-{column}9),2)"
         full_data_groups[group][f'{column}13'] = f"=({column}11 + {column}5)/({peg_concentration}-1)"
+        full_data_groups[group][f'{column}14'] = f"={column}11 + {column}5 + {column}13"
+        ws[f'{column}14'].font = Font(bold=True)
 
         # block 3 - resuspension calculations
-        full_data_groups[group][f'{column}18'] = 100
-        ws[f'{column}18'].fill = blue_fill
-        full_data_groups[group][f'{column}19'] = f"=ROUND((({column}7/{column}4)/{column}18)*1000,1)"
-        full_data_groups[group][f'{column}20'] = f"=({column}18 * {column}4)/1000"
+        full_data_groups[group][f'{column}19'] = 100
+        ws[f'{column}19'].fill = blue_fill
+        full_data_groups[group][f'{column}20'] = f"=ROUND((({column}7/{column}4)/{column}19)*1000,1)"
+        full_data_groups[group][f'{column}21'] = f"=({column}19 * {column}4)/1000"
         rule = CellIsRule(operator='greaterThan', formula=[f'{max_slat_concentration_uM}'], fill=red_fill)
-        ws.conditional_formatting.add(f'{column}20', rule)
-        ws[f'{column}22'].fill = green_fill
+        ws.conditional_formatting.add(f'{column}21', rule)
+        ws[f'{column}23'].fill = green_fill
 
         # block 4 - MW and concentration calculations
         mw_total = 0
         for id in full_data_groups[group]['IDs']:
             mw_total += slat_dict[id].get_molecular_weight()
-        full_data_groups[group][f'{column}23'] = mw_total / len(full_data_groups[group]['IDs'])
+        full_data_groups[group][f'{column}24'] = mw_total / len(full_data_groups[group]['IDs'])
 
-        full_data_groups[group][f'{column}24'] = f'=round(({column}22*1000)/{column}23,2)'
-        full_data_groups[group][f'{column}25'] = f'=round({column}24/{column}4*1000,2)'
-        full_data_groups[group][f'{column}26'] = f'=round({column}25*{column}19/1000,2)'
-        full_data_groups[group][f'{column}27'] = f'={column}26*{column}4'
-        full_data_groups[group][f'{column}28'] = f'={column}27/{column}7*100'
+        full_data_groups[group][f'{column}25'] = f'=round(({column}23*1000)/{column}24,2)'
+        full_data_groups[group][f'{column}26'] = f'=round({column}25/{column}4*1000,2)'
+        full_data_groups[group][f'{column}27'] = f'=round({column}26*{column}20/1000,2)'
+        full_data_groups[group][f'{column}28'] = f'={column}27*{column}4'
+        full_data_groups[group][f'{column}29'] = f'={column}28/{column}7*100'
 
     # sidebar definitions
     sidebar_col_start = next_excel_column_name(position+3)
@@ -417,49 +420,49 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
                 ws[cell] = value
 
     # resus 1/2 handy values
-    ws['A30'] = 'Resus1/2 Buffer Components'
-    ws['A30'].font = Font(bold=True)
-    ws['A31'] = '10X TEF'
-    ws['A32'] = 'MgCl2 (mM)'
-    ws['A33'] = 'UPW (deionized water)'
-    ws['A34'] = 'Total Volume'
-    ws['B30'] = 'Stock'
-    ws['C30'] = 'Resus 1'
-    ws['D30'] = 'Resus 2'
+    ws['A31'] = 'Resus1/2 Buffer Components'
+    ws['A31'].font = Font(bold=True)
+    ws['A32'] = '10X TEF'
+    ws['A33'] = 'MgCl2 (mM)'
+    ws['A34'] = 'UPW (deionized water)'
+    ws['A35'] = 'Total Volume'
+    ws['B31'] = 'Stock'
+    ws['C31'] = 'Resus 1'
+    ws['D31'] = 'Resus 2'
 
-    ws['B31'] = 10
-    ws['B32'] = 1000
-    ws['C34'] = 2000
-    ws['D34'] = 2000
+    ws['B32'] = 10
+    ws['B33'] = 1000
+    ws['C35'] = 2000
+    ws['D35'] = 2000
 
-    ws['C31'] = '=1*C34/B31'
-    ws['D31'] = '=1*D34/B31'
+    ws['C32'] = '=1*C35/B32'
+    ws['D32'] = '=1*D35/B32'
 
-    ws['C32'] = '=ROUND(C34*20/B32,2)'
-    ws['D32'] = '=ROUND(D34*10/B32,2)'
+    ws['C33'] = '=ROUND(C35*20/B33,2)'
+    ws['D33'] = '=ROUND(D35*10/B33,2)'
 
-    ws['C33'] = '=C34 - C32 - C31'
-    ws['D33'] = '=D34 - D32 - D31'
+    ws['C34'] = '=C35 - C33 - C32'
+    ws['D34'] = '=D35 - D33 - D32'
 
-    apply_box_border(ws, 'A30', 'D30', 'A34', 'D34')
-    apply_box_border(ws, 'A1', f'{column}1', 'A28', f'{column}28')
+    apply_box_border(ws, 'A31', 'D31', 'A35', 'D35')
+    apply_box_border(ws, 'A1', f'{column}1', 'A29', f'{column}29')
 
     # slat group components and values
-    ws['A36'] = 'Slat Group Components'
-    ws.merge_cells(f'A36:D36')
-    ws['A36'].alignment = Alignment(horizontal='center', vertical='center')
-    ws['A36'].font = Font(bold=True)
-
-    ws['A37'] = 'Group Name'
+    ws['A37'] = 'Slat Group Components'
+    ws.merge_cells(f'A37:D37')
+    ws['A37'].alignment = Alignment(horizontal='center', vertical='center')
     ws['A37'].font = Font(bold=True)
-    ws['B37'] = 'Slat ID'
-    ws['B37'].font = Font(bold=True)
-    ws['C37'] = 'Slat Well'
-    ws['C37'].font = Font(bold=True)
-    ws['D37'] = 'Plate Name'
-    ws['D37'].font = Font(bold=True)
 
-    indexer = 38
+    ws['A38'] = 'Group Name'
+    ws['A38'].font = Font(bold=True)
+    ws['B38'] = 'Slat ID'
+    ws['B38'].font = Font(bold=True)
+    ws['C38'] = 'Slat Well'
+    ws['C38'].font = Font(bold=True)
+    ws['D38'] = 'Plate Name'
+    ws['D38'].font = Font(bold=True)
+
+    indexer = 39
     divider = Side(border_style='thick')
     for group in full_data_groups.keys():
         for id in full_data_groups[group]['IDs']:
