@@ -121,7 +121,7 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                     SizedBox(
                       width: rightPaneWidth,
                       child: FocusScope(
-                        canRequestFocus: false,
+                        canRequestFocus: true,
                           child: ThreeDisplay()),
                     ),
                   ]
