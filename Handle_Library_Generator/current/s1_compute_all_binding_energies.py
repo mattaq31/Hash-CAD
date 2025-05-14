@@ -28,7 +28,7 @@ def preselect_sequences_and_analize(lenght=7,fivep_ext="TT", threep_ext="",avoid
         filtered_final_list = unique_seven_mers
 
 
-    return energies
+    return filtered_final_list
 if __name__ == "__main__":
 
 

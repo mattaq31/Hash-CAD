@@ -273,7 +273,7 @@ def compute_offarget_energies(sequence_pairs, Use_Library= True):
                     library1[sorted_key(seq1, seq2)] = crosscorrelated_handle_antihandle_energies[i, j]
 
         # Save the updated dictionary
-        print(library1)
+        #print(library1)
         with open(file_name, "wb") as file:
             pickle.dump(library1, file)
 
