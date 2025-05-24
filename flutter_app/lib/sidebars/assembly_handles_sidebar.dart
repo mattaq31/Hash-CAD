@@ -84,20 +84,11 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           });
         },
       ),
-      CheckboxListTile(
-        title: const Text('Display Assembly Handles'),
-        value: actionState.displayAssemblyHandles,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setAssemblyHandleDisplay(value ?? false);
-          });
-        },
-      ),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton.icon(
-            onPressed: appState.currentlycomputingHamming ? null : () {
+            onPressed: appState.currentlyComputingHamming ? null : () {
               appState.generateRandomAssemblyHandles(uniqueHandleCount, preventSelfComplementarySlats);
               appState.updateDesignHammingValue();
               actionState.setAssemblyHandleDisplay(true);
@@ -112,7 +103,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           ),
           SizedBox(width: 10),
           ElevatedButton.icon(
-            onPressed: appState.currentlycomputingHamming ? null : () {
+            onPressed: appState.currentlyComputingHamming ? null : () {
               if (!kIsWeb) {
                 actionState.activateEvolveMode();
               } else {
@@ -190,7 +181,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   Text(
-                    appState.currentlycomputingHamming
+                    appState.currentlyComputingHamming
                         ? 'Computing...'
                         : appState.hammingValueValid
                             ? "Up-to-date"
@@ -198,7 +189,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         fontSize: 16,
-                        color: appState.currentlycomputingHamming
+                        color: appState.currentlyComputingHamming
                             ? Colors.yellow
                             : appState.hammingValueValid
                                 ? Colors.green
@@ -213,7 +204,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           ),
           SizedBox(height: 10),
           ElevatedButton.icon(
-            onPressed: appState.hammingValueValid || appState.currentlycomputingHamming ? null : () {
+            onPressed: appState.hammingValueValid || appState.currentlyComputingHamming ? null : () {
               appState.updateDesignHammingValue();
             },
             label: Text("Recalculate Score"),

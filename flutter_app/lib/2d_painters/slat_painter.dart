@@ -8,6 +8,17 @@ import 'dart:ui';
 import '../app_management/shared_app_state.dart';
 
 
+int getIndexFromSeedText(String seedText) {
+  final parts = seedText.split('-');
+  if (parts.length != 2) {
+    throw FormatException('Invalid seed format: $seedText');
+  }
+  final row = int.parse(parts[0]);
+  final col = int.parse(parts[1]);
+
+  return (row - 1) * 5 + (col - 1) + 1; // 1-based index
+}
+
 /// Custom painter for the slats themselves
 class SlatPainter extends CustomPainter {
   final double scale;
@@ -124,179 +135,138 @@ class SlatPainter extends CustomPainter {
 
       if (slat.layer == selectedLayer && (actionState.displayAssemblyHandles || actionState.displayCargoHandles)) {
         for (int i = 0; i < slat.maxLength; i++) {
-          if (slat.h5Handles.containsKey(i + 1) || slat.h2Handles.containsKey(i + 1)) {
+          final int handleIndex = i + 1;
+          final h5 = slat.h5Handles[handleIndex];
+          final h2 = slat.h2Handles[handleIndex];
+          if (h5 == null && h2 == null) continue;
 
-            Set<String> categoriesPresent = {};
-            if (slat.h5Handles.containsKey(i + 1)) {
-              categoriesPresent.add(slat.h5Handles[i + 1]!["category"]);
-            }
-            if (slat.h2Handles.containsKey(i + 1)) {
-              categoriesPresent.add(slat.h2Handles[i + 1]!["category"]);
-            }
+          Set<String> categoriesPresent = {
+            if (h5 != null) h5["category"],
+            if (h2 != null) h2["category"],
+          };
 
-            if ((actionState.displayAssemblyHandles && categoriesPresent.contains('Assembly')) || (actionState.displayCargoHandles && categoriesPresent.contains('Cargo')))
-            {
-              String topText = '↑X';
-              String bottomText = '↓X';
-              Color topColor = Colors.grey;
-              Color bottomColor = Colors.grey;
-              // TODO: compress this logic
-              if (slat.h5Handles.containsKey(i + 1)) {
-                if (selectedLayerTopside == 'H5') {
-                  topText = '↑${slat.h5Handles[i + 1]!["descriptor"]}';
-                  if (slat.h5Handles[i + 1]!["category"] == 'Cargo') {
-                    topColor = appState
-                        .cargoPalette[slat.h5Handles[i + 1]!["descriptor"]]!
-                        .color;
-                    topText =
-                        '↑${appState.cargoPalette[slat.h5Handles[i + 1]!["descriptor"]]!.shortName}';
-                  } else if (slat.h5Handles[i + 1]!["category"] == 'Assembly') {
-                    topColor = Colors.green;
-                  }
-                } else {
-                  bottomText = '↓${slat.h5Handles[i + 1]!["descriptor"]}';
-                  if (slat.h5Handles[i + 1]!["category"] == 'Cargo') {
-                    bottomColor = appState
-                        .cargoPalette[slat.h5Handles[i + 1]!["descriptor"]]!
-                        .color;
-                    bottomText =
-                        '↓${appState.cargoPalette[slat.h5Handles[i + 1]!["descriptor"]]!.shortName}';
-                  } else if (slat.h5Handles[i + 1]!["category"] == 'Assembly') {
-                    bottomColor = Colors.green;
-                  }
-                }
-              }
-              if (slat.h2Handles.containsKey(i + 1)) {
-                if (selectedLayerTopside == 'H2') {
-                  topText = '↑${slat.h2Handles[i + 1]!["descriptor"]}';
-                  if (slat.h2Handles[i + 1]!["category"] == 'Cargo') {
-                    topColor = appState
-                        .cargoPalette[slat.h2Handles[i + 1]!["descriptor"]]!
-                        .color;
-                    topText =
-                        '↑${appState.cargoPalette[slat.h2Handles[i + 1]!["descriptor"]]!.shortName}';
-                  } else if (slat.h2Handles[i + 1]!["category"] == 'Assembly') {
-                    topColor = Colors.green;
-                  }
-                } else {
-                  bottomText = '↓${slat.h2Handles[i + 1]!["descriptor"]}';
-                  if (slat.h2Handles[i + 1]!["category"] == 'Cargo') {
-                    bottomColor = appState
-                        .cargoPalette[slat.h2Handles[i + 1]!["descriptor"]]!
-                        .color;
-                    bottomText =
-                        '↓${appState.cargoPalette[slat.h2Handles[i + 1]!["descriptor"]]!.shortName}';
-                  } else if (slat.h2Handles[i + 1]!["category"] == 'Assembly') {
-                    bottomColor = Colors.green;
-                  }
-                }
+          // the below controls the logic and formatting for placing handle markers on slats
+          if ((actionState.displayAssemblyHandles && categoriesPresent.contains('Assembly')) || (actionState.displayCargoHandles && (categoriesPresent.contains('Cargo') || categoriesPresent.contains('Seed')))) {
+            String topText = '↑X';
+            String bottomText = '↓X';
+            Color topColor = Colors.grey;
+            Color bottomColor = Colors.grey;
+            String topCategory = '';
+            String bottomCategory = '';
+
+            void updateHandleData(Map<String, dynamic> handle, String side) {
+              final category = handle["category"];
+              final descriptor = handle["descriptor"];
+              final isTop = side == "top";
+
+              String shortText = descriptor;
+              Color color = Colors.grey;
+
+              if (category == 'Cargo') {
+                shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
+                color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
+              } else if (category == 'Assembly') {
+                color = Colors.green;
+              } else if (category == 'Seed') {
+                color = appState.cargoPalette['SEED']!.color;
+                shortText = '🌰${getIndexFromSeedText(descriptor)}';
               }
 
-              final position =
-                  getRealCoord(slat.slatPositionToCoordinate[i + 1]!);
-              final size = appState.gridSize * 0.85; // Adjust size as needed
-              final halfHeight = size / 2;
+              if (isTop) {
+                topText = category == 'Seed' ? shortText :'↑$shortText';
+                topColor = color;
+                topCategory = category;
+              } else {
+                bottomText = category == 'Seed' ? shortText :'↓$shortText';
+                bottomColor = color;
+                bottomCategory = category;
+              }
+            }
 
-              final rectTop = Rect.fromCenter(
-                center: Offset(position.dx, position.dy - halfHeight / 2),
-                width: size,
-                height: halfHeight,
-              );
+            if (h5 != null) {
+              final side = selectedLayerTopside == 'H5' ? 'top' : 'bottom';
+              updateHandleData(h5, side);
+            }
+            if (h2 != null) {
+              final side = selectedLayerTopside == 'H2' ? 'top' : 'bottom';
+              updateHandleData(h2, side);
+            }
 
-              final rectBottom = Rect.fromCenter(
-                center: Offset(position.dx, position.dy + halfHeight / 2),
-                width: size,
-                height: halfHeight,
-              );
+            final position = getRealCoord(slat.slatPositionToCoordinate[handleIndex]!);
+            final size = appState.gridSize * 0.85;
+            final halfHeight = size / 2;
 
-              canvas.drawRect(
-                rectTop,
-                Paint()
-                  ..color = topColor
-                  ..style = PaintingStyle.fill,
-              );
+            final rectTop = Rect.fromCenter(
+              center: Offset(position.dx, position.dy - halfHeight / 2),
+              width: size,
+              height: halfHeight,
+            );
 
-              canvas.drawRect(
-                rectBottom,
-                Paint()
-                  ..color = bottomColor
-                  ..style = PaintingStyle.fill,
-              );
+            final rectBottom = Rect.fromCenter(
+              center: Offset(position.dx, position.dy + halfHeight / 2),
+              width: size,
+              height: halfHeight,
+            );
 
-              // Draw the top "2"
-              final topTextPainter = TextPainter(
+            void drawHandleMarker(Rect rect, Color color, String category, bool isTop) {
+              final paint = Paint()..color = color..style = PaintingStyle.fill;
+              if (category == 'UNUSED') { // not doing triangles for now
+                final path = Path();
+                final centerX = rect.center.dx;
+                final topY = rect.top;
+                final bottomY = rect.bottom;
+
+                if (isTop) {
+                  path.moveTo(centerX, topY); // Top center
+                  path.lineTo(rect.left, bottomY); // Bottom left
+                  path.lineTo(rect.right, bottomY); // Bottom right
+                } else {
+                  path.moveTo(centerX, bottomY); // Bottom center
+                  path.lineTo(rect.left, topY); // Top left
+                  path.lineTo(rect.right, topY); // Top right
+                }
+                path.close();
+                canvas.drawPath(path, paint);
+              } else {
+                canvas.drawRect(rect, paint);
+              }
+            }
+
+            drawHandleMarker(rectTop, topColor, topCategory, true);
+            drawHandleMarker(rectBottom, bottomColor, bottomCategory, false);
+
+            void drawText(String text, Offset offset, double fontSize) {
+              final textPainter = TextPainter(
                 text: TextSpan(
-                  text: topText,
+                  text: text,
                   style: TextStyle(
                     color: Colors.white,
                     fontFamily: 'Roboto',
-                    fontSize: halfHeight * 0.8,
-                    // Adjust font size to fit half the rectangle
+                    fontSize: fontSize,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.center,
               );
-              topTextPainter.layout();
+              textPainter.layout();
 
-              double topBaselineOffset;
-
-              if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
-                topBaselineOffset = topTextPainter.height;
-              } else {
-                topBaselineOffset =
-                    topTextPainter.computeDistanceToActualBaseline(
-                            TextBaseline.alphabetic) ??
-                        0;
-              }
-
-              final topOffset = Offset(
-                position.dx - topTextPainter.width / 2 - 0.1,
-                position.dy - halfHeight + (halfHeight - topBaselineOffset) / 2,
+              final baselineOffset =textPainter.height;
+              final actualOffset = Offset(
+                offset.dx - textPainter.width / 2 - 0.1,
+                offset.dy - baselineOffset / 2 + 0.3,
               );
-              topTextPainter.paint(canvas, topOffset);
-
-              final bottomTextPainter = TextPainter(
-                text: TextSpan(
-                  text: bottomText,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Roboto',
-                    fontSize: halfHeight * 0.8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                textDirection: TextDirection.ltr,
-                textAlign: TextAlign.center,
-              );
-              bottomTextPainter.layout();
-
-              double bottomBaselineOffset;
-              if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
-                bottomBaselineOffset = bottomTextPainter.height;
-              } else {
-                bottomBaselineOffset =
-                    bottomTextPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
-              }
-
-              final bottomOffset = Offset(
-                position.dx - bottomTextPainter.width / 2 - 0.1,
-                position.dy +
-                    halfHeight -
-                    (halfHeight + bottomBaselineOffset) / 2,
-              );
-              bottomTextPainter.paint(canvas, bottomOffset);
-
-              // Draw dividing line
-              canvas.drawLine(
-                Offset(rectTop.left, position.dy),
-                Offset(rectTop.right, position.dy),
-                Paint()
-                  ..color = Colors.white
-                  ..strokeWidth = 0.5,
-              );
+              textPainter.paint(canvas, actualOffset);
             }
+
+            drawText(topText, Offset(position.dx, position.dy - halfHeight / 2), halfHeight * 0.8);
+            drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2), halfHeight * 0.8);
+
+            canvas.drawLine(
+              Offset(rectTop.left, position.dy),
+              Offset(rectTop.right, position.dy),
+              Paint()..color = Colors.white..strokeWidth = 0.5,
+            );
           }
         }
       }

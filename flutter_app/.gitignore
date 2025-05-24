@@ -154,3 +154,4 @@ app.*.symbols
 # repo-specific
 assets/hamming_server_osx
 python_server/nuitka_package
+prototyping

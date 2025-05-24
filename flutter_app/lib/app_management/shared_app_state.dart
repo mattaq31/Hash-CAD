@@ -11,6 +11,8 @@ import '../2d_painters/helper_functions.dart' as utils;
 import 'slat_undo_stack.dart';
 import 'dart:math';
 import  '../crisscross_core/cargo.dart';
+import '../crisscross_core/seed.dart';
+import '../main_windows/alert_window.dart';
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
 String nextCapitalLetter(String current) {
@@ -39,6 +41,7 @@ class DesignState extends ChangeNotifier {
   late final double y60Jump = gridSize / 2;
   late final double x60Jump = sqrt(pow(gridSize, 2) - pow(y60Jump, 2));
   String gridMode = '60';
+  bool standardTilt = true; // just a toggle between the two different tilt types
 
   Map<(String, int), Offset> slatDirectionGenerators = {
     ('90', 90): Offset(1, 0),
@@ -64,7 +67,10 @@ class DesignState extends ChangeNotifier {
     ('60', 240): Offset(-1, -1),
   };
 
-  // good for distinguishing layers quickly, but user can change colours
+  // when checking seed occupancy, use these values to extend beyond the standard hover position
+  Map<String, int> seedOccupancyDimensions = {'width': 5, 'height': 16};
+
+  // good starter colours for distinguishing layers quickly, but user can adjust
   List<String> colorPalette = [
     '#ebac23',
     '#b80058',
@@ -123,16 +129,18 @@ class DesignState extends ChangeNotifier {
   List<Offset> selectedCargoPositions = [];
 
   Map<String, Map<Offset, String>> occupiedCargoPoints = {};
+  Map<(String, String, Offset), Seed> seedRoster = {};
 
   bool currentlyLoadingDesign = false;
-  bool currentlycomputingHamming = false;
+  bool currentlyComputingHamming = false;
 
   // useful to keep track of occupancy and speed up grid checks
   Map<String, Map<Offset, String>> occupiedGridPoints = {};
 
   Map<String, Cargo> cargoPalette = {
-    'CARGO-1': Cargo(name: 'CARGO-1', shortName: 'C1', color: Colors.red),
+    'SEED': Cargo(name: 'SEED', shortName: 'S', color: Colors.red),
   };
+
 
   // GENERAL OPERATIONS //
 
@@ -143,6 +151,22 @@ class DesignState extends ChangeNotifier {
   Offset convertCoordinateSpacetoRealSpace(Offset inputPosition){
     return utils.convertCoordinateSpacetoRealSpace(inputPosition, gridMode, gridSize, x60Jump, y60Jump);
   }
+
+  String? getLayerByOrder(int order) {
+    for (final entry in layerMap.entries) {
+      if (entry.value['order'] == order) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  String flipSlatSide(String side) => side == 'top' ? 'bottom' : 'top';
+
+  bool layerNumberValid(int layerOrder){
+    return layerOrder != -1 && layerOrder < layerMap.length ? true : false;
+  }
+
   void resetDefaults(){
     selectedLayerKey = 'A';
     selectedSlats = [];   // to highlight on grid painter
@@ -154,7 +178,11 @@ class DesignState extends ChangeNotifier {
     cargoAddCount = 1;
     cargoAdditionType = null;
     occupiedGridPoints = {};
-    cargoPalette = {};
+    seedRoster = {};
+    cargoPalette = {
+      'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Colors.red),
+    };
+
     occupiedCargoPoints = {};
     selectedCargoPositions = [];
   }
@@ -192,6 +220,11 @@ class DesignState extends ChangeNotifier {
     slats = newSlats;
     gridMode = newGridMode;
     cargoPalette = newCargoPalette;
+
+    // legacy compatibility with files that didn't contain seed info
+    if(!cargoPalette.containsKey('SEED')){
+      cargoPalette['SEED'] = Cargo(name: 'SEED', shortName: 'S1', color: Colors.red);
+    }
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
     // Get the highest letter key
@@ -235,10 +268,7 @@ class DesignState extends ChangeNotifier {
   }
 
   void clearAll() {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     slats = {};
     layerMap = {
       'A': {
@@ -269,23 +299,40 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void saveUndoState(){
+    undoStack.saveState(DesignSaveState(
+      slats: slats,
+      occupiedGridPoints: occupiedGridPoints,
+      layerMap: layerMap,
+      layerMetaData: {
+        'selectedLayerKey': selectedLayerKey,
+        'nextLayerKey': nextLayerKey,
+        'nextColorIndex': nextColorIndex,
+      },
+      cargoPalette: cargoPalette,
+      occupiedCargoPoints: occupiedCargoPoints,
+      seedRoster: seedRoster,
+    ));
+  }
+
   void undo2DAction(){
-    // reverses actions taken on the 2D portion of the design - could potentially improve code here, but it works well as-is
+    // reverses actions taken on the 2D portion of the design
     clearSelection();
     hammingValueValid = false;
-    Map<String, dynamic>? previousState = undoStack.undo();
-    if (previousState != null) {
-      slats = previousState['slats'];
-      occupiedGridPoints = previousState['occupiedGridPoints'];
-      occupiedCargoPoints = previousState['occupiedCargoPoints'];
-      cargoPalette = previousState['cargoPalette'];
-      layerMap = previousState['layerMap'];
-      selectedLayerKey = previousState['layerMetaData']['selectedLayerKey'];
-      nextLayerKey = previousState['layerMetaData']['nextLayerKey'];
-      nextColorIndex = previousState['layerMetaData']['nextColorIndex'];
+    DesignSaveState? previous = undoStack.undo();
+    if (previous != null) {
+      slats = previous.slats;
+      occupiedGridPoints = previous.occupiedGridPoints;
+      occupiedCargoPoints = previous.occupiedCargoPoints;
+      cargoPalette = previous.cargoPalette;
+      layerMap = previous.layerMap;
+      selectedLayerKey = previous.layerMetaData['selectedLayerKey'];
+      nextLayerKey = previous.layerMetaData['nextLayerKey'];
+      nextColorIndex = previous.layerMetaData['nextColorIndex'];
+      seedRoster = previous.seedRoster;
       cargoAdditionType = null;
-      notifyListeners();
     }
+    notifyListeners();
   }
 
   // LAYER OPERATIONS //
@@ -348,8 +395,37 @@ class DesignState extends ChangeNotifier {
   }
 
   /// flips the H2-H5 direction of a layer
-  /// TODO: add undo state check here too
-  void flipLayer(String layer) {
+  void flipLayer(String layer, BuildContext context) {
+
+    // The flip operation can be invalid if a seed is transferred to a location where slats are already present.
+    // To prevent this, need to check the slat occupancy map prior to allowing the flip to occur.
+    final seedKeysToFlip = <(String, String, Offset)>[];
+    for (var seed in seedRoster.entries) {
+      if (seed.key.$1 == layer) {
+        bool flipValid = true;
+        // if seed is currently on top, check next layer underneath and vice versa
+        int candidateSeedLayerNumber = layerMap[layer]?['order'] + (seed.key.$2 == 'top' ? -1 : 1);
+        if (layerNumberValid(candidateSeedLayerNumber)) {
+          String candidateSeedOccupancyLayer = getLayerByOrder(candidateSeedLayerNumber)!;
+          for (var coord in seed.value.coordinates.values) {
+            if (occupiedGridPoints[candidateSeedOccupancyLayer]!.containsKey(convertRealSpacetoCoordinateSpace(coord))) {
+              flipValid = false;
+              break;
+            }
+          }
+        }
+        // if operation invalid, show dialog box and cancel operation
+        if(!flipValid){
+          showWarning(context, 'Invalid Flip Operation', 'Cannot flip the layer because this would result in a seed colliding with slats in the layer above/below its current position.');
+          return;
+        }
+        seedKeysToFlip.add(seed.key);
+      }
+    }
+
+    saveUndoState();
+
+    // update layer top/bottom helices
     if (layerMap[layer]?['top_helix'] == 'H5') {
       layerMap[layer]?['top_helix'] = 'H2';
       layerMap[layer]?['bottom_helix'] = 'H5';
@@ -366,6 +442,38 @@ class DesignState extends ChangeNotifier {
     occupiedCargoPoints['$layer-top'] = occupiedCargoPoints['$layer-bottom']!;
     occupiedCargoPoints['$layer-bottom'] = temp;
 
+    // apply slat and seed occupancy map changes
+    if (seedKeysToFlip.isNotEmpty) {
+      // seed could either move above or below current layer
+      List<int> potentialSeedLayers = [layerMap[layer]?['order'] + 1, layerMap[layer]?['order'] - 1];
+
+      // first, clear the positions of all previous seeds in the layer
+      for (int layerPos in potentialSeedLayers){
+        if (layerNumberValid(layerPos)) {
+          String seedOccupiedLayer = getLayerByOrder(layerPos)!;
+          occupiedGridPoints[seedOccupiedLayer]?.removeWhere((key, value) => value == 'SEED');
+        }
+      }
+
+      // next, apply the new seed positions in both seed and slat occupancy maps
+      for (var key in seedKeysToFlip) {
+        var newSide = flipSlatSide(key.$2);
+
+        // delete the old seed from the roster, and add the new one
+        seedRoster[(key.$1, newSide, key.$3)] = seedRoster[key]!;
+        seedRoster.remove(key);
+
+        int newSeedLayerNumber = layerMap[layer]?['order'] + (newSide == 'top' ? 1 : -1);
+
+        // apply the new seed to the slat occupancy map
+        if (layerNumberValid(newSeedLayerNumber)) {
+          String newLayer = getLayerByOrder(newSeedLayerNumber)!;
+          for (var coord in seedRoster[(key.$1, newSide, key.$3)]!.coordinates.values){
+            occupiedGridPoints[newLayer]![convertRealSpacetoCoordinateSpace(coord)] =  'SEED';
+          }
+        }
+      }
+    }
     notifyListeners();
   }
 
@@ -381,6 +489,7 @@ class DesignState extends ChangeNotifier {
     Map<(String, int), Offset> settingsTransfer = Map.from(multiSlatGenerators);
     multiSlatGenerators = Map.from(multiSlatGeneratorsAlternate);
     multiSlatGeneratorsAlternate = settingsTransfer;
+    standardTilt = !standardTilt;
     notifyListeners();
   }
 
@@ -389,10 +498,7 @@ class DesignState extends ChangeNotifier {
     if (!layerMap.containsKey(layer))
       return; // Ensure the layer exists before deleting
 
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
 
     layerMap.remove(layer); // Remove the layer
 
@@ -414,29 +520,86 @@ class DesignState extends ChangeNotifier {
     slats.removeWhere((key, value) => value.layer == layer);
     occupiedGridPoints.remove(layer);
 
+    // remove all seeds from the deleted layer
+    seedRoster.removeWhere((key, value) => key.$1 == layer);
+
     notifyListeners();
   }
 
   /// Reorders the positions of the layers based on a new order
-  void reOrderLayers(List<String> newOrder) {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+  void reOrderLayers(List<String> newOrder, BuildContext context) {
 
+    // since layers have moved, seed occupancy map needs to be updated, and potentially move should be cancelled if a clash can occur
+
+    // first, create a fake new layer map
+
+    var fakeLayerMap = {
+      for (var entry in layerMap.entries)
+        entry.key: Map<String, dynamic>.from(entry.value)
+    };
+
+    for (int i = 0; i < newOrder.length; i++) {
+      fakeLayerMap[newOrder[i]]!['order'] = i; // Assign new order values
+    }
+
+    // next, check all seeds to see if they clash in any way
+    for (var seed in seedRoster.entries) {
+      bool moveValid = true;
+      int candidateSeedLayerNumber = fakeLayerMap[seed.key.$1]!['order'] + (seed.key.$2 == 'top' ? 1 : -1);
+      if (layerNumberValid(candidateSeedLayerNumber)) {
+        String candidateSeedOccupancyLayer = '';
+        for (final entry in fakeLayerMap.entries) {
+          if (entry.value['order'] == candidateSeedLayerNumber) {
+            candidateSeedOccupancyLayer = entry.key;
+          }
+        }
+        for (var coord in seed.value.coordinates.values) {
+          if (occupiedGridPoints[candidateSeedOccupancyLayer]!.containsKey(convertRealSpacetoCoordinateSpace(coord))) {
+            moveValid = false;
+            break;
+          }
+        }
+      }
+      // if operation invalid, show dialog box and cancel operation
+      if(!moveValid){
+        showWarning(context, "Invalid Layer Move Operation", "Cannot move the layer because this would result in a seed colliding with slats in the layer above/below the layer's new position.");
+        return;
+      }
+    }
+
+    // if move is valid, proceed with the operation
+    saveUndoState();
     for (int i = 0; i < newOrder.length; i++) {
       layerMap[newOrder[i]]!['order'] = i; // Assign new order values
     }
+
+    // apply slat occupancy map changes
+
+    // first, clear the positions of all previous seeds
+    for (var layerID in layerMap.keys){
+      occupiedGridPoints[layerID]?.removeWhere((key, value) => value == 'SEED');
+    }
+
+    // next, apply the new seed positions in both seed and slat occupancy maps
+    for (var seed in seedRoster.entries) {
+
+      int newSeedLayerNumber = layerMap[seed.key.$1]?['order'] + (seed.key.$2 == 'top' ? 1 : -1);
+
+      // apply the new seed to the slat occupancy map
+      if (layerNumberValid(newSeedLayerNumber)) {
+        String newLayer = getLayerByOrder(newSeedLayerNumber)!;
+        for (var coord in seed.value.coordinates.values){
+          occupiedGridPoints[newLayer]![convertRealSpacetoCoordinateSpace(coord)] =  'SEED';
+        }
+      }
+    }
+
     notifyListeners();
   }
 
   /// Adds an entirely new layer to the design
   void addLayer() {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
-
+    saveUndoState();
     layerMap[nextLayerKey] = {
       "direction": layerMap.values.last['direction'],
       'next_slat_id': 1,
@@ -448,6 +611,9 @@ class DesignState extends ChangeNotifier {
       Color(int.parse('0xFF${colorPalette[nextColorIndex].substring(1)}')),
       "hidden": false
     };
+
+    occupiedGridPoints.putIfAbsent(nextLayerKey, () => {});
+
     // if last last layerMap value has direction horizontal, next direction should be rotated one step forward
     rotateLayerDirection(nextLayerKey);
 
@@ -464,10 +630,7 @@ class DesignState extends ChangeNotifier {
 
   /// Adds slats to the design
   void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     for (var slat in slatCoordinates.entries) {
       slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}',layer, slat.value);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
@@ -485,10 +648,7 @@ class DesignState extends ChangeNotifier {
 
   /// Updates the position of a slat
   void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     // also need to remove old positions from occupiedGridPoints and add new ones
     String layer = slatID.split('-')[0];
 
@@ -502,10 +662,7 @@ class DesignState extends ChangeNotifier {
 
   /// Removes a slat from the design
   void removeSlat(String ID) {
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     clearSelection();
     String layer = ID.split('-')[0];
     slats.remove(ID);
@@ -566,7 +723,7 @@ class DesignState extends ChangeNotifier {
   }
 
   void updateDesignHammingValue() async {
-    currentlycomputingHamming = true;
+    currentlyComputingHamming = true;
     notifyListeners();
     if (slats.isEmpty) {
       currentHamming = 0;
@@ -577,7 +734,7 @@ class DesignState extends ChangeNotifier {
       }
     }
     hammingValueValid = true;
-    currentlycomputingHamming = false;
+    currentlyComputingHamming = false;
     notifyListeners();
   }
 
@@ -617,10 +774,7 @@ class DesignState extends ChangeNotifier {
   }
 
   void cleanAllHandles(){
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     /// Removes all handles from the slats
     /// TODO: PROBLEM WHEN SHIFTING SLAT LAYERS - ASSEMBLY HANDLES ARE CARRIED OVER!
     for (var slat in slats.values) {
@@ -634,19 +788,13 @@ class DesignState extends ChangeNotifier {
 
   // this is just adding another available cargo type to the list (and not attaching it to any slats)
   void addCargoType(Cargo cargo){
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     cargoPalette[cargo.name] = cargo;
     notifyListeners();
   }
 
   void deleteCargoType(String cargoName){
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     cargoPalette.remove(cargoName);
     cargoAdditionType = null;
     notifyListeners();
@@ -654,7 +802,12 @@ class DesignState extends ChangeNotifier {
 
   /// Updates the number of cargo to be added with the next 'add' click
   void updateCargoAddCount(int value) {
-    cargoAddCount = value;
+    if (cargoAdditionType == 'SEED'){
+      cargoAddCount = 1;
+    }
+    else {
+      cargoAddCount = value;
+    }
     notifyListeners();
   }
 
@@ -668,15 +821,13 @@ class DesignState extends ChangeNotifier {
   }
 
   void attachCargo(Cargo cargo, String layerID, String slatSide, Map<int, Offset> coordinates){
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     occupiedCargoPoints.putIfAbsent('$layerID-$slatSide', () => {});
+
     for (var coord in coordinates.values){
       if (!occupiedGridPoints[layerID]!.containsKey(coord)) {
         // no slat at this position
-        return;
+        continue;
       }
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
@@ -688,22 +839,125 @@ class DesignState extends ChangeNotifier {
   }
 
   void removeCargo(String slatID, String slatSide, Offset coordinate){
-    undoStack.saveState(slats, occupiedGridPoints, layerMap,
-        {'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex}, cargoPalette, occupiedCargoPoints);
+    saveUndoState();
     var slat = slats[slatID]!;
     int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
     if (integerSlatSide == 2){
+      if (slat.h2Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] == 'Seed'){
+        removeSeed(slat.layer, slatSide, coordinate);
+        return;
+      }
       slat.h2Handles.remove(slat.slatCoordinateToPosition[coordinate]!);
     }
     else{
+      if (slat.h5Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] == 'Seed'){
+        removeSeed(slat.layer, slatSide, coordinate);
+        return;
+      }
       slat.h5Handles.remove(slat.slatCoordinateToPosition[coordinate]!);
     }
     occupiedCargoPoints['${slat.layer}-$slatSide']?.remove(coordinate);
     notifyListeners();
   }
+
+  void attachSeed(String layerID, String slatSide, Map<int, Offset> coordinates){
+    /// Adds a seed to the design.  This involves:
+    /// 1) adding the appropriate handles to all involved slats,
+    /// 2) adding blocks to the occupancy grids and
+    /// 3) adding an entry to the seed roster that groups all the
+    /// coordinates together (makes it easy to delete the seed in one go later).
+
+    for (var coord in coordinates.values) {
+      if (!occupiedGridPoints.containsKey(layerID) || !occupiedGridPoints[layerID]!.containsKey(coord)) {
+        // no slat at this position - cannot place a seed without full occupancy of all handles
+        return;
+      }
+    }
+
+    saveUndoState();
+
+    occupiedCargoPoints.putIfAbsent('$layerID-$slatSide', () => {});
+
+    int slatOccupiedLayerOrder = layerMap[layerID]?['order'] + (slatSide == 'top' ? 1 : -1);
+
+    String occupiedLayer = '';
+    if (layerNumberValid(slatOccupiedLayerOrder)){
+      occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
+      occupiedGridPoints.putIfAbsent(occupiedLayer, () => {});
+    }
+
+    int index = 0;
+    for (var coord in coordinates.values){
+
+      int row = index ~/ 5 + 1; // Integer division to get row number
+      int col = index % 5 + 1;  // Modulo to get column number
+
+      var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
+      int position = slat.slatCoordinateToPosition[coord]!;
+      int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+      slat.setPlaceholderHandle(position, integerSlatSide, '$row-$col', 'Seed');
+      occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
+
+      // seed takes up space from the slat grid too, not just cargo
+      if (occupiedLayer != '') {
+        occupiedGridPoints[occupiedLayer]![coord] =  'SEED';
+      }
+
+      index += 1;
+    }
+
+    // assign a seed to the roster - each seed is uniquely identified by its layer, slat position and unique ID
+    Map<int, Offset> convertedCoordinates = coordinates.map(
+          (key, value) => MapEntry(key, convertCoordinateSpacetoRealSpace(value)),
+    );
+
+    Seed newSeed = Seed(coordinates: convertedCoordinates);
+
+    seedRoster[(layerID, slatSide, coordinates[1]!)] = newSeed;
+
+    notifyListeners();
+  }
+
+  void removeSeed(String layerID, String slatSide, Offset coordinate){
+    /// Removes a seed from the design.  This involves: 1) remove the handles from the related slats,
+    /// 2) removing the blocks from the slat and cargo occupancy grids and 3)
+    /// removing the seed and its related coordinates from the seed roster.
+    var seedToRemove;
+    for (var seed in seedRoster.entries){
+      if (seed.value.coordinates.containsValue(convertCoordinateSpacetoRealSpace(coordinate))){
+        for (var coord in seed.value.coordinates.values){
+          var convCoord = convertRealSpacetoCoordinateSpace(coord);
+          var slat = slats[occupiedCargoPoints['$layerID-$slatSide']![convCoord]];
+
+          int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+          if (integerSlatSide == 2){
+            slat!.h2Handles.remove(slat.slatCoordinateToPosition[convCoord]!);
+          }
+          else{
+            slat!.h5Handles.remove(slat.slatCoordinateToPosition[convCoord]!);
+          }
+
+          occupiedCargoPoints['$layerID-$slatSide']?.remove(convCoord);
+
+          int slatOccupiedLayerOrder = layerMap[layerID]?['order'] + (slatSide == 'top' ? 1 : -1);
+
+          if (layerNumberValid(slatOccupiedLayerOrder)){
+            String occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
+            occupiedGridPoints[occupiedLayer]?.remove(convCoord);
+          }
+
+        }
+        seedToRemove = seed.key;
+      }
+    }
+    if (seedToRemove != null){
+      seedRoster.remove(seedToRemove);
+    }
+    notifyListeners();
+  }
 }
+
+
 
 /// State management for action mode and display settings
 class ActionState extends ChangeNotifier {
@@ -712,12 +966,14 @@ class ActionState extends ChangeNotifier {
   bool displayAssemblyHandles;
   bool displayCargoHandles;
   bool displaySlatIDs;
+  bool displaySeeds;
+  bool displayGrid;
+  bool displayBorder;
   bool isolateSlatLayerView;
   bool evolveMode;
   bool isSideBarCollapsed;
   int panelMode;
   String cargoAttachMode;
-
 
   ActionState({
     this.slatMode = 'Add',
@@ -728,6 +984,9 @@ class ActionState extends ChangeNotifier {
     this.isolateSlatLayerView = false,
     this.evolveMode = false,
     this.isSideBarCollapsed = false,
+    this.displaySeeds = true,
+    this.displayBorder = true,
+    this.displayGrid = true,
     this.panelMode = 0,
     this.cargoAttachMode = 'top'
   });
@@ -769,10 +1028,24 @@ class ActionState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSeedDisplay(bool value){
+    displaySeeds = value;
+    notifyListeners();
+  }
+  void setGridDisplay(bool value){
+    displayGrid = value;
+    notifyListeners();
+  }
+  void setBorderDisplay(bool value){
+    displayBorder = value;
+    notifyListeners();
+  }
+
   void setCargoHandleDisplay(bool value){
     displayCargoHandles = value;
     notifyListeners();
   }
+
   void setIsolateSlatLayerView(bool value){
     isolateSlatLayerView = value;
     notifyListeners();

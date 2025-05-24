@@ -195,34 +195,6 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           ),
         ),
       ),
-      CheckboxListTile(
-        title: const Text('Display Assembly Handles'),
-        value: actionState.displayAssemblyHandles,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setAssemblyHandleDisplay(value ?? false);
-          });
-        },
-      ),
-      // SizedBox(height: 10),
-      CheckboxListTile(
-        title: const Text('Display Slat IDs'),
-        value: actionState.displaySlatIDs,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setSlatIDDisplay(value ?? false);
-          });
-        },
-      ),
-      CheckboxListTile(
-        title: const Text('Isolate Current Layer'),
-        value: actionState.isolateSlatLayerView,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setIsolateSlatLayerView(value ?? false);
-          });
-        },
-      ),
       // Buttons
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(
@@ -318,6 +290,15 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       Text("Layer Manager",
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.bold)),
+      CheckboxListTile(
+        title: const Text('Isolate Current Layer', textAlign: TextAlign.center),
+        value: actionState.isolateSlatLayerView,
+        onChanged: (bool? value) {
+          setState(() {
+            actionState.setIsolateSlatLayerView(value ?? false);
+          });
+        },
+      ),
       Container(
         constraints: BoxConstraints(
           maxHeight: min(
@@ -343,7 +324,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
               sortedKeys.insert(newIndex, movedKey);
 
               // Pass the reordered keys to reOrderLayers
-              appState.reOrderLayers(sortedKeys.reversed.toList());
+              appState.reOrderLayers(sortedKeys.reversed.toList(), context);
 
             });
           },
@@ -437,7 +418,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
                           icon: Icon(Icons.autorenew, color: Colors.blue),
                           onPressed: () {
                             setState(() {
-                              appState.flipLayer(key);
+                              appState.flipLayer(key, context);
                             });
                           },
                           constraints: BoxConstraints(minWidth: 35, minHeight: 35), // Adjust width/height

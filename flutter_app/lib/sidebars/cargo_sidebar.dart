@@ -4,14 +4,74 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import  '../crisscross_core/cargo.dart';
 import 'package:flutter/services.dart';
-
-
+import '../2d_painters/seed_painter.dart';
+import '../crisscross_core/seed.dart';
 
 class CargoDesignTools extends StatefulWidget {
   const CargoDesignTools({super.key});
 
   @override
   State<CargoDesignTools> createState() => _CargoDesignTools();
+}
+
+List<String> restrictedCargo = ['SEED'];
+
+Map<int, Offset> _generateSeedCoordinates(int cols, int rows, double jump) {
+  final Map<int, Offset> coordinates = {};
+  int index = 1;
+  for (int row = 0; row < rows; row++) {
+    for (int col = 0; col < cols; col++) {
+      coordinates[index++] = Offset(col * jump, row * jump);
+    }
+  }
+  return coordinates;
+}
+
+
+Widget _buildSeedItem(DesignState appState, TextEditingController cargoAddTextController) {
+  bool isSelected = appState.cargoAdditionType == 'SEED';
+  return GestureDetector(
+    onTap: () {
+      appState.selectCargoType('SEED');
+      appState.updateCargoAddCount(1);
+      cargoAddTextController.text = '1';
+    },
+    child: Container(
+      width: 120, // Roughly 2 x 40 + 2 x margin
+      height: 40,
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isSelected ? Colors.black : Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: isSelected
+            ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 6,
+            spreadRadius: 1,
+          )
+        ]
+            : [],
+      ),
+      child: CustomPaint(
+        painter: SeedPainter(
+          scale: 0.7, // Scale down to fit inside 84x84
+          canvasOffset: const Offset(11, 6), // Adjust to center nicely
+          seeds: [Seed(coordinates: _generateSeedCoordinates(16, 5, 9))],
+          handleJump: 9,
+          cols: 16,
+          rows: 5,
+          tilt: false,
+          printHandles: false,
+          color: appState.cargoPalette['SEED']!.color,
+        ),
+      ),
+    ),
+  );
 }
 
 Widget _buildCargoSquare(Cargo cargo, DesignState appState) {
@@ -33,7 +93,7 @@ Widget _buildCargoSquare(Cargo cargo, DesignState appState) {
         boxShadow: isSelected
             ? [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 6,
             spreadRadius: 1,
           )
@@ -61,10 +121,11 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
   FocusNode cargoAddFocusNode = FocusNode();
 
   TextEditingController cargoAddTextController = TextEditingController(text: '1');
-  int cargoAddCount = 1;
+
 
   void _updateCargoAddCount(DesignState appState) {
     int? newValue = int.tryParse(cargoAddTextController.text);
+    int cargoAddCount;
     if (newValue != null && newValue >= 1 && newValue <= 32) {
       cargoAddCount = newValue;
     } else if (newValue != null && newValue < 1) {
@@ -100,49 +161,56 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text(editMode ? 'Edit Cargo' : 'Add Cargo'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Cargo Name'),
-                enabled: !editMode,  // TODO: add a way for changing cargo name instead of preventing editing...
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(editMode ? 'Edit Cargo' : 'Add Cargo'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Cargo Name'),
+                    enabled: !editMode,  // TODO: add a way for changing cargo name instead of preventing editing...
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  TextField(
+                    controller: shortNameController,
+                    decoration: const InputDecoration(labelText: 'Short Name'),
+                    onChanged: (_) {
+                      shortNameEditedManually = true;
+                    },
+                ),
+                const SizedBox(height: 16),
+                ColorPicker(
+                  pickerColor: selectedColor,
+                  onColorChanged: (color) {
+                    setState(() {
+                      selectedColor = color;
+                    });
+                  },
+                ),
+                ],
               ),
-              TextField(
-                controller: shortNameController,
-                decoration: const InputDecoration(labelText: 'Short Name'),
-                onChanged: (_) {
-                  shortNameEditedManually = true;
-                },
-              ),
-              const SizedBox(height: 16),
-              ColorPicker(
-                pickerColor: selectedColor,
-                onColorChanged: (color) {
-                  selectedColor = color;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ElevatedButton(
-              child: const Text('Add'),
-              onPressed: () {
-                final name = nameController.text.trim();
-                final shortName = shortNameController.text.trim();
-                if (name.isNotEmpty) {
-                  appState.addCargoType(Cargo(name: name, shortName: shortName, color: selectedColor));
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
-          ],
+              actions: [
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                ElevatedButton(
+                  onPressed: (restrictedCargo.contains(nameController.text.trim()) && !editMode) || nameController.text.trim().isEmpty ? null : () {
+                    final name = nameController.text.trim();
+                    final shortName = shortNameController.text.trim();
+                    if (name.isNotEmpty) {
+                      appState.addCargoType(Cargo(name: name, shortName: shortName, color: selectedColor));
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Text(editMode ? 'Save' : 'Add'),
+                ),
+              ],
+            );
+          }
         );
       },
     );
@@ -187,24 +255,6 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           });
         },
       ),
-      CheckboxListTile(
-        title: const Text('Display Assembly Handles'),
-        value: actionState.displayAssemblyHandles,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setAssemblyHandleDisplay(value ?? false);
-          });
-        },
-      ),
-      CheckboxListTile(
-        title: const Text('Display Cargo Handles'),
-        value: actionState.displayCargoHandles,
-        onChanged: (bool? value) {
-          setState(() {
-            actionState.setCargoHandleDisplay(value ?? false);
-          });
-        },
-      ),
       SizedBox(height: 5),
       Text(
         "Cargo Palette", // Title above the segmented button
@@ -223,9 +273,12 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           child: Wrap(
             spacing: 4,
             runSpacing: 4,
-            children: appState.cargoPalette.values
-                .map((cargo) => _buildCargoSquare(cargo, appState))
-                .toList(),
+            children: [
+              _buildSeedItem(appState, cargoAddTextController), // skip those with SEED
+              for (var cargo in appState.cargoPalette.values)
+                if (!restrictedCargo.contains(cargo.name))
+                  _buildCargoSquare(cargo, appState),
+            ],
           ),
         ),
       ),
@@ -247,7 +300,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           ),
           SizedBox(width: 5),
           FilledButton.icon(
-            onPressed: appState.cargoAdditionType == null
+            onPressed: appState.cargoAdditionType == null || appState.cargoAdditionType == 'SEED'
                 ? null
                 : () {
                     appState.deleteCargoType(appState.cargoAdditionType!);
@@ -313,20 +366,18 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           IconButton(
             icon: Icon(Icons.arrow_upward),
             onPressed: () {
-              if (cargoAddCount < 32) {
-                cargoAddCount++;
-                cargoAddTextController.text = cargoAddCount.toString();
-                appState.updateCargoAddCount(cargoAddCount);
+              if (appState.cargoAddCount < 32) {
+                appState.updateCargoAddCount(appState.cargoAddCount+1);
+                cargoAddTextController.text = appState.cargoAddCount.toString();
               }
             },
           ),
           IconButton(
             icon: Icon(Icons.arrow_downward),
             onPressed: () {
-              if (cargoAddCount > 1) {
-                cargoAddCount--;
-                cargoAddTextController.text = cargoAddCount.toString();
-                appState.updateCargoAddCount(cargoAddCount);
+              if (appState.cargoAddCount > 1) {
+                appState.updateCargoAddCount(appState.cargoAddCount-1);
+                cargoAddTextController.text = appState.cargoAddCount.toString();
               }
             },
           ),
@@ -339,36 +390,32 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           ActionChip(
             label: Text('1'),
             onPressed: () {
-              cargoAddCount = 1;
-              cargoAddTextController.text = cargoAddCount.toString();
-              appState.updateCargoAddCount(cargoAddCount);
+              appState.updateCargoAddCount(1);
+              cargoAddTextController.text = appState.cargoAddCount.toString();
             },
           ),
           SizedBox(width: 10),
           ActionChip(
             label: Text('8'),
             onPressed: () {
-              cargoAddCount = 8;
-              cargoAddTextController.text = cargoAddCount.toString();
-              appState.updateCargoAddCount(cargoAddCount);
+              appState.updateCargoAddCount(8);
+              cargoAddTextController.text = appState.cargoAddCount.toString();
             },
           ),
           SizedBox(width: 10),
           ActionChip(
             label: Text('16'),
             onPressed: () {
-              cargoAddCount = 16;
-              cargoAddTextController.text = cargoAddCount.toString();
-              appState.updateCargoAddCount(cargoAddCount);
+              appState.updateCargoAddCount(16);
+              cargoAddTextController.text = appState.cargoAddCount.toString();
             },
           ),
           SizedBox(width: 10),
           ActionChip(
             label: Text('32'),
             onPressed: () {
-              cargoAddCount = 32;
-              cargoAddTextController.text = cargoAddCount.toString();
-              appState.updateCargoAddCount(cargoAddCount);
+              appState.updateCargoAddCount(32);
+              cargoAddTextController.text = appState.cargoAddCount.toString();
             },
           ),
         ],

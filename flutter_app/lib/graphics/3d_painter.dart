@@ -14,6 +14,7 @@ import '../2d_painters/helper_functions.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
+import '../main_windows/floating_switches.dart';
 
 bool approxEqual(double a, double b, [double epsilon = 1e-4]) {
   return (a - b).abs() < epsilon;
@@ -768,38 +769,27 @@ class _ThreeDisplay extends State<ThreeDisplay> {
             right: 16.0,
             child: Row(
               children: [
-                Text("Display Slats as 6HBs"),
-                Switch(
-                  thumbIcon: switchThumbIcon,
+                buildToggleSwitch(
+                  label: '6HB display',
                   value: helixBundleView,
-                  onChanged: (bool value) {
-                    setState(() {
-                      helixBundleView = value;
-                      clearScene();
-                      manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
-                    });
-                  },
+                  onChanged: (val) => setState(() {
+                    helixBundleView = val;
+                    clearScene();
+                    manageSlats(appState.slats.values.toList(),
+                        appState.layerMap, appState.cargoPalette);
+                  }),
                 ),
-                Text("Display Assembly Handles"),
-                Switch(
-                  thumbIcon: switchThumbIcon,
+                buildToggleSwitch(
+                  label: 'Assembly Handles',
                   value: assemblyHandleView,
-                  onChanged: (bool value) {
-                    setState(() {
-                      assemblyHandleView = value;
-                    });
-                  },
+                  onChanged: (val) => setState(() {assemblyHandleView = val;}),
                 ),
-                Text("Display Cargo Handles"),
-                Switch(
-                  thumbIcon: switchThumbIcon,
+                buildToggleSwitch(
+                  label: 'Cargo Handles',
                   value: cargoHandleView,
-                  onChanged: (bool value) {
-                    setState(() {
-                      cargoHandleView = value;
-                    });
-                  },
+                  onChanged: (val) => setState(() {cargoHandleView = val;}),
                 ),
+
                 ElevatedButton(
                   onPressed: () {
                     centerOnSlats(instanceManager[helixBundleView ? 'honeyCombSlat' : 'slat']!);

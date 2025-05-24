@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../graphics/crosshatch_shader.dart';
 import '../app_management/shared_app_state.dart';
 import  '../crisscross_core/cargo.dart';
-
+import './seed_painter.dart';
+import '../crisscross_core/seed.dart';
 
 /// Custom painter for the cargo hover display
 class CargoHoverPainter extends CustomPainter {
@@ -33,59 +34,71 @@ class CargoHoverPainter extends CustomPainter {
     canvas.translate(canvasOffset.dx, canvasOffset.dy);
     canvas.scale(scale);
 
-    if (hoverPosition != null) {
-      final Paint hoverRodPaint = Paint()
-        ..color = cargo!.color.withValues(alpha: 0.5) // Semi-transparent slat
-        ..strokeWidth = appState.gridSize / 2
-        ..style = PaintingStyle.fill;
+    if (hoverPosition != null && cargoArrayPoints.isNotEmpty) {
+      if (appState.cargoAdditionType == 'SEED'){ // special seed drawing supersedes normal cargo drawing
+        Seed seed = Seed(coordinates: cargoArrayPoints);
 
-      if (!hoverValid) {  // invalid slat
-        hoverRodPaint.shader = CrossHatchShader.shader;
-        hoverRodPaint.color = Colors.red;
+        paintSeedFromArray(canvas, cargoArrayPoints, appState.gridSize,
+            seed.rotationAngle!, seed.transverseAngle!,
+            alpha: 0.5,
+            color: appState.cargoPalette['SEED']!.color,
+            printHandles: true,
+            crosshatch: !hoverValid);
       }
-
-      // if there are no preset positions, attempt to draw based on layer angle
-      if (preSelectedPositions.isEmpty) {
-        for (var coord in cargoArrayPoints.values) {
-          final rect = Rect.fromCenter(
-            center: coord,
-            width: appState.gridSize*0.85,
-            height: appState.gridSize*0.85,
-          );
-
-          // Fill rectangle
-          canvas.drawRect(rect, hoverRodPaint);
-
-          // Outline with thin black border
-          final borderPaint = Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.1
-            ..color = Colors.black;
-
-          canvas.drawRect(rect, borderPaint);
-        }
-      }
-      // otherwise, draw hover points based on the anchor and provided coordinates
       else {
-        // Offset anchorTranslate = hoverPosition! - moveAnchor;
-        for (var coord in preSelectedPositions) {
-          // convert the below to a rect with the correct syntax
-          final rect = Rect.fromCenter(
-            center: coord,
-            width: appState.gridSize*0.85,
-            height: appState.gridSize*0.85,
-          );
+        final Paint hoverRodPaint = Paint()
+          ..color = cargo!.color.withValues(alpha: 0.5) // Semi-transparent slat
+          ..strokeWidth = appState.gridSize / 2
+          ..style = PaintingStyle.fill;
 
-          // Fill rectangle
-          canvas.drawRect(rect, hoverRodPaint);
+        if (!hoverValid) { // invalid slat
+          hoverRodPaint.shader = CrossHatchShader.shader;
+          hoverRodPaint.color = Colors.red;
+        }
 
-          // Outline with thin black border
-          final borderPaint = Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.1
-            ..color = Colors.black;
+        // if there are no preset positions, attempt to draw based on layer angle
+        if (preSelectedPositions.isEmpty) {
+          for (var coord in cargoArrayPoints.values) {
+            final rect = Rect.fromCenter(
+              center: coord,
+              width: appState.gridSize * 0.85,
+              height: appState.gridSize * 0.85,
+            );
 
-          canvas.drawRect(rect, borderPaint);
+            // Fill rectangle
+            canvas.drawRect(rect, hoverRodPaint);
+
+            // Outline with thin black border
+            final borderPaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.1
+              ..color = Colors.black;
+
+            canvas.drawRect(rect, borderPaint);
+          }
+        }
+        // otherwise, draw hover points based on the anchor and provided coordinates
+        else {
+          // Offset anchorTranslate = hoverPosition! - moveAnchor;
+          for (var coord in preSelectedPositions) {
+            // convert the below to a rect with the correct syntax
+            final rect = Rect.fromCenter(
+              center: coord,
+              width: appState.gridSize * 0.85,
+              height: appState.gridSize * 0.85,
+            );
+
+            // Fill rectangle
+            canvas.drawRect(rect, hoverRodPaint);
+
+            // Outline with thin black border
+            final borderPaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.1
+              ..color = Colors.black;
+
+            canvas.drawRect(rect, borderPaint);
+          }
         }
       }
     }
