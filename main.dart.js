@@ -105513,7 +105513,7 @@ s=A.qv(new A.aKH(this))
 r=m.Q
 q=m.z?A.dx(B.NE,o,o,o):A.dx(B.hS,o,o,o)
 p=t.p
-r=A.b([s,new A.I8(o),A.qT(0,A.d7(A.b([new A.Gl(B.j,A.lp(o,o,o,q,o,o,new A.aKI(m),o,o,o,o),A.u6(A.dP(A.b([A.b6("v0.0.4",o,o,o,A.bc(o,o,B.aw,o,o,o,o,o,o,o,o,10,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),A.b6("dfd98d2",o,o,o,A.bc(o,o,B.cG,o,o,o,o,o,o,o,o,8,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),B.mt],p),B.a0,B.el,B.F)),B.QY,r,new A.aKJ(m),B.Tu,o),B.a4r],p),B.M,B.F),o,o,0,o,0,o)],p)
+r=A.b([s,new A.I8(o),A.qT(0,A.d7(A.b([new A.Gl(B.j,A.lp(o,o,o,q,o,o,new A.aKI(m),o,o,o,o),A.u6(A.dP(A.b([A.b6("v0.0.5",o,o,o,A.bc(o,o,B.aw,o,o,o,o,o,o,o,o,10,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),A.b6("38feb88",o,o,o,A.bc(o,o,B.cG,o,o,o,o,o,o,o,o,8,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),B.mt],p),B.a0,B.el,B.F)),B.QY,r,new A.aKJ(m),B.Tu,o),B.a4r],p),B.M,B.F),o,o,0,o,0,o)],p)
 if(A.bf()!==B.br)B.b.L(r,A.b([A.qT(o,A.d7(A.b([A.b6("Activate 3D Display",o,o,o,o,o,o),A.aZq(new A.aKK(this),B.a4w,this.e)],p),B.M,B.F),o,o,o,16,16,o)],p))
 r.push(new A.F6(o))
 if(n.go)r.push(A.dD(o,B.F7,B.p,B.l.eD(0.4),o,o,o,o,o,o,o,o,o,o))
