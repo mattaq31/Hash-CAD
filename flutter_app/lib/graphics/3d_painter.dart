@@ -15,66 +15,13 @@ import '../crisscross_core/cargo.dart';
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
 import '../main_windows/floating_switches.dart';
+import './custom_3d_meshes.dart';
+import '../crisscross_core/seed.dart';
+
 
 bool approxEqual(double a, double b, [double epsilon = 1e-4]) {
   return (a - b).abs() < epsilon;
 }
-
-three.BufferGeometry createHoneyCombSlat(List<List<double>> helixBundlePositions, double helixBundleSize, double gridSize) {
-
-  final mergedGeometry = three.BufferGeometry();
-  final mergedPositions = <double>[];
-  final mergedNormals = <double>[];
-  final mergedIndices = <int>[];
-
-  int indexOffset = 0;
-
-  for (var pos in helixBundlePositions) {
-
-    // Create cylinder geometry
-    CylinderGeometry geometry = CylinderGeometry(helixBundleSize/2, helixBundleSize/2, gridSize * 32, 20);
-
-    // Translate the geometry to its position
-    geometry.translate(pos[1], 0, pos[0]);
-
-    final posAttr = geometry.attributes['position'] as tmath.BufferAttribute;
-    final normAttr = geometry.attributes['normal'] as tmath.BufferAttribute;
-
-    // Copy positions and normals
-    for (int i = 0; i < posAttr.count; i++) {
-      mergedPositions.add(posAttr.getX(i)!.toDouble());
-      mergedPositions.add(posAttr.getY(i)!.toDouble());
-      mergedPositions.add(posAttr.getZ(i)!.toDouble());
-    }
-
-    for (int i = 0; i < normAttr.count; i++) {
-      mergedNormals.add(normAttr.getX(i)!.toDouble());
-      mergedNormals.add(normAttr.getY(i)!.toDouble());
-      mergedNormals.add(normAttr.getZ(i)!.toDouble());
-    }
-
-    if (geometry.index != null) {
-      final idx = geometry.index!;
-      for (int i = 0; i < idx.count; i++) {
-        mergedIndices.add(idx.getX(i)!.toInt() + indexOffset);
-      }
-    } else {
-      for (int i = 0; i < posAttr.count; i++) {
-        mergedIndices.add(i + indexOffset);
-      }
-    }
-
-    indexOffset += posAttr.count;
-  }
-
-  // Set attributes and index
-  mergedGeometry.setAttributeFromString('position', tmath.Float32BufferAttribute.fromList(mergedPositions, 3));
-  mergedGeometry.setAttributeFromString('normal', tmath.Float32BufferAttribute.fromList(mergedNormals, 3));
-  mergedGeometry.setIndex(tmath.Uint16BufferAttribute.fromList(mergedIndices, 1));
-
-  return mergedGeometry;
-}
-
 
 class InstanceMetrics {
   int nextIndex;
@@ -87,6 +34,7 @@ class InstanceMetrics {
   final Map<String, int> nameIndex;
   final Map<String, tmath.Vector3> positionIndex;
   final Map<String, tmath.Euler> rotationIndex;
+  final Map<String, tmath.Vector3> scaleIndex;
   final Map<String, Color> colorIndex;
   final three.Object3D dummy = three.Object3D();
   final three.ThreeJS threeJs;
@@ -96,6 +44,7 @@ class InstanceMetrics {
         nameIndex = {},
         positionIndex = {},
         rotationIndex = {},
+        scaleIndex = {},
         colorIndex = {}
   {
     createMesh();
@@ -105,6 +54,7 @@ class InstanceMetrics {
     if (updateOld){
       threeJs.scene.remove(mesh);
     }
+
     mesh = three.InstancedMesh(geometry, material, maxIndex);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -130,6 +80,7 @@ class InstanceMetrics {
     final oldNameIndex = Map<String, int>.from(nameIndex);
     final oldPositionIndex = Map<String, tmath.Vector3>.from(positionIndex);
     final oldRotationIndex = Map<String, tmath.Euler>.from(rotationIndex);
+    final oldScaleIndex = Map<String, tmath.Vector3>.from(scaleIndex);
     final oldColorIndex = Map<String, Color>.from(colorIndex);
 
     maxIndex = newCapacity;
@@ -138,23 +89,22 @@ class InstanceMetrics {
     positionIndex.clear();
     rotationIndex.clear();
     colorIndex.clear();
+    scaleIndex.clear();
 
     createMesh(updateOld: true);
 
     // Reapply old instance data
     for (final entry in oldNameIndex.entries) {
-
-
       final name = entry.key;
-
       // Allocate the old index
       nameIndex[name] = entry.value;
 
       // Restore position/rotation
       final position = oldPositionIndex[name]!;
       final rotation = oldRotationIndex[name]!;
+      final scale = oldScaleIndex[name] ?? tmath.Vector3(1, 1, 1); // Default scale to 1 if not set
 
-      setPositionRotation(name, position, rotation);
+      setPositionRotationScale(name, position, rotation, scale);
 
       // Restore color
       final color = oldColorIndex[name];
@@ -195,6 +145,20 @@ class InstanceMetrics {
     mesh.instanceMatrix?.needsUpdate = true;
   }
 
+  void setPositionRotationScale(String name, tmath.Vector3 position, tmath.Euler rotation, tmath.Vector3 scale) {
+    positionIndex[name] = position;
+    rotationIndex[name] = rotation;
+    scaleIndex[name] = scale;
+
+    dummy.position = position;
+    dummy.rotation.set(rotation.x, rotation.y, rotation.z);
+    dummy.scale = scale;
+    dummy.updateMatrix();
+
+    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    mesh.instanceMatrix?.needsUpdate = true;
+  }
+
   void setPosition(String name, tmath.Vector3 position) {
     positionIndex[name] = position;
     dummy.position = position;
@@ -206,6 +170,14 @@ class InstanceMetrics {
   void setRotation(String name, tmath.Euler rotation) {
     rotationIndex[name] = rotation;
     dummy.rotation.set(rotation.x, rotation.y, rotation.z);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    mesh.instanceMatrix?.needsUpdate = true;
+  }
+
+  void setScale(String name, tmath.Vector3 scale) {
+    scaleIndex[name] = scale;
+    dummy.scale = scale;
     dummy.updateMatrix();
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
     mesh.instanceMatrix?.needsUpdate = true;
@@ -230,6 +202,7 @@ class InstanceMetrics {
     final index = nameIndex.remove(name);
     positionIndex.remove(name);
     rotationIndex.remove(name);
+    scaleIndex.remove(name);
     colorIndex.remove(name);
 
     if (index != null) {
@@ -244,6 +217,7 @@ class InstanceMetrics {
       final index = nameIndex.remove(name);
       positionIndex.remove(name);
       rotationIndex.remove(name);
+      scaleIndex.remove(name);
       colorIndex.remove(name);
 
       if (index != null) {
@@ -261,6 +235,8 @@ class InstanceMetrics {
   tmath.Vector3? getPosition(String name) => positionIndex[name];
 
   tmath.Euler? getRotation(String name) => rotationIndex[name];
+
+  tmath.Vector3? getScale(String name) => scaleIndex[name];
 
   Color? getColor(String name) => colorIndex[name];
 
@@ -283,6 +259,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   late double HFOV;
 
   Set<String> slatIDs = {};
+  Set<(String, String, Offset)> seedIDs = {};
   Map<String, Map<String, String>> handleIDs = {};
 
   // instancing preparation
@@ -292,9 +269,15 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   late double y60Jump = gridSize / 2;
   late double x60Jump = math.sqrt(math.pow(gridSize, 2) - math.pow(y60Jump, 2));
   String gridMode = '60';
+  String lastGridMode = '60';
 
   bool assemblyHandleView = false;
   bool cargoHandleView = true;
+  bool seedHandleView = true;
+
+  bool gridView = true;
+  GridHelper gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
+  AxesHelper axesHelper = AxesHelper(1000);
 
   // parameters for six-helix bundle view
   bool helixBundleView = true;
@@ -308,13 +291,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     [0, helixBundleSize],
     [0, -helixBundleSize],
   ];
-
-  static const WidgetStateProperty<Icon> switchThumbIcon = WidgetStateProperty<Icon>.fromMap(
-    <WidgetStatesConstraint, Icon>{
-      WidgetState.selected: Icon(Icons.check),
-      WidgetState.any: Icon(Icons.close),
-    },
-  );
 
   @override
   void initState() {
@@ -364,11 +340,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     controls.minDistance = 100;
     // controls.maxDistance = 1000;
 
-    final gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
-    threeJs.scene.add(gridHelper);
-
-    final axesHelper = AxesHelper(1000);
-    threeJs.scene.add(axesHelper);
+    if (gridView){
+      threeJs.scene.add(gridHelper);
+      threeJs.scene.add(axesHelper);
+    }
 
     // main shadow-generating camera
     final dirLight1 = three.DirectionalLight(0xffffff, 0.8);
@@ -398,7 +373,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       // logCameraDetails();
     });
 
-    // preparing instancing meshes for slats and handles
+    // preparing instancing meshes for slats, seeds and handles
     var baseSlatGeometry = CylinderGeometry(2.5, 2.5, gridSize * 32, 20); // actual size should be 310, but adding an extra 10 to improve visuals
 
     instanceManager['slat'] = InstanceMetrics(geometry: baseSlatGeometry, threeJs: threeJs, maxIndex: 1000);
@@ -407,6 +382,32 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
     instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
     instanceManager['cargoHandle'] = InstanceMetrics(geometry: three.BoxGeometry(4, 6, 4), threeJs: threeJs, maxIndex: 1000);
+
+    var dummySeed = Seed(ID: 'dummy1', coordinates: generateBasicSeedCoordinates(16, 5, 10, false));
+    var dummyTiltSeed = Seed(ID: 'dummy2', coordinates: generateBasicSeedCoordinates(16, 5, 10, true));
+
+    var seedGeometry = createSeedTubeGeometry(
+      dummySeed.coordinates,
+      gridSize,
+      dummySeed.rotationAngle!,
+      dummySeed.transverseAngle!,
+      16,
+      5,
+      1.5,
+    );
+
+    var tiltSeedGeometry = createSeedTubeGeometry(
+      dummyTiltSeed.coordinates,
+      gridSize,
+      dummyTiltSeed.rotationAngle!,
+      dummyTiltSeed.transverseAngle!,
+      16,
+      5,
+      1.5,
+    );
+
+    instanceManager['seed'] = InstanceMetrics(geometry: seedGeometry, threeJs: threeJs, maxIndex: 20);
+    instanceManager['tiltSeed'] = InstanceMetrics(geometry: tiltSeedGeometry, threeJs: threeJs, maxIndex: 20);
   }
 
 
@@ -439,23 +440,56 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     var position = tmath.Vector3(centerX, height, centerZ);
     var rotation = tmath.Euler(0, -slatAngle, math.pi / 2);
 
-    if (helixBundleView){
-      instanceManager['honeyCombSlat']!.allocateIndex(name);
-      instanceManager['honeyCombSlat']!.setPositionRotation(name, position, rotation);
-      instanceManager['honeyCombSlat']!.setColor(name, color);
-    }
-    else {
+    String instanceType = helixBundleView ? 'honeyCombSlat' : 'slat';
+    instanceManager[instanceType]!.allocateIndex(name);
+    instanceManager[instanceType]!.setPositionRotation(name, position, rotation);
+    instanceManager[instanceType]!.setColor(name, color);
 
-      instanceManager['slat']!.allocateIndex(name);
-      instanceManager['slat']!.setPositionRotation(name, position, rotation);
-      instanceManager['slat']!.setColor(name, color);
+  }
+
+  void positionSeedInstance(String name, Color color, double seedAngle, double height, double centerX, double centerZ, bool flip){
+
+    var position = tmath.Vector3(centerX, height, centerZ);
+
+    var rotation = tmath.Euler(0, gridMode == '60' ?  -seedAngle + math.pi/2 : -seedAngle, 0);
+
+    // annoyingly, rotation in x can rotate the seed on either its long or short edge (seems to be related to the gimbal lock problem).
+    // Thus, for certain orientations the flip results in the wrong position.  Below, I manually patched the incorrect orientations using specific offsets.
+    // A more elegant solution could potentially be to use quaternions, but this would require further research.
+    if (!flip && gridMode == '90'){
+      rotation.x = math.pi;
+      if (approxEqual(seedAngle, math.pi/2)){
+        rotation.y += math.pi;
+      }
     }
+
+    // also annoying is the fact that flips in 90 and 60 degree modes need to be handled differently...
+    if (flip && gridMode == '60') {
+      rotation.x = -math.pi;
+      if (approxEqual(seedAngle, math.pi/2)) {
+        rotation.y += math.pi;
+      }
+      else if (approxEqual(seedAngle, math.pi/6)) {
+        rotation.y += math.pi/3;
+      }
+      else {
+        rotation.y = seedAngle - (3 * math.pi/2);
+      }
+    }
+
+    String instanceType = gridMode == '60' ? 'tiltSeed' : 'seed';
+
+    instanceManager[instanceType]!.allocateIndex(name);
+    instanceManager[instanceType]!.setPositionRotation(name, position, rotation);
+    instanceManager[instanceType]!.setColor(name, color);
+
   }
 
   void positionHandleInstance(String slatName, String name, Offset position, Color color, double zOrder, String topSide, String handleSide, String handleType, bool updateOnly){
     /// Creates or updates a handle graphic in the 3D scene.
 
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
+
     if (handleType == 'Cargo'){
       verticalOffset += (topSide == handleSide) ? 2 : -2;
     }
@@ -532,8 +566,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       }
     }
 
-    if (existingHandle && (assemblyHandleView && handleType == 'Assembly' || cargoHandleView && handleType == 'Cargo')) {
-      positionHandleInstance(slat.id, handleName, position, handleType == 'Assembly' ? layerMap[slat.layer]!['color']: cargoPalette[cargoName]!.color, order, topSide, handleSide, handleType, handleInstanceExists);
+    if (existingHandle && (assemblyHandleView && handleType == 'Assembly' || cargoHandleView && handleType == 'Cargo' || seedHandleView && handleType == 'Seed')) {
+      Color color = handleType == 'Assembly' ? layerMap[slat.layer]!['color']: handleType == 'Cargo' ? cargoPalette[cargoName]!.color: cargoPalette['SEED']!.color;
+      positionHandleInstance(slat.id, handleName, position, color, order, topSide, handleSide, handleType, handleInstanceExists);
     } else if (handleInstanceExists){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
       instanceManager[handleIDs[slat.id]![handleName]]!.hideAndRecycle(handleName);
@@ -612,10 +647,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         double incomingPositionX = p1.dx + slatExtend.dx;
         double incomingLayer = layerMap[slat.layer]?['order'].toDouble() * 6.5;
 
-        tmath.Vector3 currentPosition = instanceManager[slatType]!.getPosition(
-            slat.id)!;
-        tmath.Euler currentRotation = instanceManager[slatType]!.getRotation(
-            slat.id)!;
+        tmath.Vector3 currentPosition = instanceManager[slatType]!.getPosition(slat.id)!;
+        tmath.Euler currentRotation = instanceManager[slatType]!.getRotation(slat.id)!;
         Color currentColor = instanceManager[slatType]!.getColor(slat.id)!;
 
         if (!approxEqual(currentPosition.x, incomingPositionX) ||
@@ -629,6 +662,40 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         }
       }
       manageHandles(slat, layerMap, cargoPalette);
+    }
+  }
+
+  void manageSeeds(Map<(String, String, Offset), Seed> seedRoster, Map<String, Map<String, dynamic>> layerMap, Color color){
+    if (!isSetupComplete || threeJs.scene == null) return;
+
+    if (gridMode != lastGridMode){
+      instanceManager['seed']!.recycleAllIndices();
+      instanceManager['tiltSeed']!.recycleAllIndices();
+      lastGridMode = gridMode;
+      seedIDs.clear();
+    }
+
+    Set localIDs = seedRoster.keys.toSet();
+    Set removedIDs = seedIDs.difference(localIDs);
+
+    // deletes seeds that are no longer in the design
+    for (var id in removedIDs) {
+      if (gridMode == '60') {
+        instanceManager['tiltSeed']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
+      }
+      else{
+        instanceManager['seed']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
+      }
+      seedIDs.remove(id);
+    }
+
+    // TODO: if this becomes laggy, can consider only updating seeds if they've changed position/color/etc
+    for (var seed in seedRoster.entries) {
+      positionSeedInstance('${seed.key.$1}_${seed.key.$2}_${seed.key.$3}', color,
+          seed.value.rotationAngle!.toDouble() * (math.pi/180),
+          (layerMap[seed.key.$1]?['order'].toDouble()) * 6.5 + ((seed.key.$2 == 'top'? 1 : -1) * 4.3),
+          seed.value.coordinates[1]!.dx, seed.value.coordinates[1]!.dy, seed.value.tiltFlip!);
+      seedIDs.add(seed.key);
     }
   }
 
@@ -650,6 +717,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   void clearScene() {
     instanceManager['slat']!.recycleAllIndices();
+    instanceManager['seed']!.recycleAllIndices();
+    instanceManager['tiltSeed']!.recycleAllIndices();
     instanceManager['honeyCombSlat']!.recycleAllIndices();
     instanceManager['cargoHandle']!.recycleAllIndices();
     instanceManager['honeyCombAssHandle']!.recycleAllIndices();
@@ -748,12 +817,26 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   Widget build(BuildContext context) {
     return Consumer<DesignState>(builder: (context, appState, child) {
       // TODO: at some point, it would be better if the appState could be directly accessed...
+
       gridSize = appState.gridSize;
       gridMode = appState.gridMode;
       y60Jump = appState.y60Jump;
       x60Jump = appState.x60Jump;
 
       manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+      manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color);
+
+      if (!gridView) {
+        threeJs.scene.remove(gridHelper);
+        threeJs.scene.remove(axesHelper);
+      }
+      else{
+        if (isSetupComplete && threeJs.scene != null && !threeJs.scene.children.contains(gridHelper)) {
+          threeJs.scene.add(gridHelper);
+          threeJs.scene.add(axesHelper);
+        }
+      }
+
       return Stack(
         children: [
           LayoutBuilder(
@@ -788,6 +871,16 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   label: 'Cargo Handles',
                   value: cargoHandleView,
                   onChanged: (val) => setState(() {cargoHandleView = val;}),
+                ),
+                buildToggleSwitch(
+                  label: 'Seed Handles',
+                  value: seedHandleView,
+                  onChanged: (val) => setState(() {seedHandleView = val;}),
+                ),
+                buildToggleSwitch(
+                  label: 'Grid',
+                  value: gridView,
+                  onChanged: (val) => setState(() {gridView = val;}),
                 ),
 
                 ElevatedButton(

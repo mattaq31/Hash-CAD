@@ -36,7 +36,7 @@ class CargoHoverPainter extends CustomPainter {
 
     if (hoverPosition != null && cargoArrayPoints.isNotEmpty) {
       if (appState.cargoAdditionType == 'SEED'){ // special seed drawing supersedes normal cargo drawing
-        Seed seed = Seed(coordinates: cargoArrayPoints);
+        Seed seed = Seed(ID: 'dummy', coordinates: cargoArrayPoints);
 
         paintSeedFromArray(canvas, cargoArrayPoints, appState.gridSize,
             seed.rotationAngle!, seed.transverseAngle!,

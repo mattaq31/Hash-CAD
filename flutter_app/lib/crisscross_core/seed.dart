@@ -4,7 +4,33 @@ import '../2d_painters/helper_functions.dart';
 import 'dart:math';
 
 
+Map<int, Offset> generateBasicSeedCoordinates(int cols, int rows, double jump, bool tiltMode){
+  /// quick generation of basic seed coordinates for model seeds (not to be used in actual coordinate system)
+
+  final Map<int, Offset> coordinates = {};
+
+  double y60Jump = jump / 2;
+  double x60Jump = sqrt(pow(jump, 2) - pow(y60Jump, 2));
+
+  int index = 1;
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      if (tiltMode){
+        coordinates[index++] = Offset((i * x60Jump) , (j * y60Jump * 2) + (i * y60Jump));
+      }
+      else {
+        coordinates[index++] = Offset(j * jump, i * jump);
+      }
+    }
+
+  }
+  return coordinates;
+}
+
+
+
 class Seed {
+  String ID;
   Map<int, Offset> coordinates;
   int? rotationAngle;
   int? transverseAngle;
@@ -14,7 +40,7 @@ class Seed {
   final int cols;
 
   Seed(
-      {required this.coordinates,
+      {required this.ID, required this.coordinates,
         this.rows=5, this.cols=16,
         this.tiltFlip}) {
 
@@ -30,7 +56,7 @@ class Seed {
   }
 
   bool isTiltFlipped() {
-   // Function currently unused, but could be useful when considering the mirror images of designs in the future.
+   // Used to help with direction to render 3D version of seed.
     Offset topAnchor = coordinates[1]!;
     Offset bottomAnchor = coordinates[cols]!;
     Offset topCorner = coordinates[(cols*rows-1) + 1]!;
@@ -56,6 +82,7 @@ class Seed {
 
   Seed copy() {
     return Seed(
+      ID: ID,
       coordinates: Map.from(coordinates),
       rows: rows,
       cols: cols,

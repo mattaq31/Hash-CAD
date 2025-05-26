@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hash_cad/graphics/crosshatch_shader.dart';
 import '../crisscross_core/seed.dart';
 import 'dart:math';
+import '../app_management/shared_app_state.dart';
 
 
 void paintSeedFromArray(Canvas canvas, Map<int, Offset> coordinates, double gridSize,
@@ -95,12 +96,12 @@ class SeedPainter extends CustomPainter {
   final double scale;
   final Offset canvasOffset;
   final List<Seed> seeds;
+  final List<bool> seedTransparency;
 
   final double handleJump;
   final int rows;
   final int cols;
   final Color color;
-  final bool tilt;
   final bool printHandles;
 
   SeedPainter({
@@ -108,9 +109,8 @@ class SeedPainter extends CustomPainter {
     required this.canvasOffset,
     required this.seeds,
     required this.handleJump,
-    required this.tilt,
-
     required this.printHandles,
+    required this.seedTransparency,
     this.rows = 5,
     this.cols = 16,
     this.color = Colors.red,
@@ -127,11 +127,13 @@ class SeedPainter extends CustomPainter {
     canvas.translate(canvasOffset.dx, canvasOffset.dy);
     canvas.scale(scale);
 
-    for (var seed in seeds) {
+    for (var i = 0; i < seeds.length; i++) {
+      Seed seed = seeds[i];
+      double transparency = seedTransparency[i] ? 0.5 : 1.0;
       paintSeedFromArray(
           canvas, seed.coordinates, handleJump, seed.rotationAngle!,
           seed.transverseAngle!, color: color, cols:cols, rows:rows,
-          printHandles: printHandles);
+          printHandles: printHandles, alpha:transparency);
     }
     canvas.restore();
   }
@@ -142,7 +144,6 @@ class SeedPainter extends CustomPainter {
       oldDelegate.seeds != seeds ||
         oldDelegate.rows != rows ||
         oldDelegate.color != color ||
-        oldDelegate.tilt != tilt ||
         oldDelegate.cols != cols;
   }
 }

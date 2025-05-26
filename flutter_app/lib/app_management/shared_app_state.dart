@@ -120,6 +120,7 @@ class DesignState extends ChangeNotifier {
   String selectedLayerKey = 'A';
   List<String> selectedSlats = [];   // to highlight on grid painter
   String nextLayerKey = 'C';
+  String nextSeedID = 'A';
   int nextColorIndex = 2;
   int slatAddCount = 1;
   int currentHamming = 0;
@@ -138,9 +139,8 @@ class DesignState extends ChangeNotifier {
   Map<String, Map<Offset, String>> occupiedGridPoints = {};
 
   Map<String, Cargo> cargoPalette = {
-    'SEED': Cargo(name: 'SEED', shortName: 'S', color: Colors.red),
+    'SEED': Cargo(name: 'SEED', shortName: 'S', color: Color.fromARGB(255, 255, 0, 0)),
   };
-
 
   // GENERAL OPERATIONS //
 
@@ -171,6 +171,7 @@ class DesignState extends ChangeNotifier {
     selectedLayerKey = 'A';
     selectedSlats = [];   // to highlight on grid painter
     nextLayerKey = 'C';
+    nextSeedID = 'A';
     nextColorIndex = 2;
     slatAddCount = 1;
     currentHamming = 0;
@@ -180,7 +181,7 @@ class DesignState extends ChangeNotifier {
     occupiedGridPoints = {};
     seedRoster = {};
     cargoPalette = {
-      'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Colors.red),
+      'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0)),
     };
 
     occupiedCargoPoints = {};
@@ -198,7 +199,7 @@ class DesignState extends ChangeNotifier {
 
   void exportCurrentDesign() async {
     /// Exports the current design to an excel file
-    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, gridSize, gridMode);
+    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, gridSize, gridMode);
   }
 
   void importNewDesign() async{
@@ -223,7 +224,7 @@ class DesignState extends ChangeNotifier {
 
     // legacy compatibility with files that didn't contain seed info
     if(!cargoPalette.containsKey('SEED')){
-      cargoPalette['SEED'] = Cargo(name: 'SEED', shortName: 'S1', color: Colors.red);
+      cargoPalette['SEED'] = Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0));
     }
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
@@ -261,6 +262,9 @@ class DesignState extends ChangeNotifier {
         }
       }
     }
+
+    // TODO: when seed import implemented, also update all 3 occupancy maps with seed details...
+    // and next seed ID too!
 
     updateDesignHammingValue();
     currentlyLoadingDesign = false;
@@ -612,7 +616,6 @@ class DesignState extends ChangeNotifier {
       "hidden": false
     };
 
-    occupiedGridPoints.putIfAbsent(nextLayerKey, () => {});
 
     // if last last layerMap value has direction horizontal, next direction should be rotated one step forward
     rotateLayerDirection(nextLayerKey);
@@ -622,7 +625,25 @@ class DesignState extends ChangeNotifier {
     } else {
       nextColorIndex += 1;
     }
+
+    occupiedGridPoints.putIfAbsent(nextLayerKey, () => {});
+
+    // re-apply seed occupancy maps to the layer, if available
+    for (var seed in seedRoster.entries) {
+      int seedLayerNumber = layerMap[seed.key.$1]?['order'] + (seed.key.$2 == 'top' ? 1 : -1);
+      // apply the new seed to the slat occupancy map
+      if (layerNumberValid(seedLayerNumber)) {
+        String layer = getLayerByOrder(seedLayerNumber)!;
+        if (layer == nextLayerKey){
+          for (var coord in seed.value.coordinates.values){
+            occupiedGridPoints[layer]![convertRealSpacetoCoordinateSpace(coord)] =  'SEED';
+          }
+        }
+      }
+    }
+
     nextLayerKey = nextCapitalLetter(nextLayerKey);
+
     notifyListeners();
   }
 
@@ -895,7 +916,7 @@ class DesignState extends ChangeNotifier {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-      slat.setPlaceholderHandle(position, integerSlatSide, '$row-$col', 'Seed');
+      slat.setPlaceholderHandle(position, integerSlatSide, '$nextSeedID-$row-$col', 'Seed');
       occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
 
       // seed takes up space from the slat grid too, not just cargo
@@ -911,7 +932,8 @@ class DesignState extends ChangeNotifier {
           (key, value) => MapEntry(key, convertCoordinateSpacetoRealSpace(value)),
     );
 
-    Seed newSeed = Seed(coordinates: convertedCoordinates);
+    Seed newSeed = Seed(ID: nextSeedID, coordinates: convertedCoordinates);
+    nextSeedID = nextCapitalLetter(nextSeedID);
 
     seedRoster[(layerID, slatSide, coordinates[1]!)] = newSeed;
 

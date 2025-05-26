@@ -1,13 +1,15 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'dart:io';
-import '../crisscross_core/cargo.dart';
-import '../crisscross_core/slats.dart';
-import '../crisscross_core/sparse_to_array_conversion.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'dart:io';
+
+import '../crisscross_core/cargo.dart';
+import '../crisscross_core/slats.dart';
+import '../crisscross_core/sparse_to_array_conversion.dart';
+import '../crisscross_core/seed.dart';
 
 final Random _rand = Random();
 
@@ -61,7 +63,12 @@ String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
   return result;
 }
 
-void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette, Map<String, Map<Offset, String>> occupiedCargoPoints,  double gridSize, String gridMode) async{
+void exportDesign(Map<String, Slat> slats,
+    Map<String, Map<String, dynamic>> layerMap,
+    Map<String, Cargo> cargoPalette,
+    Map<String, Map<Offset, String>> occupiedCargoPoints,
+    Map<(String, String, Offset), Seed> seedRoster,
+    double gridSize, String gridMode) async{
 
   Offset minPos;
   Offset maxPos;
@@ -71,6 +78,24 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
   List<List<List<int>>> handleArray = extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
 
   var excel = Excel.createExcel();
+
+  // Prepare individual sheets for seed arrays, if present
+  Set<String> assessedSeedLayers = {};
+  for (var seed in seedRoster.entries) {
+    int layerID = layerMap[seed.key.$1]!['order'];
+    String helixSide = layerMap[seed.key.$1]?['${seed.key.$2}_helix'].toLowerCase();
+    String positionalName = seed.key.$2 == 'top'? 'upper' : 'lower';
+    String sheetName = 'seed_layer_${layerID + 1}_${positionalName}_$helixSide';
+    Sheet sheet = excel[sheetName];
+    if (!assessedSeedLayers.contains(sheetName)) {
+      assessedSeedLayers.add(sheetName);
+      for (int row = 0; row < handleArray.length; row++) {
+        for (int col = 0; col < handleArray[row].length; col++) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(0);
+        }
+      }
+    }
+  }
 
   // Write the slat arrays to individual sheets
   // cargo export is also integrated within this same system
@@ -100,25 +125,35 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
           }
           String helixSide = layerMap[layerID]?['${side == 'lower' ? 'bottom' : 'top'}_helix'].toLowerCase();
           Sheet cargoSheet = excel['cargo_layer_${layer + 1}_${side}_$helixSide'];
+
+          Sheet? seedSheet = assessedSeedLayers.contains('seed_layer_${layer + 1}_${side}_$helixSide') ? excel['seed_layer_${layer + 1}_${side}_$helixSide'] : null;
+
           if (slat == null) {
             cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(0);
             continue;
           }
           var slatHandleDict = helixSide == 'h2' ? slat.h2Handles : slat.h5Handles;
           var position = slat.slatCoordinateToPosition[Offset(row.toDouble(), col.toDouble()) + minPos]!;
-          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'Cargo' ){
+          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'Cargo'){
             cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['descriptor']);
             cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: cargoPalette[slatHandleDict[position]!['descriptor']]!.color.toHexString().excelColor);
           }
           else{
             cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(0);
           }
+
+          // if seed handle present, save directly to its special sheet
+          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'Seed'){
+            seedSheet!.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['descriptor']);
+            seedSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: cargoPalette['SEED']!.color.toHexString().excelColor);
+          }
+
         }
       }
     }
   }
 
-  // Write the handle arrays to individual sheets
+  // Write the assembly handle arrays to individual sheets
   for (int layer = 0; layer < handleArray[0][0].length; layer++) {
     Sheet sheet = excel['handle_interface_${layer+1}'];
     for (int row = 0; row < handleArray.length; row++) {

@@ -16,17 +16,6 @@ class CargoDesignTools extends StatefulWidget {
 
 List<String> restrictedCargo = ['SEED'];
 
-Map<int, Offset> _generateSeedCoordinates(int cols, int rows, double jump) {
-  final Map<int, Offset> coordinates = {};
-  int index = 1;
-  for (int row = 0; row < rows; row++) {
-    for (int col = 0; col < cols; col++) {
-      coordinates[index++] = Offset(col * jump, row * jump);
-    }
-  }
-  return coordinates;
-}
-
 
 Widget _buildSeedItem(DesignState appState, TextEditingController cargoAddTextController) {
   bool isSelected = appState.cargoAdditionType == 'SEED';
@@ -61,12 +50,12 @@ Widget _buildSeedItem(DesignState appState, TextEditingController cargoAddTextCo
         painter: SeedPainter(
           scale: 0.7, // Scale down to fit inside 84x84
           canvasOffset: const Offset(11, 6), // Adjust to center nicely
-          seeds: [Seed(coordinates: _generateSeedCoordinates(16, 5, 9))],
+          seeds: [Seed(ID: 'dummy', coordinates: generateBasicSeedCoordinates(16, 5, 9, false))],
           handleJump: 9,
           cols: 16,
           rows: 5,
-          tilt: false,
           printHandles: false,
+          seedTransparency: [false],
           color: appState.cargoPalette['SEED']!.color,
         ),
       ),

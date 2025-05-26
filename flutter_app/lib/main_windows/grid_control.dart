@@ -657,11 +657,17 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         painter: SeedPainter(
                             scale: scale,
                             canvasOffset: offset,
-                            seeds: actionState.displaySeeds ? appState.seedRoster.values.toList() : [],
+                            seeds: actionState.displaySeeds ? appState.seedRoster.entries
+                                .where((entry) => entry.key.$1 == appState.selectedLayerKey)
+                                .map((entry) => entry.value)
+                                .toList() : [],
+                            seedTransparency:  appState.seedRoster.entries
+                                .where((entry) => entry.key.$1 == appState.selectedLayerKey)
+                                .map((entry) => entry.key.$2 == 'bottom')
+                                .toList(),
                             handleJump: appState.gridSize,
                             printHandles: false,
-                            color: appState.cargoPalette['SEED']!.color,
-                            tilt: appState.gridMode == '60' ? true : false),
+                            color: appState.cargoPalette['SEED']!.color),
                         child: Container(),
                       ),
                     ],
