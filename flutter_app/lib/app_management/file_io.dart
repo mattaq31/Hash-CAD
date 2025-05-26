@@ -284,14 +284,12 @@ String readExcelString(Sheet workSheet, String cell){
       : '';
 }
 
-
-
-
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>)> parseDesignInIsolate(Uint8List fileBytes) async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>)> parseDesignInIsolate(Uint8List fileBytes) async {
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
   Map<String, Cargo> cargoPalette = {};
+  Map<(String, String, Offset), Seed> seedRoster = {};
 
   // read in file with Excel package
   var excel = Excel.decodeBytes(fileBytes);
@@ -313,7 +311,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // if no layers found, return empty maps
   if (numLayers == 0) {
-    return (slats, layerMap, '', cargoPalette);
+    return (slats, layerMap, '', cargoPalette, seedRoster);
   }
 
 
@@ -393,8 +391,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     Map<int, Offset> slatCoordinates = {};
     int slatPositionCounter = 1;
 
-    layerMap[layer]!['slat_count'] +=
-    1; // populates slat count from the true number of slats found in the design
+    layerMap[layer]!['slat_count'] += 1; // populates slat count from the true number of slats found in the design
 
     for (int i = 0; i < slatArray.length; i++) {
       for (int j = 0; j < slatArray[i].length; j++) {
@@ -409,8 +406,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       }
     }
     // slats generated using the usual formatting system
-    slats["${layer}-I${slatID.$2}"] =
-        Slat(slatID.$2, "${layer}-I${slatID.$2}", layer, slatCoordinates);
+    slats["${layer}-I${slatID.$2}"] = Slat(slatID.$2, "${layer}-I${slatID.$2}", layer, slatCoordinates);
   }
 
   // extracts assembly handles and assigns them to slats
@@ -512,19 +508,76 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       }
     }
   }
-  return (slats, layerMap, gridMode, cargoPalette);
+
+  // legacy compatibility with files that didn't contain seed info
+  if(!cargoPalette.containsKey('SEED')){
+    cargoPalette['SEED'] = Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0));
+  }
+
+  Map <(String, String, String), Map<int, Offset>> partialSeedArrays = {};
+
+  // extracts seed handles and assigns them to slats
+  // TODO: as before, need to handle errors and problematic cases more gracefully...
+  for (var table in excel.tables.keys.where((key) => key.startsWith('seed'))) {
+    // runs through each handle layer sheet
+    int seedLayerIndex = int.parse(table.split('_')[2])-1;
+    int seedLayerSide = int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
+    String sideString = table.split('_')[3] == 'upper' ? 'top' : 'bottom';
+
+    var sheet = excel.tables[table]!;
+
+    // extract layerID
+    String layerID = layerMap.entries
+        .firstWhere((element) => element.value['order'] == seedLayerIndex)
+        .key;
+
+    // loop through the whole array
+    for (var row = 0; row < sheet.maxRows; row++) {
+      for (var col = 0; col < sheet.maxColumns; col++) {
+
+        // extract cell handle data
+        var cellValue = sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
+            .value;
+        String value = (cellValue is TextCellValue)
+            ? cellValue.value.text ?? ''
+            : '';
+        if (value == '0' || value == '') {
+          continue;
+        }
+
+        String slatID = "$layerID-I${slatArray[row][col][seedLayerIndex]}";
+        // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
+        Offset positionCoord = Offset(col + minX, row + minY);
+
+        // assign the exact handle to the slat
+        slats[slatID]?.setPlaceholderHandle(
+            slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
+            seedLayerSide, value, 'Seed');
+
+        partialSeedArrays.putIfAbsent((value.split('-')[0],layerID, sideString), () => {});
+
+        partialSeedArrays[(value.split('-')[0],layerID, sideString)]![getIndexFromSeedText(value)] = positionCoord;
+      }
+    }
+  }
+
+  for (var partialSeed in partialSeedArrays.entries){
+    seedRoster[(partialSeed.key.$2, partialSeed.key.$3, partialSeed.value[1]!)] = Seed(ID: partialSeed.key.$1, coordinates: partialSeed.value);
+  }
+
+  return (slats, layerMap, gridMode, cargoPalette, seedRoster);
 }
 
 
-
-
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>)> importDesign() async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>)> importDesign() async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
   // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
   Map<String, Cargo> cargoPalette = {};
+  Map<(String, String, Offset), Seed> seedRoster = {};
 
   String filePath;
   Uint8List fileBytes;
@@ -546,7 +599,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       fileBytes = File(filePath).readAsBytesSync();
     }
   } else { // if nothing picked, return empty maps
-    return (slats, layerMap, '', cargoPalette);
+    return (slats, layerMap, '', cargoPalette, seedRoster);
   }
   // run isolate function
   return await compute(parseDesignInIsolate, fileBytes);

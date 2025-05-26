@@ -27,7 +27,16 @@ Map<int, Offset> generateBasicSeedCoordinates(int cols, int rows, double jump, b
   return coordinates;
 }
 
+int getIndexFromSeedText(String seedText) {
+  final parts = seedText.split('-');
+  if (parts.length != 3) {
+    throw FormatException('Invalid seed format: $seedText');
+  }
+  final row = int.parse(parts[1]);
+  final col = int.parse(parts[2]);
 
+  return (row - 1) * 5 + (col - 1) + 1; // 1-based index
+}
 
 class Seed {
   String ID;

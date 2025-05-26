@@ -207,7 +207,7 @@ class DesignState extends ChangeNotifier {
     currentlyLoadingDesign = true;
     notifyListeners();
 
-    var (newSlats, newLayerMap, newGridMode, newCargoPalette) = await importDesign();
+    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster) = await importDesign();
     // check if the maps are empty
     if (newSlats.isEmpty || newLayerMap.isEmpty) {
       currentlyLoadingDesign = false;
@@ -221,11 +221,6 @@ class DesignState extends ChangeNotifier {
     slats = newSlats;
     gridMode = newGridMode;
     cargoPalette = newCargoPalette;
-
-    // legacy compatibility with files that didn't contain seed info
-    if(!cargoPalette.containsKey('SEED')){
-      cargoPalette['SEED'] = Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0));
-    }
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
     // Get the highest letter key
@@ -245,17 +240,17 @@ class DesignState extends ChangeNotifier {
       });
     }
 
-    // fill up occupiedCargoPoints
+    // fill up occupiedCargoPoints (from both the seed and cargo values)
     for (var slat in slats.values) {
       var layer = slat.layer;
       var topHelix = layerMap[layer]?['top_helix'];
       for (var i = 0; i < slat.maxLength; i++) {
-        if (slat.h2Handles[i+1] != null && slat.h2Handles[i+1]!['category'] == 'Cargo'){
+        if (slat.h2Handles[i+1] != null && slat.h2Handles[i+1]!['category'] != 'Assembly'){
           var occupancyID = topHelix == 'H2' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
           occupiedCargoPoints['$layer-$occupancyID']![slat.slatPositionToCoordinate[i+1]!] =  slat.id;
         }
-        if (slat.h5Handles[i+1] != null && slat.h5Handles[i+1]!['category'] == 'Cargo'){
+        if (slat.h5Handles[i+1] != null && slat.h5Handles[i+1]!['category'] != 'Assembly'){
           var occupancyID = topHelix == 'H5' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
           occupiedCargoPoints['$layer-$occupancyID']![slat.slatPositionToCoordinate[i+1]!] =  slat.id;
@@ -263,8 +258,29 @@ class DesignState extends ChangeNotifier {
       }
     }
 
-    // TODO: when seed import implemented, also update all 3 occupancy maps with seed details...
-    // and next seed ID too!
+    // fill up seedRoster and slat occupancy map (need to convert to real coordinates as import system doesn't have access to translator functions)
+    List<String> seedKeys = [];
+    for (var seed in newSeedRoster.entries){
+      Map<int, Offset> convertedCoordinates = seed.value.coordinates.map(
+            (key, value) => MapEntry(key, convertCoordinateSpacetoRealSpace(value)),
+      );
+      seedRoster[(seed.key.$1, seed.key.$2, convertedCoordinates[1]!)] = Seed(
+        ID: seed.value.ID,
+        coordinates: convertedCoordinates);
+      seedKeys.add(seed.value.ID);
+
+      int seedOccupancyLayer = layerMap[seed.key.$1]?['order'] + (seed.key.$2 == 'top' ? 1 : -1);
+      // apply the new seed to the slat occupancy map
+      if (layerNumberValid(seedOccupancyLayer)) {
+        String newLayer = getLayerByOrder(seedOccupancyLayer)!;
+        for (var coord in seed.value.coordinates.values){
+          occupiedGridPoints[newLayer]![coord] =  'SEED';
+        }
+      }
+    }
+    // Compute the next seed letter key
+    String maxSeedKey = seedKeys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+    nextSeedID = nextCapitalLetter(maxSeedKey);
 
     updateDesignHammingValue();
     currentlyLoadingDesign = false;
@@ -527,6 +543,9 @@ class DesignState extends ChangeNotifier {
     // remove all seeds from the deleted layer
     seedRoster.removeWhere((key, value) => key.$1 == layer);
 
+    // remove all cargo points from the deleted layer
+    occupiedCargoPoints.removeWhere((key, value) => key.startsWith('$layer-'));
+
     notifyListeners();
   }
 
@@ -550,6 +569,8 @@ class DesignState extends ChangeNotifier {
     for (var seed in seedRoster.entries) {
       bool moveValid = true;
       int candidateSeedLayerNumber = fakeLayerMap[seed.key.$1]!['order'] + (seed.key.$2 == 'top' ? 1 : -1);
+      int previousSeedLayerNumber = layerMap[seed.key.$1]!['order'] + (seed.key.$2 == 'top' ? 1 : -1);
+
       if (layerNumberValid(candidateSeedLayerNumber)) {
         String candidateSeedOccupancyLayer = '';
         for (final entry in fakeLayerMap.entries) {
@@ -557,6 +578,12 @@ class DesignState extends ChangeNotifier {
             candidateSeedOccupancyLayer = entry.key;
           }
         }
+        String previousSeedOccupancyLayer = layerNumberValid(previousSeedLayerNumber)? getLayerByOrder(previousSeedLayerNumber)! : '';
+
+        if (candidateSeedOccupancyLayer == previousSeedOccupancyLayer) {
+          continue; // no change in layer, so no need to check
+        }
+
         for (var coord in seed.value.coordinates.values) {
           if (occupiedGridPoints[candidateSeedOccupancyLayer]!.containsKey(convertRealSpacetoCoordinateSpace(coord))) {
             moveValid = false;
@@ -978,8 +1005,6 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 }
-
-
 
 /// State management for action mode and display settings
 class ActionState extends ChangeNotifier {

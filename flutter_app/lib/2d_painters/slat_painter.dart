@@ -1,23 +1,13 @@
 import 'dart:math';
-
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import '../crisscross_core/slats.dart';
 import 'helper_functions.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:ui';
 import '../app_management/shared_app_state.dart';
+import '../crisscross_core/seed.dart';
 
-
-int getIndexFromSeedText(String seedText) {
-  final parts = seedText.split('-');
-  if (parts.length != 3) {
-    throw FormatException('Invalid seed format: $seedText');
-  }
-  final row = int.parse(parts[1]);
-  final col = int.parse(parts[2]);
-
-  return (row - 1) * 5 + (col - 1) + 1; // 1-based index
-}
 
 /// Custom painter for the slats themselves
 class SlatPainter extends CustomPainter {
