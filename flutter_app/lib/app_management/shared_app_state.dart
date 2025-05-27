@@ -279,8 +279,10 @@ class DesignState extends ChangeNotifier {
       }
     }
     // Compute the next seed letter key
-    String maxSeedKey = seedKeys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
-    nextSeedID = nextCapitalLetter(maxSeedKey);
+    if (seedKeys.isNotEmpty) {
+      String maxSeedKey = seedKeys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+      nextSeedID = nextCapitalLetter(maxSeedKey);
+    }
 
     updateDesignHammingValue();
     currentlyLoadingDesign = false;
