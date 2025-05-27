@@ -28208,7 +28208,7 @@ if(d)l.j(0,s,new A.e(p,n*k*2+o))
 else l.j(0,s,new A.e(n*c,q))}return l},
 b1I(a){var s=null,r=a.split("-")
 if(r.length!==3)throw A.f(A.dc("Invalid seed format: "+a,s,s))
-return(A.bW(r[1],s)-1)*5+(A.bW(r[2],s)-1)+1},
+return(A.bW(r[1],s)-1)*16+(A.bW(r[2],s)-1)+1},
 XT(a,b,c,d,e){var s,r,q,p,o,n,m,l=new A.fr(a,c,e,d,b),k=J.P(c)
 if(k.gad(c))A.a7(A.cB(u.M))
 s=k.h(c,1)
@@ -103683,8 +103683,8 @@ q.toString
 d.k1.bY(0,q,new A.aeQ())
 n=q}else n=""
 for(s=new A.aU(a0,a0.r,a0.e,s),q=n!=="",p=b+"_helix",m=0;s.t();){l=s.d
-k=B.e.cX(m,5)
-j=B.e.ai(m,5)
+k=B.e.cX(m,16)
+j=B.e.ai(m,16)
 i=d.as
 h=d.k1.h(0,a)
 h.toString
@@ -105513,7 +105513,7 @@ s=A.qv(new A.aKH(this))
 r=m.Q
 q=m.z?A.dx(B.NE,o,o,o):A.dx(B.hS,o,o,o)
 p=t.p
-r=A.b([s,new A.I8(o),A.qT(0,A.d7(A.b([new A.Gl(B.j,A.lp(o,o,o,q,o,o,new A.aKI(m),o,o,o,o),A.u6(A.dP(A.b([A.b6("v0.0.5",o,o,o,A.bc(o,o,B.aw,o,o,o,o,o,o,o,o,10,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),A.b6("38feb88",o,o,o,A.bc(o,o,B.cG,o,o,o,o,o,o,o,o,8,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),B.mt],p),B.a0,B.el,B.F)),B.QY,r,new A.aKJ(m),B.Tu,o),B.a4r],p),B.M,B.F),o,o,0,o,0,o)],p)
+r=A.b([s,new A.I8(o),A.qT(0,A.d7(A.b([new A.Gl(B.j,A.lp(o,o,o,q,o,o,new A.aKI(m),o,o,o,o),A.u6(A.dP(A.b([A.b6("v0.0.5",o,o,o,A.bc(o,o,B.aw,o,o,o,o,o,o,o,o,10,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),A.b6("855e570",o,o,o,A.bc(o,o,B.cG,o,o,o,o,o,o,o,o,8,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),B.mt],p),B.a0,B.el,B.F)),B.QY,r,new A.aKJ(m),B.Tu,o),B.a4r],p),B.M,B.F),o,o,0,o,0,o)],p)
 if(A.bf()!==B.br)B.b.L(r,A.b([A.qT(o,A.d7(A.b([A.b6("Activate 3D Display",o,o,o,o,o,o),A.aZq(new A.aKK(this),B.a4w,this.e)],p),B.M,B.F),o,o,o,16,16,o)],p))
 r.push(new A.F6(o))
 if(n.go)r.push(A.dD(o,B.F7,B.p,B.l.eD(0.4),o,o,o,o,o,o,o,o,o,o))
