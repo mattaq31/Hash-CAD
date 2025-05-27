@@ -35,7 +35,7 @@ int getIndexFromSeedText(String seedText) {
   final row = int.parse(parts[1]);
   final col = int.parse(parts[2]);
 
-  return (row - 1) * 5 + (col - 1) + 1; // 1-based index
+  return (row - 1) * 16 + (col - 1) + 1; // 1-based index
 }
 
 class Seed {

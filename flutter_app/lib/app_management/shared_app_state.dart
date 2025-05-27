@@ -937,8 +937,8 @@ class DesignState extends ChangeNotifier {
     int index = 0;
     for (var coord in coordinates.values){
 
-      int row = index ~/ 5 + 1; // Integer division to get row number
-      int col = index % 5 + 1;  // Modulo to get column number
+      int row = index ~/ 16 + 1; // Integer division to get row number
+      int col = index % 16 + 1;  // Modulo to get column number
 
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
