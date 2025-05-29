@@ -1017,6 +1017,7 @@ class ActionState extends ChangeNotifier {
   bool displaySlatIDs;
   bool displaySeeds;
   bool displayGrid;
+  bool drawingAids;
   bool displayBorder;
   bool isolateSlatLayerView;
   bool evolveMode;
@@ -1036,6 +1037,7 @@ class ActionState extends ChangeNotifier {
     this.displaySeeds = true,
     this.displayBorder = true,
     this.displayGrid = true,
+    this.drawingAids = false,
     this.panelMode = 0,
     this.cargoAttachMode = 'top'
   });
@@ -1087,6 +1089,10 @@ class ActionState extends ChangeNotifier {
   }
   void setBorderDisplay(bool value){
     displayBorder = value;
+    notifyListeners();
+  }
+  void setDrawingAidsDisplay(bool value){
+    drawingAids = value;
     notifyListeners();
   }
 

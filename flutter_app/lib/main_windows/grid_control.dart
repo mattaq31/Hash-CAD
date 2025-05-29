@@ -715,6 +715,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 value: actionState.displayGrid,
                 onChanged: (val) => actionState.setGridDisplay(val),
               ),
+              buildToggleSwitch(
+                label: 'Drawing Aids',
+                value: actionState.drawingAids,
+                onChanged: (val) => actionState.setDrawingAidsDisplay(val),
+              ),
             ],
           ),
         ),

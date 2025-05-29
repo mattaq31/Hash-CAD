@@ -19,10 +19,36 @@ class SlatHoverPainter extends CustomPainter {
   final Offset moveAnchor;
   final DesignState appState;
 
+  late Map<int, TextPainter> labelPainters;
+  late TextStyle textStyle;
+  late TextSpan textSpan;
+  late TextPainter textPainter;
+
   SlatHoverPainter(this.scale, this.canvasOffset, this.slatColor,
       this.hoverValid, this.futureSlatEndPoints, this.hoverPosition,
       this.ignorePreSelectedSlats, this.preSelectedSlats, this.moveAnchor,
-      this.appState);
+      this.appState)
+  {
+    labelPainters = <int, TextPainter>{};
+    textStyle = TextStyle(
+      color: Colors.black,
+      fontFamily: 'Roboto',
+      fontWeight: FontWeight.bold,
+      fontSize: appState.gridSize * 0.5, // small enough for grid point
+    );
+
+    for (int i = 1; i <= 32; i++) {
+      textSpan = TextSpan(text: '$i', style: textStyle);
+      textPainter = TextPainter(
+        text: textSpan,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      labelPainters[i] = textPainter;
+    }
+  }
+
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -45,9 +71,18 @@ class SlatHoverPainter extends CustomPainter {
 
       // if there are no preset positions, attempt to draw based on layer angle
       if (ignorePreSelectedSlats) {
+        int index = 1;
         for (var slatCoords in futureSlatEndPoints.values) {
           Offset slatExtend = calculateSlatExtend(slatCoords[1]!, slatCoords[32]!, appState.gridSize);
           canvas.drawLine(slatCoords[1]! - slatExtend, slatCoords[32]! + slatExtend, hoverRodPaint);
+
+          // Draw numbers 1 and 32
+          final label1 = labelPainters[index]!;
+          final label32 = labelPainters[index]!;
+
+          label1.paint(canvas, slatCoords[1]! - Offset(label1.width / 2, label1.height / 2));
+          label32.paint(canvas, slatCoords[32]! - Offset(label32.width / 2, label32.height / 2));
+          index += 1;
         }
       }
       // otherwise, draw hover points based on the anchor and provided coordinates
