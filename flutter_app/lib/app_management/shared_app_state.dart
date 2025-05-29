@@ -845,6 +845,20 @@ class DesignState extends ChangeNotifier {
 
   void deleteCargoType(String cargoName){
     saveUndoState();
+
+    // need to remove all cargo of this type from the slats and from the cargo occupancy map (otherwise will error out)
+    for (var slat in slats.values) {
+      for (var side in ['top', 'bottom']) {
+        var targetDict = layerMap[slat.layer]!['${side}_helix'] == 'H5' ? slat.h5Handles : slat.h2Handles;
+        for (int position = 1; position <= slat.maxLength; position++) {
+          if (targetDict[position] != null && targetDict[position]!['descriptor'] == cargoName) {
+            targetDict.remove(position);
+            occupiedCargoPoints['${slat.layer}-$side']?.remove(slat.slatPositionToCoordinate[position]!);
+          }
+        }
+      }
+    }
+
     cargoPalette.remove(cargoName);
     cargoAdditionType = null;
     notifyListeners();
