@@ -1,5 +1,6 @@
 // modified from https://github.com/maxim-saplin/flutter_python_starter
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -53,7 +54,22 @@ Future<int> launchServer() async {
     serverParams.add(port.toString());
   }
 
-  var process = await Process.start(filePath, serverParams);
+  var process = await Process.start(filePath, serverParams,  environment: {'GRPC_VERBOSITY': 'ERROR'});
+
+  final logFilePath = p.join(dir.path, "python_hamming_server.log");
+  final logSink = File(logFilePath).openWrite(mode: FileMode.write);
+
+  process.stdout
+      .transform(utf8.decoder)
+      .listen((data) {
+    logSink.write("PYTHON STDOUT: $data");
+  });
+
+  process.stderr
+      .transform(utf8.decoder)
+      .listen((data) {
+    logSink.write("PYTHON STDERR: $data");
+  });
 
   int? exitCode;
 
