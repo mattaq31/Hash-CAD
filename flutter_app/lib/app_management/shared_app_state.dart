@@ -788,8 +788,10 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // TODO: assembly handles are still causing performance issues - it's probably the 3D system - need to investigate
   void generateRandomAssemblyHandles(int uniqueHandleCount, bool splitLayerHandles) {
+
+    saveUndoState();
+
     Offset minPos;
     Offset maxPos;
     (minPos, maxPos) = extractGridBoundary(slats);
@@ -924,7 +926,7 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void attachSeed(String layerID, String slatSide, Map<int, Offset> coordinates){
+  void attachSeed(String layerID, String slatSide, Map<int, Offset> coordinates, BuildContext context){
     /// Adds a seed to the design.  This involves:
     /// 1) adding the appropriate handles to all involved slats,
     /// 2) adding blocks to the occupancy grids and
@@ -936,6 +938,17 @@ class DesignState extends ChangeNotifier {
         // no slat at this position - cannot place a seed without full occupancy of all handles
         return;
       }
+    }
+
+    Set<String> attachmentSlats = {};
+    for (var coord in coordinates.values) {
+      var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
+      attachmentSlats.add(slat.id);
+    }
+    if (attachmentSlats.length < 16){
+      // not enough slats to place a seed - it's likely seed was placed in parallel to slats rather than at an angle
+      showWarning(context, 'Invalid Seed Placement', 'A seed needs to anchor 16 slats to be able to properly initiate crisscross growth.  Rotate your seed and try again.');
+      return;
     }
 
     saveUndoState();
@@ -1032,6 +1045,7 @@ class ActionState extends ChangeNotifier {
   bool displaySeeds;
   bool displayGrid;
   bool drawingAids;
+  bool slatNumbering;
   bool displayBorder;
   bool isolateSlatLayerView;
   bool evolveMode;
@@ -1052,6 +1066,7 @@ class ActionState extends ChangeNotifier {
     this.displayBorder = true,
     this.displayGrid = true,
     this.drawingAids = false,
+    this.slatNumbering = false,
     this.panelMode = 0,
     this.cargoAttachMode = 'top'
   });
@@ -1107,6 +1122,11 @@ class ActionState extends ChangeNotifier {
   }
   void setDrawingAidsDisplay(bool value){
     drawingAids = value;
+    notifyListeners();
+  }
+
+  void setSlatNumberingDisplay(bool value){
+    slatNumbering = value;
     notifyListeners();
   }
 

@@ -20,9 +20,6 @@ class SlatHoverPainter extends CustomPainter {
   final DesignState appState;
 
   late Map<int, TextPainter> labelPainters;
-  late TextStyle textStyle;
-  late TextSpan textSpan;
-  late TextPainter textPainter;
 
   SlatHoverPainter(this.scale, this.canvasOffset, this.slatColor,
       this.hoverValid, this.futureSlatEndPoints, this.hoverPosition,
@@ -30,16 +27,16 @@ class SlatHoverPainter extends CustomPainter {
       this.appState)
   {
     labelPainters = <int, TextPainter>{};
-    textStyle = TextStyle(
+    TextStyle textStyle = TextStyle(
       color: Colors.black,
       fontFamily: 'Roboto',
       fontWeight: FontWeight.bold,
-      fontSize: appState.gridSize * 0.5, // small enough for grid point
+      fontSize: appState.gridSize * 0.4, // small enough for grid point
     );
 
     for (int i = 1; i <= 32; i++) {
-      textSpan = TextSpan(text: '$i', style: textStyle);
-      textPainter = TextPainter(
+      TextSpan textSpan = TextSpan(text: '$i', style: textStyle);
+      TextPainter textPainter = TextPainter(
         text: textSpan,
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
@@ -48,7 +45,6 @@ class SlatHoverPainter extends CustomPainter {
       labelPainters[i] = textPainter;
     }
   }
-
 
   @override
   void paint(Canvas canvas, Size size) {

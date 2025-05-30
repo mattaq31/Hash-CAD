@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import '../crisscross_core/slats.dart';
 import 'helper_functions.dart';
 import '../app_management/shared_app_state.dart';
-import '../crisscross_core/seed.dart';
 
+import '../crisscross_core/seed.dart';
 
 /// Custom painter for the slats themselves
 class SlatPainter extends CustomPainter {
@@ -21,10 +21,32 @@ class SlatPainter extends CustomPainter {
   final List<String> hiddenSlats;
   final ActionState actionState;
   final DesignState appState;
+  late Map<int, TextPainter> labelPainters;
+
 
   SlatPainter(this.scale, this.canvasOffset, this.slats,
       this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats,
-      this.actionState, this.appState);
+      this.actionState, this.appState){
+
+    labelPainters = <int, TextPainter>{};
+    TextStyle textStyle = TextStyle(
+      color: Colors.black,
+      fontFamily: 'Roboto',
+      fontWeight: FontWeight.bold,
+      fontSize: appState.gridSize * 0.4, // small enough for grid point
+    );
+
+    for (int i = 1; i <= 32; i++) {
+      TextSpan textSpan = TextSpan(text: '$i', style: textStyle);
+      TextPainter textPainter = TextPainter(
+        text: textSpan,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      labelPainters[i] = textPainter;
+    }
+  }
 
 
   Offset getRealCoord(Offset slatCoord){
@@ -85,6 +107,14 @@ class SlatPainter extends CustomPainter {
     canvas.translate(canvasOffset.dx, canvasOffset.dy);
     canvas.scale(scale);
 
+    // current viewport bounds
+    final visibleRect = Rect.fromLTWH(
+      -canvasOffset.dx / scale,
+      -canvasOffset.dy / scale,
+      size.width / scale,
+      size.height / scale,
+    );
+
     final isWeb = kIsWeb;
 
     // TODO: slat draw length should be parametrized
@@ -120,12 +150,21 @@ class SlatPainter extends CustomPainter {
       var p2 = getRealCoord(slat.slatPositionToCoordinate[32]!);
 
       Offset slatExtend = calculateSlatExtend(p1, p2, appState.gridSize);
+
+      // if slat out of the visible rectangle, can skip drawing to speed up rendering
+      final slatBounds = Rect.fromPoints(p1, p2).inflate(appState.gridSize * 1.5);
+      if (!slatBounds.overlaps(visibleRect)) {
+        continue; // skip drawing this slat
+      }
+
       if (actionState.drawingAids){
         canvas.drawLine(p1 - slatExtend * 0.5, p2, rodPaint);
       }
       else {
         canvas.drawLine(p1 - slatExtend, p2 + slatExtend, rodPaint);
       }
+
+
       if (actionState.drawingAids){
         final direction = (p2 - p1).direction;
 
@@ -185,6 +224,22 @@ class SlatPainter extends CustomPainter {
             final dEnd = dStart + perpDirection * dashSize;
             canvas.drawLine(dStart, dEnd, fraction == 0.5 ? dottedCenterPaint : dottedPaint);
           }
+        }
+      }
+
+      // Draw slat position numbers if activated
+      if (slat.layer == selectedLayer && actionState.slatNumbering) {
+        for (int i = 1; i <= 32; i++) {
+          final slatCoord = getRealCoord(slat.slatPositionToCoordinate[i]!);
+          final labelPainter = labelPainters[i];
+          if (labelPainter == null) continue;
+
+          final textOffset = Offset(
+            slatCoord.dx - labelPainter.width / 2,
+            slatCoord.dy - labelPainter.height / 2,
+          );
+
+          labelPainter.paint(canvas, textOffset);
         }
       }
 
@@ -251,6 +306,12 @@ class SlatPainter extends CustomPainter {
             final size = appState.gridSize * 0.85;
             final halfHeight = size / 2;
 
+            // Check if the handle marker is within the visible rectangle
+            final handleRect = Rect.fromCenter(center: position, width: size, height: size);
+            if (!handleRect.overlaps(visibleRect)) {
+              continue; // Skip drawing this handle marker if not visible
+            }
+
             final rectTop = Rect.fromCenter(
               center: Offset(position.dx, position.dy - halfHeight / 2),
               width: size,
@@ -305,8 +366,7 @@ class SlatPainter extends CustomPainter {
                 textAlign: TextAlign.center,
               );
               textPainter.layout();
-
-              final baselineOffset =textPainter.height;
+              final baselineOffset = textPainter.height;
               final actualOffset = Offset(
                 offset.dx - textPainter.width / 2 - 0.1,
                 offset.dy - baselineOffset / 2 + 0.3,
@@ -395,7 +455,14 @@ class SlatPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true; // Always repaint since the slat list might change TODO: can this be smarter?
+  bool shouldRepaint(covariant SlatPainter oldDelegate) {
+    return oldDelegate.scale != scale ||
+        oldDelegate.canvasOffset != canvasOffset ||
+        oldDelegate.slats != slats ||  // Consider using `identical()` or custom equality
+        oldDelegate.selectedLayer != selectedLayer ||
+        !listEquals(oldDelegate.selectedSlats, selectedSlats) ||
+        !listEquals(oldDelegate.hiddenSlats, hiddenSlats) ||
+        oldDelegate.actionState != actionState ||
+        oldDelegate.appState != appState;
   }
 }

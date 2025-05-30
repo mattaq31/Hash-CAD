@@ -12,6 +12,7 @@ import '../2d_painters/cargo_hover_painter.dart';
 import '../2d_painters/seed_painter.dart';
 import '../main_windows/floating_switches.dart';
 
+
 /// Class that takes care of painting all 2D objects on the grid, including the grid itself, slats and slat hover effects.
 class GridAndCanvas extends StatefulWidget {
   const GridAndCanvas({super.key});
@@ -43,7 +44,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
 
   bool isShiftPressed = false; // keyboard bool check
   final FocusNode keyFocusNode = FocusNode(); // Persistent focus node for keyboard
-
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
@@ -561,7 +561,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                       appState.clearSelection();
                       if (appState.cargoAdditionType != null) {
                         if (appState.cargoAdditionType == 'SEED'){
-                          appState.attachSeed(appState.selectedLayerKey, actionState.cargoAttachMode, incomingCargo);
+                          appState.attachSeed(appState.selectedLayerKey, actionState.cargoAttachMode, incomingCargo, context);
                         }
                         else {
                           appState.attachCargo(appState.cargoPalette[appState
@@ -607,19 +607,21 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         painter: GridPainter(scale, offset, appState.gridSize, appState.gridMode, actionState.displayGrid, actionState.displayBorder),
                         child: Container(),
                       ),
-                      CustomPaint(
-                        size: Size.infinite,
-                        painter: SlatPainter(
-                            scale,
-                            offset,
-                            appState.slats.values.toList(),
-                            appState.layerMap,
-                            appState.selectedLayerKey,
-                            appState.selectedSlats,
-                            hiddenSlats,
-                            actionState,
-                            appState),
-                        child: Container(),
+                      RepaintBoundary(
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: SlatPainter(
+                              scale,
+                              offset,
+                              appState.slats.values.toList(),
+                              appState.layerMap,
+                              appState.selectedLayerKey,
+                              appState.selectedSlats,
+                              hiddenSlats,
+                              actionState,
+                              appState),
+                          child: Container(),
+                        ),
                       ),
                       CustomPaint(
                         size: Size.infinite,
@@ -652,23 +654,25 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         painter: DeletePainter(scale, offset, getActionMode(actionState).contains('Delete') ? hoverPosition: null, appState.gridSize),
                         child: Container(),
                       ),
-                      CustomPaint(
-                        size: Size.infinite,
-                        painter: SeedPainter(
-                            scale: scale,
-                            canvasOffset: offset,
-                            seeds: actionState.displaySeeds ? appState.seedRoster.entries
-                                .where((entry) => entry.key.$1 == appState.selectedLayerKey)
-                                .map((entry) => entry.value)
-                                .toList() : [],
-                            seedTransparency:  appState.seedRoster.entries
-                                .where((entry) => entry.key.$1 == appState.selectedLayerKey)
-                                .map((entry) => entry.key.$2 == 'bottom')
-                                .toList(),
-                            handleJump: appState.gridSize,
-                            printHandles: false,
-                            color: appState.cargoPalette['SEED']!.color),
-                        child: Container(),
+                      RepaintBoundary(
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: SeedPainter(
+                              scale: scale,
+                              canvasOffset: offset,
+                              seeds: actionState.displaySeeds ? appState.seedRoster.entries
+                                  .where((entry) => entry.key.$1 == appState.selectedLayerKey)
+                                  .map((entry) => entry.value)
+                                  .toList() : [],
+                              seedTransparency:  appState.seedRoster.entries
+                                  .where((entry) => entry.key.$1 == appState.selectedLayerKey)
+                                  .map((entry) => entry.key.$2 == 'bottom')
+                                  .toList(),
+                              handleJump: appState.gridSize,
+                              printHandles: false,
+                              color: appState.cargoPalette['SEED']!.color),
+                          child: Container(),
+                        ),
                       ),
                     ],
                   ),
@@ -719,6 +723,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 label: 'Drawing Aids',
                 value: actionState.drawingAids,
                 onChanged: (val) => actionState.setDrawingAidsDisplay(val),
+              ),
+              buildToggleSwitch(
+                label: 'Slat Coordinates',
+                value: actionState.slatNumbering,
+                onChanged: (val) => actionState.setSlatNumberingDisplay(val),
               ),
             ],
           ),
