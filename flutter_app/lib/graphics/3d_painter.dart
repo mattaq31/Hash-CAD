@@ -848,11 +848,11 @@ class _ThreeDisplay extends State<ThreeDisplay> {
             },
           ),
           Positioned(
-            bottom: 16.0,
+            bottom: 20.0,
             right: 16.0,
             child: Row(
               children: [
-                buildToggleSwitch(
+                buildFreeToggleSwitch(
                   label: '6HB display',
                   value: helixBundleView,
                   onChanged: (val) => setState(() {
@@ -862,22 +862,22 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                         appState.layerMap, appState.cargoPalette);
                   }),
                 ),
-                buildToggleSwitch(
+                buildFreeToggleSwitch(
                   label: 'Assembly Handles',
                   value: assemblyHandleView,
                   onChanged: (val) => setState(() {assemblyHandleView = val;}),
                 ),
-                buildToggleSwitch(
+                buildFreeToggleSwitch(
                   label: 'Cargo Handles',
                   value: cargoHandleView,
                   onChanged: (val) => setState(() {cargoHandleView = val;}),
                 ),
-                buildToggleSwitch(
+                buildFreeToggleSwitch(
                   label: 'Seed Handles',
                   value: seedHandleView,
                   onChanged: (val) => setState(() {seedHandleView = val;}),
                 ),
-                buildToggleSwitch(
+                buildFreeToggleSwitch(
                   label: 'Grid',
                   value: gridView,
                   onChanged: (val) => setState(() {gridView = val;}),

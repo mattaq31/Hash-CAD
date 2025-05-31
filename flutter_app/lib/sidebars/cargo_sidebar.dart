@@ -6,6 +6,7 @@ import  '../crisscross_core/cargo.dart';
 import 'package:flutter/services.dart';
 import '../2d_painters/seed_painter.dart';
 import '../crisscross_core/seed.dart';
+import 'layer_manager.dart';
 
 class CargoDesignTools extends StatefulWidget {
   const CargoDesignTools({super.key});
@@ -15,7 +16,6 @@ class CargoDesignTools extends StatefulWidget {
 }
 
 List<String> restrictedCargo = ['SEED'];
-
 
 Widget _buildSeedItem(DesignState appState, TextEditingController cargoAddTextController) {
   bool isSelected = appState.cargoAdditionType == 'SEED';
@@ -434,7 +434,14 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           });
         },
       ),
-      Divider(thickness: 1, color: Colors.grey.shade200),
+      SizedBox(height: 10),
+      Divider(thickness: 2, color: Colors.grey.shade300),
+      LayerManagerWidget(
+        appState: appState,
+        actionState: actionState,
+      ),
+      SizedBox(height: 10),
+      Divider(thickness: 2, color: Colors.grey.shade300),
     ]);
   }
 }

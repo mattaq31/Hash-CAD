@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../graphics/rating_indicator.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'layer_manager.dart';
 
 class AssemblyHandleDesignTools extends StatefulWidget {
   const AssemblyHandleDesignTools({super.key});
@@ -215,6 +216,12 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
             ),
           ),
         ],
+      ),
+      SizedBox(height: 10),
+      Divider(thickness: 2, color: Colors.grey.shade300),
+      LayerManagerWidget(
+        appState: appState,
+        actionState: actionState,
       ),
       SizedBox(height: 10),
       Divider(thickness: 2, color: Colors.grey.shade300),
