@@ -198,6 +198,17 @@ jobs:
 #          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = .*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PLIST"
 #        working-directory: .
 
+      - name: Configure Mac Code Signing Identity
+        if: matrix.os == 'macos-latest'
+        env:
+          CODESIGN_MAC_IDENTITY: ${{ secrets.CODESIGN_MAC_IDENTITY }}
+          MAC_TEAM_ID: ${{ secrets.MAC_TEAM_ID }}
+        run: |
+          PBXPROJ="flutter_app/macos/Runner.xcodeproj/project.pbxproj"
+          sed -i '' "s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g" "$PBXPROJ"
+          sed -i '' "s/CODE_SIGN_IDENTITY = .*;/CODE_SIGN_IDENTITY = \"$CODESIGN_MAC_IDENTITY\";/g" "$PBXPROJ"
+          sed -i '' "s/DEVELOPMENT_TEAM = .*;/DEVELOPMENT_TEAM = \"$MAC_TEAM_ID\";/g" "$PBXPROJ"
+
       - name: Build Flutter Desktop App (Mac)
         if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
         run: |
