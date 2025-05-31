@@ -53,6 +53,7 @@ dependencies:
   dotted_border: ^2.1.0
   crypto: ^3.0.6
   url_launcher: ^6.3.1
+  window_manager: ^0.5.0
 
 dependency_overrides:
   three_js_core_loaders:

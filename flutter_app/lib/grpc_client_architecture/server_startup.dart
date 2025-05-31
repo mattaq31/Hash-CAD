@@ -95,8 +95,25 @@ Future<void> shutdownServerIfAny() async {
       await Process.run('pkill', [name]);
       break;
     case TargetPlatform.windows:
-      await Process.run('taskkill', ['/F', '/IM', name]);
-      break;
+      final toKill = <String>{name};
+      // Add stripped version without `.exe`
+      if (name.endsWith('.exe')) {
+        toKill.add(name.replaceFirst('.exe', ''));
+      }
+
+      // Add stripped version without `_win`
+      if (name.contains('_win')) {
+        toKill.add(name.replaceFirst('_win', ''));
+      }
+
+      // Add stripped version without `_win.exe`
+      if (name.endsWith('_win.exe')) {
+        toKill.add(name.replaceFirst('_win.exe', ''));
+      }
+
+      for (final exe in toKill) {
+        await Process.run('taskkill', ['/F', '/IM', exe]);
+      }
     default:
       break;
   }
@@ -107,8 +124,6 @@ String _getAssetName() {
 
   if (defaultTargetPlatform == TargetPlatform.windows) {
     name += 'hamming_server_win.exe';
-    name += 'hamming_server_win';
-    name += 'hamming_server';
   } else if (defaultTargetPlatform == TargetPlatform.macOS) {
     name += 'hamming_server_osx';
   } else if (defaultTargetPlatform == TargetPlatform.linux) {

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:window_size/window_size.dart' as window_size;
-
+import 'package:window_manager/window_manager.dart';
+import 'windows_app_kill_listener.dart';
 
 Future<void> initializeWindow() async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -20,4 +21,10 @@ Future<void> initializeWindow() async {
       await Future.delayed(const Duration(milliseconds: 100));
     }
   }
+  if (Platform.isWindows) {
+    await windowManager.ensureInitialized();
+    windowManager.setPreventClose(true);
+    windowManager.addListener(ServerKillWindowListener());
+  }
+
 }
