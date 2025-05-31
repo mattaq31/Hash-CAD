@@ -96,19 +96,10 @@ Future<void> shutdownServerIfAny() async {
       break;
     case TargetPlatform.windows:
       final toKill = <String>{name};
-      // Add stripped version without `.exe`
-      if (name.endsWith('.exe')) {
-        toKill.add(name.replaceFirst('.exe', ''));
-      }
 
       // Add stripped version without `_win`
       if (name.contains('_win')) {
         toKill.add(name.replaceFirst('_win', ''));
-      }
-
-      // Add stripped version without `_win.exe`
-      if (name.endsWith('_win.exe')) {
-        toKill.add(name.replaceFirst('_win.exe', ''));
       }
 
       for (final exe in toKill) {
