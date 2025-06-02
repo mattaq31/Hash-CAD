@@ -18,7 +18,7 @@
 </p>
 
 ## Main CAD Interface
-Details TBC.
+Details TBC soon.
 
 ### Installation
 Details TBC.
