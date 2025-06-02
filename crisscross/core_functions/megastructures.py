@@ -301,6 +301,9 @@ class Megastructure:
                 else:
                     cargo_value = slat.H5_handles[handle]['descriptor']
 
+                #if len(cargo_value.split('|')) < 2: 
+                #    continue  # placeholder not defined correctly, skip
+                #else:
                 cargo_type = cargo_value.split('|')[1]  # the placeholder name is always defined with the same pattern of -s
                 cargo_id = cargo_value.split('|')[-1]
                 if cargo_id.isnumeric():
