@@ -52,7 +52,7 @@ def parallel_pick_and_validate_sequences(depleted_sequence_dict, oldset, min_ext
 
 if __name__ == '__main__':
 
-    name= 'TT_no_crosscheck92to104'
+    name= '6bp_rosscheck79o95'
     #the values bellow are plus minus 0.6 times the standart deviation of the whole 7 mer pool
 
 
@@ -77,8 +77,8 @@ if __name__ == '__main__':
     f3 = 2.0
     f2 = 6.0
 
-    max_on = -9.2#stat_dict['max_on'] - 0.00
-    min_on = -10.4
+    max_on = -7.9#stat_dict['max_on'] - 0.00
+    min_on = -9.5
 
     #value controlls off target binding for self complemtarity
     min_extrem_off = -17.0#stat_dict['mean_off'] - f1 * stat_dict['std_off']

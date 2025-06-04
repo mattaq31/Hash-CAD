@@ -5,12 +5,12 @@ from Energy_computation_functions import *
 
 if __name__ == '__main__':
     # Load the new sequence energy dictionary
-    name = 'TT_no_crosscheck96to104'
+    name = '6bp_rosscheck79o95'
     #name = 'handle_energy_dict'
     #with open(name + '.pkl', 'rb') as f:
     #   new_sequence_energy_dict = pickle.load(f)
 
-    with open(name + 'handlesxx.pkl', 'rb') as f:
+    with open(name + 'handlesx.pkl', 'rb') as f:
         new_sequence_energy_dict = pickle.load(f)
     print(len(new_sequence_energy_dict))
     try:
@@ -26,15 +26,15 @@ if __name__ == '__main__':
     sequence_pairs = [(seq, revcom(seq)) for seq in sequence_list]
 
     # Define the output file name
-    output_file = name +'_64_sequence_pairs.txt'
+    output_file = name +'_10_sequence_pairs.txt'
 
     # Write the sequence pairs to the output file
     with open(output_file, 'w') as f:
         for seq, rev_seq in sequence_pairs:
             f.write(f"{seq}\t{rev_seq}\n")
 
-    min_on = -10.4
-    min_off = -9.60
+    min_on = -7.9
+    min_off = -9.50
     delta = round(min_off-min_extrem_off, 2)
     # Load the dictionaries from the saved pickle files
     with open('sequence_energy_dict.pkl', 'rb') as f:

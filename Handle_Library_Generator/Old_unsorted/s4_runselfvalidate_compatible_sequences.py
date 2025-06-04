@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
 
     # open the preselected prossible handle sequences as dictionary
-    name= 'TT_no_crosscheck96to108'
+    name= '6bp_rosscheck79o95'
 
     with open(name + '.pkl',  'rb') as f:
         handle_energy_dict = pickle.load(f)

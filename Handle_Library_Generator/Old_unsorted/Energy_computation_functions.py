@@ -54,8 +54,8 @@ def nupack_compute_energy_TT_self(seq1, seq2, samples = 1, type = 'total', Use_L
     #use total for the total gibbs free energy
     # use minimum for the minimum free energy of the secondary strucutre
     # whe catch here the exception that the strands dont bind at all. In this case we set the binding energy to -1 which is almost +infinity
-    A = Strand('TT'+seq1 , name='H1')  # name is required for strands
-    B = Strand('TT'+seq2  , name='H2')
+    A = Strand(''+seq1 , name='H1')  # name is required for strands
+    B = Strand(''+seq2  , name='H2')
     library1= {}
     if Use_Library:
         if not hasattr(nupack_compute_energy_TT_self, "library_cache"):

@@ -45,8 +45,8 @@ if __name__ == "__main__":
 
     plt.axhline(y=max_ontarget_energy-1, color='black', linestyle='-', label='max allowed binding energy')
     plt.axhline(y=-13, color='black', linestyle='-', label='min allowed binding energy')
-    plt.scatter(all_indices, all_energy_vals, s= 1.3, c='b',label='off-target' )
-    plt.scatter(handle_indices, handle_energies, s= 4.3, c='r', label='on-targe')
+    plt.scatter(all_indices, all_energy_vals, s= 1.3, c='b',label='target' )
+    #plt.scatter(handle_indices, handle_energies, s= 4.3, c='r', label='on-targe')
     plt.legend()
     plt.xlabel('arbitrary index')
     plt.ylabel('Gibbs free energy (kcal/mol)')

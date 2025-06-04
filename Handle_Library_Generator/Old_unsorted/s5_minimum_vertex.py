@@ -144,7 +144,7 @@ def select_vertices_to_remove(vertex_cover, num_vertices_to_remove):
 
 
 
-def iterative_vertex_cover(V, E, num_vertices_to_remove=150, max_iterations=42850, limit = 64):
+def iterative_vertex_cover(V, E, num_vertices_to_remove=80, max_iterations=42850, limit = 10):
     # Initialize
 
     size =450
@@ -155,7 +155,7 @@ def iterative_vertex_cover(V, E, num_vertices_to_remove=150, max_iterations=4285
 
     while iteration < max_iterations:
         iteration += 1
-        print(f"Iteration {iteration}, current best size: {len(best_vertex_cover) - len(V)}")
+        print(f"Iteration {iteration}, current best size: {-len(best_vertex_cover) + len(V)}")
         if -len(best_vertex_cover) + len(V)>=limit:
             print('found desired set')
             break
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     # open the old handle sequences as dictionary new_sequence_highenergy_cross
     #with open('new_sequence_toto_test_energy_dict_highenergyself3.pkl', 'rb') as f:
 
-    name = 'TT_no_crosscheck96to104'
+    name = '6bp_rosscheck79o95'
     with open(name + '.pkl', 'rb') as f:
         handle_energy_dict = pickle.load(f)
 
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     min_on = stat_dict['mean_on']- f2 * stat_dict['std_on']
 
 
-    min_extrem_off = stat_dict['mean_off']- f1*stat_dict['std_off']
+    min_extrem_off = -5.5#stat_dict['mean_off']- f1*stat_dict['std_off']
     print(min_extrem_off)
     print('cutoff is above')
 

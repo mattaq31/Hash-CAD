@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     # Define the DNA bases
     bases = ['A', 'T', 'G', 'C']
-    seven_mers = [''.join(mer) for mer in itertools.product(bases, repeat=7)]
+    seven_mers = [''.join(mer) for mer in itertools.product(bases, repeat=6)]
 
 
 
