@@ -10,7 +10,7 @@ from tqdm import tqdm
 import random
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from Handle_Library_Generator.Old_unsorted.Energy_computation_functions import selfvalidate
+#from Handle_Library_Generator.Old_unsorted.Energy_computation_functions import selfvalidate
 
 
 def revcom(sequence):
@@ -285,6 +285,61 @@ def compute_offarget_energies(sequence_pairs, Use_Library= True):
             'antihandle_antihandle_energies': crosscorrelated_antihandle_antihandle_energies
             }
 
+def plot_on_off_target_histograms(on_energies, off_energies, bins=100, output_path=None):
+    """
+    Plot histogram of on-target and off-target energies and return stats.
+
+    `off_energies` can be either a 1D array or the full dictionary output of `compute_offarget_energies`.
+    """
+
+    # Unpack dictionary if necessary
+    if isinstance(off_energies, dict):
+        off_energies = np.concatenate([
+            off_energies['handle_handle_energies'].flatten(),
+            off_energies['antihandle_handle_energies'].flatten(),
+            off_energies['antihandle_antihandle_energies'].flatten()
+        ])
+        off_energies = off_energies[off_energies != 0]
+
+    # Compute statistics
+    mean_on = np.mean(on_energies)
+    std_on = np.std(on_energies)
+    max_on = np.max(on_energies)
+    mean_off = np.mean(off_energies)
+    std_off = np.std(off_energies)
+
+    # Define cutoffs
+    cutoff_on = mean_on - 6 * std_on
+    cutoff_off = mean_off
+
+    # Plot
+    plt.figure(figsize=(12, 6))
+    plt.hist(off_energies, bins=bins, alpha=0.6, label='Off-target', color='blue', density=True)
+    plt.hist(on_energies, bins=bins, alpha=0.6, label='On-target', color='red', density=True)
+
+    plt.axvline(cutoff_on, color='black', linestyle='--', label='On-target cutoff')
+    plt.axvline(cutoff_off, color='orange', linestyle='--', label='Off-target cutoff')
+
+    plt.xlabel('Gibbs free energy (kcal/mol)')
+    plt.ylabel('Normalized frequency')
+    plt.title('On-target vs Off-target Energy Distribution')
+    plt.legend()
+
+    if output_path:
+        plt.savefig(output_path)
+    plt.show()
+
+    # Return statistics
+    return {
+        'mean_on': mean_on,
+        'std_on': std_on,
+        'max_on': max_on,
+        'cutoff_on': cutoff_on,
+        'mean_off': mean_off,
+        'std_off': std_off,
+        'cutoff_off': cutoff_off
+    }
+
 
 
 if __name__ == "__main__":
@@ -309,6 +364,7 @@ if __name__ == "__main__":
 
     # Compute the off-target energies for the subset
     off_e = compute_offarget_energies(subset, Use_Library=True)
+    stats = plot_on_off_target_histograms(on_e, off_e, output_path='energy_hist.pdf')
 
     testseq1 = 'ATGCCCGTCG'
     print(revcom(testseq1))
