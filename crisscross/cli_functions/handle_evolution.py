@@ -22,10 +22,18 @@ def handle_evolve(config_file):
             total_layers += 1
 
     slat_array = np.zeros((design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], total_layers))
-    for i, key in enumerate(design_df.keys()):
-        if 'slat_layer_' not in key:
-            continue
-        slat_array[..., i] = design_df[key].values
+
+    handle_array_available = any('handle' in string for string in list(design_df.keys()))
+
+    if handle_array_available:
+        handle_array = np.zeros(
+            (design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], total_layers - 1))
+    else:
+        handle_array = None
+    for i in range(total_layers):
+        slat_array[..., i] = design_df['slat_layer_%s' % (i + 1)].values
+        if i != total_layers - 1 and handle_array_available:
+            handle_array[..., i] = design_df['handle_interface_%s' % (i + 1)].values
 
     slat_array[slat_array == -1] = 0 # knocks out any seed positions
 
@@ -37,7 +45,10 @@ def handle_evolve(config_file):
     else:
         logging_interval = 10
 
-    evolve_manager = EvolveManager(**evolution_params)
+    if np.sum(handle_array) == 0:
+        handle_array = None
+
+    evolve_manager = EvolveManager(**evolution_params, seed_handle_array=handle_array)
 
     evolve_manager.run_full_experiment(logging_interval)
 

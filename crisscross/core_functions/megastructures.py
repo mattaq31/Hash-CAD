@@ -734,7 +734,8 @@ class Megastructure:
                     cargo_dict[((int(y), int(x)), layer, orientation)] = cargo_array[y, x]
             if 'seed' in key:
                 layer = int(key.split('_')[-1])
-                seed_array = (layer, design_df[key].values)
+                seed_array = (layer, design_df[key].values.astype(int))
+                # convert the array to an array of integers if they're strings for some reason
 
         # extracts and formats metadata
         metadata = design_df['metadata']

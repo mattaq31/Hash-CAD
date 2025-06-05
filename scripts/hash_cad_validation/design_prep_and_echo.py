@@ -4,19 +4,19 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
-from crisscross.plate_mapping import get_standard_plates, get_cargo_plates
+from crisscross.plate_mapping import get_cargo_plates, get_cutting_edge_plates
 
 
 ########## CONFIG
 # update these depending on user
 experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs'
 
-target_designs = ['hexagon', 'recycling', 'bird']
+target_designs = ['shuriken', 'turnstile', 'lily']
 
 base_design_import_files = [os.path.join(experiment_folder, f, f'{f}_design.xlsx') for f in target_designs]
-regen_graphics = True
-generate_echo = False
-generate_lab_helpers = False
+regen_graphics = False
+generate_echo = True
+generate_lab_helpers = True
 
 ########## LOADING AND CHECKING DESIGN
 for file, design_name in zip(base_design_import_files, target_designs):
@@ -32,7 +32,7 @@ for file, design_name in zip(base_design_import_files, target_designs):
     print('Hamming distance from imported array: %s, Duplication Risk: %s' % (hamming_results['Universal'], hamming_results['Substitute Risk']))
 
     ########## PATCHING PLATES
-    core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, _, _, _, all_8064_seed_plugs = get_standard_plates(handle_library_v2=True)
+    core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, all_8064_seed_plugs = get_cutting_edge_plates()
     src_004, src_005, src_007, P3518, P3510,_ = get_cargo_plates()
 
     megastructure.patch_placeholder_handles(
@@ -41,7 +41,7 @@ for file, design_name in zip(base_design_import_files, target_designs):
 
     megastructure.patch_control_handles(core_plate)
 
-    target_volume = 150 # nl per staple
+    target_volume = 75 # nl per staple
     if generate_echo:
         echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
                                      destination_plate_name=design_name,
@@ -56,7 +56,8 @@ for file, design_name in zip(base_design_import_files, target_designs):
                                     reference_single_handle_volume=target_volume,
                                     reference_single_handle_concentration=500,
                                     echo_sheet=None if not generate_echo else echo_sheet_1,
-                                    peg_groups_per_layer=2 if design_name == 'recycling' else 4)
+                                    peg_concentration=3,
+                                    peg_groups_per_layer=2 if (design_name == 'recycling' or design_name == 'lily' or design_name == 'turnstile') else 4)
 
     ########## OPTIONAL EXPORTS
     if regen_graphics:
