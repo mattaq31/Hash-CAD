@@ -39,7 +39,7 @@ megastructure.patch_placeholder_handles(
 ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo', 'Cargo'])
 
 megastructure.patch_control_handles(core_plate)
-target_volume = 150 # nl per staple (500uM)
+target_volume = 100 # nl per staple (500uM)
 
 if generate_echo:
     echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
