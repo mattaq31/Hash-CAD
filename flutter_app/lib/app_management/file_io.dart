@@ -171,8 +171,8 @@ void exportDesign(Map<String, Slat> slats,
   Sheet metadataSheet = excel['metadata'];
   metadataSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer Interface Orientations');
   metadataSheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('Connection Angle');
-  metadataSheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('Reversed Slats');
-  metadataSheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('[]'); // TODO: update with actual reversed slats when this is implemented
+  metadataSheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('File Format');
+  metadataSheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('#-CAD');
   metadataSheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('Canvas Offset (Min)');
   metadataSheet.cell(CellIndex.indexByString('A5')).value = TextCellValue('Canvas Offset (Max)');
 
