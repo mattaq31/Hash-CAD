@@ -19,7 +19,7 @@ slurm_parameters = {
 evolution_parameters = {
     'early_hamming_stop': 31,
     'evolution_generations': 20000,
-    'evolution_population': 800,
+    'evolution_population': 500,
     'process_count': 18,
     'generational_survivors': 5,
     'mutation_rate': 2,
@@ -34,7 +34,7 @@ evolution_parameters = {
 
 all_sbatch_commands = []
 
-for batch_name, design in zip(['bird'], ['bird_design.xlsx']):
+for batch_name, design in zip(['shuriken', 'turnstile', 'lily'], ['shuriken_design.xlsx', 'turnstile_design.xlsx', 'lily_design.xlsx']):
     for seq_count in [64]:
         for mut_rate in [2]:
             exp_name = f'{batch_name}_{seq_count}_seq_library_mut_{str(mut_rate).replace(".","-")}'

@@ -76,16 +76,16 @@ padded_center_seed_array[8 + 20:24 + 20, 13 + 1:18 + 1] = insertion_seed_array
 
 #  control design - no invader system
 M1 = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M1.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M1.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M1.assign_seed_handles(center_seed_array, center_seed_plate)
-M1.patch_control_handles(core_plate)
+M1.patch_flat_staples(core_plate)
 if regenerate_graphics:
     M1.create_standard_graphical_report(os.path.join(output_folder, 'baseline_square_graphics'), colormap='Dark2')
 ################################
 
 # Preparing invader design 1 (knock-in i.e. incumbent slat will be removed and replaced by the invader on the megastructure)
 M_inv = Megastructure(padded_slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M_inv.assign_crisscross_handles(padded_handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M_inv.assign_assembly_handles(padded_handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M_inv.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 
 # adds 10 Nelson handles to allow attachment of fluorescent strands (they are attached to the H2 side of the incumbent strand)
@@ -104,7 +104,7 @@ cargo_array_2[17:19, slat_invader_placement] = 1
 M_inv.assign_cargo_handles_with_array(cargo_array, cargo_key, nelson_plate, 2, handle_orientation=2)
 M_inv.assign_cargo_handles_with_array(cargo_array_2, cargo_key, bart_plate, 2, handle_orientation=2)
 
-M_inv.patch_control_handles(core_plate)
+M_inv.patch_flat_staples(core_plate)
 
 if regenerate_graphics:
     M_inv.create_standard_graphical_report(os.path.join(output_folder, 'knock_in_incumbent_graphics'), colormap='Dark2')
@@ -120,10 +120,10 @@ tmsd_slat_invader_1.slat_coordinates = 'N/A'
 padded_handle_array_extended = np.copy(padded_handle_array)
 padded_handle_array_extended[4:20, slat_invader_placement, 0] = 17  # the incumbent strand now needs handles to be able to 'hybridise'.  In this case I hard-coded them all to handle 17.  We can also consider hamming-optimizing this slat too.
 M_inv_2 = Megastructure(padded_slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M_inv_2.assign_crisscross_handles(padded_handle_array_extended, crisscross_handle_x_plates,
-                                  crisscross_antihandle_y_plates)
+M_inv_2.assign_assembly_handles(padded_handle_array_extended, crisscross_handle_x_plates,
+                                crisscross_antihandle_y_plates)
 M_inv_2.assign_seed_handles(padded_center_seed_array, center_seed_plate)
-M_inv_2.patch_control_handles(core_plate)
+M_inv_2.patch_flat_staples(core_plate)
 if regenerate_graphics:
     M_inv_2.create_standard_graphical_report(os.path.join(output_folder, 'knock_out_incumbent_graphics'), colormap='Dark2')
 

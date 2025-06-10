@@ -28,7 +28,7 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 ########################################
 # Actual megastructure
 M1 = Megastructure(slat_array)
-M1.assign_crisscross_handles(handle_array)
+M1.assign_assembly_handles(handle_array)
 M1.assign_seed_handles(center_seed_array)
 M1.assign_cargo_handles_with_array(cargo_pattern, cargo_key=cargo_key)
 

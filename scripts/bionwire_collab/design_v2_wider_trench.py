@@ -35,14 +35,13 @@ src_004, src_005, src_007, P3518, P3510, P3628 = get_cargo_plates()
 # STANDARD MEGASTRUCTURE
 M1 = Megastructure(import_design_file=os.path.join(design_folder, 'full_design.xlsx'))
 M1.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate_8064, src_007, src_004],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
-M1.patch_control_handles(core_plate)
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate_8064, src_007, src_004])
+M1.patch_flat_staples(core_plate)
 ########################################
 # TRENCH MEGASTRUCTURE
 ##################
 # megastructure slat and trench prep
-trench_slat_array = copy.copy(M1.slat_array)
+trench_slat_array = copy.copy(M1.generate_slat_occupancy_grid())
 slats_to_delete = np.array([119, 120, 183, 184, 59, 60, 26, 27, 58, 61, 62, 25, 28, 29, 118, 121, 122, 182, 185, 186])
 slats_with_trench_handles = np.array([120, 184, 60, 27])
 trench_slat_array[np.isin(trench_slat_array, slats_to_delete)] = 0
@@ -54,20 +53,21 @@ M_trench = Megastructure(trench_slat_array)
 # M_trench.assign_cargo_handles_with_array(cargo_array_pd, cargo_key={1: 'antiBart', 2: 'antiEdna'}, layer='top')
 
 # adds special trench handles to top layer
+M1_slat_array = M1.generate_slat_occupancy_grid()
 trench_cargo_array = np.zeros((trench_slat_array.shape[0], trench_slat_array.shape[1]))
-trench_cargo_array[np.isin(M1.slat_array[..., 0], slats_with_trench_handles)] = 3  # places cargo in trench
+trench_cargo_array[np.isin(M1_slat_array[..., 0], slats_with_trench_handles)] = 3  # places cargo in trench
 trench_cargo_array[np.any(trench_cargo_array == 1, axis=1), :] = 3  # fill up staggered pattern
 trench_cargo_array[
-    np.isin(M1.slat_array[..., 1], slats_with_trench_handles)] = 0  # removes cargo from pass-through cavity
+    np.isin(M1_slat_array[..., 1], slats_with_trench_handles)] = 0  # removes cargo from pass-through cavity
 trench_cargo_array[trench_slat_array[..., 1] == 0] = 0  # removes cargo from edges of design
 M_trench.assign_cargo_handles_with_array(trench_cargo_array, cargo_key={3: 'GoldWireBinder'}, layer=2, handle_orientation=2)
 
 # adds special trench handles to bottom layer
 trench_cargo_array = np.zeros((trench_slat_array.shape[0], trench_slat_array.shape[1]))
-trench_cargo_array[np.isin(M1.slat_array[..., 1], slats_with_trench_handles)] = 3  # places cargo in trench
+trench_cargo_array[np.isin(M1_slat_array[..., 1], slats_with_trench_handles)] = 3  # places cargo in trench
 trench_cargo_array[:, np.any(trench_cargo_array == 1, axis=0)] = 3  # fill up staggered pattern
 trench_cargo_array[
-    np.isin(M1.slat_array[..., 0], slats_with_trench_handles)] = 0  # removes cargo from pass-through cavity
+    np.isin(M1_slat_array[..., 0], slats_with_trench_handles)] = 0  # removes cargo from pass-through cavity
 trench_cargo_array[trench_slat_array[..., 0] == 0] = 0  # removes cargo from edges of design
 M_trench.assign_cargo_handles_with_array(trench_cargo_array, cargo_key={3: 'GoldWireBinder'}, layer=1, handle_orientation=5)
 
@@ -104,7 +104,7 @@ if new_sequence_plate_generation:
 M_trench.assign_seed_handles(M1.seed_array[1])
 new_assembly_handle_array = copy.copy(M1.handle_arrays)
 new_assembly_handle_array[(M_trench.slat_array[...,0] == 0) | (M_trench.slat_array[...,1] == 0)] = 0
-M_trench.assign_crisscross_handles(new_assembly_handle_array)
+M_trench.assign_assembly_handles(new_assembly_handle_array)
 
 # double purification handles
 trench_dbl_purif_array = np.zeros((trench_slat_array.shape[0], trench_slat_array.shape[1]))
@@ -114,7 +114,7 @@ M_trench.assign_cargo_handles_with_array(trench_dbl_purif_array, cargo_key={4: '
 M_trench.patch_placeholder_handles(
     [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate_8064, src_007, src_004, P3518],
     ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo', 'Cargo'])
-M_trench.patch_control_handles(core_plate)
+M_trench.patch_flat_staples(core_plate)
 
 if export_trench_design:
     M_trench.export_design(os.path.join(design_folder, 'trench_design.xlsx'), design_folder)
@@ -125,7 +125,7 @@ nominal_handle_volume = 150
 if generate_echo:
     echo_sheet_standard = convert_slats_into_echo_commands(slat_dict=M1.slats,
                                                            destination_plate_name='bionwire_no_trench_plate',
-                                                           default_transfer_volume=nominal_handle_volume,
+                                                           reference_transfer_volume_nl=nominal_handle_volume,
                                                            output_folder=echo_folder,
                                                            center_only_well_pattern=True,
                                                            plate_viz_type='barcode',
@@ -133,7 +133,7 @@ if generate_echo:
 
     echo_sheet_trench = convert_slats_into_echo_commands(slat_dict=M_trench.slats,
                                                          destination_plate_name='bionwire_trench_plate',
-                                                         default_transfer_volume=nominal_handle_volume,
+                                                         reference_transfer_volume_nl=nominal_handle_volume,
                                                          output_folder=echo_folder,
                                                          center_only_well_pattern=True,
                                                          plate_viz_type='barcode',
@@ -156,7 +156,7 @@ if generate_lab_helpers:
 # REPORTS
 if compute_hamming:
     print('Hamming Distance Report:')
-    print(multirule_oneshot_hamming(M1.slat_array, M1.handle_arrays,
+    print(multirule_oneshot_hamming(M1.generate_slat_occupancy_grid(), M1.generate_assembly_handle_grid(),
                                     per_layer_check=True,
                                     report_worst_slat_combinations=False,
                                     request_substitute_risk_score=True))
@@ -164,27 +164,15 @@ if compute_hamming:
 # GRAPHICS
 if generate_graphical_report:
     M1.create_standard_graphical_report(os.path.join(design_folder, 'standard_plus_visualization/'),
-                                        colormap='Set1',
-                                        cargo_colormap='Dark2',
-                                        generate_3d_video=True,
-                                        seed_color=(1.0, 1.0, 0.0))
+                                        generate_3d_video=True)
 
     M1.create_blender_3D_view(os.path.join(design_folder, 'standard_plus_visualization/'),
-                              colormap='Set1',
-                              cargo_colormap='Dark2',
                               animate_assembly=False,
-                              seed_color=(1.0, 1.0, 0.0),
                               camera_spin=False)
 
     M_trench.create_standard_graphical_report(os.path.join(design_folder, 'trench_plus_visualization/'),
-                                              colormap='Set1',
-                                              cargo_colormap='Dark2',
-                                              generate_3d_video=True,
-                                              seed_color=(1.0, 1.0, 0.0))
+                                              generate_3d_video=True)
 
     M_trench.create_blender_3D_view(os.path.join(design_folder, 'trench_plus_visualization/'),
-                                    colormap='Set1',
-                                    cargo_colormap='Dark2',
                                     animate_assembly=False,
-                                    seed_color=(1.0, 1.0, 0.0),
                                     camera_spin=False)

@@ -271,7 +271,7 @@ def package_and_export_megastructure(data):
         megastructure.patch_placeholder_handles(cargo_plate_list, ['Cargo']*len(cargo_plate_list))
 
         # final control handle patch
-        megastructure.patch_control_handles(core_plate)
+        megastructure.patch_flat_staples(core_plate)
 
         convert_slats_into_echo_commands(megastructure.slats, 'crisscross_design_plate',
                                          app.config['OUTPUT_FOLDER'], 'all_echo_commands_with_crisscross_design.csv',

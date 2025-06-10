@@ -15,7 +15,7 @@ echo_folder = os.path.join(design_folder, 'echo_commands')
 lab_helper_folder = os.path.join(design_folder, 'lab_helper_sheets')
 create_dir_if_empty(echo_folder, lab_helper_folder)
 
-generate_graphical_report = False
+generate_graphical_report = True
 generate_echo = True
 generate_lab_helpers = True
 compute_hamming = True
@@ -31,42 +31,34 @@ M1 = Megastructure(import_design_file=os.path.join(design_folder, 'designs/Type1
 M2 = Megastructure(import_design_file=os.path.join(design_folder, 'designs/Type2_square_megastructure.xlsx'))
 
 M1.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate_p8064, src_007, src_004],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
-M1.patch_control_handles(core_plate)
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate_p8064, src_007, src_004])
+M1.patch_flat_staples(core_plate)
 
 M2.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate_p8064, src_007, src_004],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
-M2.patch_control_handles(core_plate)
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate_p8064, src_007, src_004])
+M2.patch_flat_staples(core_plate)
 
 ########################################
 # REPORTS
 if compute_hamming:
     print('Hamming Distance Report for T1:')
-    print(multirule_oneshot_hamming(M1.slat_array, M1.handle_arrays,
+    print(multirule_oneshot_hamming(M1.generate_slat_occupancy_grid(), M1.generate_assembly_handle_grid(),
                                     per_layer_check=True,
                                     report_worst_slat_combinations=False,
                                     request_substitute_risk_score=True))
     print('--')
     print('Hamming Distance Report for T2:')
-    print(multirule_oneshot_hamming(M2.slat_array, M2.handle_arrays,
+    print(multirule_oneshot_hamming(M2.generate_slat_occupancy_grid(), M2.generate_assembly_handle_grid(),
                                     per_layer_check=True,
                                     report_worst_slat_combinations=False,
                                     request_substitute_risk_score=True))
 
 if generate_graphical_report:
     M1.create_standard_graphical_report(os.path.join(design_folder, 'visualization_square_type_1/'),
-                                        colormap='Set1',
-                                        cargo_colormap=['#FFEBE8'],
-                                        generate_3d_video=True,
-                                        seed_color=(1.0, 1.0, 0.0))
+                                        generate_3d_video=True)
 
     M2.create_standard_graphical_report(os.path.join(design_folder, 'visualization_square_type_2/'),
-                                        colormap='Set1',
-                                        cargo_colormap=['#FFEBE8'],
-                                        generate_3d_video=True,
-                                        seed_color=(1.0, 1.0, 0.0))
+                                        generate_3d_video=True)
 
 ########################################
 print('----')
@@ -88,7 +80,7 @@ if generate_echo:
     print('Generating echo command sheets for T1:')
     echo_sheet_M1 = convert_slats_into_echo_commands(slat_dict=real_slats_M1,
                                                      destination_plate_name='type1_stairway_plate',
-                                                     default_transfer_volume=single_handle_volume,
+                                                     reference_transfer_volume_nl=single_handle_volume,
                                                      output_folder=echo_folder,
                                                      center_only_well_pattern=True,
                                                      plate_viz_type='barcode',
@@ -98,7 +90,7 @@ if generate_echo:
 
     echo_sheet_M2 = convert_slats_into_echo_commands(slat_dict=real_slats_M2,
                                                      destination_plate_name='type2_stairway_plate',
-                                                     default_transfer_volume=single_handle_volume,
+                                                     reference_transfer_volume_nl=single_handle_volume,
                                                      output_folder=echo_folder,
                                                      center_only_well_pattern=True,
                                                      plate_viz_type='barcode',

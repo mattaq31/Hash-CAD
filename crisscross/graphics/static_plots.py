@@ -1,8 +1,8 @@
 import os
+import textwrap
+
 import matplotlib.pyplot as plt
 from colorama import Fore
-import matplotlib as mpl
-import numpy as np
 import math
 
 from crisscross.core_functions.slats import convert_slat_array_into_slat_objects
@@ -29,42 +29,37 @@ def cargo_legend_setup(*ax):
         by_label = dict(zip(labels, handles))
         if len(by_label) == 0:
             continue
-        specific_axis.legend(by_label.values(), by_label.keys(), loc='upper center',
+        wrapped_labels = ["\n".join(textwrap.wrap(label, width=15)) for label in by_label.keys()]
+
+        specific_axis.legend(by_label.values(), wrapped_labels, loc='upper center',
                              bbox_to_anchor=(0.5, 0.03),
                              ncol=3, fancybox=True, fontsize=16)
 
 
-def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
-                               slats=None, seed_array=None,
-                               cargo_dict=None, save_to_folder=None, instant_view=True,
-                               slat_width=4, connection_angle='90',
-                               colormap='Set1', seed_color='black',
-                               cargo_colormap='Set1'):
+def create_graphical_slat_view(slat_array, layer_palette, cargo_palette=None, include_seed=True, include_cargo=True,
+                               slats=None, save_to_folder=None, instant_view=True, filename_prepend='',
+                               slat_width=4, connection_angle='90'):
     """
     Creates a graphical view of all slats in the assembled design, including cargo and seed handles.
     A single figure is created for the global view of the structure, as well as individual figures
     for each layer in the design.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
-    :param layer_interface_orientations: A list of tuples (or integers for top/bottom), each containing the bottom and top interface numbers for each layer
+    :param layer_palette: Dictionary of layer information (e.g. top/bottom helix and colors), where keys are layer numbers.
+    :param cargo_palette: Dictionary of cargo information (e.g. colors), where keys are cargo types.
+    :param include_seed: Set to True to include seed handles in the graphical view.
+    :param include_cargo: Set to True to include cargo handles in the graphical view.
     :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
-    :param seed_array: A tuple of (layer_position, 2D numpy array with the seed handle positions)
-    :param cargo_dict: A dictionary containing the (x, y position), layer and orientation of attached cargo handles
     :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
     :param instant_view: Set to True to plot the figures immediately to your active view.
+    :param filename_prepend: String to prepend to generated files.
     :param slat_width: The width to use for the slat lines.
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
-    :param colormap: The colormap to sample from for each additional layer.
-    :param seed_color: The color to use for the seed handles.
-    :param cargo_colormap: The colormap to sample from for each cargo type.
     :return: N/A
     """
 
     num_layers = slat_array.shape[2]
     if slats is None:
         slats = convert_slat_array_into_slat_objects(slat_array)
-
-    if layer_interface_orientations is None:
-        layer_interface_orientations = [2] + [(5, 2)] * (num_layers - 1) + [5]
 
     grid_xd, grid_yd = connection_angles[connection_angle][0], connection_angles[connection_angle][1]
 
@@ -85,6 +80,8 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         l_fig.suptitle('Layer %s' % (l_ind + 1), fontsize=35)
         layer_figures.append((l_fig, l_ax))
 
+    layers_containing_cargo = set()
+
     for slat_id, slat in slats.items():
         # TODO: Is there some way to print the slat ID in the graphic too?
         if len(slat.slat_coordinate_to_position) == 0:
@@ -103,10 +100,7 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        if isinstance(colormap, list):
-            layer_color = colormap[slat.layer - 1]
-        else:
-            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+        layer_color = layer_palette[slat.layer]['color']
 
         layer_figures[slat.layer - 1][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
                                                  color=layer_color, linewidth=slat_width, zorder=1)
@@ -118,58 +112,40 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
         global_ax[1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
                           color=layer_color, linewidth=slat_width, alpha=0.5, zorder=num_layers - slat.layer)
 
-    if seed_array is not None:
-        # TODO: IF WE ATTACH THE SEED TO THE TOP SIDE OF A LAYER, THEN THE LOGIC HERE NEEDS TO BE ADJUSTED
-        seed_layer = seed_array[0]
-        seed_plot_points = np.where(seed_array[1] > 0)
-        transformed_spp = [seed_plot_points[0] * grid_yd, seed_plot_points[1] * grid_xd]
-        layer_figures[seed_layer - 1][1][1].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100,
-                                                    zorder=10)
-        global_ax[0].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100, alpha=0.5,
-                             zorder=seed_layer)
-        global_ax[1].scatter(transformed_spp[1], transformed_spp[0], color=seed_color, s=100, alpha=0.5,
-                             zorder=num_layers - seed_layer)
+        handles = [slat.H5_handles, slat.H2_handles]
+        sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
+        for handles, side in zip(handles, sides):
+            for handle_index, handle in handles.items():
+                coordinates = slat.slat_position_to_coordinate[handle_index]
+                transformed_coords = [coordinates[0] * grid_yd, coordinates[1] * grid_xd]
+                if handle['category'] == 'CARGO' and include_cargo:
+                    layers_containing_cargo.add(slat.layer)
+                    cargo_color = cargo_palette[handle['value']]['color']
+                    layer_figures[slat.layer - 1][1][0 if side=='top' else 1].scatter(transformed_coords[1], transformed_coords[0],
+                                                                             color=cargo_color,
+                                                                             marker='s', s=100, zorder=10,
+                                                                             label=handle['value'])
 
-    if cargo_dict is not None:
-        # sets the colours of annotation according to the cargo being added
-        all_cargo = set(cargo_dict.values())
-        cargo_color_values_rgb = {}
+                    global_ax[0].scatter(transformed_coords[1], transformed_coords[0],
+                                         color=cargo_color,
+                                         s=100,
+                                         marker='s', alpha=0.5, zorder=slat.layer, label=handle['value'])
+                    global_ax[1].scatter(transformed_coords[1], transformed_coords[0],
+                                         color=cargo_color,
+                                         s=100, marker='s', alpha=0.5, zorder=num_layers - slat.layer,
+                                         label=handle['value'])
 
-        if isinstance(cargo_colormap, list):
-            cargo_color_list = cargo_colormap
-        else:
-            cargo_color_list = mpl.colormaps[cargo_colormap].colors
+                elif handle['category'] == 'SEED' and include_seed:
+                    seed_color = cargo_palette['SEED']['color']
+                    layer_figures[slat.layer - 1][1][0 if side=='top' else 1].scatter(transformed_coords[1], transformed_coords[0],
+                                                                color=seed_color, s=100,
+                                                                zorder=10)
+                    global_ax[0].scatter(transformed_coords[1], transformed_coords[0], color=seed_color, s=100, alpha=0.5,
+                                         zorder=slat.layer)
+                    global_ax[1].scatter(transformed_coords[1], transformed_coords[0], color=seed_color, s=100, alpha=0.5,
+                                         zorder=num_layers - slat.layer)
 
-        for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
-            if cargo_number >= len(cargo_color_list):
-                print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the colormap. '
-                                 'Recycling other colors for the higher IDs.' % unique_cargo_name)
-                cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
-            cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
-
-        layers_containing_cargo = set()
-        for ((y_cargo, x_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
-            transformed_cpp = [y_cargo * grid_yd, x_cargo * grid_xd]
-            top_layer_side = layer_interface_orientations[cargo_layer]
-            if isinstance(top_layer_side, tuple):
-                top_layer_side = top_layer_side[0]
-            if top_layer_side == cargo_orientation:
-                top_or_bottom = 0
-            else:
-                top_or_bottom = 1
-
-            layers_containing_cargo.add(cargo_layer)
-            layer_figures[cargo_layer - 1][1][top_or_bottom].scatter(transformed_cpp[1], transformed_cpp[0],
-                                                                     color=cargo_color_values_rgb[cargo_value],
-                                                                     marker='s', s=100, zorder=10, label=cargo_value)
-
-            global_ax[0].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb[cargo_value],
-                                 s=100,
-                                 marker='s', alpha=0.5, zorder=cargo_layer, label=cargo_value)
-            global_ax[1].scatter(transformed_cpp[1], transformed_cpp[0], color=cargo_color_values_rgb[cargo_value],
-                                 s=100, marker='s', alpha=0.5, zorder=num_layers - cargo_layer, label=cargo_value)
-
-        # special legend setup to prevent duplicates and reduce overlap
+    if include_cargo:
         for layer in layers_containing_cargo:
             top_ax = layer_figures[layer - 1][1][0]
             bottom_ax = layer_figures[layer - 1][1][1]
@@ -180,40 +156,38 @@ def create_graphical_slat_view(slat_array, layer_interface_orientations=None,
     if instant_view:
         global_fig.show()
     if save_to_folder:
-        global_fig.savefig(os.path.join(save_to_folder, 'global_view.png'), dpi=300)
+        global_fig.savefig(os.path.join(save_to_folder, f'{filename_prepend}global_view.png'), dpi=300)
 
     for fig_ind, (fig, ax) in enumerate(layer_figures):
         fig.tight_layout()
         if instant_view:
             fig.show()
         if save_to_folder:
-            fig.savefig(os.path.join(save_to_folder, 'layer_%s.png' % (fig_ind + 1)), dpi=300)
+            fig.savefig(os.path.join(save_to_folder, '%slayer_%s.png' % (filename_prepend, fig_ind + 1)), dpi=300)
         plt.close(fig)
 
 
-def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_interface_orientations=None,
+def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_palette,
                                           slats=None, save_to_folder=None, connection_angle='90',
-                                          instant_view=True, slat_width=4, colormap='Set1'):
+                                          filename_prepend='',
+                                          instant_view=True, slat_width=4):
     """
     Creates a graphical view of all handles in the assembled design, along with a side profile.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
     :param handle_arrays: A 3D numpy array with x/y handle positions (handle ID placed in each position occupied)
-    :param layer_interface_orientations: A list of tuples (or integers for top/bottom), each containing the bottom and top interface numbers for each layer
+    :param layer_palette:
     :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
     :param save_to_folder: Set to the filepath of a folder where all figures will be saved.
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
+    :param filename_prepend: String to prepend to generated files.
     :param instant_view: Set to True to plot the figures immediately to your active view.
     :param slat_width: The width to use for the slat lines.
-    :param colormap: The colormap to sample from for each additional layer.
     :return: N/A
     """
 
     num_layers = slat_array.shape[2]
     if slats is None:
         slats = convert_slat_array_into_slat_objects(slat_array)
-
-    if layer_interface_orientations is None:
-        layer_interface_orientations = [2] + [(5, 2)] * (num_layers - 1) + [5]
 
     grid_xd, grid_yd = connection_angles[connection_angle][0], connection_angles[connection_angle][1]
 
@@ -245,10 +219,7 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
         start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        if isinstance(colormap, list):
-            layer_color = colormap[slat.layer - 1]
-        else:
-            layer_color = mpl.colormaps[colormap].colors[slat.layer - 1]
+        layer_color = layer_palette[slat.layer]['color']
 
         if slat.layer == 1:
             plot_positions = [0]
@@ -296,23 +267,13 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
     for fig_ind, (fig, ax) in enumerate(interface_figures):
         for l_ind, line in enumerate(layer_lines):
 
-            if isinstance(colormap, list):
-                layer_color = colormap[l_ind]
-            else:
-                layer_color = mpl.colormaps[colormap].colors[l_ind]
+            layer_color = layer_palette[l_ind + 1]['color']
 
             ax[1].plot(line[0], line[1], color=layer_color, linewidth=slat_width)
 
             # extracts interface numbers from megastructure data
-            if l_ind == 0:
-                bottom_interface = layer_interface_orientations[0]
-                top_interface = layer_interface_orientations[1][0]
-            elif l_ind == num_layers - 1:
-                bottom_interface = layer_interface_orientations[-2][1]
-                top_interface = layer_interface_orientations[-1]
-            else:
-                bottom_interface = layer_interface_orientations[l_ind][1]
-                top_interface = layer_interface_orientations[l_ind + 1][0]
+            bottom_interface = layer_palette[l_ind+1]['bottom']
+            top_interface = layer_palette[l_ind + 1]['top']
 
             ax[1].text(annotation_x_position, line[1][1] - (annotation_vert_offset_btm * full_v_scale),
                        'H%s' % bottom_interface, ha='center', va='center', color='black', zorder=3, fontsize=25,
@@ -335,5 +296,5 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_inter
             fig.show()
         if save_to_folder:
             fig.savefig(os.path.join(save_to_folder,
-                                     'handles_layer_%s_%s.png' % (fig_ind + 1, fig_ind + 2)), dpi=300)
+                                     '%shandles_layer_%s_%s.png' % (filename_prepend, fig_ind + 1, fig_ind + 2)), dpi=300)
         plt.close(fig)

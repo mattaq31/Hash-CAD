@@ -103,14 +103,14 @@ corner_seed_array[0:16, 0:5] = insertion_seed_array
 ########################################
 # preparing y-slats only since we already have x slats
 megastructure = Megastructure(slat_array)
-megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(corner_seed_array, seed_plate)
 megastructure.assign_cargo_handles_with_array(crossbar_pattern, crossbar_key, crossbar_plate, layer='bottom')
 megastructure.assign_cargo_handles_with_array(octa_pattern, cargo_names, src_007_plate, layer='top')
 megastructure.slats['crossbar_slat_1'] = crossbar_slat_1
 megastructure.slats['crossbar_slat_2'] = crossbar_slat_2
 
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 
 megastructure.export_design('full_design.xlsx', base_folder)
 
@@ -134,13 +134,13 @@ convert_slats_into_echo_commands(slat_dict=y_slat_dict,
 ########################################
 # preparing x-slats only to use with the remainder slats from the old design
 m_old = Megastructure(slat_array)
-m_old.assign_crisscross_handles(old_handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+m_old.assign_assembly_handles(old_handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 m_old.assign_seed_handles(corner_seed_array, seed_plate)
 m_old.assign_cargo_handles_with_array(crossbar_pattern, crossbar_key, crossbar_plate, layer='bottom')
 m_old.assign_cargo_handles_with_array(octa_pattern, cargo_names, src_007_plate, layer='top')
 m_old.slats['crossbar_slat_1'] = crossbar_slat_1
 m_old.slats['crossbar_slat_2'] = crossbar_slat_2
-m_old.patch_control_handles(core_plate)
+m_old.patch_flat_staples(core_plate)
 
 x_slat_dict = {}
 for key, slat in m_old.slats.items():

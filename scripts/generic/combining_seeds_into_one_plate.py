@@ -3,11 +3,11 @@ from collections import defaultdict
 import pandas as pd
 
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
-from crisscross.plate_mapping.plate_constants import seed_plug_plate_corner, core_plate_folder, seed_plug_plate_center
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_corner, flat_staple_plate_folder, seed_plug_plate_center
 from crisscross.plate_mapping import get_plateclass
 
-edge_seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
+edge_seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, flat_staple_plate_folder)
+center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, flat_staple_plate_folder)
 new_plate_dict = defaultdict(list)
 all_staple_count = 1
 

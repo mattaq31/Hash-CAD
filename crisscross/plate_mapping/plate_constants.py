@@ -1,11 +1,17 @@
 from os.path import join
 from crisscross.helper_functions import base_directory
 
-
-core_plate_folder = join(base_directory, 'dna_source_plates', 'core_plates')
-assembly_handle_folder = join(base_directory, 'dna_source_plates', 'assembly_handle_plates')
+# folder locations
+flat_staple_plate_folder = join(base_directory, 'dna_source_plates', 'flat_staple_plates')
+assembly_handle_plate_folder = join(base_directory, 'dna_source_plates', 'assembly_plates')
 cargo_plate_folder = join(base_directory, 'dna_source_plates', 'cargo_plates')
-old_format_cargo_plate_folder = join(cargo_plate_folder, 'old_format')
+seed_plate_folder = join(base_directory, 'dna_source_plates', 'seed_plates')
+
+# old format plate locations
+old_format_plate_folder = join(base_directory, 'dna_source_plates', 'old_plate_format')
+old_core_folder = join(old_format_plate_folder, 'core_plates')
+old_cargo_folder = join(old_format_plate_folder, 'cargo_plates')
+old_assemby_folder = join(old_format_plate_folder, 'assembly_handle_plates')
 
 # ASSEMBLY HANDLE PLATES
 

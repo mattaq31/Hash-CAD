@@ -1,46 +1,44 @@
-from crisscross.plate_mapping import BasePlate
-import pandas as pd
-import os
+from colorama import Fore
+
+from crisscross.plate_mapping.non_standard_plates.cargo_plates import GenericPlate
 
 
-class GenericPlate(BasePlate):
+class HybridPlate(GenericPlate):
     """
     A generic cargo plate system that can read in any plate file with the handle-position-cargo syntax
     defined in the top left cell.  ID numbers are assigned to cargo at run-time.
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, delay_well_identification=True, **kwargs)
-
-        # reads in the encoding format from the top left cell of the plate 'Names' sheet
-        all_data = pd.ExcelFile(os.path.join(self.plate_folder, self.plate_names[0] + '.xlsx'))
-        names = all_data.parse("Names", header=None)
-        name_encoding = names.iloc[0, 0]
-        self.name_encoding = {}
-        for index, name in enumerate(name_encoding.split('_')):  # TODO: so the only advantage of this system is that the name/side/position can be interchanged?
-            self.name_encoding[name] = index
-
-        self.identify_wells_and_sequences()
+        self.non_slat_wells = {}
+        self.non_slat_sequences = {}
+        super().__init__(*args, **kwargs)
 
     def identify_wells_and_sequences(self):
         for pattern, well, seq in zip(self.plates[0]['name'].tolist(),
                                       self.plates[0]['well'].tolist(),
                                       self.plates[0]['sequence'].tolist()):
+            if '_' not in pattern:
+                # these sequences are 'non-slat' staples i.e. those that don't have a handle-position-cargo syntax.
+                # For now, we are simply collecting them separately, but eventually we might consider using these
+                # for other functionalities (e.g. preparing an echo protocol for a seed)
+                self.non_slat_wells[pattern] = well
+                self.non_slat_sequences[pattern] = seq
+                continue
 
             cargo = pattern.split('_')[self.name_encoding['name']]
-
             position_str = pattern.split('_')[self.name_encoding['position']]
             if '*' in pattern:  # skips wells marked with *s (could be an invalid position or some other issue)
                 continue
 
             int_string = ''.join(ch for ch in position_str if ch.isdigit())
-            #key = (int(int_string), 5 if 'h5' in pattern else 2, cargo)
-
-            orientation_str = pattern.split('_')[self.name_encoding['side']]
-            key = (int(int_string), int(orientation_str[-1]), cargo) # to accommodate non h2/h5 cargo
+            key = (int(int_string), 5 if 'h5' in pattern else 2, cargo)
 
             self.wells[key] = well
             self.sequences[key] = seq
+        if len(self.non_slat_sequences) > 0:
+            print(Fore.BLUE + f'Info: Plate {self.plate_names[0]} contains non-slat staples.' + Fore.RESET)
+
 
     def get_sequence(self, slat_position, slat_side, cargo_id=0):
         if cargo_id == 0:

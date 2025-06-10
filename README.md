@@ -143,12 +143,14 @@ A more detailed explanation on the above TBC.
 Once a design is completed,  the Megastructure can be exported directly to an [Echo Liquid Handler](https://www.beckman.com/liquid-handlers/echo-acoustic-technology) command sheet.  You will first need to provide a set of plates containing your source H2/H5 handles for each component in your design.  For the crisscross development team, our handle plates are stored [here](https://github.com/mattaq31/Hash-CAD/tree/main/dna_source_plates).  You could use these same plates, or purchase your own sets.  **DETAILS ON PLATE FILE FORMATTING TBC**
 
 Once your plates have been defined and loaded into the crisscross library, you can assign sequences/wells to all handles in your design as follows:
+
 ```python
 from crisscross.plate_mapping import get_standard_plates, get_cargo_plates
 
 # example plates from the crisscross team
-core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, _, _, _, all_8064_seed_plugs = get_standard_plates(handle_library_v2=True)
-src_004, src_005, src_007, P3518, P3510,_ = get_cargo_plates()
+core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, _, _, _, all_8064_seed_plugs = get_standard_plates(
+    handle_library_v2=True)
+src_004, src_005, src_007, P3518, P3510, _ = get_cargo_plates()
 
 # assigns all handles in the design to the source plates
 megastructure.patch_placeholder_handles(
@@ -156,7 +158,7 @@ megastructure.patch_placeholder_handles(
     ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo', 'Cargo'])
 
 # fills up any remaining handles with core staples (i.e. flush with the slat)
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 ```
 
 With all handles assigned, the megastructure can be exported to an Echo command sheet as follows:

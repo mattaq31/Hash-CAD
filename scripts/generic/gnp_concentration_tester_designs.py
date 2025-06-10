@@ -87,10 +87,10 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 ########################################
 # Preparing first design - no cargo on top, barts on the bottom
 megastructure = Megastructure(slat_array)
-megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(corner_seed_array, edge_seed_plate)
 megastructure.assign_cargo_handles_with_array(cargo_pattern, cargo_key, nelson_plate, layer='bottom')
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 
 convert_slats_into_echo_commands(megastructure.slats, 'gnp_replacement_plate',
                                  output_folder, 'all_echo_commands_bart_handles.csv')
@@ -116,10 +116,10 @@ for i in range(16):
     cargo_pattern[i, 13:15] = 3
 
 megastructure_nelson = Megastructure(slat_array)
-megastructure_nelson.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure_nelson.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure_nelson.assign_seed_handles(corner_seed_array, edge_seed_plate)
 megastructure_nelson.assign_cargo_handles_with_array(cargo_pattern, cargo_key, nelson_plate, layer='bottom')
-megastructure_nelson.patch_control_handles(core_plate)
+megastructure_nelson.patch_flat_staples(core_plate)
 
 convert_slats_into_echo_commands(megastructure_nelson.slats, 'gnp_replacement_plate',
                                  output_folder, 'all_echo_commands_nelson_handles.csv')

@@ -104,9 +104,9 @@ design_names = ['standard_array', 'updated_library']
 for index, design in enumerate(design_names):
     megastructure = Megastructure(slat_array)
     if design == 'standard_array':
-        megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+        megastructure.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
     else:
-        megastructure.assign_crisscross_handles(handle_array, v2_crisscross_handle_x_plates, v2_crisscross_antihandle_y_plates)
+        megastructure.assign_assembly_handles(handle_array, v2_crisscross_handle_x_plates, v2_crisscross_antihandle_y_plates)
 
     megastructure.assign_seed_handles(corner_seed_array, combined_seed_plate)
     megastructure.assign_cargo_handles_with_array(crossbar_pattern, crossbar_key, crossbar_plate, layer='bottom')
@@ -114,7 +114,7 @@ for index, design in enumerate(design_names):
     megastructure.slats['crossbar_slat_1'] = crossbar_slat_1
     megastructure.slats['crossbar_slat_2'] = crossbar_slat_2
 
-    megastructure.patch_control_handles(core_plate)
+    megastructure.patch_flat_staples(core_plate)
 
     if index == 0:
         unique_handle_set_layer_1 = set()

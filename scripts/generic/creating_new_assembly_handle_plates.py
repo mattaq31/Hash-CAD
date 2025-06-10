@@ -1,17 +1,17 @@
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.plate_mapping import get_plateclass
-from crisscross.plate_mapping.plate_constants import (core_plate_folder, crisscross_h5_handle_plates,
+from crisscross.plate_mapping.plate_constants import (flat_staple_plate_folder, crisscross_h5_handle_plates,
                                                       crisscross_h2_handle_plates, slat_core)
 from collections import defaultdict
 import pandas as pd
 
 # Creates the missing 6 plates for the H2 assembly handles
-crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], core_plate_folder) 
-crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], core_plate_folder)
-crisscross_x_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_handle_plates[0:3], core_plate_folder, slat_side=2)
-crisscross_y_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_handle_plates[0:3], core_plate_folder, slat_side=2)
+crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], flat_staple_plate_folder)
+crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], flat_staple_plate_folder)
+crisscross_x_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_handle_plates[0:3], flat_staple_plate_folder, slat_side=2)
+crisscross_y_h2_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h2_handle_plates[0:3], flat_staple_plate_folder, slat_side=2)
 
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+core_plate = get_plateclass('ControlPlate', slat_core, flat_staple_plate_folder)
 new_plates = defaultdict(list)
 
 # This convention does not match what we ended up using in the end - handles are x and antihandles are y

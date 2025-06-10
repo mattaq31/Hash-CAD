@@ -168,11 +168,11 @@ nelson_mega = Megastructure(slat_array, None, connection_angle='60')
 for rev_slat in range(48, 64):  # this intervention is being done to accommodate the seed plate handles we have available
     nelson_mega.slats[f'layer2-slat{rev_slat}'].reverse_direction()
 
-nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+nelson_mega.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
 nelson_mega.assign_cargo_handles_with_array(cargo_array_0, cargo_key, nelson_plate, layer=1, handle_orientation=2)
 nelson_mega.assign_cargo_handles_with_array(cargo_array_1, cargo_key, nelson_plate, layer=2, handle_orientation=2)
-nelson_mega.patch_control_handles(core_plate)
+nelson_mega.patch_flat_staples(core_plate)
 
 nelson_mega.export_design('full_design.xlsx', output_folder)
 
@@ -189,11 +189,11 @@ nelson_mega_2 = Megastructure(slat_array, None, connection_angle='60')
 for rev_slat in range(48, 64):  # this intervention is being done to accommodate the seed plate handles we have available
     nelson_mega_2.slats[f'layer2-slat{rev_slat}'].reverse_direction()
 
-nelson_mega_2.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+nelson_mega_2.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega_2.assign_seed_handles(seed_array, edge_seed_plate, layer_id=2)
 nelson_mega_2.assign_cargo_handles_with_array(cargo_array_0, cargo_key, simpsons_plate, layer=1, handle_orientation=2)
 nelson_mega_2.assign_cargo_handles_with_array(cargo_array_1, cargo_key, simpsons_plate, layer=2, handle_orientation=2)
-nelson_mega_2.patch_control_handles(core_plate)
+nelson_mega_2.patch_flat_staples(core_plate)
 
 nelson_mega_2.create_standard_graphical_report(os.path.join(output_folder, 'Design Graphics Mega 2'), colormap='Set1',
                                                cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))

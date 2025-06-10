@@ -43,12 +43,12 @@ for i, key in enumerate(HandleLayers):
     HandleArray[..., i] = DesignDF[key].values
 
 DuplexMegastructure = Megastructure(SlatArray, [2, (5, 2), 5])
-DuplexMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+DuplexMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 DuplexMegastructure.patch_placeholder_handles([CrisscrossHandleXPlates, CrisscrossAntihandleYPlates], \
                                                     ['Assembly-Handles', 'Assembly-AntiHandles'])
 
-DuplexMegastructure.patch_control_handles(CorePlate)
+DuplexMegastructure.patch_flat_staples(CorePlate)
 
 BasicVolumeUnit = 100 # nL
 

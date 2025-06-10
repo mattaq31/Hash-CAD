@@ -76,19 +76,19 @@ padded_center_seed_array[8 + 20:24 + 20, 13 + 1:18 + 1] = insertion_seed_array
 
 #  control design - no invader system
 M1 = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M1.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M1.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M1.assign_seed_handles(center_seed_array, center_seed_plate)
-M1.patch_control_handles(core_plate)
+M1.patch_flat_staples(core_plate)
 if regenerate_graphics:
     M1.create_standard_graphical_report(os.path.join(output_folder, 'baseline_square_graphics'), colormap='Dark2')
     ################################
 
 # Preparing invader design 1 (knock-in i.e. incumbent slat will be removed and replaced by the invader on the megastructure)
 M_inv = Megastructure(padded_slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M_inv.assign_crisscross_handles(padded_handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M_inv.assign_assembly_handles(padded_handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M_inv.assign_seed_handles(padded_center_seed_array, center_seed_plate)
 # in this new version of the design, no cargo handles need to be added to the incumbent as they can all be placed on the invader instead
-M_inv.patch_control_handles(core_plate)
+M_inv.patch_flat_staples(core_plate)
 
 if regenerate_graphics:
     M_inv.create_standard_graphical_report(os.path.join(output_folder, 'knock_in_incumbent_graphics'), colormap='Dark2')

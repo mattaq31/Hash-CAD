@@ -36,9 +36,8 @@ cargo_array_pd = capc_pattern_generator('peripheral_dispersed', total_cd3_antige
 M1.assign_cargo_handles_with_array(cargo_array_pd, cargo_key={1: 'antiBart', 2: 'antiEdna'}, layer='top')
 
 M1.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, src_007, src_004],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
-M1.patch_control_handles(core_plate)
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, src_007, src_004])
+M1.patch_flat_staples(core_plate)
 
 if export_design:
     M1.export_design('final_design.xlsx', design_folder)
@@ -56,7 +55,7 @@ if generate_echo:
     echo_sheet = convert_slats_into_echo_commands(slat_dict=M1.slats,
                                                   destination_plate_name='capc_plate',
                                                   unique_transfer_volume_for_plates=special_vol_plates,
-                                                  default_transfer_volume=150,
+                                                  reference_transfer_volume_nl=150,
                                                   output_folder=echo_folder,
                                                   center_only_well_pattern=True,
                                                   plate_viz_type='barcode',
@@ -79,17 +78,14 @@ if generate_lab_helpers:
 # REPORTS
 if compute_hamming:
     print('Hamming Distance Report:')
-    print(multirule_oneshot_hamming(M1.slat_array, M1.handle_arrays,
+    print(multirule_oneshot_hamming(M1.generate_slat_occupancy_grid(), M1.generate_assembly_handle_grid(),
                                     per_layer_check=True,
                                     report_worst_slat_combinations=False,
                                     request_substitute_risk_score=True))
 
 if generate_graphical_report:
     M1.create_standard_graphical_report(os.path.join(design_folder, 'visualization/'),
-                                        colormap='Set1',
-                                        cargo_colormap='Dark2',
-                                        generate_3d_video=True,
-                                        seed_color=(1.0, 1.0, 0.0))
+                                        generate_3d_video=True)
 ########################################
 if generate_animation:
     # 3D ANIMATION
@@ -117,10 +113,7 @@ if generate_animation:
             custom_animation_dict[slat] = order
 
     M1.create_blender_3D_view(os.path.join(design_folder, 'visualization/'),
-                              colormap='Set1',
-                              cargo_colormap='Dark2',
                               animate_assembly=True,
-                              seed_color=(1.0, 1.0, 0.0),
                               custom_assembly_groups=custom_animation_dict,
                               animation_type='translate',
                               camera_spin=True)
@@ -139,7 +132,4 @@ if generate_trench_graphics:
     del M1.slats['layer2-slat27']
 
     M1.create_standard_graphical_report(os.path.join(design_folder, 'trench_visualization/'),
-                                        colormap='Set1',
-                                        cargo_colormap='Dark2',
-                                        generate_3d_video=True,
-                                        seed_color=(1.0, 1.0, 0.0))
+                                        generate_3d_video=True)

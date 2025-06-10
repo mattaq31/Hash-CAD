@@ -4,6 +4,7 @@ import os
 import matplotlib as mpl
 import numpy as np
 import math
+from collections import defaultdict
 
 from crisscross.core_functions.slats import convert_slat_array_into_slat_objects
 from crisscross.helper_functions.slat_salient_quantities import connection_angles, slat_width
@@ -210,134 +211,135 @@ def check_slat_animation_direction(start_point, end_point, current_slat_id, curr
     return end_point, start_point
 
 
-def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap,
+def interpret_cargo_system(slats, layer_palette, grid_xd, grid_yd, slat_width, cargo_materials,
                            frame_start=0, frame_end=0):
     """
     Interprets the cargo dict and places cargo stubs in the 3D scene, along with an animation if requested.
-    :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
-    :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
     Required to generate cargo cylinders.
+    :param slats: The dict of all slats in the design
+    :param layer_palette: Dictionary of layer information (e.g. top/bottom helix and colors), where keys are layer numbers.
     :param grid_xd: The grid x-jump distance
     :param grid_yd: The grid y-jump distance
-    :param slat_width: The colormap to extract from
-    :param cargo_colormap: Colormap to extract cargo colors from.
+    :param slat_width: The width of the slat, used to determine the radius of the cargo cylinders.
+    :param cargo_materials: Dictionary of cargo materials, where keys are cargo types and values are the material objects.
     :param frame_start: Animation start frame
     :param frame_end: Animation end frame.  If frame_start=frame_end, no animation will be added.
     :return: N/A
     """
-    all_cargo = set(cargo_dict.values())
-    cargo_color_values_rgb = {}  # sets the colours of annotation according to the cargo being added
-    cargo_materials = {}  # Blender materials associated with each color
+    # implements cargo visualization if cargo_palette is provided
 
-    if isinstance(cargo_colormap, list):
-        cargo_color_list = cargo_colormap
-    else:
-        cargo_color_list = mpl.colormaps[cargo_colormap].colors
+    for slat_num, (slat_id, slat) in enumerate(slats.items()):
+        handles = [slat.H5_handles, slat.H2_handles]
+        sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
 
-    for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
-        if cargo_number >= len(cargo_color_list):
-            print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the 3D structure colormap. '
-                             'Recycling other colors for the higher IDs.' % unique_cargo_name)
-            cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
-        if isinstance(cargo_colormap, list):
-            cargo_color_values_rgb[unique_cargo_name] = mpl.colors.to_rgb(cargo_color_list[cargo_number])
-        else:
-            cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
+        for handles, side in zip(handles, sides):
+            if side == 'top':
+                top_or_bottom = 1
+            else:
+                top_or_bottom = -1
 
-        material = create_slat_material(cargo_color_values_rgb[unique_cargo_name] + (1,), f'Cargo Material')
-        cargo_materials[unique_cargo_name] = material
+            for handle_index, handle in handles.items():
+                # gathers cargo data and applies cargo positions as small cylinders
+                if handle['category'] == 'CARGO':
+                    coordinates = slat.slat_position_to_coordinate[handle_index]
+                    transformed_coords = [coordinates[0] * grid_xd, coordinates[1] * grid_yd]
+                    transformed_pos = (transformed_coords[0], transformed_coords[1], slat.layer - 1 + (top_or_bottom * slat_width / 2))
 
-    for ((x_cargo, y_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
+                    up = mathutils.Vector((0, 0, 1))
+                    rotation = up.rotation_difference(up).to_euler()
+                    if top_or_bottom == -1:  # 180 degree rotation for the animation if the cargo is on the bottom side
+                        rotation.x = math.pi
 
-        top_layer_side = layer_interface_orientations[cargo_layer]
-        if isinstance(top_layer_side, tuple):
-            top_layer_side = top_layer_side[0]
-        if top_layer_side == cargo_orientation:
-            top_or_bottom = 1
-        else:
-            top_or_bottom = -1
+                    bpy.ops.mesh.primitive_cylinder_add(location=transformed_pos,
+                                                        radius=slat_width / 2,
+                                                        rotation=rotation,
+                                                        depth=slat_width)
 
-        transformed_pos = (x_cargo * grid_xd, y_cargo * grid_yd, cargo_layer - 1 + (top_or_bottom * slat_width / 2))
+                    cargo_cylinder = bpy.context.active_object
+                    bpy.context.object.name = 'cargo-%s' % handle['value']
+                    bpy.ops.object.shade_smooth()
+                    bpy.context.object.data.materials.append(cargo_materials[handle['value']])
 
-        up = mathutils.Vector((0, 0, 1))
-        rotation = up.rotation_difference(up).to_euler()
-        if top_or_bottom == -1:  # 180 degree rotation for the animation if the cargo is on the bottom side
-            rotation.x = math.pi
-
-        bpy.ops.mesh.primitive_cylinder_add(location=transformed_pos,
-                                            radius=slat_width / 2,
-                                            rotation=rotation,
-                                            depth=slat_width)
-
-        cargo_cylinder = bpy.context.active_object
-        bpy.context.object.name = 'cargo-%s' % cargo_value
-        bpy.ops.object.shade_smooth()
-        bpy.context.object.data.materials.append(cargo_materials[cargo_value])
-
-        # animates in the cargo at the end of the design assembly if requested
-        if frame_start != frame_end:
-            set_slat_translate_animation(frame_start, frame_end, cargo_cylinder, transformed_pos, rotation, slat_width,
-                                         extension_length=2.5)
+                    # animates in the cargo at the end of the design assembly if requested
+                    if frame_start != frame_end:
+                        set_slat_translate_animation(frame_start, frame_end, cargo_cylinder, transformed_pos, rotation, slat_width, extension_length=2.5)
 
 
-def interpret_seed_system(seed_layer_and_array, seed_material, seed_length, grid_xd, grid_yd):
+def interpret_seed_system(slats, layer_palette, seed_material, grid_xd, grid_yd):
     """
     Interprets the seed array and places seed cylinders in the Blender scene.
     Makes the assumption that np.where can correctly figure out where each seed cylinder starts/stops.
     If there are errors here, this will need to be fixed.
-    :param seed_layer_and_array: A tuple of the layer the seed is attached to and the seed position array
+    :param slats: The dict of all slats in the design
+    :param layer_palette: Dictionary of layer information (e.g. top/bottom helix and colors), where keys are layer numbers.
     :param seed_material: The material to use for the seed
-    :param seed_length: The length of each seed cylinder
     :param grid_xd: The grid x-jump distance
     :param grid_yd: The grid y-jump distance
     :return: N/A
     """
+    seed_coord_dict = defaultdict(dict)
 
-    layer = seed_layer_and_array[0]-1  # -1 as the seed is underneath the particular slat layer
-    seed_array = seed_layer_and_array[1]
+    for slat_num, (slat_id, slat) in enumerate(slats.items()):
+        handles = [slat.H5_handles, slat.H2_handles]
+        sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
 
-    start_points = np.where(seed_array == 1)  # assumes np.where can correctly order the different start/end points
-    end_points = np.where(seed_array == 16)
+        for handles, side in zip(handles, sides):
+            if side == 'top':
+                top_or_bottom = 1
+            else:
+                top_or_bottom = -1
+
+            for handle_index, handle in handles.items():
+                # gathers cargo data and applies cargo positions as small cylinders
+                # gathers seed data for later plotting
+                if handle['category'] == 'SEED':
+                    coordinates = slat.slat_position_to_coordinate[handle_index]
+                    transformed_coords = [coordinates[0] * grid_xd, coordinates[1] * grid_yd]
+                    r, c =  handle['value'].split('_')
+                    seed_id = handle['descriptor'].split('|')[-1]
+                    if c == '1':
+                        seed_coord_dict['start_coords'][f'{seed_id}-{r}'] = (slat.layer - 1 + top_or_bottom, transformed_coords[0], transformed_coords[1])
+                    elif c == '16':
+                        seed_coord_dict['end_coords'][f'{seed_id}-{r}'] = (slat.layer - 1 + top_or_bottom, transformed_coords[0], transformed_coords[1])
+
 
     # runs through the standard slat cylinder creation process, creating 5 cylinders for each seed
-    for index, (sx, sy, ex, ey) in enumerate(zip(start_points[0], start_points[1], end_points[0], end_points[1])):
-        pos1 = (sx, sy)
-        pos2 = (ex, ey)
+    for key in seed_coord_dict['start_coords'].keys():
+        s_coord = seed_coord_dict['start_coords'][key]
+        e_coord = seed_coord_dict['end_coords'][key]
 
-        start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
-        end_point = (pos2[0] * grid_xd, pos2[1] * grid_yd, layer - 1)
-        blender_vec_1 = mathutils.Vector(start_point)
-        blender_vec_2 = mathutils.Vector(end_point)
+        seed_start = (s_coord[1], s_coord[2], s_coord[0])
+        seed_end = (e_coord[1], e_coord[2], e_coord[0])
 
-        center = ((start_point[0] + end_point[0]) / 2, (start_point[1] + end_point[1]) / 2, layer - 1)
+        blender_vec_1 = mathutils.Vector(seed_start)
+        blender_vec_2 = mathutils.Vector(seed_end)
 
+        center = ((seed_start[0] + seed_end[0]) / 2, (seed_start[1] + seed_end[1]) / 2, s_coord[0])
         direction = (blender_vec_2 - blender_vec_1).normalized()
+
         up = mathutils.Vector((0, 0, 1))
         rotation = up.rotation_difference(direction).to_euler()
 
-        bpy.ops.mesh.primitive_cylinder_add(location=center, radius=slat_width / 2, rotation=rotation, depth=seed_length)
-        bpy.context.object.name = 'seed-%s' % index
+        bpy.ops.mesh.primitive_cylinder_add(location=center, radius=slat_width / 2, rotation=rotation, depth=16)
+        bpy.context.object.name = 'seed-%s' % key
         bpy.ops.object.shade_smooth()
         bpy.context.object.data.materials.append(seed_material)
 
-
-def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_slat_group_dict=None,
-                                 animate_delay_frames=40, connection_angle='90', seed_layer_and_array=None,
-                                 seed_color=(1, 0, 0), camera_spin=False, animation_type='translate',
+def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, cargo_palette=None, animate_slat_group_dict=None,
+                                 animate_delay_frames=40, connection_angle='90', camera_spin=False, animation_type='translate',
                                  specific_slat_translate_distances=None, correct_slat_entrance_direction=True,
-                                 force_slat_color_by_layer=True,
-                                 colormap='Set1', cargo_colormap='Dark2', cargo_dict=None, slat_flip_list=None,
-                                 layer_interface_orientations=None, include_bottom_light=False):
+                                 force_slat_color_by_layer=True, slat_flip_list=None,
+                                 include_bottom_light=False, filename_prepend=''):
     """
     Creates a 3D video of a megastructure slat design.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
+    :param slats: Dictionary of slat objects
+    :param layer_palette: Dictionary of layer information (e.g. top/bottom helix and colors), where keys are layer numbers.
     :param save_folder: Folder to save all video to.
-    :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
+    :param cargo_palette: Dictionary of cargo information, where keys are cargo types and values are dictionaries with color and other properties.
     :param animate_slat_group_dict: Dictionary of slat IDs and the group they belong to for animation
     :param animate_delay_frames: Number of frames to delay between each slat group animation
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
-    :param seed_layer_and_array: Tuple of the seed layer and seed array to be added to the design (or None if no seed to be added)
-    :param seed_color: The color to use for the seed cylinders
     :param camera_spin: Set to True to have the camera spin around the design
     :param animation_type: The type of animation to use for slat entry ('translate' or 'wipe_in')
     :param specific_slat_translate_distances: The distance each slat will move if using the translate system.
@@ -346,14 +348,10 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     :param correct_slat_entrance_direction: If set to true, will attempt to correct the slat entrance animation to
     always start from a place that is supported.
     :param force_slat_color_by_layer: Forces a slat to be colored by layer rather than by animation group (if animation is on).
-    :param colormap: Colormap to extract layer colors from
-    :param cargo_colormap: Colormap to extract cargo colors from.
-    :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
     :param slat_flip_list: List of slat IDs - if a slat is in this list, its animation direction will be flipped.
       This cannot be used in conjunction with the correct_slat_entrance_direction parameter.
-    :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
-    Required to generate cargo cylinders.
     :param include_bottom_light: Set to True to include a light source at the bottom of the design.
+    :param filename_prepend: String to prepend to the filename of the video.
     :return: N/A
     """
     if not bpy_available:
@@ -378,29 +376,36 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
             else:
                 dict_key = value
             if dict_key not in materials:
-                if isinstance(colormap, list):
-                    color = mpl.colors.to_rgb(colormap[layer_id - 1])
-                else:
-                    color = mpl.colormaps[colormap].colors[layer_id - 1]
+                color = layer_palette[layer_id]['color']
+                # if color is a hexcode string, convert it to RGB tuple
+                if isinstance(color, str):
+                    color = mpl.colors.to_rgb(color)
+
                 materials[dict_key] = create_slat_material(color + (1,), f'Material Group {value}, Layer{layer_id}', alpha_animation=True)
     else:
         num_materials = slat_array.shape[2] # TODO: this does not work with crossbars
         for i in range(num_materials):
-            if isinstance(colormap, list):
-                color = mpl.colors.to_rgb(colormap[i])
-            else:
-                color = mpl.colormaps[colormap].colors[i]
+            color = layer_palette[i+1]['color']
+            if isinstance(color, str):
+                color = mpl.colors.to_rgb(color)
             materials[i+1] = create_slat_material(color + (1,), f'Layer {i + 1}', alpha_animation=False)
+
+
+    cargo_materials = {}  # Blender materials associated with each color
+
+    for cargo_key, cargo_val in cargo_palette.items():
+        color = cargo_val['color']
+        if isinstance(color, str):
+            color = mpl.colors.to_rgb(color)
+        material = create_slat_material(color + (1,), f'{cargo_key} Material')
+        cargo_materials[cargo_key] = material
 
     # prepares variables
     cylinder_min_boundaries = [np.inf, np.inf, np.inf]
     cylinder_max_boundaries = [0, 0, 0]
     max_frame = 0
 
-    if seed_layer_and_array is not None:
-        seed_material = create_slat_material(seed_color + (1,), f'Seed Material')
-        interpret_seed_system(seed_layer_and_array, seed_material, seed_length=list(slats.values())[0].max_length/2,
-                              grid_xd=grid_xd, grid_yd=grid_yd)
+    interpret_seed_system(slats, layer_palette, cargo_materials['SEED'], grid_xd, grid_yd)
 
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
         if len(slat.slat_position_to_coordinate) == 0:
@@ -470,17 +475,17 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
             else:
                 raise RuntimeError('Animation type not recognized.')
 
-    # visualizes cargo directly on the lattice
-    if cargo_dict is not None and layer_interface_orientations is not None:
-        if animate_slat_group_dict is not None:
-            max_frame += animate_delay_frames
-            frame_start = max_frame - animate_delay_frames
-            frame_end = max_frame
-        else:
-            frame_start = max_frame
-            frame_end = max_frame
-        interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width,
-                               cargo_colormap, frame_start=frame_start, frame_end=frame_end)
+
+    # implements cargo visualization if cargo_palette is provided
+    if animate_slat_group_dict is not None:
+        max_frame += animate_delay_frames
+        frame_start = max_frame - animate_delay_frames
+        frame_end = max_frame
+    else:
+        frame_start = max_frame
+        frame_end = max_frame
+
+    interpret_cargo_system(slats, layer_palette, grid_xd, grid_yd, slat_width, cargo_materials, frame_start, frame_end)
 
     if animate_slat_group_dict is not None:
         bpy.context.scene.frame_end = max_frame
@@ -566,5 +571,5 @@ def create_graphical_3D_view_bpy(slat_array, save_folder, slats=None, animate_sl
     # Ensures the view mode is updated
     bpy.context.view_layer.update()
 
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(save_folder, '3D_blender_view.blend'))
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(save_folder, f'{filename_prepend}3D_blender_view.blend'))
 

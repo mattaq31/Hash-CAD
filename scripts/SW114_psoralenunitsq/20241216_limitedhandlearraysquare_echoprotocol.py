@@ -43,7 +43,7 @@ cargo_key = {1:"antiSmithers-10mer", 2:"antiQuimby-10mer", 3:"antiPatty-10mer", 
 ########################################
 # Generate Megastructure and save slats
 PsoralenMegastructure = Megastructure(SlatArray, [2, (5, 2), 5])
-PsoralenMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+PsoralenMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 SeedArray = DesignDF[SeedLayer].values
 PsoralenMegastructure.assign_seed_handles(SeedArray, CombinedSeedPlate, layer_id=1)
@@ -55,7 +55,7 @@ PsoralenMegastructure.assign_cargo_handles_with_array(CargoArrayBottomCrossbeam,
 
 PsoralenMegastructure.patch_placeholder_handles([CrisscrossHandleXPlates, CrisscrossAntihandleYPlates, CombinedSeedPlate, P3518, src004], \
                                             ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
-PsoralenMegastructure.patch_control_handles(CorePlate)
+PsoralenMegastructure.patch_flat_staples(CorePlate)
 
 BasicVolumeUnit = 75 # nL
 

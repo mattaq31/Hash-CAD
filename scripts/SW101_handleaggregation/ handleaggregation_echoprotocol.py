@@ -53,10 +53,10 @@ CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, 
 
 # Combines handle and slat array into the megastructure
 HandleAggregateMegastructure = Megastructure(SlatArray, [2, (5, 2), (5,2), 5])
-HandleAggregateMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+HandleAggregateMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Patch up missing controls
-HandleAggregateMegastructure.patch_control_handles(CorePlate)
+HandleAggregateMegastructure.patch_flat_staples(CorePlate)
 
 # Exports design to echo format csv file for production
 convert_slats_into_echo_commands(HandleAggregateMegastructure.slats, 'handleaggregation', DesignFolder, 'all_echo_commands.csv',

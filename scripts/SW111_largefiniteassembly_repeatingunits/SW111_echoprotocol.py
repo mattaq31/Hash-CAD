@@ -148,7 +148,7 @@ for i, DesignFile in enumerate(DesignFiles):
 
     # Handle the megastructure creation here
     MyMegastructure = Megastructure(SlatArray, FileSpecificInfoDict[DesignFile]["interfaces"])
-    MyMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+    MyMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
     if FileSpecificInfoDict[DesignFile]["Seed"]:
         SeedArray = DesignDF[SeedLayer].values
@@ -161,7 +161,7 @@ for i, DesignFile in enumerate(DesignFiles):
     # Convert labels and handles into actual wells from source plates (patching)
     MyMegastructure.patch_placeholder_handles([CrisscrossHandleXPlates, CrisscrossAntihandleYPlates, CombinedSeedPlate, src004], \
                                               ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo'])
-    MyMegastructure.patch_control_handles(CorePlate)
+    MyMegastructure.patch_flat_staples(CorePlate)
 
     # Generate csv file for each set of sequences, combine them later (add volume to the echo command generating funtion)
     # Filter out only the slats we need

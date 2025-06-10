@@ -53,7 +53,7 @@ if ReMakeEchoProtocols:
             HandleArray[..., i] = DesignDF[key].values
 
         DesignMegastructure = Megastructure(SlatArray, [2, (5, 2), 5])
-        DesignMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+        DesignMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
         SeedArray = DesignDF[SeedLayer].values
         DesignMegastructure.assign_seed_handles(SeedArray, CombinedSeedPlate, layer_id=1)
@@ -68,7 +68,7 @@ if ReMakeEchoProtocols:
         # Convert labels and handles into actual wells from source plates (patching)
         DesignMegastructure.patch_placeholder_handles([CrisscrossHandleXPlates, CrisscrossAntihandleYPlates, CombinedSeedPlate, P3510, src004], \
                                                     ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
-        DesignMegastructure.patch_control_handles(CorePlate)
+        DesignMegastructure.patch_flat_staples(CorePlate)
 
         BasicVolumeUnit = 75 # nL
 

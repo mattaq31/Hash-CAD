@@ -5,8 +5,8 @@ from crisscross.core_functions.plate_handling import generate_new_plate_from_sla
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping import get_plateclass
 import os
-from crisscross.plate_mapping.plate_constants import (core_plate_folder, crisscross_h5_handle_plates,
-                                                      assembly_handle_folder, plate384,
+from crisscross.plate_mapping.plate_constants import (flat_staple_plate_folder, crisscross_h5_handle_plates,
+                                                      assembly_handle_plate_folder, plate384,
                                                       crisscross_h2_handle_plates, slat_core,
                                                       crisscross_not_ordered_h2_handle_plates)
 from collections import defaultdict
@@ -16,15 +16,15 @@ from string import ascii_uppercase
 # These plates contain all the sequences for the current assembly handle system (just for comparison purposes)
 crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+                                                assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
 
 crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
                                             crisscross_h5_handle_plates[0:3],
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5])
+                                            assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5])
 
 crisscross_handle_x_h2_plates = get_plateclass('CrisscrossHandlePlates',
                                                crisscross_not_ordered_h2_handle_plates,
-                                               os.path.join(assembly_handle_folder, 'not ordered'),
+                                               os.path.join(assembly_handle_plate_folder, 'not ordered'),
                                                plate_slat_sides=[5, 5, 5])
 
 # reads in Katzi's sequences
@@ -34,7 +34,7 @@ with open(os.path.join('.', 'TT_no_crosscheck96to104_64_sequence_pairs_flipped.t
     new_antihandles = [i.split('\t')[1] for i in new_raw_handles]
 
 # read in and separate core H2/H5 sequences
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+core_plate = get_plateclass('ControlPlate', slat_core, flat_staple_plate_folder)
 new_plates = defaultdict(list)
 core_h2_sequences = [core_plate.sequences[i + 1, 2, 0] for i in range(32)]
 core_h5_sequences = [core_plate.sequences[i + 1, 5, 0] for i in range(32)]

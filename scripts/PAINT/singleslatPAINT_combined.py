@@ -41,8 +41,8 @@ M2.assign_cargo_handles_with_array(final_cargo_placement, cargo_key={1: '10ntpai
 M1.patch_placeholder_handles([P3628],['Cargo'])
 M2.patch_placeholder_handles([P3628],['Cargo'])
 
-M1.patch_control_handles(core_plate)
-M2.patch_control_handles(core_plate)
+M1.patch_flat_staples(core_plate)
+M2.patch_flat_staples(core_plate)
 
 # awkward dictionary combining code...
 combined_slats = {'9nt-paint-slat':M1.slats['layer1-slat1'], '10nt-paint-slat':M2.slats['layer1-slat1']}

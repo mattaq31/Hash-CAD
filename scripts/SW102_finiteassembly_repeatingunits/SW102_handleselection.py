@@ -48,13 +48,13 @@ CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, 
 
 # Combines handle and slat array into the megastructure
 TestMegastructure = Megastructure(SlatArray, [2, (5, 5), 2])
-TestMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+TestMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Prepare the seed layer and assign to array
 SeedArray = DesignDF[SeedLayer].values
 TestMegastructure.assign_seed_handles(SeedArray, CenterSeedPlate, layer_id=1)
 
 # Patch up missing controls
-TestMegastructure.patch_control_handles(CorePlate)
+TestMegastructure.patch_flat_staples(CorePlate)
 TestMegastructure.create_standard_graphical_report(DesignFolder)
 TestMegastructure.create_blender_3D_view(DesignFolder, animate_assembly=True)

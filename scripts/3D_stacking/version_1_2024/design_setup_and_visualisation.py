@@ -16,22 +16,18 @@ simpsons_mixplate = get_plateclass('GenericPlate', simpsons_mixplate_antihandles
 
 M1 = Megastructure(import_design_file=os.path.join(design_folder, 'H26_optimal_design_with_5_layers.xlsx'))
 # note that the similarity risk score will be 0 since the 2nd and 4th handle arrays are repeated
-print(multirule_oneshot_hamming(M1.slat_array, M1.handle_arrays,
+print(multirule_oneshot_hamming(M1.generate_slat_occupancy_grid(), M1.generate_assembly_handle_grid(),
                                 per_layer_check=True,
                                 report_worst_slat_combinations=False,
                                 request_substitute_risk_score=True))
 
 if graphics_required:
-    M1.create_standard_graphical_report(os.path.join(main_folder, 'H26_5_layers_viz'),
-                                        colormap='Set1',
-                                        cargo_colormap='Dark2',
-                                        seed_color=(1.0, 1.0, 0.0))
+    M1.create_standard_graphical_report(os.path.join(main_folder, 'H26_5_layers_viz'))
 
 M1.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, simpsons_mixplate],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo'])
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, simpsons_mixplate])
 
-M1.patch_control_handles(core_plate)
+M1.patch_flat_staples(core_plate)
 
 target_slats = {}
 
@@ -44,7 +40,7 @@ print('Total slats:', len(target_slats))
 convert_slats_into_echo_commands(slat_dict=target_slats,
                                  destination_plate_name='stacker_plate',
                                  unique_transfer_volume_for_plates={'sw_src007': int(150*(500/200))},
-                                 default_transfer_volume=150,
+                                 reference_transfer_volume_nl=150,
                                  output_folder=echo_folder,
                                  center_only_well_pattern=True,
                                  output_filename=f'4_layer_repeater_base_commands.csv')

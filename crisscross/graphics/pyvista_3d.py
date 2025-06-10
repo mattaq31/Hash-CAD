@@ -1,8 +1,7 @@
 import importlib
 from colorama import Fore
 import os
-import matplotlib as mpl
-import numpy as np
+from collections import defaultdict
 
 from crisscross.core_functions.slats import convert_slat_array_into_slat_objects
 from crisscross.helper_functions.slat_salient_quantities import connection_angles, slat_width
@@ -16,105 +15,18 @@ else:
     pyvista_available = False
 
 
-def interpret_seed_system(seed_layer_and_array, seed_length, grid_xd, grid_yd, seed_color, pyvista_plotter):
-    """
-    Interprets the seed array and places seed cylinders in the 3D scene.
-    Makes the assumption that np.where can correctly figure out where each seed cylinder starts/stops.
-    If there are errors here, this will need to be fixed.
-    :param seed_layer_and_array: A tuple of the layer the seed is attached to and the seed position array
-    :param seed_length: The length of each seed cylinder
-    :param grid_xd: The grid x-jump distance
-    :param grid_yd: The grid y-jump distance
-    :param seed_color: The color to use for the seed cylinders
-    :param pyvista_plotter: The pyvista plotter object to which cylinders are added
-    :return: N/A
-    """
-
-    layer = seed_layer_and_array[0]-1  # -1 as the seed is underneath the particular slat layer TODO: this assumption might not always be correct
-    seed_array = seed_layer_and_array[1]
-
-    start_points = np.where(seed_array == 1)  # assumes np.where can correctly order the different start/end points
-    end_points = np.where(seed_array == 16)
-
-    # runs through the standard slat cylinder creation process, creating 5 cylinders for each seed
-    for index, (sx, sy, ex, ey) in enumerate(zip(start_points[0], start_points[1], end_points[0], end_points[1])):
-        pos1 = (sx, sy)
-        pos2 = (ex, ey)
-
-        start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
-        end_point = (pos2[0] * grid_xd, pos2[1] * grid_yd, layer - 1)
-
-        # Calculate the center and direction from start and end points
-        center = ((start_point[0] + end_point[0]) / 2, (start_point[1] + end_point[1]) / 2, layer - 1)
-        direction = (end_point[0] - start_point[0], end_point[1] - start_point[1], end_point[2] - start_point[2])
-
-        # Create the cylinder
-        cylinder = pv.Cylinder(center=center, direction=direction, radius=slat_width/2, height=seed_length)
-        pyvista_plotter.add_mesh(cylinder, color=seed_color)
-
-
-def interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap, pyvista_plotter):
-    """
-    Interprets the cargo dict and places cargo stubs in the 3D scene.
-    :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
-    :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
-    Required to generate cargo cylinders.
-    :param grid_xd: The grid x-jump distance
-    :param grid_yd: The grid y-jump distance
-    :param slat_width: The colormap to extract from
-    :param cargo_colormap: Colormap to extract cargo colors from.
-    :param pyvista_plotter: The pyvista plotter object to which cylinders are added
-    :return: N/A
-    """
-    all_cargo = set(cargo_dict.values())
-    cargo_color_values_rgb = {}  # sets the colours of annotation according to the cargo being added
-
-    if isinstance(cargo_colormap, list):
-        cargo_color_list = cargo_colormap
-    else:
-        cargo_color_list = mpl.colormaps[cargo_colormap].colors
-
-    for cargo_number, unique_cargo_name in enumerate(sorted(all_cargo)):
-        if cargo_number >= len(cargo_color_list):
-            print(Fore.RED + 'WARNING: Cargo ID %s is out of range for the 3D structure colormap. '
-                             'Recycling other colors for the higher IDs.' % unique_cargo_name)
-            cargo_number = max(int(cargo_number) - len(cargo_color_list), 0)
-        cargo_color_values_rgb[unique_cargo_name] = (cargo_color_list[cargo_number])
-
-    for ((x_cargo, y_cargo), cargo_layer, cargo_orientation), cargo_value in cargo_dict.items():
-
-        top_layer_side = layer_interface_orientations[cargo_layer]
-        if isinstance(top_layer_side, tuple):
-            top_layer_side = top_layer_side[0]
-        if top_layer_side == cargo_orientation:
-            top_or_bottom = 1
-        else:
-            top_or_bottom = -1
-
-        transformed_pos = (x_cargo * grid_xd, y_cargo * grid_yd, cargo_layer - 1 + (top_or_bottom * slat_width / 2))
-
-        cylinder = pv.Cylinder(center=transformed_pos, direction=(0, 0, top_or_bottom), radius=slat_width / 2,
-                               height=slat_width)
-        pyvista_plotter.add_mesh(cylinder, color=cargo_color_values_rgb[cargo_value])
-
-
-def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_angle='90', seed_layer_and_array=None,
-                             seed_color=(1.0, 0.0, 0.0), cargo_dict=None, layer_interface_orientations=None,
-                             cargo_colormap='Dark2', window_size=(2048, 2048), colormap='Set1'):
+def create_graphical_3D_view(slat_array, slats, save_folder, layer_palette, cargo_palette=None,
+                              connection_angle='90', window_size=(2048, 2048), filename_prepend=''):
     """
     Creates a 3D video of a megastructure slat design.
     :param slat_array: A 3D numpy array with x/y slat positions (slat ID placed in each position occupied)
+    :param slats: Dictionary of slat objects
     :param save_folder: Folder to save all video to.
-    :param slats: Dictionary of slat objects (if not provided, will be generated from slat_array)
+    :param layer_palette: Dictionary of layer information (e.g. top/bottom helix and colors), where keys are layer numbers.
+    :param cargo_palette: Dictionary of cargo information (e.g. colors), where keys are cargo types.
     :param connection_angle: The angle of the slats in the design (either '90' or '60' for now).
-    :param seed_layer_and_array: Provide a tuple of the seed layer and its position array to add seed cylinders to the 3D video.
-    :param seed_color: Color of the seed cylinders.
-    :param cargo_dict: Provide the cargo dictionary to add cargo cylinders to the 3D video.
-    :param layer_interface_orientations: This is a dictionary of the layer interface orientations (top/bottom) for each layer.
-    Required to generate cargo cylinders.
-    :param cargo_colormap: Colormap to extract cargo colors from.
     :param window_size: Resolution of video generated.  2048x2048 seems reasonable in most cases.
-    :param colormap: Colormap to extract layer colors from
+    :param filename_prepend: String to prepend to the filename of the video.
     :return: N/A
     """
     if not pyvista_available:
@@ -127,6 +39,8 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
 
     plotter = pv.Plotter(window_size=window_size, off_screen=True)
 
+    seed_coord_dict = defaultdict(dict)
+
     for slat_id, slat in slats.items():  # Z-height is set to 1 here, could be interested in changing in some cases
         if len(slat.slat_position_to_coordinate) == 0:
             print(Fore.YELLOW + f'WARNING: Slat {slat_id} was ignored from 3D graphical '
@@ -138,10 +52,7 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
 
         layer = slat.layer
         length = slat.max_length
-        if isinstance(colormap, list):
-            layer_color = colormap[layer - 1]
-        else:
-            layer_color = mpl.colormaps[colormap].colors[layer - 1]
+        layer_color = layer_palette[layer]['color']
 
         # TODO: can we represent the cylinders with the precise dimensions of the real thing i.e. with the 12/6nm extension on either end?
         start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
@@ -155,18 +66,58 @@ def create_graphical_3D_view(slat_array, save_folder, slats=None, connection_ang
         cylinder = pv.Cylinder(center=center, direction=direction, radius=slat_width/2, height=length)
         plotter.add_mesh(cylinder, color=layer_color)
 
-    # visualizes cargo directly on the lattice
-    if cargo_dict is not None and layer_interface_orientations is not None:
-        interpret_cargo_system(cargo_dict, layer_interface_orientations, grid_xd, grid_yd, slat_width, cargo_colormap,
-                               plotter)
+        handles = [slat.H5_handles, slat.H2_handles]
+        sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
 
-    if seed_layer_and_array is not None:
-        interpret_seed_system(seed_layer_and_array, list(slats.values())[0].max_length/2, grid_xd, grid_yd, seed_color, plotter)
+        for handles, side in zip(handles, sides):
+            if side == 'top':
+                top_or_bottom = 1
+            else:
+                top_or_bottom = -1
+
+            for handle_index, handle in handles.items():
+                # gathers cargo data and applies cargo positions as small cylinders
+                if handle['category'] == 'CARGO':
+                    coordinates = slat.slat_position_to_coordinate[handle_index]
+                    transformed_coords = [coordinates[0] * grid_xd, coordinates[1] * grid_yd]
+                    transformed_pos = (transformed_coords[0], transformed_coords[1], slat.layer - 1 + (top_or_bottom * slat_width / 2))
+
+                    cylinder = pv.Cylinder(center=transformed_pos, direction=(0, 0, top_or_bottom), radius=slat_width / 2,
+                                           height=slat_width)
+                    plotter.add_mesh(cylinder, color=cargo_palette[handle['value']]['color'])
+
+                # gathers seed data for later plotting
+                elif handle['category'] == 'SEED':
+                    coordinates = slat.slat_position_to_coordinate[handle_index]
+                    transformed_coords = [coordinates[0] * grid_xd, coordinates[1] * grid_yd]
+                    r, c =  handle['value'].split('_')
+                    seed_id = handle['descriptor'].split('|')[-1]
+                    if c == '1':
+                        seed_coord_dict['start_coords'][f'{seed_id}-{r}'] = (slat.layer - 1 + top_or_bottom, transformed_coords[0], transformed_coords[1])
+                    elif c == '16':
+                        seed_coord_dict['end_coords'][f'{seed_id}-{r}'] = (slat.layer - 1 + top_or_bottom, transformed_coords[0], transformed_coords[1])
+
+    # runs through the standard slat cylinder creation process, creating 5 cylinders for each seed
+    for key in seed_coord_dict['start_coords'].keys():
+
+        s_coord = seed_coord_dict['start_coords'][key]
+        e_coord = seed_coord_dict['end_coords'][key]
+
+        seed_start = (s_coord[1], s_coord[2], s_coord[0])
+        seed_end = (e_coord[1], e_coord[2], e_coord[0])
+
+        # Calculate the center and direction from start and end points
+        center = ((seed_start[0] + seed_end[0]) / 2, (seed_start[1] + seed_end[1]) / 2, s_coord[0])
+        direction = (seed_end[0] - seed_start[0], seed_end[1] - seed_start[1], seed_end[2] - seed_start[2])
+
+        # Create the cylinder
+        cylinder = pv.Cylinder(center=center, direction=direction, radius=slat_width / 2, height=16)
+        plotter.add_mesh(cylinder, color=cargo_palette['SEED']['color'])
 
     plotter.add_axes(interactive=False)
 
     # Open a movie file
-    plotter.open_movie(os.path.join(save_folder, '3D_design_view.mp4'))
+    plotter.open_movie(os.path.join(save_folder, f'{filename_prepend}3D_design_view.mp4'))
 
     # It might be of interest to adjust parameters here for different designs
     path = plotter.generate_orbital_path(n_points=200, shift=0.2, viewup=[0, -1, 0], factor=2.0)

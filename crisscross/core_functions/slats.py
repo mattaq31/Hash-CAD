@@ -32,17 +32,18 @@ class Slat:
     """
     Wrapper class to hold all of a slat's handles and related details.
     """
-    def __init__(self, ID, layer, slat_coordinates, slat_length=32):
+    def __init__(self, ID, layer, slat_coordinates, slat_length=32, non_assembly_slat=False):
         """
         :param ID: Slat unique ID (string)
         :param layer: Layer position for slat (normally 1 and above, but can set to 0 for special slats such as crossbars)
         :param slat_coordinates: Exact positions slat occupies on a 2D grid - either a list of tuples or a dict of lists, where the key is the handle number on the slat
         :param slat_length: Number of handles on the slat
+        :param non_assembly_slat: If True, this slat is not used for assembly (e.g., crossbar slats)
         """
         self.ID = ID
         self.layer = layer
         self.max_length = slat_length
-        self.reversed_slat = False  # flag to indicate if the slat has been reversed
+        self.non_assembly_slat = non_assembly_slat
 
         # converts coordinates on a 2d array to the handle number on the slat, and vice-versa
         self.slat_position_to_coordinate = {}
@@ -73,7 +74,6 @@ class Slat:
             new_slat_coordinate_to_position[self.slat_position_to_coordinate[i + 1]] = self.max_length - i
         self.slat_position_to_coordinate = new_slat_position_to_coordinate
         self.slat_coordinate_to_position = new_slat_coordinate_to_position
-        self.reversed_slat = not self.reversed_slat
 
     def get_sorted_handles(self, side='h2'):
         """
@@ -88,7 +88,7 @@ class Slat:
         else:
             raise RuntimeError('Wrong side specified (only h2 or h5 available)')
 
-    def set_placeholder_handle(self, handle_id, slat_side, descriptor):
+    def set_placeholder_handle(self, handle_id, slat_side, category, value, descriptor):
         """
         Assigns a placeholder to the slat, instead of a full handle.
         :param handle_id: Handle position on slat
@@ -102,18 +102,18 @@ class Slat:
         if slat_side == 2:
             if handle_id in self.H2_handles:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID))
-            self.H2_handles[handle_id] = {'descriptor': descriptor}
+            self.H2_handles[handle_id] = {'category': category, 'value': value, 'descriptor': descriptor}
         elif slat_side == 5:
             if handle_id in self.H5_handles:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID))
-            self.H5_handles[handle_id] = {'descriptor': descriptor}
+            self.H5_handles[handle_id] = {'category': category, 'value': value,'descriptor': descriptor}
         else:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')
 
         # placeholders are tracked here, for later replacement
-        self.placeholder_list.append(f'handle-{handle_id}-h{slat_side}')
+        self.placeholder_list.append(f'handle|{handle_id}|h{slat_side}')
 
-    def update_placeholder_handle(self,  handle_id, slat_side, sequence, well, plate_name, descriptor='No Desc.'):
+    def update_placeholder_handle(self, handle_id, slat_side, sequence, well, plate_name, category, value, concentration, descriptor='No Desc.'):
         """
         Updates a placeholder handle with the actual handle.
         :param handle_id: Handle position on slat
@@ -125,7 +125,7 @@ class Slat:
         :return: N/A
         """
 
-        input_id = f'handle-{handle_id}-h{slat_side}'
+        input_id = f'handle|{handle_id}|h{slat_side}'
         if input_id not in self.placeholder_list:
             raise RuntimeError('Handle ID not found in placeholder list')
         else:
@@ -133,12 +133,16 @@ class Slat:
 
         if slat_side == 2:
             self.H2_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name,
+                                          'category': category, 'value': value,
+                                          'concentration':concentration,
                                           'descriptor': descriptor}
         elif slat_side == 5:
             self.H5_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name,
+                                          'category': category, 'value': value,
+                                          'concentration': concentration,
                                           'descriptor': descriptor}
 
-    def set_handle(self, handle_id, slat_side, sequence, well, plate_name, descriptor='No Desc.'):
+    def set_handle(self, handle_id, slat_side, sequence, well, plate_name, category, value, concentration, descriptor='No Desc.'):
         """
         Defines the full details of a handle on a slat.
         :param handle_id: Handle position on slat
@@ -155,11 +159,15 @@ class Slat:
             if handle_id in self.H2_handles:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID))
             self.H2_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name,
+                                          'category': category, 'value': value,
+                                          'concentration': concentration,
                                           'descriptor': descriptor}
         elif slat_side == 5:
             if handle_id in self.H5_handles:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID))
             self.H5_handles[handle_id] = {'sequence': sequence, 'well': well, 'plate': plate_name,
+                                          'category': category, 'value': value,
+                                          'concentration': concentration,
                                           'descriptor': descriptor}
         else:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')

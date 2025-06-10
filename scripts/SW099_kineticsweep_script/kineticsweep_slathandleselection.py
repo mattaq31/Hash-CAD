@@ -59,7 +59,7 @@ cargo_key = {3: 'antiNelson'}
 
 # Combines handle and slat array into the megastructure
 KineticMegastructure = Megastructure(SlatArray, [2, (5, 5), 2])
-KineticMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+KineticMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Prepare the seed layer and assign to array
 SeedArray = DesignDF[SeedLayer].values
@@ -70,7 +70,7 @@ CargoArray = DesignDF[CargoLayer].values
 KineticMegastructure.assign_cargo_handles_with_array(CargoArray, cargo_key, CargoPlate, layer='top')
 
 # Patch up missing controls
-KineticMegastructure.patch_control_handles(CorePlate)
+KineticMegastructure.patch_flat_staples(CorePlate)
 KineticMegastructure.create_standard_graphical_report(DesignFolder)
 KineticMegastructure.create_blender_3D_view(DesignFolder, animate_assembly=True)
 

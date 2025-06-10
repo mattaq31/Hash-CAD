@@ -38,7 +38,7 @@ megastructure.patch_placeholder_handles(
 [crisscross_handle_x_plates, crisscross_antihandle_y_plates, all_8064_seed_plugs, src_010, P3518, src_004],
 ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo', 'Cargo'])
 
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 target_volume = 100 # nl per staple (500uM)
 
 if generate_echo:

@@ -221,6 +221,7 @@ class DesignState extends ChangeNotifier {
     slats = newSlats;
     gridMode = newGridMode;
     cargoPalette = newCargoPalette;
+    selectedLayerKey = layerMap.keys.first;
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
     // Get the highest letter key

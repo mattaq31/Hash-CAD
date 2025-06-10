@@ -39,7 +39,7 @@ megastructure.patch_placeholder_handles(
     [crisscross_handle_x_plates, crisscross_antihandle_y_plates, combined_seed_plate, src_007, P3518, src_004],
     ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo', 'Cargo'])
 
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 ########## ADDING AN ADDITIONAL SLAT FOR TESTING STAPLE RECYCLING
 # custom slat for crossbar system
 staple_recycling_slat = Slat('staple_recycling_slat', 0, 'N/A')

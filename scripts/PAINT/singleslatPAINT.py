@@ -6,10 +6,10 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping import get_plateclass, get_standard_plates, get_cargo_plates
-from crisscross.plate_mapping.plate_constants import seed_plug_plate_all_8064, core_plate_folder
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_all_8064, flat_staple_plate_folder
 
 core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate,all_8064_seed_plugs  = get_standard_plates()
-p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all_8064, core_plate_folder)
+p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all_8064, flat_staple_plate_folder)
 src_004, src_005, src_007, P3518, P3510, P3628 = get_cargo_plates()
 generate_echo = True
 generate_lab_helpers = True
@@ -45,7 +45,7 @@ M1.patch_placeholder_handles(
     [P3628],
     ['Cargo'])
 
-M1.patch_control_handles(core_plate)
+M1.patch_flat_staples(core_plate)
 
 if generate_graphical_report:
     M1.create_standard_graphical_report(os.path.join(design_folder, 'visualization/'),

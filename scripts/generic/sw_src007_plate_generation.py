@@ -1,6 +1,6 @@
 from crisscross.core_functions.plate_handling import generate_new_plate_from_slat_handle_df
 from crisscross.helper_functions.standard_sequences import simpsons_anti
-from crisscross.plate_mapping.plate_constants import (slat_core, core_plate_folder, simpsons_mixplate_antihandles)
+from crisscross.plate_mapping.plate_constants import (slat_core, flat_staple_plate_folder, simpsons_mixplate_antihandles)
 from crisscross.plate_mapping import get_plateclass
 from collections import defaultdict
 import pandas as pd
@@ -9,7 +9,7 @@ import pandas as pd
 output_folder = '/Users/matt/Desktop'
 cargo_names = ['Nelson', 'Quimby', 'Bart', 'Edna']
 cargo = [simpsons_anti[c] for c in cargo_names]
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+core_plate = get_plateclass('ControlPlate', slat_core, flat_staple_plate_folder)
 seq_dict = defaultdict(list)
 
 for cargo_seq, cargo_id in zip(cargo, cargo_names):

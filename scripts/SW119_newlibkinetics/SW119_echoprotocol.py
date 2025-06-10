@@ -96,13 +96,13 @@ if RunAnalysis:
 
 # Handle the megastructure creation here
 OldLibraryMega = Megastructure(SlatArray, [2, (5, 2), 5])
-OldLibraryMega.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+OldLibraryMega.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 OldLibraryMega.assign_seed_handles(SeedArray, CombinedSeedPlate, layer_id=1)
 
 # Convert labels and handles into actual wells from source plates (patching)
 #OldLibraryMega.patch_placeholder_handles([CrisscrossHandleXPlates, CrisscrossAntihandleYPlates, CombinedSeedPlate], \
 #                                            ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed'])
-OldLibraryMega.patch_control_handles(CorePlate)
+OldLibraryMega.patch_flat_staples(CorePlate)
 
 # Generate csv file for each set of sequences, combine them later (add volume to the echo command generating funtion)
 # Filter out only the slats we need
@@ -122,9 +122,9 @@ print("Finished making echo protocol for %s." % DesignFile)
 _, v2_crisscross_antihandle_y_plates, v2_crisscross_handle_x_plates, _, _, _ = get_standard_plates(handle_library_v2=True)
 
 NewLibraryMega = Megastructure(SlatArray, [2, (5, 2), 5])
-NewLibraryMega.assign_crisscross_handles(HandleArray, v2_crisscross_handle_x_plates, v2_crisscross_antihandle_y_plates)
+NewLibraryMega.assign_assembly_handles(HandleArray, v2_crisscross_handle_x_plates, v2_crisscross_antihandle_y_plates)
 NewLibraryMega.assign_seed_handles(SeedArray, CombinedSeedPlate, layer_id=1)
-NewLibraryMega.patch_control_handles(CorePlate)
+NewLibraryMega.patch_flat_staples(CorePlate)
 
 NewLibraryVolume = 100 # nl
 

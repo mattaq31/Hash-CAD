@@ -50,7 +50,7 @@ SeedArray = DesignDF[SeedLayer].values
 
 # Handle the megastructure creation here
 NewLibMega = Megastructure(SlatArray, [2, (5, 2), 5])
-NewLibMega.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+NewLibMega.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 NewLibMega.assign_seed_handles(SeedArray, P8064SeedPlate, layer_id=1)
 
 # No need for patching placeholders, would use this if the handle array is passed to Megastructure during initialization
@@ -58,7 +58,7 @@ NewLibMega.assign_seed_handles(SeedArray, P8064SeedPlate, layer_id=1)
 #   [CrisscrossHandleXPlates, CrisscrossAntihandleYPlates, P8064SeedPlate], ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed'])
 
 # Convert labels and handles into actual wells from source plates (patching)
-NewLibMega.patch_control_handles(CorePlate)
+NewLibMega.patch_flat_staples(CorePlate)
 
 # Prepare Echo sheet, but only for the first 16 slats which are the nucX slats
 NucXSlats = {}
