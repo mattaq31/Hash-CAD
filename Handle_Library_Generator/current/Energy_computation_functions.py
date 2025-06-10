@@ -1,16 +1,13 @@
 import pickle
-import os
 import itertools
-from matplotlib.style.core import library
 from nupack import *
 import numpy as np
 import matplotlib.pyplot as plt
-from nupack.rotation import sample_state
 from tqdm import tqdm
 import random
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from matplotlib.ticker import AutoMinorLocator
-import time
+
 
 
 # Computes the reverse complement of a DNA sequence (input and output are strings).
@@ -64,7 +61,7 @@ def create_sequence_pairs_pool(length=7, fivep_ext="TT", threep_ext="", avoid_gg
         for mer, rc_mer in unique_n_mers
     ]
 
-    return unique_flanked_n_mers
+    return list(enumerate(unique_flanked_n_mers))
 
 
 
@@ -438,15 +435,75 @@ def compute_offtarget_energies(sequence_pairs, Use_Library= True):
 #
 # Returns:
 # - list: A subset of the input sequence_pairs.
+# - list: The indices of the sequences in the input list
 def select_subset(sequence_pairs, max_size=200):
+    total = len(sequence_pairs)
 
-    if len(sequence_pairs) > max_size:
-        subset = random.sample(sequence_pairs, max_size)
-        print(f"Selected random subset of {max_size} pairs from {len(sequence_pairs)} available pairs.")
+    if total > max_size:
+        selected = random.sample(sequence_pairs, max_size)
+        subset = []
+        for index, pair in selected:
+            subset.append(pair)
+        print(f"Selected random subset of {max_size} pairs from {total} available pairs.")
     else:
-        subset = sequence_pairs
-        print(f"Using all {len(sequence_pairs)} available pairs (less than or equal to {max_size}).")
+        subset = []
+        for index, pair in sequence_pairs:
+            subset.append(pair)
+        print(f"Using all {total} available pairs (less than or equal to {max_size}).")
+
     return subset
+
+# Selects a subset of sequence pairs whose on-target energies fall within a given range.
+#
+# This function randomly selects pairs from a pool of (index, (sequence, rc_sequence)) tuples.
+# It avoids indices specified in `avoid_indices` and computes the hybridization energy using
+# a precomputed energy library (if enabled). The selection continues until `max_size` valid
+# pairs have been found or all eligible pairs have been tested.
+#
+# Parameters:
+# - sequence_pairs (list): List of (index, (seq, rc_seq)) tuples.
+# - energy_min (float): Minimum allowed Gibbs free energy (inclusive).
+# - energy_max (float): Maximum allowed Gibbs free energy (inclusive).
+# - max_size (int): Maximum number of pairs to return.
+# - Use_Library (bool): Whether to use and update the precomputed energy library.
+# - avoid_indices (set): Set of indices to skip during selection.
+#
+# Returns:
+# - list: A list of (seq, rc_seq) pairs within the specified energy range.
+# - list: Their corresponding indices in the original pool.
+def select_subset_in_energy_range(sequence_pairs, energy_min=-1000, energy_max=100, max_size=200, Use_Library=True, avoid_indices=None):
+    
+    if avoid_indices is None:
+        avoid_indices = set()
+    
+    
+    subset = []
+    indices = []
+    tested_indices = set(avoid_indices)
+
+    while len(indices) < max_size and len(tested_indices) < len(sequence_pairs):
+        index, (seq, rc_seq) = random.choice(sequence_pairs)
+
+        if index in tested_indices:
+            continue
+
+        tested_indices.add(index)
+
+        energy = nupack_compute_energy_precompute_library_fast(
+            seq, rc_seq,
+            type='total',
+            Use_Library=Use_Library
+        )
+
+        if energy_min <= energy <= energy_max:
+            subset.append((seq, rc_seq))
+            indices.append(index)
+
+    print(f"Selected {len(subset)} sequence pairs with energies in range [{energy_min}, {energy_max}]")
+
+    return subset, indices
+
+
 
 
 # Plots histograms of on-target and off-target energies and returns and prints summary statistics.
@@ -568,43 +625,6 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
 
 
 if __name__ == "__main__":
-    # Define test sequences
-    seq1 = "ATGCGTGCCTT"
-    seq2 = revcom(seq1)  # Should be complementary
-
-    print("=== Testing Energy Computation ===")
-
-    # --- Old tube-based: total ---
-    start = time.time()
-    energy_old_total = nupack_compute_energy_precompute_library(seq1, seq2, type="total", Use_Library=False)
-    end = time.time()
-    print(f"OLD total   (tube):     {energy_old_total:.3f} kcal/mol   Time: {end - start:.3f}s")
-
-    # --- New complex-based: total ---
-    start = time.time()
-    energy_new_total = nupack_compute_energy_precompute_library_fast(seq1, seq2, type="total", Use_Library=False)
-    end = time.time()
-    print(f"NEW total   (complex):  {energy_new_total:.3f} kcal/mol   Time: {end - start:.3f}s")
-
-    # --- Old tube-based: minimum ---
-    start = time.time()
-    energy_old_min = nupack_compute_energy_precompute_library(seq1, seq2, type="minimum", Use_Library=False)
-    end = time.time()
-    print(f"OLD minimum (tube):     {energy_old_min:.3f} kcal/mol   Time: {end - start:.3f}s")
-
-    # --- New complex-based: minimum ---
-    start = time.time()
-    energy_new_min = nupack_compute_energy_precompute_library_fast(seq1, seq2, type="minimum", Use_Library=False)
-    end = time.time()
-    print(f"NEW minimum (complex):  {energy_new_min:.3f} kcal/mol   Time: {end - start:.3f}s")
-
-    # --- Comparison assertions ---
-    assert abs(energy_old_total - energy_new_total) < 0.1, "Total energy mismatch!"
-    assert abs(energy_old_min - energy_new_min) < 0.1, "Minimum energy mismatch!"
-
-
-
-
 
 
     # run test to see if the functions above work
@@ -612,15 +632,33 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
 
-    ontarget7mer=create_sequence_pairs_pool(length=13,fivep_ext="", threep_ext="",avoid_gggg=False)
+    ontarget7mer=create_sequence_pairs_pool(length=6,fivep_ext="", threep_ext="",avoid_gggg=False)
 
-    subset = select_subset(ontarget7mer, max_size=100*100)
-    on_e = compute_ontarget_energies(subset, Use_Library=False)
+    subset = select_subset(ontarget7mer, max_size=200)
+    on_e_subset = compute_ontarget_energies(subset, Use_Library=True)
 
-    # Select a random subset if there are more than 400 pairs
-    subset = select_subset(ontarget7mer, max_size=100)
 
     # Compute the off-target energies for the subset
-    off_e_subset = compute_offtarget_energies(subset, Use_Library=False)
-    stats = plot_on_off_target_histograms(on_e, off_e_subset, output_path='energy_hist.pdf')
+    off_e_subset = compute_offtarget_energies(subset, Use_Library=True)
+    stats = plot_on_off_target_histograms(on_e_subset, off_e_subset, output_path='energy_hist.pdf')
 
+
+    # Define energy thresholds
+    offtarget_limit = -6
+    max_ontarget = -12
+    min_ontarget = -14
+    
+    # Define energy thresholds
+    offtarget_limit = -5
+    max_ontarget = -7.5
+    min_ontarget = -10
+
+
+    subset_2, indices = select_subset_in_energy_range(
+        ontarget7mer, energy_min=min_ontarget, energy_max=max_ontarget,
+        max_size=100, Use_Library=True, avoid_indices=set()
+    )
+
+    on_e_subset_2 = compute_ontarget_energies(subset_2, Use_Library=True)
+    off_e_subset_2 = compute_offtarget_energies(subset_2, Use_Library=True)
+    stats2 = plot_on_off_target_histograms(on_e_subset_2, off_e_subset_2, output_path='energy_hist2.pdf')
