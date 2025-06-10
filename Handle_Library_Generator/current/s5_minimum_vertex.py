@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
     # open the old handle sequences as dictionary new_sequence_highenergy_cross
     #with open('new_sequence_toto_test_energy_dict_highenergyself3.pkl', 'rb') as f:
-
+    
     name = 'TT_no_crosscheck96to104'
     with open(name + '.pkl', 'rb') as f:
         handle_energy_dict = pickle.load(f)
