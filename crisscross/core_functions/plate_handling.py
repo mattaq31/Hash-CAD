@@ -2,6 +2,9 @@ import os
 from collections import defaultdict
 from string import ascii_uppercase
 import pandas as pd
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import PatternFill
+
 
 from crisscross.helper_functions import plate96, plate384
 
@@ -65,9 +68,92 @@ def read_dna_plate_mapping(filename, data_type='2d_excel', plate_size=384):
         all_data = pd.read_excel(filename)
         all_data.columns = ['well', 'name', 'sequence', 'description']
         return all_data
+    elif data_type == '#-CAD':
+        all_data = pd.read_excel(filename, sheet_name='All Data')
+        return all_data
     else:
         raise ValueError('Invalid data type for plate input')
 
+
+def export_standardized_plate_sheet(data_df, folder, filename, plate_size=384):
+
+    full_data_df = data_df.copy()
+    if plate_size == 96:
+        max_col = 12
+        letters = [a for a in ascii_uppercase[:8]]
+    else:
+        max_col = 24
+        letters = [a for a in ascii_uppercase[:16]]
+
+    name_dict = defaultdict(dict)
+    category_dict = defaultdict(dict)
+
+    # prepares categories for 2D layout
+    for seq_num, row in data_df.iterrows():
+        letter_id, num_id = row['well'][0], row['well'][1:]
+        if row['name'] != 'NON-SLAT OLIGO' and not pd.isna(row['name']):
+            category = row['name'].split('-')[0]
+            if 'ASSEMBLY' in category:
+                category_dict[letter_id][num_id] = 'A'
+            elif 'SEED' in category:
+                category_dict[letter_id][num_id] = 'S'
+            elif 'CARGO' in category:
+                category_dict[letter_id][num_id] = 'C'
+            elif 'FLAT' in category:
+                category_dict[letter_id][num_id] = 'F'
+        else:
+            category_dict[letter_id][num_id] = 'X'
+
+        name_dict[letter_id][num_id] = row['name']
+
+    name_dict = add_data_to_plate_df(letters, max_col, name_dict)
+    category_dict = add_data_to_plate_df(letters, max_col, category_dict)
+
+    # plugs empty wells in data df with empty strings
+    all_wells = [f"{letter}{num}" for letter in letters for num in range(1, max_col + 1)]
+    full_data_df = full_data_df.set_index('well').reindex(all_wells)
+    full_data_df = full_data_df.reset_index()
+
+    with pd.ExcelWriter(os.path.join(folder, filename), engine='openpyxl') as writer:
+        full_data_df.to_excel(writer, sheet_name='All Data', index=False)
+        name_dict.to_excel(writer, sheet_name='2D Layout', index_label=filename.split('.')[0])
+        category_dict.to_excel(writer, sheet_name='2D Label', index_label=filename.split('.')[0])
+
+        # Apply alternating grey background to improve readability
+        worksheet = writer.sheets['2D Layout']
+        grey_fill = PatternFill(start_color='DDDDDD', end_color='DDDDDD', fill_type='solid')
+        for row in range(2, worksheet.max_row + 1):
+            if (row - 2) % 2 == 0:
+                for col in range(1, worksheet.max_column + 1):
+                    worksheet.cell(row=row, column=col).fill = grey_fill
+
+        # Apply colors to 2D Label sheet based on category
+        worksheet = writer.sheets['2D Label']
+        for row in range(2, worksheet.max_row + 1):
+            for col in range(2, worksheet.max_column + 1):
+                cell = worksheet.cell(row=row, column=col)
+                if cell.value == 'A':
+                    cell.fill = PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')  # Red
+                elif cell.value == 'S':
+                    cell.fill = PatternFill(start_color='00FF00', end_color='00FF00', fill_type='solid')  # Green
+                elif cell.value == 'C':
+                    cell.fill = PatternFill(start_color='0000FF', end_color='0000FF', fill_type='solid')  # Blue
+                elif cell.value == 'F':
+                    cell.fill = PatternFill(start_color='A9A9A9', end_color='A9A9A9', fill_type='solid')  # Dark Grey
+                elif cell.value == 'X':
+                    cell.fill = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')  # Light Gray
+
+        # expands all columns to fit data provided
+        for sheet_name in writer.sheets:
+            worksheet = writer.sheets[sheet_name]
+            for col_idx, column_cells in enumerate(worksheet.columns, start=1):
+                max_length = 0
+                for cell in column_cells:
+                    cell_value = str(cell.value) if cell.value is not None else ""
+                    max_length = max(max_length, len(cell_value))
+
+                adjusted_width = max_length + 2  # Add some padding
+                worksheet.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
 
 def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_row_by_column=None,
                                            data_type='2d_excel', plate_size=384, plate_name=None,

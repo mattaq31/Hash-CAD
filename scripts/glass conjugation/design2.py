@@ -7,7 +7,7 @@ from crisscross.core_functions.megastructure_composition import convert_slats_in
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
-from crisscross.plate_mapping.plate_constants import seed_plug_plate_center_8064, core_plate_folder
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_center_8064, flat_staple_plate_folder
 from crisscross.plate_mapping import get_standard_plates, get_cargo_plates, get_plateclass, get_assembly_handle_v2_sample_plates
 from scripts.antigen_presenting_cells.capc_pattern_generator import capc_pattern_generator
 
@@ -20,7 +20,7 @@ experiment_name = 'YXZ001'
 core_plate, _, _, _, _, _ = (get_standard_plates(handle_library_v2=True))
 crisscross_antihandle_y_plates, crisscross_handle_x_plates = get_assembly_handle_v2_sample_plates()
 
-p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_center_8064, core_plate_folder)
+p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_center_8064, flat_staple_plate_folder)
 
 src_004, _, src_007, _, _ = get_cargo_plates()
 
@@ -39,7 +39,7 @@ M2.slats[f'layer1-slat120'].reverse_direction()
 M2.slats[f'layer1-slat118'].reverse_direction()
 M2.slats[f'layer1-slat116'].reverse_direction()
 
-final_cargo_placement = np.zeros_like(M2.handle_arrays).squeeze()
+final_cargo_placement = np.zeros_like(M2.generate_assembly_handle_grid()).squeeze()
 final_cargo_placement[47, 0] = 1
 final_cargo_placement[45, 0] = 1
 final_cargo_placement[43, 0] = 1
@@ -53,24 +53,20 @@ M2.assign_cargo_handles_with_array(cargo_array_pd, cargo_key={1: 'antiBart', 2: 
 M2.assign_cargo_handles_with_array(final_cargo_placement, cargo_key={1: 'SSW041DoublePurification5primetoehold'}, layer='bottom')
 
 M2.patch_placeholder_handles(
-    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, p8064_seed_plate, src_007, src_004],
-    ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo'])
+    [crisscross_handle_x_plates, crisscross_antihandle_y_plates, p8064_seed_plate, src_007, src_004])
 
-M2.patch_control_handles(core_plate)
+M2.patch_flat_staples(core_plate)
 
 if compute_hamming:
     print('Hamming Distance Report:')
-    print(multirule_oneshot_hamming(M2.slat_array, M2.handle_arrays,
+    print(multirule_oneshot_hamming(M2.generate_slat_occupancy_grid(), M2.generate_assembly_handle_grid(),
                                     per_layer_check=True,
                                     report_worst_slat_combinations=False,
                                     request_substitute_risk_score=True))
 
 if generate_graphical_report:
     M2.create_standard_graphical_report(os.path.join(design_folder, 'visualization/'),
-                                        colormap='Set1',
-                                        cargo_colormap='Dark2',
-                                        generate_3d_video=True,
-                                        seed_color=(1.0, 1.0, 0.0))
+                                        generate_3d_video=True)
 
 if generate_echo:
     target_volume = 100
@@ -88,7 +84,7 @@ if generate_echo:
     echo_sheet = convert_slats_into_echo_commands(slat_dict=M2.slats,
                                                   destination_plate_name='biocross_plate',
                                                   unique_transfer_volume_for_plates=special_vol_plates,
-                                                  default_transfer_volume=target_volume,
+                                                  reference_transfer_volume_nl=target_volume,
                                                   output_folder=echo_folder,
                                                   center_only_well_pattern=True,
                                                   plate_viz_type='barcode',

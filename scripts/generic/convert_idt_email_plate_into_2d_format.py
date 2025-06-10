@@ -4,7 +4,7 @@ from string import ascii_uppercase
 import pandas as pd
 
 from crisscross.core_functions.plate_handling import add_data_to_plate_df
-from crisscross.plate_mapping.plate_constants import seed_plug_plate_all, core_plate_folder
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_all, flat_staple_plate_folder
 from crisscross.plate_mapping import get_plateclass
 
 
@@ -12,7 +12,7 @@ from crisscross.plate_mapping import get_plateclass
 input_filename = '/Users/matt/Downloads/20250110_P3621_8064gridironplugs_v1/250110_SW_IDT_email_P3621.xlsx'
 output_filename = '/Users/matt/Desktop/p8064_center_seed.xlsx'
 
-center_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all, core_plate_folder).plates[0]
+center_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_all, flat_staple_plate_folder).plates[0]
 center_seed_plate = center_seed_plate[~center_seed_plate['description'].str.contains('Edge', na=False)]
 
 input_data = pd.read_excel(input_filename, engine="calamine")

@@ -1,4 +1,4 @@
-from crisscross.plate_mapping import BasePlate
+from crisscross.plate_mapping.non_standard_plates import BasePlate
 import math
 
 

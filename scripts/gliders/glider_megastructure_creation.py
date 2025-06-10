@@ -64,9 +64,9 @@ for i in range(16):
 
 # Combines handle, slat and seed arrays into the megastructure
 megastructure = Megastructure(slat_array, None, connection_angle='60')
-megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 megastructure.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 megastructure.create_standard_graphical_report(os.path.join(design_folder, 'Updated Graphics'), colormap='Set1',
                                                cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))
 
@@ -75,10 +75,10 @@ convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_fol
 
 # For extended fluorescent microscopy testing, we've also included a cargo array for Nelson handles.  This design is build separately below
 nelson_mega = Megastructure(slat_array, None, connection_angle='60')
-nelson_mega.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+nelson_mega.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 nelson_mega.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
 nelson_mega.assign_cargo_handles_with_array(cargo_array, cargo_key, nelson_plate, layer=2, handle_orientation=2)
-nelson_mega.patch_control_handles(core_plate)
+nelson_mega.patch_flat_staples(core_plate)
 nelson_mega.create_standard_graphical_report(os.path.join(design_folder, 'Updated Fluoro Graphics'), colormap='Set1',
                                              cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))
 

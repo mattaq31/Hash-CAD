@@ -7,8 +7,8 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_handle_set_and_optimize, calculate_slat_hamming
 from crisscross.plate_mapping import get_plateclass
 
-from crisscross.plate_mapping.plate_constants import (slat_core, core_plate_folder, crisscross_h5_handle_plates,
-                                                      crisscross_h2_handle_plates, assembly_handle_folder,
+from crisscross.plate_mapping.plate_constants import (slat_core, flat_staple_plate_folder, crisscross_h5_handle_plates,
+                                                      crisscross_h2_handle_plates, assembly_handle_plate_folder,
                                                       seed_plug_plate_center)
 
 
@@ -58,25 +58,25 @@ else:
                    HandleArray[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
 # Generates plate dictionaries from provided files - don't change
-CorePlate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+CorePlate = get_plateclass('ControlPlate', slat_core, flat_staple_plate_folder)
 CrisscrossAntihandleYPlates = get_plateclass('CrisscrossHandlePlates',
                                             crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+                                             assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
 CrisscrossHandleXPlates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-CenterSeedPlate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
+                                         assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5])
+CenterSeedPlate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, flat_staple_plate_folder)
 
 # Combines handle and slat array into the megastructure
 GliderMegastructureStellaTest = Megastructure(SlatArray, [2, (5, 2), (5, 2), (5, 2), 5])
-GliderMegastructureStellaTest.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+GliderMegastructureStellaTest.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Prepare the seed layer and assign to array
 SeedArray = DesignDF[SeedLayer].values
 GliderMegastructureStellaTest.assign_seed_handles(SeedArray, CenterSeedPlate, layer_id=2) 
 
 # Patch up missing controls
-GliderMegastructureStellaTest.patch_control_handles(CorePlate)
+GliderMegastructureStellaTest.patch_flat_staples(CorePlate)
 
 # Exports design to echo format csv file for production
 convert_slats_into_echo_commands(GliderMegastructureStellaTest.slats, 'glider_plate_stellatest', DesignFolder, 
@@ -124,18 +124,18 @@ else:
                    handle_array[..., i].astype(np.int32), delimiter=',', fmt='%i')
 
 # Generates plate dictionaries from provided files
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+core_plate = get_plateclass('ControlPlate', slat_core, flat_staple_plate_folder)
 crisscross_antihandle_y_plates = get_plateclass('CrisscrossHandlePlates',
                                             crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
-                                            assembly_handle_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
+                                                assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5, 2, 2, 2])
 crisscross_handle_x_plates = get_plateclass('CrisscrossHandlePlates',
                                                 crisscross_h5_handle_plates[0:3],
-                                                assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
+                                            assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5])
+center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, flat_staple_plate_folder)
 
 # Combines handle and slat array into the megastructure
 megastructure = Megastructure(slat_array, None)
-megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 
 # Prepares the seed array, assuming the first position will start from the far right of the layer
 seed_array = np.copy(design_df['Layer_0'].values)
@@ -148,7 +148,7 @@ for i in range(16):
 
 # Assigns seed array to layer 2
 megastructure.assign_seed_handles(seed_array, center_seed_plate, layer_id=2)
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 
 # Exports design to echo format csv file for production
 convert_slats_into_echo_commands(megastructure.slats, 'glider_plate', design_folder, 'all_echo_commands.csv')

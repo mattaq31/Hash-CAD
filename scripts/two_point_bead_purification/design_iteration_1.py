@@ -45,7 +45,7 @@ corner_seed_array = np.zeros((32, 32))
 corner_seed_array[0:16, 0:5] = insertion_seed_array
 ########################################
 M_base = Megastructure(slat_array)
-M_base.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M_base.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M_base.assign_seed_handles(corner_seed_array, seed_plate)
 
 all_megas = {}
@@ -69,12 +69,12 @@ for design in ['p1_anchors_inner', 'p32_anchors_inner', 'p1_anchors_outer', 'p32
                                                       cargo_plate=crossbar_plate,
                                                       cargo_key={1: anchor_name},
                                                       layer='bottom')
-    all_megas[design].patch_control_handles(core_plate)
+    all_megas[design].patch_flat_staples(core_plate)
     if design == 'p32_anchors_inner':
         # all_megas[design].create_standard_graphical_report(os.path.join(output_folder, 'quick_viz'), colormap='Set1', cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0))
         all_megas[design].create_blender_3D_view(os.path.join(output_folder, 'quick_viz'), colormap='Set1', cargo_colormap='Dark2', seed_color=(1.0, 1.0, 0.0), include_bottom_light=True)
 
-M_base.patch_control_handles(core_plate)
+M_base.patch_flat_staples(core_plate)
 
 full_slat_dict = {}
 

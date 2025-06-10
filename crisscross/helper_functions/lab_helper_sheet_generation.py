@@ -13,10 +13,8 @@ from tqdm import tqdm
 from math import floor
 import seaborn as sns
 
-from crisscross.plate_mapping.plate_concentrations import concentration_library
-from crisscross.helper_functions import create_dir_if_empty, base_directory
+from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.simple_plate_visuals import visualize_plate_with_color_labels
-
 
 # consistent figure formatting between mac, windows and linux
 if platform.system() == 'Darwin':
@@ -133,7 +131,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
                 if handle['plate'] in unique_transfer_volume_plates:
                     total_handle_mix_volume += unique_transfer_volume_plates[handle['plate']]
                 else:
-                    total_handle_mix_volume += reference_handle_volume * int(concentration_library['sw_src002'] / concentration_library[handle['plate']])
+                    total_handle_mix_volume += reference_handle_volume * int(reference_handle_concentration / handle['concentration'])
             slat_concentration_nM = 1000 * (reference_handle_concentration * reference_handle_volume) / total_handle_mix_volume
             slat_concentration_distribution.append(slat_concentration_nM)
 

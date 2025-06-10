@@ -25,18 +25,16 @@ print('%%%%%%%%%%%%%%%')
 print('ASSESSING DESIGN: %s' % design_name)
 
 megastructure = Megastructure(import_design_file=os.path.join(design_folder, design_name))
-hamming_results = multirule_oneshot_hamming(megastructure.slat_array, megastructure.handle_arrays, request_substitute_risk_score=True)
+hamming_results = multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(), megastructure.generate_assembly_handle_grid(), request_substitute_risk_score=True)
 print('Hamming distance from imported array: %s, Duplication Risk: %s' % (hamming_results['Universal'], hamming_results['Substitute Risk']))
 
 ########## PATCHING PLATES
 core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, all_8064_seed_plugs = get_cutting_edge_plates()
 src_004, src_005, src_007, P3518, P3510,_ = get_cargo_plates()
 
-megastructure.patch_placeholder_handles(
-[crisscross_handle_x_plates, crisscross_antihandle_y_plates, all_8064_seed_plugs, src_007, P3518, src_004],
-['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo', 'Cargo', 'Cargo'])
+megastructure.patch_placeholder_handles([crisscross_handle_x_plates, crisscross_antihandle_y_plates, all_8064_seed_plugs, src_007, P3518, src_004])
 
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 target_volume = 150 # nl per staple (500uM)
 
 # Only layer 1 and 2 slats are 'real, layer 3 is meant to simulate the battleships
@@ -48,7 +46,7 @@ for key, slat in megastructure.slats.items():
 if generate_echo:
     echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=base_layer_slats,
                                  destination_plate_name=design_name.split('.')[0],
-                                 default_transfer_volume=target_volume,
+                                 reference_transfer_volume_nl=target_volume,
                                  output_folder=echo_folder,
                                  center_only_well_pattern=False,
                                  plate_viz_type='barcode',
@@ -66,8 +64,5 @@ if regen_graphics:
     megastructure.create_standard_graphical_report(os.path.join(experiment_folder, f'graphics'), generate_3d_video=True)
 
     megastructure.create_blender_3D_view(os.path.join(experiment_folder, f'graphics'),
-                                         camera_spin=False, correct_slat_entrance_direction=True, colormap='Dark2',
-                               cargo_colormap='Set1', seed_color=(1, 0, 0),
-                               include_bottom_light=False)
-
-
+                                         camera_spin=False, correct_slat_entrance_direction=True,
+                                         include_bottom_light=False)

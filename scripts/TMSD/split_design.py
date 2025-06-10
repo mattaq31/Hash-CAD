@@ -35,7 +35,7 @@ if update_handles:
     fake_array[1:33, 51, 1] = 32
     handle_array = generate_handle_set_and_optimize(fake_array, unique_sequences=32, max_rounds=500)
     handle_array[1:17, 48:52, 0] = 0  # removes handles from non toehold regions
-    M1.assign_crisscross_handles(handle_array)
+    M1.assign_assembly_handles(handle_array)
     M1.export_design(handle_optimization_export_file, design_folder)
 else:
     for selected_file, design_id in [(design_file, 'no_cargo'), (anchor_design_file, 'with_anchors')]:
@@ -56,7 +56,7 @@ else:
         M1.patch_placeholder_handles(
             [crisscross_handle_x_plates, crisscross_antihandle_y_plates, seed_plate, crossbar_plate],
             ['Assembly-Handles', 'Assembly-AntiHandles', 'Seed', 'Cargo'])
-        M1.patch_control_handles(control_plate=core_plate)
+        M1.patch_flat_staples(control_plate=core_plate)
 
         invader_set = {}
         incumbent_slat_id_list = list(range(17, 33))

@@ -3,14 +3,14 @@ from string import ascii_uppercase
 import pandas as pd
 import os
 from crisscross.core_functions.plate_handling import add_data_to_plate_df
-from crisscross.plate_mapping import get_plateclass, slat_core, core_plate_folder
+from crisscross.plate_mapping import get_plateclass, slat_core, flat_staple_plate_folder
 from collections import defaultdict
 
 output_folder = '/Users/matt/Desktop'
 output_file = 'src_009_idt_form.xlsx'
 output_2d_file = 'src_009_source_max.xlsx'
 
-src_002 = get_plateclass('ControlPlate', slat_core, core_plate_folder)
+src_002 = get_plateclass('ControlPlate', slat_core, flat_staple_plate_folder)
 src_002_df = src_002.plates[0]
 
 src_002_df_h2 = src_002_df.iloc[:32].copy()

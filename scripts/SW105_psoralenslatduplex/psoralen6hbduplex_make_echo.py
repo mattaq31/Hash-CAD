@@ -28,10 +28,10 @@ CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, 
 
 # Combines handle and slat array into the megastructure
 DuplexMegastructure = Megastructure(SlatArray)
-DuplexMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+DuplexMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Patch up missing controls
-DuplexMegastructure.patch_control_handles(CorePlate)
+DuplexMegastructure.patch_flat_staples(CorePlate)
 #DuplexMegastructure.create_standard_graphical_report(DesignFolder) # TODO: troubleshoot the pyvista errors
 
 # Make Echo

@@ -26,7 +26,7 @@ core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_pla
 cargo_plate = get_plateclass('GenericPlate', nelson_quimby_antihandles, cargo_plate_folder)
 
 megastructure = Megastructure(base_array, None)
-megastructure.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+megastructure.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 
 seed_array = np.zeros((66, 66))
 standard_seed_array = np.arange(16) + 1
@@ -35,6 +35,6 @@ seed_array[17:33, 1:6] = standard_seed_array
 megastructure.assign_seed_handles(seed_array, seed_plate)
 megastructure.assign_cargo_handles_with_array(cargo_array, cargo_key, cargo_plate, layer='bottom')
 
-megastructure.patch_control_handles(core_plate)
+megastructure.patch_flat_staples(core_plate)
 megastructure.create_graphical_slat_view(instant_view=True)
 

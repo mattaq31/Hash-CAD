@@ -5,7 +5,7 @@ import os
 from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.megastructures import Megastructure
 
-from crisscross.plate_mapping.plate_constants import (slat_core, core_plate_folder, assembly_handle_folder,
+from crisscross.plate_mapping.plate_constants import (slat_core, flat_staple_plate_folder, assembly_handle_plate_folder,
                                                       crisscross_h5_handle_plates,
                                                       seed_plug_plate_corner, seed_plug_plate_center,
                                                       octahedron_patterning_v1, old_format_cargo_plate_folder,
@@ -18,11 +18,11 @@ stella_nucx_file = '/Users/matt/Desktop/20231023_SW082_unitsq0_cornerseed_scaled
 
 stella_df = pd.read_csv(stella_file)
 
-core_plate = get_plateclass('ControlPlate', slat_core, core_plate_folder)
-crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], assembly_handle_folder, plate_slat_sides=[5, 5, 5])
-seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, core_plate_folder)
-center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, core_plate_folder)
+core_plate = get_plateclass('ControlPlate', slat_core, flat_staple_plate_folder)
+crisscross_y_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[3:], assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5])
+crisscross_x_plates = get_plateclass('CrisscrossHandlePlates', crisscross_h5_handle_plates[0:3], assembly_handle_plate_folder, plate_slat_sides=[5, 5, 5])
+seed_plate = get_plateclass('CornerSeedPlugPlate', seed_plug_plate_corner, flat_staple_plate_folder)
+center_seed_plate = get_plateclass('CenterSeedPlugPlate', seed_plug_plate_center, flat_staple_plate_folder)
 cargo_plate = get_plateclass('OctahedronPlate', octahedron_patterning_v1, old_format_cargo_plate_folder)
 
 slats = {}

@@ -41,14 +41,14 @@ CorePlate, CrisscrossAntihandleYPlates, CrisscrossHandleXPlates, EdgeSeedPlate, 
 
 # Combines handle and slat array into the megastructure
 FiniteAssemblyMegastructure = Megastructure(SlatArray, [2, (5, 2), 5])
-FiniteAssemblyMegastructure.assign_crisscross_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+FiniteAssemblyMegastructure.assign_assembly_handles(HandleArray, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Prepare the seed layer and assign to array
 SeedArray = DesignDF[SeedLayer].values
 FiniteAssemblyMegastructure.assign_seed_handles(SeedArray, CenterSeedPlate, layer_id=1)
 
 # Patch up missing controls
-FiniteAssemblyMegastructure.patch_control_handles(CorePlate)
+FiniteAssemblyMegastructure.patch_flat_staples(CorePlate)
 
 # Specify wells for more intuitive echo protocol
 EightByEightWells = [[x+str(y) for y in np.arange(1,8+1,1)] for x in ["A","B","C","D","E","F","G","H"]]
@@ -85,14 +85,14 @@ print('Hamming distance from file-loaded design: %s' % resultExtra['Universal'])
 
 # Combines handle and slat array into the megastructure
 FiniteAssemblyExtrasMegastructure = Megastructure(SlatArrayExtras, [2, (5, 2), 5])
-FiniteAssemblyExtrasMegastructure.assign_crisscross_handles(HandleArrayExtras, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
+FiniteAssemblyExtrasMegastructure.assign_assembly_handles(HandleArrayExtras, CrisscrossHandleXPlates, CrisscrossAntihandleYPlates)
 
 # Prepare the seed layer and assign to array
 SeedArrayExtras = DesignDFExtras[SeedLayer].values
 FiniteAssemblyExtrasMegastructure.assign_seed_handles(SeedArrayExtras, CenterSeedPlate, layer_id=1)
 
 # Patch up missing controls
-FiniteAssemblyExtrasMegastructure.patch_control_handles(CorePlate)
+FiniteAssemblyExtrasMegastructure.patch_flat_staples(CorePlate)
 
 # Same Specific Wells as above
 

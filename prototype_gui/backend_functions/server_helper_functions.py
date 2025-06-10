@@ -34,7 +34,7 @@ def combine_megastructure_arrays(seed_array, slat_array, cargo_dict, handle_arra
     crisscross_megastructure = Megastructure(slat_array, orientations, connection_angle='90')
 
     if np.sum(handle_array) != 0:
-        crisscross_megastructure.assign_crisscross_handles(handle_array)
+        crisscross_megastructure.assign_assembly_handles(handle_array)
 
     # Add seeds
     if seed_array.size != 0:

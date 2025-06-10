@@ -1,10 +1,7 @@
-import copy
-
 import pandas as pd
 import os
 from colorama import Fore, Style
 from crisscross.helper_functions import plate96, plate384, plate96_center_pattern
-from crisscross.plate_mapping.plate_concentrations import apply_well_exceptions, concentration_library
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch
 from string import ascii_uppercase
@@ -196,7 +193,8 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
 
 
 def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_folder, output_filename,
-                                     default_transfer_volume=75, transfer_volume_multiplier_for_slats=None,
+                                     reference_transfer_volume_nl=75, reference_concentration_uM=500,
+                                     transfer_volume_multiplier_for_slats=None,
                                      source_plate_type='384PP_AQ_BP',
                                      output_empty_wells=False,
                                      manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
@@ -209,7 +207,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param destination_plate_name: The name of the design's destination output plate
     :param output_folder: The output folder to save the file to
     :param output_filename: The name of the output file
-    :param default_transfer_volume: The default transfer volume for each handle (in nL)
+    :param reference_transfer_volume_nl: The default transfer volume for each handle (in nL)
+    :param reference_concentration_uM: The default concentration matching that of the selected transfer volume (in uM)
     :param transfer_volume_multiplier_for_slats: Dictionary assigning a special transfer multiplier for specified slats (will be applied to all special plate volumes too)
     :param source_plate_type: The physical plate type in use
     :param output_empty_wells: Outputs an empty row for a well if a handle is only a placeholder
@@ -221,6 +220,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param generate_plate_visualization: Set to true to generate a graphic showing the positions and contents of each well in the output plates
     :param plate_viz_type: Set to 'barcode' to show a barcode of the handle types in each well,
     'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
+    :param destination_well_max_volume: The maximum total volume that can be transferred to a well in the output plate (in uL)
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 
@@ -279,8 +279,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         else:
             slat_multiplier = 1
 
-        for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data,
-                                                          ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
+        for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data, ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
             all_plates_needed.add(handle_data['plate'])
             if 'plate' not in handle_data:
                 if output_empty_wells:  # this is the case where a placeholder handle is used (no plate available).
@@ -288,7 +287,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                     #  this will output placeholders for the specific wells that need manual handling.
                     output_command_list.append([slat_name + '_%s_staple_%s' % (handle_side, handle_num),
                                                 'MANUAL TRANSFER', 'MANUAL TRANSFER',
-                                                output_well_list[index], default_transfer_volume*slat_multiplier,
+                                                output_well_list[index], reference_transfer_volume_nl*slat_multiplier,
                                                 f'{destination_plate_name}_{output_plate_num_list[index]}',
                                                 'MANUAL TRANSFER'])
                     continue
@@ -301,7 +300,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                 handle_specific_vol = unique_transfer_volume_for_plates[handle_data['plate']]*slat_multiplier
             else:
                 # otherwise, extract the exact handle volumes to ensure an equal concentration w.r.t the core staples plate
-                handle_specific_vol = int(default_transfer_volume * (concentration_library['sw_src002'] / concentration_library[handle_data['plate']]) * slat_multiplier)
+                handle_specific_vol = int(reference_transfer_volume_nl * (reference_concentration_uM / handle_data['concentration']) * slat_multiplier)
 
             # handle volume needs to be a multiple of 25nl for echo to be able to execute...
             if handle_specific_vol % 25 != 0:
@@ -337,7 +336,6 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                              'Destination Well', 'Transfer Volume',
                                                              'Destination Plate Name', 'Source Plate Type'])
-    combined_df = apply_well_exceptions(combined_df)
 
     combined_df.to_csv(os.path.join(output_folder, output_filename), index=False)
 
@@ -360,6 +358,6 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                 output_filename.split('.')[0],
                                 slat_display_format=plate_viz_type)  # prepares a visualization of the output plates
 
-    print(Fore.BLUE + f'Info: These are the plates you need for this echo run:{all_plates_needed}' + Fore.RESET)
+    print(Fore.BLUE + f'Info: These are the plates you need for this echo run:{sorted(all_plates_needed)}' + Fore.RESET)
 
     return combined_df

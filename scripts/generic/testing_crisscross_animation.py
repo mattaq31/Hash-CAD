@@ -45,9 +45,9 @@ center_seed_array[8:24, 13:18] = insertion_seed_array
 ########################################
 # Actual megastructure
 M1 = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M1.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M1.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M1.assign_seed_handles(center_seed_array, center_seed_plate)
-M1.patch_control_handles(core_plate)
+M1.patch_flat_staples(core_plate)
 # M1.create_blender_3D_view('/Users/matt/Desktop', animate_assembly=True)
 
 design_df = pd.read_excel(os.path.join(glider_folder, 'layer_arrays.xlsx'), sheet_name=None, header=None)

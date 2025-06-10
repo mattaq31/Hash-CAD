@@ -73,10 +73,10 @@ keep_these_slats = {}
 
 for index, design in enumerate(design_names):
     megastructure = Megastructure(slat_array)
-    megastructure.assign_crisscross_handles(best_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+    megastructure.assign_assembly_handles(best_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
     megastructure.assign_seed_handles(corner_seed_array, seed_plate)
     megastructure.assign_cargo_handles_with_array(doublepure_handle_patterns[index], doublepure_key, double_purification_plate, layer='bottom') ###
-    megastructure.patch_control_handles(core_plate)
+    megastructure.patch_flat_staples(core_plate)
 
     colormap = ['#1f77b4', '#ff7f0e', '#ffff00']
     megastructure.create_graphical_assembly_handle_view(save_to_folder=graphics_folder, colormap=colormap, instant_view=False)

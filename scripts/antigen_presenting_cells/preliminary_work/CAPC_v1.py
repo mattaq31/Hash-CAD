@@ -76,10 +76,10 @@ for order, group in enumerate(groups):
 ########################################
 
 M1_peripheral_dispersed = Megastructure(slat_array, layer_interface_orientations=[2, (5, 2), 5])
-M1_peripheral_dispersed.assign_crisscross_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
+M1_peripheral_dispersed.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M1_peripheral_dispersed.assign_seed_handles(center_seed_array, center_seed_plate)
 M1_peripheral_dispersed.assign_cargo_handles_with_array(cargo_array_pd, cargo_key, bart_edna_plate, layer='top')
-M1_peripheral_dispersed.patch_control_handles(core_plate)
+M1_peripheral_dispersed.patch_flat_staples(core_plate)
 
 M1_peripheral_dispersed.export_design('full_design.xlsx', design_folder)
 

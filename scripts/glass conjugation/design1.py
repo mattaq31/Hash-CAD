@@ -5,12 +5,12 @@ from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import read_design_from_excel
 from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_standard_plates
-from crisscross.plate_mapping.plate_constants import seed_plug_plate_center_8064, core_plate_folder
+from crisscross.plate_mapping.plate_constants import seed_plug_plate_center_8064, flat_staple_plate_folder
 from crisscross.plate_mapping import get_plateclass
 
 design_folder = '/Users/yichenzhao/Documents/Wyss/Projects/CrissCross_Output/'
 slat_array = read_design_from_excel(design_folder, ['bottomlayer1.csv','toplayer1.csv'])
-p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_center_8064, core_plate_folder)
+p8064_seed_plate = get_plateclass('CombinedSeedPlugPlate', seed_plug_plate_center_8064, flat_staple_plate_folder)
 #slat_array, _ = generate_standard_square_slats(32)
 
 core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate, combined_seed_plate = get_standard_plates(handle_library_v2 = True)
@@ -34,9 +34,9 @@ for rev_slat in range(130,138):
     M1.slats[f'layer1-slat{rev_slat}'].reverse_direction()
 for rev_slat in range(146, 154):
     M1.slats[f'layer1-slat{rev_slat}'].reverse_direction()
-M1.assign_crisscross_handles(handle_array,crisscross_handle_x_plates,crisscross_antihandle_y_plates)
+M1.assign_assembly_handles(handle_array, crisscross_handle_x_plates, crisscross_antihandle_y_plates)
 M1.assign_seed_handles(center_seed_array, p8064_seed_plate)
-M1.patch_control_handles(core_plate)
+M1.patch_flat_staples(core_plate)
 M1.export_design('full_design_rev2.xlsx',design_folder)
 M1.create_standard_graphical_report(design_folder)
 
