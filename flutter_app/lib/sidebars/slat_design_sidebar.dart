@@ -321,6 +321,16 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
+                TextSpan(text: "'T'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Transpose slat draw direction"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
                 TextSpan(text: "'Up/Down arrow keys'", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Change layer"),
               ],

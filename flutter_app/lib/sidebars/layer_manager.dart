@@ -121,6 +121,7 @@ class LayerManagerWidget extends StatelessWidget {
                                 return [
                                   PopupMenuItem(
                                     child: ColorPicker(
+                                      hexInputBar: true,
                                       pickerColor: entry["color"],
                                       onColorChanged: (color) {
                                           appState.updateLayerColor(key, color);

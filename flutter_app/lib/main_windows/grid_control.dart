@@ -242,6 +242,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     Map<int, Map<int, Offset>> incomingSlats = {};
     int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
     Offset cursorCoordinate, slatMultiJump, slatInnerJump;
+    double transposeDirection = appState.slatAddDirection == 'down' ? 1 : -1;
 
     if (realSpaceFormat){
       cursorCoordinate = cursorPoint;
@@ -259,6 +260,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       slatMultiJump = appState.multiSlatGenerators[(appState.gridMode, direction)]!;
       slatInnerJump = appState.slatDirectionGenerators[(appState.gridMode, direction)]!;
     }
+
+    slatMultiJump = slatMultiJump * transposeDirection;
+    slatInnerJump = slatInnerJump * transposeDirection;
 
     for (int j = 0; j < appState.slatAddCount; j++) {
       incomingSlats[j] = {};
@@ -281,6 +285,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     // cargo added to a persistent list here
     Map<int, Offset> incomingCargo = {};
     int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
+    double transposeDirection = appState.slatAddDirection == 'down' ? 1 : -1;
     Offset cursorCoordinate, multiJump;
     if (realSpaceFormat){
       cursorCoordinate = cursorPoint;
@@ -296,6 +301,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       multiJump = appState.slatDirectionGenerators[(appState.gridMode, direction)]!;
     }
 
+    multiJump = multiJump * transposeDirection;
+
     for (int j = 0; j < appState.cargoAddCount; j++) {
       incomingCargo[j] = cursorCoordinate + (multiJump * j.toDouble());
     }
@@ -307,6 +314,8 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     // seed handles added to a persistent list here
     Map<int, Offset> incomingHandles = {};
     int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
+    double transposeDirection = appState.slatAddDirection == 'down' ? 1 : -1;
+
     Offset cursorCoordinate, heightMultiJump, widthMultiJump;
     if (realSpaceFormat){
       cursorCoordinate = cursorPoint;
@@ -325,6 +334,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       widthMultiJump = appState.multiSlatGenerators[(appState.gridMode, direction)]!;
     }
 
+    heightMultiJump = heightMultiJump * transposeDirection;
+    widthMultiJump = widthMultiJump * transposeDirection;
+    
     for (int i = 0; i < appState.seedOccupancyDimensions['width']!; i++) {
       for (int j = 0; j < appState.seedOccupancyDimensions['height']!; j++) {
         incomingHandles[1 + (i*appState.seedOccupancyDimensions['height']!+j)] = cursorCoordinate + (widthMultiJump * i.toDouble()) + (heightMultiJump * j.toDouble());
@@ -412,6 +424,10 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               // flip shortcut for 60deg layers
               SingleActivator(LogicalKeyboardKey.keyF): () {
                 appState.flipMultiSlatGenerator();
+              },
+              // flip shortcut for 60deg layers
+              SingleActivator(LogicalKeyboardKey.keyT): () {
+                appState.flipSlatAddDirection();
               },
               // Navigation shortcuts
               SingleActivator(LogicalKeyboardKey.arrowUp): () {

@@ -12,7 +12,7 @@ jobs:
   build_desktop:
     strategy:
       matrix:
-        os: [macos-latest] # [ubuntu-latest, macos-latest, windows-latest, macos-13]
+        os: [ubuntu-latest, macos-latest, windows-latest] # [ubuntu-latest, macos-latest, windows-latest, macos-13]
     runs-on: ${{matrix.os}}
     env:
       ACTIONS_CACHE_DEBUG: true
@@ -209,9 +209,15 @@ jobs:
           flutter build linux --release
         working-directory: flutter_app
 
+      - name: Remove quarantine flag from macOS app
+        if: runner.os == 'macOS'
+        run: |
+          xattr -rd com.apple.quarantine "./flutter_app/build/macos/Build/Products/Release/#-CAD.app"
+        working-directory: .
+
       - name: Compress macOS app
         if: runner.os == 'macOS'
-        run: ditto -c -k --sequesterRsrc --keepParent ./flutter_app/"build/macos/Build/Products/Release/#-CAD.app" "Hash-CAD-macOS.zip"
+        run: ditto -c -k --sequesterRsrc --keepParent "./flutter_app/build/macos/Build/Products/Release/#-CAD.app" "Hash-CAD-macOS.zip"
         working-directory: .
 
       - name: Compress Linux build
@@ -249,11 +255,11 @@ jobs:
           name: hash-cad-windows-latest
           path: artifacts/
 
-#      - name: Download Mac Artifact
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: hash-cad-macos-latest
-#          path: artifacts/
+      - name: Download Mac Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hash-cad-macos-latest
+          path: artifacts/
 
       - name: Download Linux Artifact
         uses: actions/download-artifact@v4

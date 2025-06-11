@@ -123,6 +123,7 @@ class DesignState extends ChangeNotifier {
   String nextSeedID = 'A';
   int nextColorIndex = 2;
   int slatAddCount = 1;
+  String slatAddDirection = 'down';
   int currentHamming = 0;
   bool hammingValueValid = true;
   int cargoAddCount = 1;
@@ -180,6 +181,7 @@ class DesignState extends ChangeNotifier {
     cargoAdditionType = null;
     occupiedGridPoints = {};
     seedRoster = {};
+    slatAddDirection = 'down';
     cargoPalette = {
       'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0)),
     };
@@ -513,6 +515,16 @@ class DesignState extends ChangeNotifier {
     multiSlatGenerators = Map.from(multiSlatGeneratorsAlternate);
     multiSlatGeneratorsAlternate = settingsTransfer;
     standardTilt = !standardTilt;
+    notifyListeners();
+  }
+
+  /// Slat placement can be flipped to adjust the positions of handles
+  void flipSlatAddDirection(){
+    if (slatAddDirection == 'down'){
+      slatAddDirection = 'up';
+    } else {
+      slatAddDirection = 'down';
+    }
     notifyListeners();
   }
 
