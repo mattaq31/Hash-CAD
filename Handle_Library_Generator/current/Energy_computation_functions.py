@@ -65,127 +65,107 @@ def create_sequence_pairs_pool(length=7, fivep_ext="TT", threep_ext="", avoid_gg
 
 
 
+class NUPACKEnergyComputer:
+    def __init__(self, use_library=True, library_path=None):
+        self.use_library = use_library
+        self.library_path = library_path or "pre_computed_energies/interactions_matrix.pkl"
+        self.library_cache = {}
 
+        if self.use_library:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(self.library_path), exist_ok=True)
 
+            # Try loading if file exists
+            if os.path.exists(self.library_path):
+                with open(self.library_path, "rb") as f:
+                    self.library_cache = pickle.load(f)
+        
 
-# Helper function that returns the file path to the precomputed energy library.
-# This path points to a pickle file containing a dictionary of previously calculated Gibbs free energies.
-# Change this path if you want to generate a new energy library from scratch.
-def get_library_path():
-    return "pre_computed_energies/interactions_matrix.pkl"
+    def _save_library(self):
+        with open(self.library_path, "wb") as f:
+            pickle.dump(self.library_cache, f)
 
-# Computes the Gibbs free energy of hybridization between two DNA sequences using NUPACK.
-#
-# Parameters:
-# - seq1, seq2 (str): DNA sequences to be analyzed.
-# - samples (int): Number of samples used in NUPACK's sampling routine. For short sequences (<10 bp),
-#   varying this number does not change results. I tested this!
-# - type (str): Either 'total' or 'minimum'.
-#       - 'total': Computes the total/ summed up Gibbs free energy from all possible secondary structures.
-#       - 'minimum': Returns the energy of the most stable (minimum free energy) structure only.
-#       - Changing this parameter (from 'total' to 'minimum' or vice versa) will require you to delete the precomputed energy library file.
-#         The library does not store metadata about the computation type, so mixing types will lead to incorrect results.
-#
-# - Use_Library (bool): If True, attempts to use a precomputed energy value from a local library (cache).
-#
-# Returns:
-# - float: Gibbs free energy in kcal/mol.
-#          If the strands do not interact or an error occurs, returns -1.0 (interpreted as "no interaction").
-#          A Gibbs free energy is of -1 is already very weak in comparison to commonly computed values
-# Notes:
-# - The precomputed energy library is cached on first access to avoid repeated disk I/O.
-# - Energies are stored using a canonical sorted key to ensure (seq1, seq2) and (seq2, seq1) map to the same value.
-def nupack_compute_energy_precompute_library(seq1, seq2, samples = 1, type = 'total', Use_Library= False):
+    # Computes the Gibbs free energy of hybridization between two DNA sequences using NUPACK.
+    #
+    # Parameters:
+    # - seq1, seq2 (str): DNA sequences to be analyzed.
+    # - samples (int): Number of samples used in NUPACK's sampling routine. Only affects 'minimum' mode here.
+    # - type (str): Either 'total' or 'minimum'.
+    #       - 'total': Computes the total partition function energy (more stable, better average measure).
+    #       - 'minimum': Returns the minimum free energy (MFE) structure only.
+    #
+    # - Use_Library (bool): If True, attempts to use a precomputed energy value from a local library (cache).
+    #
+    # Returns:
+    # - float: Gibbs free energy in kcal/mol.
+    #          If the strands do not interact or an error occurs, returns -1.0 (interpreted as "no interaction").
+    #          A Gibbs free energy of -1 is already very weak in comparison to commonly computed values.
+    #
+    # Notes:
+    # - Uses complex_analysis for speed. Much faster than tube_analysis.
+    # - The precomputed energy library is cached on first access to avoid repeated disk I/O.
+    # - Energies are stored using a canonical sorted key to ensure (seq1, seq2) and (seq2, seq1) map to the same value.
+    def compute_pair_energy(self, seq1, seq2, Etype='total'):
 
+        A = Strand(seq1, name='H1')  # name is required for strands
+        B = Strand(seq2, name='H2')
+        
 
-    A = Strand(seq1, name='H1')  # name is required for strands
-    B = Strand(seq2, name='H2')
-    library1= {}
-    key= sorted_key(seq1, seq2)
-    if Use_Library:
-        #check if the precopute library was already loaded. if not open it
-        if not hasattr(nupack_compute_energy_precompute_library, "library_cache"):
-            #load library form here
-            file_name = get_library_path()
-            #if it exists load it, else create a new one
-            if os.path.exists(file_name):
-                with open(file_name, "rb") as file:
-                    nupack_compute_energy_precompute_library.library_cache = pickle.load(file)
-            else:
-                nupack_compute_energy_precompute_library.library_cache = {}
-        # put precompute library in a convenient variable
-        library1 = nupack_compute_energy_precompute_library.library_cache
-
-    #if the precompute library should be used and the energy has been computed, return it immediately
-    if  Use_Library and (key in library1):
-        return library1[key]
-    else:
-        #we catch here the exception that the strands don't bind at all. In this case we set the binding energy to -1 which is almost +infinity
+    
+        # Return value from cache if available
+        key = sorted_key(seq1, seq2)
+        if  key in self.library_cache:
+            return self.library_cache[key]
+    
+    
         try:
-            # if we ask for the sequence binding to itself extract a different value from nupack: (H1+H1)
-            if seq1==seq2:
-                HHcomplex = '(H1+H1)'
-                B= Strand( 'TTT', name='H2') # TTT is a dummy sequence here otherwise it wont run
-
+            # Define the complex (symmetric if seq1 == seq2)
+            if seq1 == seq2:
+                complex_obj = Complex([A, A], name='(H1+H1)')
             else:
-                 HHcomplex = '(H1+H2)'
-
-            # parameters for the computation
-            t1 = Tube(strands={A: 100e-6, B: 100e-6}, complexes=SetSpec(max_size=2), name='t1')
+                complex_obj = Complex([A, B], name='(H1+H2)')
+    
+            # Define model
             model1 = Model(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
-
-            # Do the actual gibbs free energy computation
-            tube_results = tube_analysis(tubes=[t1], model=model1, compute=['pairs', 'mfe', 'sample'], options={'num_sample': samples})
-
-            # unpack what was asked for i.e. minimum or total gibbs free energy
-            if type == 'minimum':
-                energy = tube_results[HHcomplex].mfe[0].energy
-            elif type == 'total':
-                energy = tube_results[HHcomplex].free_energy
-                # Set weak/non-binding interaction to -1.0.
-                # Note: We reserve 0.0 to indicate "not yet computed" in other parts of the code,
-                # so -1.0 serves as a placeholder for effectively no binding (very weak interaction).
-                if energy >0:
-                    energy = -1.0
+    
+            # Run complex analysis only for what's needed
+            if Etype == 'minimum':
+                results = complex_analysis([complex_obj], model=model1, compute=['mfe'])
+                mfe_list = results[complex_obj].mfe
+                if len(mfe_list) == 0:
+                    return -1.0
+                energya = mfe_list[0].energy
+    
+            elif Etype == 'total':
+                results = complex_analysis([complex_obj], model=model1, compute=['pfunc'])
+                energya = results[complex_obj].free_energy
+                if energya >= 0:
+                    energya = -1.0
+    
             else:
                 raise ValueError('type must be either "minimum" or "total"')
+    
+            return energya
 
-            return energy
         except Exception as e:
-            # This block will execute if any error caught that is a subclass of Exception. It might just be that the sequences do not interact
             print(f"The following error occurred: {e}")
             print(seq1, seq2)
             return -1.0
 
-# This is an older version of the energy computation function.
-# It does not use a precomputed library, so it computes everything from scratch.
-def nupack_compute_energy(seq1, seq2, samples = 10, type = 'total'):
 
-    # use total for the total gibbs free energy
-    # use minimum for the minimum free energy of the secondary strucutre
-    # whe catch here the exception that the strands dont bind at all. In this case we set the binding energy to -1 which is almost +infinity
-    A = Strand(seq1, name='H1')  # name is required for strands
-    B = Strand(seq2, name='H2')
-    try:
-        t1 = Tube(strands={A: 1e-8, B: 1e-8}, complexes=SetSpec(max_size=2), name='t1')
-        # analyze tubes
-        model1 = Model(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
-        tube_results = tube_analysis(tubes=[t1], model=model1, compute=['pairs', 'mfe', 'sample'], options={'num_sample': samples})
-        #print(tube_results)
-        if type == 'minimum':
-            energy = tube_results['(H1+H2)'].mfe[0].energy
-        elif type == 'total':
-            energy = tube_results['(H1+H2)'].free_energy
-            if energy >0:
-                energy = -1
-        else:
-            raise ValueError('type must be either "minimum" or "total"')
-        #print(energy)
-        return energy
-    except Exception as e:
-        # This block will execute if any error caught that is a subclass of Exception
-        print(f"The following error occurred: {e}")
-        return -1.0
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Computes the Gibbs free energy of hybridization between two DNA sequences using NUPACK.
 #
@@ -207,7 +187,7 @@ def nupack_compute_energy(seq1, seq2, samples = 10, type = 'total'):
 # - Uses complex_analysis for speed. Much faster than tube_analysis.
 # - The precomputed energy library is cached on first access to avoid repeated disk I/O.
 # - Energies are stored using a canonical sorted key to ensure (seq1, seq2) and (seq2, seq1) map to the same value.
-def nupack_compute_energy_precompute_library_fast(seq1, seq2, samples=1, type='total', Use_Library=False):
+def nupack_compute_energy_precompute_library_fast(seq1, seq2, samples=1, type='total', Use_Library=True):
 
     A = Strand(seq1, name='H1')  # name is required for strands
     B = Strand(seq2, name='H2')
@@ -216,14 +196,12 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, samples=1, type='t
 
     # Try loading from library if requested
     if Use_Library:
-        if not hasattr(nupack_compute_energy_precompute_library_fast, "library_cache"):
-            file_name = get_library_path()
-            if os.path.exists(file_name):
-                with open(file_name, "rb") as file:
-                    nupack_compute_energy_precompute_library_fast.library_cache = pickle.load(file)
-            else:
-                nupack_compute_energy_precompute_library_fast.library_cache = {}
-        library1 = nupack_compute_energy_precompute_library_fast.library_cache
+        # Access from in-memory cache only
+        library1 = getattr(nupack_compute_energy_precompute_library_fast, "library_cache", {})
+    else:
+        library1 = {}
+
+
 
     # Return value from cache if available
     if Use_Library and key in library1:
@@ -265,9 +243,12 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, samples=1, type='t
 
 
 # helper function for parallel computing on-target energies
-def compute_pair_energy_on(i, seq, rc_seq, Use_Library):
-    return i, nupack_compute_energy_precompute_library_fast(seq, rc_seq, samples=1, Use_Library=Use_Library)
+def compute_pair_energy_on(i, seq, rc_seq, computer):
+    return i, computer.compute_pair_energy(seq, rc_seq)
 
+# helper function for parallel computing off target energies
+def compute_pair_energy_off(i, j, seq1, seq2, computer):
+  return i,j, computer.compute_pair_energy(seq1, seq2)
 
 # Computes the on-target energies of a list of sequence pairs.
 # Optionally updates and uses a precomputed energy library to speed up future runs.
@@ -279,7 +260,11 @@ def compute_pair_energy_on(i, seq, rc_seq, Use_Library):
 # - Parallel processing is used for efficiency.
 # Returns:
 # - energies: A NumPy array of Gibbs free energies (in kcal/mol) for each sequence pair.
-def compute_ontarget_energies(sequence_list, Use_Library=False):
+def compute_ontarget_energies(sequence_list, use_library=True):
+    
+
+    computer = NUPACKEnergyComputer(use_library=use_library)
+    
     # Preallocate array for better performance
     energies = np.zeros(len(sequence_list))
 
@@ -293,16 +278,16 @@ def compute_ontarget_energies(sequence_list, Use_Library=False):
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for i, (seq, rc_seq) in enumerate(sequence_list):
-            futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq, Use_Library))
+            futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq, computer))
 
         for future in tqdm(as_completed(futures), total=len(futures)):
             i, energy = future.result()
             energies[i] = energy
 
     # update the precompute library if required
-    if Use_Library:
+    if use_library:
         # save to existing library or create a new one
-        file_name = get_library_path()
+        file_name = computer.library_path
 
         if os.path.exists(file_name):
             # open library if exists
@@ -322,10 +307,7 @@ def compute_ontarget_energies(sequence_list, Use_Library=False):
 
 
 
-# helper function for parallel computing off target energies
-def compute_pair_energy_off(i, j, seq1, seq2, Use_Library):
-    # return i, j, nupack_compute_energy(seq1, seq2)
-    return i, j, nupack_compute_energy_precompute_library_fast(seq1, seq2, Use_Library=Use_Library)
+
 # Computes off-target hybridization energies for all pairwise combinations of given list of sequence pairs.
 #
 # Inputs:
@@ -343,7 +325,10 @@ def compute_pair_energy_off(i, j, seq1, seq2, Use_Library):
 #     'handle_handle_energies': 2D numpy array (N x N). upper triangle excluding diagonal filled with 0 because of redundancy
 #     'antihandle_handle_energies': 2D numpy array (N x N) upper triangle excluding diagonal filled with 0 because of redundancy
 #     'antihandle_antihandle_energies': 2D numpy array (N x N) diagonel filled with 0 because these are the ontarget energies
-def compute_offtarget_energies(sequence_pairs, Use_Library= True):
+def compute_offtarget_energies(sequence_pairs, use_library= True):
+    
+    computer = NUPACKEnergyComputer(use_library=use_library)
+        
     # call all seq handles and all rc_seq antihandles. this is an arbitrary choice
     # extract them for the pairs
     handles = [seq for seq, rc_seq in sequence_pairs]
@@ -367,7 +352,7 @@ def compute_offtarget_energies(sequence_pairs, Use_Library= True):
             for i, seq1 in enumerate(seqs1):
                 for j, seq2 in enumerate(seqs2):
                     if condition(i, j):
-                        futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2, Use_Library))
+                        futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2, computer))
 
             for future in tqdm(as_completed(futures), total=len(futures)):
                 i, j, energy = future.result()
@@ -387,8 +372,8 @@ def compute_offtarget_energies(sequence_pairs, Use_Library= True):
 
 
     #update the precompute library to  make things faster in the future
-    if Use_Library:
-        file_name = get_library_path()
+    if use_library:
+        file_name = computer.library_path
         if os.path.exists(file_name):
             with open(file_name, "rb") as file:
                 library1 = pickle.load(file)
@@ -418,7 +403,7 @@ def compute_offtarget_energies(sequence_pairs, Use_Library= True):
         with open(file_name, "wb") as file:
             pickle.dump(library1, file)
 
-    # Report energies if required
+    # Report energies i
 
     return{
             'handle_handle_energies': crosscorrelated_handle_handle_energies,
@@ -634,12 +619,14 @@ if __name__ == "__main__":
 
     ontarget7mer=create_sequence_pairs_pool(length=6,fivep_ext="", threep_ext="",avoid_gggg=False)
 
-    subset = select_subset(ontarget7mer, max_size=200)
-    on_e_subset = compute_ontarget_energies(subset, Use_Library=True)
-
+    subset = select_subset(ontarget7mer, max_size=50)
+    on_e_subset = compute_ontarget_energies(subset, use_library=False)
+    on_e_subset = compute_ontarget_energies(subset, use_library=True)
 
     # Compute the off-target energies for the subset
-    off_e_subset = compute_offtarget_energies(subset, Use_Library=True)
+    off_e_subset = compute_offtarget_energies(subset, use_library=False)
+    # Compute the off-target energies for the subset
+    off_e_subset = compute_offtarget_energies(subset, use_library=True)
     stats = plot_on_off_target_histograms(on_e_subset, off_e_subset, output_path='energy_hist.pdf')
 
 
@@ -656,7 +643,7 @@ if __name__ == "__main__":
 
     subset_2, indices = select_subset_in_energy_range(
         ontarget7mer, energy_min=min_ontarget, energy_max=max_ontarget,
-        max_size=100, Use_Library=True, avoid_indices=set()
+        max_size=20, Use_Library=True, avoid_indices=set()
     )
 
     on_e_subset_2 = compute_ontarget_energies(subset_2, Use_Library=True)

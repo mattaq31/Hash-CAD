@@ -201,7 +201,7 @@ def iterative_vertex_cover2(sequence_pairs, offtarget_limit, max_ontarget, min_o
 if __name__ == "__main__":
     # Run test to see if the functions above work
     # Set a fixed random seed for reproducibility
-    RANDOM_SEED = 40
+    RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
 
     # Create candidate sequences
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
 
     # Run the heuristic vertex cover algorithm
-    orthogonal_seq_pairs = iterative_vertex_cover2(ontarget7mer, offtarget_limit, max_ontarget, min_ontarget, subsetsize=150, generations= 200)
+    orthogonal_seq_pairs = iterative_vertex_cover2(ontarget7mer, offtarget_limit, max_ontarget, min_ontarget, subsetsize=150, generations= 350)
     print(orthogonal_seq_pairs)
 
 
