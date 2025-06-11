@@ -20,14 +20,14 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
 
   FocusNode slatAddFocusNode = FocusNode();
 
-  TextEditingController slatAddTextController = TextEditingController(text: '1');
-  int slatAddCount = 1;
+  TextEditingController slatAddTextController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       var appState = context.read<DesignState>(); // Use read instead of watch
+      slatAddTextController.text = appState.slatAddCount.toString();
       slatAddFocusNode.addListener(() {
         if (!slatAddFocusNode.hasFocus) {
           _updateSlatAddCount(appState);
@@ -39,14 +39,14 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
   void _updateSlatAddCount(DesignState appState) {
     int? newValue = int.tryParse(slatAddTextController.text);
     if (newValue != null && newValue >= 1 && newValue <= 32) {
-      slatAddCount = newValue;
+      appState.updateSlatAddCount(newValue);
     } else if (newValue != null && newValue < 1) {
-      slatAddCount = 1;
+      appState.updateSlatAddCount(1);
     } else {
-      slatAddCount = 32;
+      appState.updateSlatAddCount(32);
+
     }
-    slatAddTextController.text = slatAddCount.toString();
-    appState.updateSlatAddCount(slatAddCount);
+    slatAddTextController.text = appState.slatAddCount.toString();
   }
 
   @override
@@ -224,20 +224,19 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           IconButton(
             icon: Icon(Icons.arrow_upward),
             onPressed: () {
-              if (slatAddCount < 32) {
-                slatAddCount++;
-                slatAddTextController.text = slatAddCount.toString();
-                appState.updateSlatAddCount(slatAddCount);
+              if (appState.slatAddCount < 32) {
+                appState.updateSlatAddCount(appState.slatAddCount+1);
+                slatAddTextController.text = appState.slatAddCount.toString();
+
               }
             },
           ),
           IconButton(
             icon: Icon(Icons.arrow_downward),
             onPressed: () {
-              if (slatAddCount > 1) {
-                slatAddCount--;
-                slatAddTextController.text = slatAddCount.toString();
-                appState.updateSlatAddCount(slatAddCount);
+              if (appState.slatAddCount > 1) {
+                appState.updateSlatAddCount(appState.slatAddCount-1);
+                slatAddTextController.text = appState.slatAddCount.toString();
               }
             },
           ),
@@ -250,36 +249,32 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           ActionChip(
             label: Text('1'),
             onPressed: () {
-              slatAddCount = 1;
-              slatAddTextController.text = slatAddCount.toString();
-              appState.updateSlatAddCount(slatAddCount);
+              appState.updateSlatAddCount(1);
+              slatAddTextController.text = appState.slatAddCount.toString();
             },
           ),
           SizedBox(width: 10),
           ActionChip(
             label: Text('8'),
             onPressed: () {
-              slatAddCount = 8;
-              slatAddTextController.text = slatAddCount.toString();
-              appState.updateSlatAddCount(slatAddCount);
+              appState.updateSlatAddCount(8);
+              slatAddTextController.text = appState.slatAddCount.toString();
             },
           ),
           SizedBox(width: 10),
           ActionChip(
             label: Text('16'),
             onPressed: () {
-              slatAddCount = 16;
-              slatAddTextController.text = slatAddCount.toString();
-              appState.updateSlatAddCount(slatAddCount);
+              appState.updateSlatAddCount(16);
+              slatAddTextController.text = appState.slatAddCount.toString();
             },
           ),
           SizedBox(width: 10),
           ActionChip(
             label: Text('32'),
             onPressed: () {
-              slatAddCount = 32;
-              slatAddTextController.text = slatAddCount.toString();
-              appState.updateSlatAddCount(slatAddCount);
+              appState.updateSlatAddCount(32);
+              slatAddTextController.text = appState.slatAddCount.toString();
             },
           ),
         ],

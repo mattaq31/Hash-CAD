@@ -16,9 +16,38 @@ class AssemblyHandleDesignTools extends StatefulWidget {
 }
 
 class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with WidgetsBindingObserver {
-  bool preventSelfComplementarySlats = true;
-  TextEditingController handleAddTextController = TextEditingController(text: '32');
-  int uniqueHandleCount = 32;
+  TextEditingController handleAddTextController = TextEditingController();
+  FocusNode handleChangeFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      var serverState = context.read<ServerState>(); // Use read instead of watch
+      handleAddTextController.text = serverState.evoParams['unique_handle_sequences']!;
+      handleChangeFocusNode.addListener(() {
+        if (!handleChangeFocusNode.hasFocus) {
+          _updateHandleCount(serverState);
+        }
+      });
+    });
+  }
+
+  void _updateHandleCount(ServerState serverState) {
+    int? newValue = int.tryParse(handleAddTextController.text);
+    if (newValue != null &&
+        newValue >= 1 &&
+        newValue <= 997) {
+      serverState.updateEvoParam('unique_handle_sequences', newValue.toString());
+    } else if (newValue != null && newValue < 1) {
+      serverState.updateEvoParam('unique_handle_sequences', '1');
+      handleAddTextController.text = '1';
+    } else {
+      serverState.updateEvoParam('unique_handle_sequences', '997');
+      handleAddTextController.text = '997';
+    }
+    handleAddTextController.text = serverState.evoParams['unique_handle_sequences']!;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +74,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                 width: 60,
                 child: TextField(
                   controller: handleAddTextController,
+                  focusNode: handleChangeFocusNode,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(),
@@ -54,20 +84,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                     FilteringTextInputFormatter.digitsOnly
                   ],
                   onSubmitted: (value) {
-                    int? newValue = int.tryParse(value);
-                    if (newValue != null &&
-                        newValue >= 1 &&
-                        newValue <= 997) {
-                      uniqueHandleCount = newValue;
-                      handleAddTextController.text = uniqueHandleCount.toString();
-                    } else if (newValue != null && newValue < 1) {
-                      uniqueHandleCount = 1;
-                      handleAddTextController.text = '1';
-                    } else {
-                      uniqueHandleCount = 997;
-                      handleAddTextController.text = '997';
-                    }
-                    serverState.updateEvoParam('unique_handle_sequences', uniqueHandleCount.toString());
+                    _updateHandleCount(serverState);
                   },
                 ),
               ),
@@ -78,10 +95,10 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       CheckboxListTile(
         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
         title: const Text('Prevent self-complementary slats', textAlign: TextAlign.center),
-        value: preventSelfComplementarySlats,
+        value: serverState.evoParams['split_sequence_handles'] == 'true',
         onChanged: (bool? value) {
           setState(() {
-            preventSelfComplementarySlats = value ?? false;
+            bool preventSelfComplementarySlats = value ?? false;
             serverState.updateEvoParam("split_sequence_handles", preventSelfComplementarySlats.toString());
           });
         },
@@ -91,7 +108,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         children: [
           ElevatedButton.icon(
             onPressed: appState.currentlyComputingHamming ? null : () {
-              appState.generateRandomAssemblyHandles(uniqueHandleCount, preventSelfComplementarySlats);
+              appState.generateRandomAssemblyHandles(int.parse(serverState.evoParams['unique_handle_sequences']!), serverState.evoParams['split_sequence_handles'] == 'true');
               appState.updateDesignHammingValue();
               actionState.setAssemblyHandleDisplay(true);
             },

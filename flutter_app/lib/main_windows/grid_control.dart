@@ -333,8 +333,10 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       heightMultiJump = appState.slatDirectionGenerators[(appState.gridMode, direction)]!;
       widthMultiJump = appState.multiSlatGenerators[(appState.gridMode, direction)]!;
     }
+    if (appState.gridMode == '90') { // TODO: investigate whether having a full flip is of interest in 60 degree mode too...
+      heightMultiJump = heightMultiJump * transposeDirection;
+    }
 
-    heightMultiJump = heightMultiJump * transposeDirection;
     widthMultiJump = widthMultiJump * transposeDirection;
     
     for (int i = 0; i < appState.seedOccupancyDimensions['width']!; i++) {

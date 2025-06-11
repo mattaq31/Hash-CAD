@@ -1191,7 +1191,7 @@ class ServerState extends ChangeNotifier {
     'process_count': 'DEFAULT',
     'generational_survivors': '3',
     'random_seed': '8',
-    'unique_handle_sequences': '32',
+    'unique_handle_sequences': '64',
     'early_hamming_stop': '30',
     'split_sequence_handles': 'true'
   };
