@@ -9,6 +9,71 @@ import '../app_management/shared_app_state.dart';
 
 import '../crisscross_core/seed.dart';
 
+drawSlatDrawingAids(Canvas canvas, Offset p1, Offset p2, Offset slatExtend, double gridSize, Paint rodPaint, Color color, double slatAlpha){
+
+  final direction = (p2 - p1).direction;
+
+    // Arrowhead at the end (p2)
+    final arrowSize = gridSize * 0.8;
+    final arrowAngle = pi / 4.5;
+    final arrowP1 = p2 + slatExtend;
+    final arrowLeft = arrowP1 - Offset.fromDirection(direction - arrowAngle, arrowSize);
+    final arrowRight = arrowP1 - Offset.fromDirection(direction + arrowAngle, arrowSize);
+
+    final arrowPath = Path()
+      ..moveTo(arrowP1.dx, arrowP1.dy)
+      ..lineTo(arrowLeft.dx, arrowLeft.dy)
+      ..lineTo(arrowRight.dx, arrowRight.dy)
+      ..close();  // closes the triangle
+
+    final arrowPaint = Paint()
+      ..color = rodPaint.color.withValues(alpha: color.a * slatAlpha)
+      ..style = PaintingStyle.fill;
+
+    final tailPaint = Paint()
+      ..color = rodPaint.color.withValues(alpha: color.a * slatAlpha)
+      ..strokeWidth = gridSize / 4
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(arrowPath, arrowPaint);
+
+    // Tail at the start (p1)
+    final tailSize = gridSize * 0.4;
+    final tailP1 = p1 - slatExtend * 0.7;
+    final tailLeft = tailP1 + Offset.fromDirection(direction - pi / 2, tailSize);
+    final tailRight = tailP1 + Offset.fromDirection(direction + pi / 2, tailSize);
+    canvas.drawLine(tailLeft, tailRight, tailPaint);
+
+    // Dotted lines at 1/4, 1/2, 3/4
+    final dottedPaint = Paint()
+      ..color = Colors.black.withValues(alpha: color.a * slatAlpha)
+      ..strokeWidth = rodPaint.strokeWidth/4
+      ..style = PaintingStyle.stroke;
+
+    final dottedCenterPaint = Paint()
+      ..color = Colors.black.withValues(alpha: color.a * slatAlpha)
+      ..strokeWidth = rodPaint.strokeWidth/2
+      ..style = PaintingStyle.stroke;
+
+    for (final fraction in [0.25, 0.5, 0.75]) {
+      final centerPoint = p1 + (p2-p1) * fraction;
+      const dashSize = 1.0;
+      const gapSize = 1.0;
+      final dashCount = 5;
+      final totalDashLength = dashSize * dashCount + gapSize * (dashCount - 1);
+      final perpDirection = Offset.fromDirection(direction + pi / 2, 1.0);
+      final start = centerPoint - perpDirection * (totalDashLength / 2);
+
+      for (int i = 0; i < dashCount; i++) {
+        final dStart = start + perpDirection * i.toDouble() * (dashSize + gapSize);
+        final dEnd = dStart + perpDirection * dashSize;
+        canvas.drawLine(dStart, dEnd, fraction == 0.5 ? dottedCenterPaint : dottedPaint);
+      }
+    }
+}
+
+
+
 /// Custom painter for the slats themselves
 class SlatPainter extends CustomPainter {
   final double scale;
@@ -166,65 +231,7 @@ class SlatPainter extends CustomPainter {
 
 
       if (actionState.drawingAids){
-        final direction = (p2 - p1).direction;
-
-        // Arrowhead at the end (p2)
-        final arrowSize = appState.gridSize * 0.8;
-        final arrowAngle = pi / 4.5;
-        final arrowP1 = p2 + slatExtend;
-        final arrowLeft = arrowP1 - Offset.fromDirection(direction - arrowAngle, arrowSize);
-        final arrowRight = arrowP1 - Offset.fromDirection(direction + arrowAngle, arrowSize);
-
-        final arrowPath = Path()
-          ..moveTo(arrowP1.dx, arrowP1.dy)
-          ..lineTo(arrowLeft.dx, arrowLeft.dy)
-          ..lineTo(arrowRight.dx, arrowRight.dy)
-          ..close();  // closes the triangle
-
-        final arrowPaint = Paint()
-          ..color = rodPaint.color.withValues(alpha: layerMap[slat.layer]?['color'].a * (slat.layer != selectedLayer ? 0.2 : 1.0))
-          ..style = PaintingStyle.fill;
-
-        final tailPaint = Paint()
-          ..color = rodPaint.color.withValues(alpha: layerMap[slat.layer]?['color'].a * (slat.layer != selectedLayer ? 0.2 : 1.0))
-          ..strokeWidth = appState.gridSize / 4
-          ..style = PaintingStyle.fill;
-
-        canvas.drawPath(arrowPath, arrowPaint);
-
-        // Tail at the start (p1)
-        final tailSize = appState.gridSize * 0.4;
-        final tailP1 = p1 - slatExtend * 0.7;
-        final tailLeft = tailP1 + Offset.fromDirection(direction - pi / 2, tailSize);
-        final tailRight = tailP1 + Offset.fromDirection(direction + pi / 2, tailSize);
-        canvas.drawLine(tailLeft, tailRight, tailPaint);
-
-        // Dotted lines at 1/4, 1/2, 3/4
-        final dottedPaint = Paint()
-          ..color = Colors.black.withValues(alpha: layerMap[slat.layer]?['color'].a * (slat.layer != selectedLayer ? 0.2 : 1.0))
-          ..strokeWidth = rodPaint.strokeWidth/4
-          ..style = PaintingStyle.stroke;
-
-        final dottedCenterPaint = Paint()
-          ..color = Colors.black.withValues(alpha: layerMap[slat.layer]?['color'].a * (slat.layer != selectedLayer ? 0.2 : 1.0))
-          ..strokeWidth = rodPaint.strokeWidth/2
-          ..style = PaintingStyle.stroke;
-
-        for (final fraction in [0.25, 0.5, 0.75]) {
-          final centerPoint = p1 + (p2-p1) * fraction;
-          const dashSize = 1.0;
-          const gapSize = 1.0;
-          final dashCount = 5;
-          final totalDashLength = dashSize * dashCount + gapSize * (dashCount - 1);
-          final perpDirection = Offset.fromDirection(direction + pi / 2, 1.0);
-          final start = centerPoint - perpDirection * (totalDashLength / 2);
-
-          for (int i = 0; i < dashCount; i++) {
-            final dStart = start + perpDirection * i.toDouble() * (dashSize + gapSize);
-            final dEnd = dStart + perpDirection * dashSize;
-            canvas.drawLine(dStart, dEnd, fraction == 0.5 ? dottedCenterPaint : dottedPaint);
-          }
-        }
+        drawSlatDrawingAids(canvas, p1, p2, slatExtend, appState.gridSize, rodPaint, layerMap[slat.layer]?['color'], slat.layer != selectedLayer ? 0.2 : 1.0);
       }
 
       // Draw slat position numbers if activated

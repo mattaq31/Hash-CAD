@@ -105,20 +105,27 @@ void exportDesign(Map<String, Slat> slats,
     for (int row = 0; row < slatArray.length; row++) {
       for (int col = 0; col < slatArray[row].length; col++) {
 
-        // first, assign the slat array
-        // column/row are flipped in the internal representation - the flip-back to normal values is done here
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(slatArray[row][col][layer]);
-        if (slatArray[row][col][layer] != 0) {
-          Color layerColor = layerMap.entries.firstWhere((element) => element.value['order'] == layer).value['color'];
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: layerColor.toHexString().excelColor);
-        }
-
-        // next, assign the cargo arrays
         String slatId = '$layerID-I${slatArray[row][col][layer]}';
         Slat? slat;
+        int? position;
+
         if (slatArray[row][col][layer] != 0){
           slat = slats[slatId]!;
         }
+
+        // first, assign the slat array
+        // column/row are flipped in the internal representation - the flip-back to normal values is done here
+        if (slatArray[row][col][layer] != 0) {
+          position = slat!.slatCoordinateToPosition[Offset(row.toDouble(), col.toDouble()) + minPos]!;
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue('${slatArray[row][col][layer]}-$position');
+          Color layerColor = layerMap.entries.firstWhere((element) => element.value['order'] == layer).value['color'];
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: layerColor.toHexString().excelColor);
+        }
+        else{
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(0);
+        }
+
+        // next, assign the cargo arrays
         for (var side in ['lower', 'upper']) {
           if (occupiedCargoPoints['$layerID-${side == 'lower' ? 'bottom' : 'top'}'] == null || occupiedCargoPoints['$layerID-${side == 'lower' ? 'bottom' : 'top'}']!.isEmpty) {
             continue; // skip the sheet entirely if  there is no cargo on this layer (to reduce file complexity)
@@ -133,7 +140,6 @@ void exportDesign(Map<String, Slat> slats,
             continue;
           }
           var slatHandleDict = helixSide == 'h2' ? slat.h2Handles : slat.h5Handles;
-          var position = slat.slatCoordinateToPosition[Offset(row.toDouble(), col.toDouble()) + minPos]!;
           if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'Cargo'){
             cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['descriptor']);
             cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: cargoPalette[slatHandleDict[position]!['descriptor']]!.color.toHexString().excelColor);
@@ -301,7 +307,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   double minX = readExcelDouble(metadataSheet, 'B4');
   double minY = readExcelDouble(metadataSheet, 'C4');
 
-  // obtain grid Mode
+  // obtain grid mode
   String gridMode = readExcelString(metadataSheet, 'B2').trim();
 
   // Read slat layers
@@ -313,7 +319,6 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   if (numLayers == 0) {
     return (slats, layerMap, '', cargoPalette, seedRoster);
   }
-
 
   int layerReadStart = 8;
   // read in layer data
@@ -356,57 +361,40 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       List.generate(excel.tables['slat_layer_1']!.maxColumns, (_) =>
           List.filled(numLayers, 0)));
 
-  // set to keep track of slat IDs (both layer ID and slat ID required to ensure a unique ID)
-  Set<(int, int)> slatIDs = {};
-
   // extracts slat positional data into array
-  for (var table in excel.tables.keys.where((key) =>
-      key.startsWith('slat_layer_'))) {
-    var layerIndex = int.parse(table
-        .split('_')
-        .last) - 1;
+  for (var table in excel.tables.keys.where((key) => key.startsWith('slat_layer_'))) {
+    var layerIndex = int.parse(table.split('_').last) - 1;
+    String layer = layerMap.entries.firstWhere((element) => element.value['order'] == layerIndex).key;
+    Map<int, Map<int, Offset>> slatCoordinates = {};
+
     var sheet = excel.tables[table]!;
     for (var row = 0; row < sheet.maxRows; row++) {
       for (var col = 0; col < sheet.maxColumns; col++) {
-        var cell = sheet
-            .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
-            .value;
-        int value = cell is IntCellValue ? cell.value : 0;
-        slatArray[row][col][layerIndex] = value;
-        // adds ID to set if a slat is found
-        if (value != 0) {
-          slatIDs.add((layerIndex, value));
+        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
+        String value = (cell is TextCellValue) ? cell.value.text ?? '' : '';
+        if (value != '' && value != '0') {
+          int slatID = int.parse(value.split('-')[0]);
+          int slatPosition = int.parse(value.split('-')[1]);
+          slatCoordinates.putIfAbsent(slatID, () => {});
+
+          slatCoordinates[slatID]![slatPosition] = Offset(col + minX, row + minY);
+          slatArray[row][col][layerIndex] = slatID;
+        }
+        else if (cell is IntCellValue && cell.value != 0) { // backwards compatibility for old files
+
+          int slatID = cell.value; // slat value extracted directly from the cell
+          slatCoordinates.putIfAbsent(slatID, () => {});
+
+          int nextPosition = slatCoordinates[slatID]!.length + 1; // no information on position provided, so just assume its the next available position
+          slatCoordinates[slatID]![nextPosition] = Offset(col + minX, row + minY);
+          slatArray[row][col][layerIndex] = slatID;
         }
       }
     }
-  }
-
-  // prepares slat class objects from all slats found in the array
-  // TODO: could this be combined with the above loops to speed up the operation?
-  for (var slatID in slatIDs) {
-    // identifies slat layer
-    String layer = layerMap.entries
-        .firstWhere((element) => element.value['order'] == slatID.$1)
-        .key;
-    Map<int, Offset> slatCoordinates = {};
-    int slatPositionCounter = 1;
-
-    layerMap[layer]!['slat_count'] += 1; // populates slat count from the true number of slats found in the design
-
-    for (int i = 0; i < slatArray.length; i++) {
-      for (int j = 0; j < slatArray[i].length; j++) {
-        if (slatArray[i][j][slatID.$1] == slatID.$2) {
-          // converts the array index into the exact grid position using the grid size and minima extracted from the metadata file
-
-          // column/row are flipped in the internal representation - the flip-back from normal to internal values is done here
-
-          slatCoordinates[slatPositionCounter] = Offset(j + minX, i + minY);
-          slatPositionCounter += 1;
-        }
-      }
+    for (var slatBundle in slatCoordinates.entries) {
+      slats["$layer-I${slatBundle.key}"] = Slat(slatBundle.key, "$layer-I${slatBundle.key}", layer, slatBundle.value);
     }
-    // slats generated using the usual formatting system
-    slats["${layer}-I${slatID.$2}"] = Slat(slatID.$2, "${layer}-I${slatID.$2}", layer, slatCoordinates);
+    layerMap[layer]!['slat_count'] = slatCoordinates.length;
   }
 
   // extracts assembly handles and assigns them to slats
@@ -462,7 +450,6 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       }
     }
   }
-
 
   // extracts cargo handles and assigns them to slats
   // TODO: as before, need to handle errors and problematic cases more gracefully...

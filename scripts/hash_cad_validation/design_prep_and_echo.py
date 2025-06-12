@@ -11,8 +11,7 @@ from crisscross.plate_mapping import get_cargo_plates, get_cutting_edge_plates
 # update these depending on user
 experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs'
 
-# TODO: cannot run this script for the bird, hexagon or shuriken yet due to issues with slat and seed flipping
-target_designs = ['turnstile', 'lily']
+target_designs = ['bird']
 
 base_design_import_files = [os.path.join(experiment_folder, f, f'{f}_design_hashcad_seed.xlsx') for f in target_designs]
 regen_graphics = True
@@ -39,7 +38,7 @@ for file, design_name in zip(base_design_import_files, target_designs):
     megastructure.patch_placeholder_handles(main_plates + cargo_plates)
     megastructure.patch_flat_staples(main_plates[0])
 
-    target_volume = 75 # nl per staple
+    target_volume = 100 # nl per staple
     if generate_echo:
         echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
                                      destination_plate_name=design_name,

@@ -153,5 +153,8 @@ app.*.symbols
 
 # repo-specific
 assets/hamming_server_osx
+assets/hamming_server_win.exe
+assets/hamming_server_lnx
+
 python_server/nuitka_package
 prototyping

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../2d_painters/helper_functions.dart';
 
 class Slat {
   /// Wrapper class to hold all of a slat's handles and related details.
@@ -7,8 +8,6 @@ class Slat {
   final String layer;
   final int maxLength;
   final int numericID;
-
-  bool reversedSlat = false; // flag to indicate if the slat has been reversed
 
   // Maps positions on the slat to coordinates on a 2D grid and vice-versa
   Map<int, Offset> slatPositionToCoordinate = {};
@@ -24,7 +23,7 @@ class Slat {
         slatPositionToCoordinate[key] = coord;
         slatCoordinateToPosition[coord] = key;
       });
-    }
+  }
 
   void updateCoordinates(Map<int, Offset> slatCoordinates){
     slatPositionToCoordinate = slatCoordinates;
@@ -32,18 +31,33 @@ class Slat {
   }
 
   void reverseDirection() {
-    /// Reverses the handle order on the slat.
+    /// Reverses a slat, keeping all handles in the same physical position but changing their logical order.
     Map<int, Offset> newSlatPositionToCoordinate = {};
     Map<Offset, int> newSlatCoordinateToPosition = {};
 
+    // reverse all hande positions in the slat
     for (int i = 0; i < maxLength; i++) {
       newSlatPositionToCoordinate[maxLength - i] = slatPositionToCoordinate[i + 1]!;
       newSlatCoordinateToPosition[slatPositionToCoordinate[i + 1]!] = maxLength - i;
     }
 
+    // updates h2 and h5 handles to match the new positions
+    Map<int, Map<String, dynamic>> newH2Handles = {};
+    Map<int, Map<String, dynamic>> newH5Handles = {};
+    for (var entry in h2Handles.entries) {
+      int newKey = maxLength - entry.key + 1;
+      newH2Handles[newKey] = Map.from(entry.value);
+    }
+
+    for (var entry in h5Handles.entries) {
+      int newKey = maxLength - entry.key + 1;
+      newH5Handles[newKey] = Map.from(entry.value);
+    }
+
     slatPositionToCoordinate = newSlatPositionToCoordinate;
     slatCoordinateToPosition = newSlatCoordinateToPosition;
-    reversedSlat = !reversedSlat;
+    h2Handles = newH2Handles;
+    h5Handles = newH5Handles;
   }
 
   void setPlaceholderHandle(int handleId, int slatSide, String descriptor, String category) {
@@ -135,7 +149,6 @@ class Slat {
 
   Slat copy() {
     final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength);
-    newSlat.reversedSlat = reversedSlat;
 
     newSlat.h2Handles = {
       for (var entry in h2Handles.entries)

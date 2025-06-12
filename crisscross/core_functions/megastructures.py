@@ -9,8 +9,9 @@ import pandas as pd
 import platform
 import ast
 
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
-from crisscross.core_functions.slats import get_slat_key, convert_slat_array_into_slat_objects
+from crisscross.core_functions.slats import get_slat_key, convert_slat_array_into_slat_objects, Slat
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
 from crisscross.helper_functions.slat_salient_quantities import connection_angles
@@ -95,10 +96,12 @@ class Megastructure:
 
         # reads in all design details from file if available
         if import_design_file is not None:
-            slat_array, handle_arrays, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata = self.import_design(import_design_file)
+            slats, handle_arrays, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords = self.import_design(import_design_file)
             self.layer_palette = layer_palette
             self.cargo_palette = cargo_palette
             self.hashcad_canvas_metadata = hashcad_canvas_metadata
+            self.slats = slats
+            self.slat_grid_coords = slat_grid_coords
         else:
             if slat_array is None:
                 raise RuntimeError('A slat array must be provided to initialize the megastructure (either imported or directly).')
@@ -108,6 +111,8 @@ class Megastructure:
             self.cargo_palette = {}
             self.hashcad_canvas_metadata = {'canvas_offset_min': (0.0, 0.0), 'canvas_offset_max':(0.0, 0.0)}
             num_layers = slat_array.shape[2]
+            self.slats = convert_slat_array_into_slat_objects(slat_array)
+            self.slat_grid_coords = (slat_array.shape[0], slat_array.shape[1])
 
             # if no custom interface supplied, assuming alternating H2/H5 handles,
             # with H2 at the bottom, H5 at the top, and alternating connections in between
@@ -116,10 +121,6 @@ class Megastructure:
                 layer_interface_orientations = [2] + [(5, 2)] * (num_layers - 1) + [5]
 
             self.layer_palette = create_default_layer_palette(layer_interface_orientations)
-
-        # TODO: add another function which reads exact slat positions
-        self.slats = convert_slat_array_into_slat_objects(slat_array)
-        self.slat_grid_coords = (slat_array.shape[0], slat_array.shape[1])
 
         if connection_angle not in ['60', '90']:
             raise NotImplementedError('Only 90 and 60 degree connection angles are supported.')
@@ -683,6 +684,7 @@ class Megastructure:
                 writer.sheets[sheet_name].conditional_format( 0, 0, df.shape[0], df.shape[1] - 1, excel_conditional_formatting)
 
         writer = pd.ExcelWriter(os.path.join(folder, filename), engine='xlsxwriter')
+        workbook = writer.book
         excel_conditional_formatting = {'type': '3_color_scale',
                                         'criteria': '<>',
                                         'min_color': "#63BE7B",  # Green
@@ -693,8 +695,30 @@ class Megastructure:
         slat_array = self.generate_slat_occupancy_grid()
         handle_array = self.generate_assembly_handle_grid()
 
-        write_array_to_excel(writer, slat_array, 'slat_layer')
+        # prepares and writes out slat arrays
+        for layer in range(len(self.layer_palette)):
+            slat_df = pd.DataFrame(np.zeros(shape=(slat_array.shape[0], slat_array.shape[1])))
+            for key, slat in self.slats.items():
+                if not slat.non_assembly_slat and slat.layer == layer + 1:  # only writes out slats that are in the current layer
+                    for posn in range(32):
+                        y, x = slat.slat_position_to_coordinate[posn+1]
+                        slat_df.iloc[y, x] = f"{slat.ID.split('slat')[-1]}-{posn+1}"
 
+            slat_df.to_excel(writer, sheet_name=f'slat_layer_{layer+1}', index=False,header=False)
+            # color all non-zero cells with the layer color
+            worksheet = writer.sheets[f'slat_layer_{layer+1}']
+            # Convert hex like '#FFCC00' to xlsxwriter format
+            hex_color = self.layer_palette[layer+1]['color'].lstrip('#')
+            # Define cell format with background color
+            cell_format = workbook.add_format({'bg_color': f'#{hex_color}'})
+            # Apply format to non-empty cells
+            for row in range(slat_df.shape[0]):
+                for col in range(slat_df.shape[1]):
+                    value = slat_df.iat[row, col]
+                    if value not in (0, 0.0, '', None):
+                        worksheet.write(row, col, value, cell_format)
+
+        # writes out handle arrays
         if np.sum(handle_array) > 0:
             write_array_to_excel(writer, handle_array, 'handle_interface')
 
@@ -804,16 +828,40 @@ class Megastructure:
 
         # preparing and reading in slat/handle arrays
         slat_array = np.zeros((design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], layer_count))
+        slat_grid_coords = (slat_array.shape[0], slat_array.shape[1])
+
         handle_array_available = any('handle' in string for string in list(design_df.keys()))
+
+        old_file_format = True
 
         if handle_array_available:
             handle_array = np.zeros((design_df['slat_layer_1'].shape[0], design_df['slat_layer_1'].shape[1], layer_count - 1))
         else:
             handle_array = None
+
+        slats = {}
         for i in range(layer_count):
-            slat_array[..., i] = design_df['slat_layer_%s' % (i + 1)].values
+            # in the new system, slat elements are stored in the form ID-POSN which allows for the exact orientation of slats (even reversed directions and so on)
+            slat_data = design_df['slat_layer_%s' % (i + 1)].values
+            if np.any(np.vectorize(lambda x: isinstance(x, str))(slat_data)):
+                old_file_format = False
+                slat_coords = defaultdict(dict)
+                for row in range(slat_data.shape[0]):
+                    for col in range(slat_data.shape[1]):
+                        cell = slat_data[row, col] # gathers slat positions and coordinates directly from each cell
+                        if isinstance(cell, str) and '-' in cell:
+                            id_part, posn_part = cell.split('-', 1)
+                            slat_coords[id_part][int(posn_part)] = (row, col)
+                for slat_id, coords in slat_coords.items(): # generate a slat from each ID found in the file
+                    slats[get_slat_key(i + 1, int(slat_id))] = Slat(get_slat_key(i + 1, int(slat_id)), i + 1, coords)
+            else:
+                slat_array[..., i] = slat_data  # if using the old system, slat data is just a 2D array of slat IDs, from which a direction is defined as travelling from top to bottom by default
+
             if i != layer_count - 1 and handle_array_available:
                 handle_array[..., i] = design_df['handle_interface_%s' % (i + 1)].values
+
+        if old_file_format:
+            slats = convert_slat_array_into_slat_objects(slat_array)
 
         # reading in cargo arrays and transferring to a dictionary
         cargo_dict = {}
@@ -890,11 +938,13 @@ class Megastructure:
         except:
             hashcad_canvas_metadata = {'canvas_offset_min': (0.0, 0.0), 'canvas_offset_max':(0.0, 0.0)}
 
-        return slat_array, handle_array, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata
+        return slats, handle_array, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords
 
 if __name__ == '__main__':
     # testing a typical megastructure import
     design_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/lily/lily_design_hashcad_seed.xlsx'
+    design_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/bird/bird_design_hashcad_seed.xlsx'
+
     megastructure = Megastructure(import_design_file=design_file)
 
     from crisscross.plate_mapping import *
@@ -904,4 +954,7 @@ if __name__ == '__main__':
     all_plates = main_plates + cargo_plates
     megastructure.patch_placeholder_handles(all_plates)
     megastructure.patch_flat_staples(main_plates[0])
-
+    hamming_results = multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(), megastructure.generate_assembly_handle_grid(), request_substitute_risk_score=True)
+    print('Hamming distance from imported array: %s, Duplication Risk: %s' % (hamming_results['Universal'], hamming_results['Substitute Risk']))
+    # megastructure.create_standard_graphical_report('/Users/matt/Desktop/test_graphics')
+    megastructure.export_design('TEST.xlsx', '/Users/matt/Desktop')

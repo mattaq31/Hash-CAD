@@ -106,7 +106,8 @@ jobs:
           nuitka-version: main
           script-name: main_server.py
           mode: app
-          include-module: matplotlib.backends.backend_pdf
+          include-module: matplotlib.backends.backend_pdf, numpy._core._exceptions
+          include-package: numpy._core
           onefile-tempdir-spec: "{HOME}\\.nuitka_cache"
           enable-plugins: no-qt
           working-directory: ./flutter_app/python_server

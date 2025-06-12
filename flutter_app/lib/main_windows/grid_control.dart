@@ -27,6 +27,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   double minScale = 0.5;
   double maxScale = 6.0;
 
+  int moveRotationStepsRequested = 0;
+  bool moveFlipRequested = false;
+
   double scale = 0.8; // actual running scale value
   Offset offset = Offset(800,700); // actual running offset value
 
@@ -407,12 +410,17 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
                   for (var slat in appState.selectedSlats){
                     appState.updateSlatPosition(slat, appState.slats[slat]!.slatPositionToCoordinate.map((key, value) => MapEntry(key, value + convCoordHoverPosition - convCoordAnchor)));
+                    if (moveFlipRequested) {
+                      appState.slats[slat]!.reverseDirection();
+                    }
                   }
                 }
                 dragActive = false;
                 hiddenSlats = [];
                 hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
                 slatMoveAnchor = Offset.zero;
+                moveFlipRequested = false; // reset the flip request
+                moveRotationStepsRequested = 0; // reset the rotation request
               });
             }
           },
@@ -421,7 +429,13 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
             bindings: {
               // Rotation shortcut
               SingleActivator(LogicalKeyboardKey.keyR): () {
-                appState.rotateLayerDirection(appState.selectedLayerKey);
+                if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
+                    // moveRotationStepsRequested += 1;
+                  // TODO: reinstate this system when confirmed
+                }
+                else {
+                  appState.rotateLayerDirection(appState.selectedLayerKey);
+                }
               },
               // flip shortcut for 60deg layers
               SingleActivator(LogicalKeyboardKey.keyF): () {
@@ -429,7 +443,12 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               },
               // flip shortcut for 60deg layers
               SingleActivator(LogicalKeyboardKey.keyT): () {
-                appState.flipSlatAddDirection();
+                if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
+                    moveFlipRequested = !moveFlipRequested;
+                }
+                else {
+                  appState.flipSlatAddDirection();
+                }
               },
               // Navigation shortcuts
               SingleActivator(LogicalKeyboardKey.arrowUp): () {
@@ -653,7 +672,10 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                             !dragActive,
                             appState.selectedSlats.map((e) => appState.slats[e]!).toList(),
                             slatMoveAnchor,
-                            appState
+                            moveRotationStepsRequested,
+                            moveFlipRequested,
+                            appState,
+                            actionState
                         ): CargoHoverPainter(
                             scale,
                             offset,

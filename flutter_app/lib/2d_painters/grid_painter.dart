@@ -46,11 +46,8 @@ class GridPainter extends CustomPainter {
 
     if (drawGrid) {
       if (gridSystem == '90') {
-        for (double x = (left ~/ gridSize) * gridSize; x < right;
-        x += gridSize) {
-          for (double y = (top ~/ gridSize) * gridSize;
-          y < bottom;
-          y += gridSize) {
+        for (double x = (left ~/ gridSize) * gridSize; x < right; x += gridSize) {
+          for (double y = (top ~/ gridSize) * gridSize;y < bottom; y += gridSize) {
             if (x % (gridSize * 4) == 0 && y % (gridSize * 4) == 0) {
               // Major dots at grid intersections
               canvas.drawCircle(Offset(x, y), gridSize / 8, majorDotPaint);
