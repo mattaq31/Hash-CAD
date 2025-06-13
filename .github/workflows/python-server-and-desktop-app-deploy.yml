@@ -286,6 +286,7 @@ jobs:
           files: |
               artifacts/Hash-CAD-windows.zip
               artifacts/Hash-CAD-linux.tar.gz
+              artifacts/Hash-CAD-macOS.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
