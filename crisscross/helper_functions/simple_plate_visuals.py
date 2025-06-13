@@ -113,7 +113,10 @@ def visualize_plate_with_color_labels(plate_size, well_color_dict,
     ax.set_ylim(total_row_letters, -0.1)
 
     if plate_title:
-        plt.suptitle(plate_title, y=0.99, fontsize=35)
+        # break up title if longer than a certain length
+        if len(plate_title) > 53:
+            plate_title = '\n'.join([plate_title[i:i + 53] for i in range(0, len(plate_title), 53)])
+        plt.suptitle(plate_title, y=0.99, fontsize=25)
 
     if color_label_dict:
         # legend creation

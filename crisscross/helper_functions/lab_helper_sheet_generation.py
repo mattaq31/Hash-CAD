@@ -523,7 +523,7 @@ def prepare_liquid_handle_plates_multiple_files(output_directory, file_list=None
                                                 target_concentration_uM=1000, volume_cap_ul=120,
                                                 target_concentration_per_plate=None,
                                                 max_commands_per_file=None,
-                                                plot_distribution_per_plate=True):
+                                                plot_distribution_per_plate=True, plate_size='384'):
     """
     Generates resuspension maps for all provided DNA spec files.
     :param output_directory: Output folder to save results.
@@ -534,6 +534,7 @@ def prepare_liquid_handle_plates_multiple_files(output_directory, file_list=None
     :param target_concentration_per_plate: Set to a dictionary of concentrations per plate if different concentrations are desired for different plates.
     :param max_commands_per_file: Maximum commands that can be taken in by the liquid handler in one go.  If this is exceeded, files are split into different components.
     :param plot_distribution_per_plate: If true, generate a volume distribution plot for each plate.
+    :param plate_size: Specify the size of the plate to generate.
     :return: N/A
     """
 
@@ -541,19 +542,20 @@ def prepare_liquid_handle_plates_multiple_files(output_directory, file_list=None
         raise ValueError("You must provide either a list of files or a folder to extract files from.")
 
     if file_list is None or len(file_list) == 0:
-        file_list = [os.path.join(extract_all_from_folder, f) for f in os.listdir(extract_all_from_folder) if f.endswith('.xlsx')]
+        file_list = [os.path.join(extract_all_from_folder, f) for f in os.listdir(extract_all_from_folder) if f.endswith('.xlsx') and not f.startswith('~$')]
 
 
     for target_file in tqdm(file_list, total=len(file_list), desc='Processing files...'):
         prepare_liquid_handler_plate_resuspension_map(target_file, output_directory, target_concentration_uM=target_concentration_uM,
                                                       volume_cap_ul=volume_cap_ul, max_commands_per_file=max_commands_per_file,
                                                       target_concentration_per_plate=target_concentration_per_plate,
-                                                      plot_distribution_per_plate=plot_distribution_per_plate)
+                                                      plot_distribution_per_plate=plot_distribution_per_plate, plate_size=plate_size)
 
 
 def prepare_liquid_handler_plate_resuspension_map(filename, output_directory, target_concentration_uM=1000,
                                                   volume_cap_ul=120, max_commands_per_file=None,
-                                                  plot_distribution_per_plate=True, target_concentration_per_plate=None):
+                                                  plot_distribution_per_plate=True, target_concentration_per_plate=None,
+                                                  plate_size='384'):
     """
     Generates a visual plate map and resuspension instructions for an entire plate of DNA oligos.
     The amount of DNA per well should be specified in an excel file using the standard IDT format.
@@ -564,6 +566,7 @@ def prepare_liquid_handler_plate_resuspension_map(filename, output_directory, ta
     :param max_commands_per_file: Maximum commands that can be taken in by the liquid handler in one go.  If this is exceeded, files are split into different components.
     :param plot_distribution_per_plate: If true, generate a volume distribution plot for each plate.
     :param target_concentration_per_plate: Set to a dictionary of concentrations per plate if different concentrations are desired for different plates.
+    :param plate_size: Specify the size of the plate to generate.
     :return: Distribution of volumes generated from the specified file.
     """
 
@@ -576,7 +579,7 @@ def prepare_liquid_handler_plate_resuspension_map(filename, output_directory, ta
     max_volume = 0
     volume_dist = []
 
-    spec_df = pd.read_excel(filename, sheet_name=None)['Plate Specs']
+    spec_df = pd.read_excel(filename, sheet_name=None, engine='calamine')['Plate Specs']
     # get all unique names in the 'Plate Name' column
     plate_names = spec_df['Plate Name'].unique()
 
@@ -614,7 +617,7 @@ def prepare_liquid_handler_plate_resuspension_map(filename, output_directory, ta
             # how to use the floor function in python
             numeric_dict[well_name] = floor(vol * 10) / 10
 
-        visualize_plate_with_color_labels('384', visual_dict,
+        visualize_plate_with_color_labels(plate_size, visual_dict,
                                           direct_show=False,
                                           well_label_dict=numeric_dict,
                                           plate_title=f'{plate_name} (numbers = μl of UPW to add to achieve a target concentration of {plate_target_conc}μM)',

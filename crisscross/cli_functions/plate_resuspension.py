@@ -19,8 +19,10 @@ import sys
               help='Max commands to include in each liquid handler csv file.')
 @click.option('--plot_distributions_per_plate', '-p', is_flag=True,
               help='Set this flag to plot the distribution of volumes generated per plates.')
+@click.option('--plate_size', type=str, default='384',
+              help='Sets the size of the plate to be used for resuspension.')
 def plate_resuspension(input_directory, input_files, output_directory, target_concentration, volume_cap_ul,
-                       target_concentration_per_plate, max_commands_per_file, plot_distributions_per_plate):
+                       target_concentration_per_plate, max_commands_per_file, plot_distributions_per_plate, plate_size):
     from crisscross.helper_functions.lab_helper_sheet_generation import prepare_liquid_handle_plates_multiple_files
 
 
@@ -35,7 +37,7 @@ def plate_resuspension(input_directory, input_files, output_directory, target_co
                                                 volume_cap_ul=volume_cap_ul,
                                                 target_concentration_per_plate=target_concentration_per_plate,
                                                 max_commands_per_file=max_commands_per_file,
-                                                plot_distribution_per_plate=plot_distributions_per_plate)
+                                                plot_distribution_per_plate=plot_distributions_per_plate, plate_size=plate_size)
 
 if __name__ == '__main__':
     plate_resuspension(sys.argv[1:])  # for use when debugging with pycharm

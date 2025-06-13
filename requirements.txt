@@ -7,3 +7,4 @@ tqdm
 click
 rich-click
 toml
+seaborn

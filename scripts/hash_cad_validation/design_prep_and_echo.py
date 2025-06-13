@@ -11,12 +11,12 @@ from crisscross.plate_mapping import get_cargo_plates, get_cutting_edge_plates
 # update these depending on user
 experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs'
 
-target_designs = ['bird']
+target_designs = ['megastar']
 
 base_design_import_files = [os.path.join(experiment_folder, f, f'{f}_design_hashcad_seed.xlsx') for f in target_designs]
 regen_graphics = True
-generate_echo = True
-generate_lab_helpers = True
+generate_echo = False
+generate_lab_helpers = False
 
 main_plates = get_cutting_edge_plates()
 cargo_plates = get_cargo_plates()
