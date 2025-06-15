@@ -12,7 +12,7 @@ import ast
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.slats import get_slat_key, convert_slat_array_into_slat_objects, Slat
-from crisscross.helper_functions import create_dir_if_empty
+from crisscross.helper_functions import create_dir_if_empty, natural_sort_key
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
 from crisscross.helper_functions.slat_salient_quantities import connection_angles
 from crisscross.graphics.static_plots import create_graphical_slat_view, create_graphical_assembly_handle_view
@@ -862,6 +862,9 @@ class Megastructure:
 
         if old_file_format:
             slats = convert_slat_array_into_slat_objects(slat_array)
+
+        # sort slats based on their ID
+        slats = {k: v for k, v in sorted(slats.items(), key=lambda item: natural_sort_key(item[0]))}
 
         # reading in cargo arrays and transferring to a dictionary
         cargo_dict = {}

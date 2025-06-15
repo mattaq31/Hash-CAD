@@ -4,11 +4,11 @@ from itertools import product
 from string import ascii_uppercase
 import numpy as np
 import pandas as pd
+import re
 
 dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
 base_directory = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir, os.path.pardir))
-hamming_cache = os.path.join(base_directory, 'assembly_handle_optimization','hamming_cache')
 
 plate96 = [x + str(y) for x, y in product(ascii_uppercase[:8], range(1, 12 + 1))]
 plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1))]
@@ -129,4 +129,6 @@ def convert_np_to_py(data):
     else:
         return data
 
-create_dir_if_empty(hamming_cache)
+def natural_sort_key(key):
+    return [int(text) if text.isdigit() else text.lower()
+            for text in re.split(r'(\d+)', key)]
