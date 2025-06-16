@@ -183,6 +183,19 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         ),
       ),
       SizedBox(height: 10),
+      FilledButton.icon(
+        onPressed: () {
+
+        },
+        icon: Icon(Icons.delete_sweep, size: 18),
+        label: Text("Import Handles from File"),
+        style: ElevatedButton.styleFrom(
+          padding:
+          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: TextStyle(fontSize: 16),
+        ),
+      ),
+      SizedBox(height: 10),
       Divider(thickness: 2, color: Colors.grey.shade300),
       Text("Mismatch Score Calculation", textAlign: TextAlign.center,
           style: TextStyle(

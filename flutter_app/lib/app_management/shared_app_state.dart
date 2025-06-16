@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:grpc/grpc.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:math';
+
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/sparse_to_array_conversion.dart';
 import '../crisscross_core/assembly_handles.dart';
-import 'file_io.dart';
+import '../crisscross_core/cargo.dart';
+import '../crisscross_core/seed.dart';
+import '../crisscross_core/handle_plates.dart';
+
 import '../grpc_client_architecture/client_entry.dart';
 import '../grpc_client_architecture/health.pbgrpc.dart';
-import 'package:grpc/grpc.dart';
-import 'package:flutter/foundation.dart';
-import '../2d_painters/helper_functions.dart' as utils;
+
 import 'slat_undo_stack.dart';
-import 'dart:math';
-import  '../crisscross_core/cargo.dart';
-import '../crisscross_core/seed.dart';
+import 'file_io.dart';
 import '../main_windows/alert_window.dart';
+import '../2d_painters/helper_functions.dart' as utils;
+
 
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
 String nextCapitalLetter(String current) {
@@ -142,6 +147,8 @@ class DesignState extends ChangeNotifier {
   Map<String, Cargo> cargoPalette = {
     'SEED': Cargo(name: 'SEED', shortName: 'S', color: Color.fromARGB(255, 255, 0, 0)),
   };
+
+  PlateLibrary plateStack = PlateLibrary();
 
   // GENERAL OPERATIONS //
 
@@ -1044,6 +1051,23 @@ class DesignState extends ChangeNotifier {
     if (seedToRemove != null){
       seedRoster.remove(seedToRemove);
     }
+    notifyListeners();
+  }
+
+  void importPlates() async{
+    await importPlatesFromFile(plateStack);
+
+    // TODO: if plate already exists, show warning dialog
+    // TODO: how to handle identical wells
+    notifyListeners();
+  }
+
+  void removePlate(String plateName) {
+    plateStack.removePlate(plateName);
+    notifyListeners();
+  }
+  void removeAllPlates(){
+    plateStack.clear();
     notifyListeners();
   }
 }

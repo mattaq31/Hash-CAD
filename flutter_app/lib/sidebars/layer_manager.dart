@@ -77,7 +77,7 @@ class LayerManagerWidget extends StatelessWidget {
                         selected: isSelected,
                         selectedTileColor: Colors.blue.shade200.withValues(alpha: 0.2), // Add this
                         selectedColor: Colors.black, // Add this to keep text black when selected
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 0),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 6.0, vertical: 0),
                         onTap: () {
                             appState.updateActiveLayer(key);
                         },

@@ -114,46 +114,73 @@ def export_standardized_plate_sheet(data_df, folder, filename, plate_size=384):
     full_data_df = full_data_df.set_index('well').reindex(all_wells)
     full_data_df = full_data_df.reset_index()
 
-    with pd.ExcelWriter(os.path.join(folder, filename), engine='openpyxl') as writer:
+    with pd.ExcelWriter(os.path.join(folder, filename), engine='xlsxwriter') as writer:
+        # Write the data to separate sheets
         full_data_df.to_excel(writer, sheet_name='All Data', index=False)
         name_dict.to_excel(writer, sheet_name='2D Layout', index_label=filename.split('.')[0])
         category_dict.to_excel(writer, sheet_name='2D Label', index_label=filename.split('.')[0])
 
-        # Apply alternating grey background to improve readability
-        worksheet = writer.sheets['2D Layout']
-        grey_fill = PatternFill(start_color='DDDDDD', end_color='DDDDDD', fill_type='solid')
-        for row in range(2, worksheet.max_row + 1):
-            if (row - 2) % 2 == 0:
-                for col in range(1, worksheet.max_column + 1):
-                    worksheet.cell(row=row, column=col).fill = grey_fill
+        workbook = writer.book
 
-        # Apply colors to 2D Label sheet based on category
-        worksheet = writer.sheets['2D Label']
-        for row in range(2, worksheet.max_row + 1):
-            for col in range(2, worksheet.max_column + 1):
-                cell = worksheet.cell(row=row, column=col)
-                if cell.value == 'A':
-                    cell.fill = PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')  # Red
-                elif cell.value == 'S':
-                    cell.fill = PatternFill(start_color='00FF00', end_color='00FF00', fill_type='solid')  # Green
-                elif cell.value == 'C':
-                    cell.fill = PatternFill(start_color='0000FF', end_color='0000FF', fill_type='solid')  # Blue
-                elif cell.value == 'F':
-                    cell.fill = PatternFill(start_color='A9A9A9', end_color='A9A9A9', fill_type='solid')  # Dark Grey
-                elif cell.value == 'X':
-                    cell.fill = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')  # Light Gray
+        ### Format for grey fill
+        grey_fill = workbook.add_format({'bg_color': '#DDDDDD'})
 
-        # expands all columns to fit data provided
+        ### Alternating grey rows for '2D Layout'
+        layout_sheet = writer.sheets['2D Layout']
+        layout_df = name_dict.copy()
+        for row_num in range(len(layout_df)):
+            if row_num % 2 == 0:
+                layout_sheet.set_row(row_num + 1, None, grey_fill)  # +1 because header is row 0
+
+        ### Apply color codes in '2D Label'
+        label_sheet = writer.sheets['2D Label']
+        label_df = category_dict.copy()
+
+        # Define color formats
+        format_A = workbook.add_format({'bg_color': '#FF0000'})  # Red
+        format_S = workbook.add_format({'bg_color': '#00FF00'})  # Green
+        format_C = workbook.add_format({'bg_color': '#0000FF'})  # Blue
+        format_F = workbook.add_format({'bg_color': '#A9A9A9'})  # Dark Grey
+        format_X = workbook.add_format({'bg_color': '#D3D3D3'})  # Light Grey
+
+        # Apply cell formats based on value
+        for row_num, row in enumerate(label_df.itertuples(index=False), start=1):
+            for col_num, value in enumerate(row, start=1):
+                fmt = None
+                if value == 'A':
+                    fmt = format_A
+                elif value == 'S':
+                    fmt = format_S
+                elif value == 'C':
+                    fmt = format_C
+                elif value == 'F':
+                    fmt = format_F
+                elif value == 'X':
+                    fmt = format_X
+                if fmt:
+                    label_sheet.write(row_num, col_num, value, fmt)
+
+        ### Auto-fit all columns
         for sheet_name in writer.sheets:
             worksheet = writer.sheets[sheet_name]
-            for col_idx, column_cells in enumerate(worksheet.columns, start=1):
-                max_length = 0
-                for cell in column_cells:
-                    cell_value = str(cell.value) if cell.value is not None else ""
-                    max_length = max(max_length, len(cell_value))
 
-                adjusted_width = max_length + 2  # Add some padding
-                worksheet.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+            # Get the correct dataframe for the sheet
+            df = {
+                'All Data': full_data_df,
+                '2D Layout': name_dict,
+                '2D Label': category_dict
+            }[sheet_name]
+
+            # If index is included, insert it as the first "column"
+            if df.index.name or df.index.names != [None]:
+                df = df.reset_index()
+
+            for idx, col in enumerate(df.columns):
+                # Convert all values in column to string and find the max length
+                series = df[col].astype(str)
+                max_length = max(series.map(len).max(), len(str(col)))
+                worksheet.set_column(idx, idx, max_length + 2)  # NO offset now
+
 
 def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_row_by_column=None,
                                            data_type='2d_excel', plate_size=384, plate_name=None,

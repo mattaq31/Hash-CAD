@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
+import 'package:hash_cad/crisscross_core/handle_plates.dart';
 import 'dart:math';
 import 'dart:io';
 
@@ -591,5 +592,40 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   // run isolate function
   return await compute(parseDesignInIsolate, fileBytes);
 }
+
+Future <void> importPlatesFromFile(PlateLibrary plateLibrary) async{
+
+  List<Uint8List> fileBytes = [];
+  List<String> plateNames = [];
+
+  // main user dialog box for file selection
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['xlsx'],
+    allowMultiple: true,
+  );
+
+  if (result != null) {
+    // web has a different file-opening procedure to the desktop app
+    if (kIsWeb) {
+      for (var file in result.files) {
+        String plateName = file.name.split('.').first;
+        fileBytes.add(file.bytes!);
+        plateNames.add(plateName);
+      }
+    }
+    else {
+      // desktop app
+      for (var file in result.files) {
+        String plateName = file.name.split('.').first;
+        fileBytes.add(File(file.path!).readAsBytesSync());
+        plateNames.add(plateName);
+      }
+    }
+  }
+  plateLibrary.readPlates(fileBytes, plateNames);
+}
+
+
 
 

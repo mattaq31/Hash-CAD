@@ -11,10 +11,10 @@ from crisscross.plate_mapping import get_cargo_plates, get_cutting_edge_plates
 # update these depending on user
 experiment_folder = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs'
 
-target_designs = ['megastar']
+target_designs = ['sunflower', 'handaxe', 'megastar']
 
 base_design_import_files = [os.path.join(experiment_folder, f, f'{f}_design_hashcad_seed.xlsx') for f in target_designs]
-regen_graphics = True
+regen_graphics = False
 generate_echo = False
 generate_lab_helpers = False
 
@@ -38,7 +38,7 @@ for file, design_name in zip(base_design_import_files, target_designs):
     megastructure.patch_placeholder_handles(main_plates + cargo_plates)
     megastructure.patch_flat_staples(main_plates[0])
 
-    target_volume = 100 # nl per staple
+    target_volume = 75 # nl per staple
     if generate_echo:
         echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
                                      destination_plate_name=design_name,
@@ -62,6 +62,10 @@ for file, design_name in zip(base_design_import_files, target_designs):
 
         megastructure.create_blender_3D_view(os.path.join(experiment_folder, design_name, f'{design_name}_graphics'), filename_prepend=f'{design_name}_',
                                              camera_spin=False, correct_slat_entrance_direction=True, include_bottom_light=False)
+
+        if design_name != 'handaxe': # animation creation
+            megastructure.create_blender_3D_view(os.path.join(experiment_folder, design_name, f'{design_name}_graphics'), filename_prepend=f'{design_name}_animation_',
+                                                 camera_spin=False, animate_assembly=True, animation_type='translate', correct_slat_entrance_direction=True, include_bottom_light=False)
 
         if design_name == 'bird': # animation creation
             custom_animation_dict = {}
