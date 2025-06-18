@@ -141,17 +141,17 @@ void exportDesign(Map<String, Slat> slats,
             continue;
           }
           var slatHandleDict = helixSide == 'h2' ? slat.h2Handles : slat.h5Handles;
-          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'Cargo'){
-            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['descriptor']);
-            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: cargoPalette[slatHandleDict[position]!['descriptor']]!.color.toHexString().excelColor);
+          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'CARGO'){
+            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['value']);
+            cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: cargoPalette[slatHandleDict[position]!['value']]!.color.toHexString().excelColor);
           }
           else{
             cargoSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(0);
           }
 
           // if seed handle present, save directly to its special sheet
-          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'Seed'){
-            seedSheet!.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['descriptor']);
+          if (slatHandleDict.containsKey(position) && slatHandleDict[position]!['category'] == 'SEED'){
+            seedSheet!.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = TextCellValue(slatHandleDict[position]!['value']);
             seedSheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: cargoPalette['SEED']!.color.toHexString().excelColor);
           }
 
@@ -241,8 +241,7 @@ void exportDesign(Map<String, Slat> slats,
   if (kIsWeb){
     // TODO: allow user to change filename in-app for web somehow
     excel.save(fileName: 'Megastructure.xlsx');
-  }
-  else {
+  }  else {
     // Get the directory to save the file
     String? filePath = await selectSaveLocation('Megastructure.xlsx');
     // if filepath is null, return
@@ -427,16 +426,19 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
           if (value != 0) {
             // build up slat ID from layer and slat value
             String slatID = "$layerID-I${slatArray[row][col][layer]}";
+            String category = '';
 
             // determine which side of the slat the handle is on
             if (layer == handleLayerIndex) {
               slatSide = int.parse(layerMap[layerID]?['top_helix'].replaceAll(
                   RegExp(r'[^0-9]'), ''));
+              category = 'ASSEMBLY_HANDLE';
             }
             else {
               slatSide = int.parse(
                   layerMap[layerID]?['bottom_helix'].replaceAll(
                       RegExp(r'[^0-9]'), ''));
+              category = 'ASSEMBLY_ANTIHANDLE';
             }
 
             // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
@@ -445,7 +447,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
             // assign the exact handle to the slat
             slats[slatID]?.setPlaceholderHandle(
                 slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
-                slatSide, '$value', 'Assembly');
+                slatSide, '$value', category);
           }
         }
       }
@@ -492,7 +494,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
         // assign the exact handle to the slat
         slats[slatID]?.setPlaceholderHandle(
             slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
-            cargoLayerSide, value, 'Cargo');
+            cargoLayerSide, value, 'CARGO');
       }
     }
   }

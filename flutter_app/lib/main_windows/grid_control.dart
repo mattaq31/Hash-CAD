@@ -728,7 +728,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           bottom: 20,
           left: actionState.isSideBarCollapsed ? 72 + 15 : 72 + 330 + 10,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800), // ← set your limit here
+            constraints: const BoxConstraints(maxWidth: 600), // ← set your limit here
             child: Wrap(
               alignment: WrapAlignment.start,
               spacing: 8,
@@ -773,6 +773,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   label: 'Slat IDs',
                   value: actionState.displaySlatIDs,
                   onChanged: (val) => actionState.setSlatIDDisplay(val),
+                ),
+                buildToggleSwitch(
+                  label: 'Plate Validation',
+                  value: actionState.plateValidation,
+                  onChanged: (val) => actionState.setPlateValidation(val),
                 ),
               ],
             ),

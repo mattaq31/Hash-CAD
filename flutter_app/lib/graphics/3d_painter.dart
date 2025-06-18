@@ -490,7 +490,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
 
-    if (handleType == 'Cargo'){
+    if (handleType == 'CARGO'){
       verticalOffset += (topSide == handleSide) ? 2 : -2;
     }
 
@@ -498,7 +498,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     var euRotation = tmath.Euler(0, 0, math.pi);
 
     String instanceType;
-    if (handleType == 'Cargo') {
+    if (handleType == 'CARGO') {
       instanceType = 'cargoHandle';
     }
     else{
@@ -548,26 +548,26 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     bool handleInstanceExists = handleIDs[slat.id]!.containsKey(handleName);
 
     bool existingHandle = false;
-    String handleType = 'Assembly';
-    var cargoName = 'Assembly';
+    String handleType = 'ASSEMBLY_HANDLE';
+    var cargoName = 'X';
 
     if (handleSide == 'H5'){
       existingHandle = slat.h5Handles.containsKey(handlePosition);
       if (existingHandle) {
         handleType = slat.h5Handles[handlePosition]!['category'];
-        cargoName = slat.h5Handles[handlePosition]!['descriptor'];
+        cargoName = slat.h5Handles[handlePosition]!['value'];
       }
     }
     else if (handleSide == 'H2'){
       existingHandle = slat.h2Handles.containsKey(handlePosition);
       if (existingHandle) {
         handleType = slat.h2Handles[handlePosition]!['category'];
-        cargoName = slat.h2Handles[handlePosition]!['descriptor'];
+        cargoName = slat.h2Handles[handlePosition]!['value'];
       }
     }
 
-    if (existingHandle && (assemblyHandleView && handleType == 'Assembly' || cargoHandleView && handleType == 'Cargo' || seedHandleView && handleType == 'Seed')) {
-      Color color = handleType == 'Assembly' ? layerMap[slat.layer]!['color']: handleType == 'Cargo' ? cargoPalette[cargoName]!.color: cargoPalette['SEED']!.color;
+    if (existingHandle && (assemblyHandleView && handleType == 'Assembly' || cargoHandleView && handleType == 'CARGO' || seedHandleView && handleType == 'SEED')) {
+      Color color = handleType.contains('ASSEMBLY') ? layerMap[slat.layer]!['color']: handleType == 'CARGO' ? cargoPalette[cargoName]!.color: cargoPalette['SEED']!.color;
       positionHandleInstance(slat.id, handleName, position, color, order, topSide, handleSide, handleType, handleInstanceExists);
     } else if (handleInstanceExists){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)

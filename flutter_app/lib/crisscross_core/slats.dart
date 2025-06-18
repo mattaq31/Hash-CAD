@@ -60,7 +60,7 @@ class Slat {
     h5Handles = newH5Handles;
   }
 
-  void setPlaceholderHandle(int handleId, int slatSide, String descriptor, String category) {
+  void setPlaceholderHandle(int handleId, int slatSide, String value, String category) {
     /// Assigns a placeholder to the slat, instead of a full handle.
 
     // TODO: MORE STREAMLINED PLACEMENT LOGIC and REDUNDANCY/ERROR HANDLING
@@ -69,9 +69,9 @@ class Slat {
     }
 
     if (slatSide == 2) {
-      h2Handles[handleId] = {'descriptor': descriptor, 'category': category};
+      h2Handles[handleId] = {'value': value, 'category': category.toUpperCase(), 'placeholder': true};
     } else if (slatSide == 5) {
-      h5Handles[handleId] = {'descriptor': descriptor, 'category': category};
+      h5Handles[handleId] = {'value': value, 'category': category.toUpperCase(), 'placeholder': true};
     } else {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
@@ -79,8 +79,7 @@ class Slat {
     placeholderList.add('handle-$handleId-h$slatSide');
   }
 
-  void updatePlaceholderHandle(
-      int handleId, int slatSide, String sequence, String well, String plateName, String descriptor, String category) {
+  void updatePlaceholderHandle(int handleId, int slatSide, String sequence, String well, String plateName, String value, String category, int concentration) {
     /// Updates a placeholder handle with the actual handle.
 
     String inputId = 'handle-$handleId-h$slatSide';
@@ -91,25 +90,34 @@ class Slat {
     }
 
     if (slatSide == 2) {
-      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
+      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
     } else if (slatSide == 5) {
-      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
+      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
     }
   }
 
-  void setHandle(int handleId, int slatSide, String sequence, String well, String plateName, String descriptor, String category) {
+  void setHandle(int handleId, int slatSide, String sequence, String well, String plateName, String value, String category, int concentration) {
     /// Defines the full details of a handle on a slat.
     if (handleId < 1 || handleId > maxLength) {
       throw Exception('Handle ID out of range');
     }
 
+    String inputId = 'handle-$handleId-h$slatSide';
+    if (placeholderList.contains(inputId)) {
+      placeholderList.remove(inputId);
+    }
+
     if (slatSide == 2) {
-      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
+      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
     } else if (slatSide == 5) {
-      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'descriptor': descriptor, 'category': category};
+      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
     } else {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
+  }
+
+  bool checkPlaceholder(int handleID, int slatSide){
+    return placeholderList.contains('handle-$handleID-h$slatSide');
   }
 
   void clearAllHandles(){

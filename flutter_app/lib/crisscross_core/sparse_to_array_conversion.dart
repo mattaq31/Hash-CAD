@@ -64,13 +64,13 @@ List<List<List<int>>> extractAssemblyHandleArray(
       int y = (pos.dy - minGrid.dy).toInt();
       for (var handleSide in topBottomOrder.asMap().entries){
         if (handleSide.value == 'H5'){
-          if (slat.h5Handles[i + 1] != null && slat.h5Handles[i + 1]!['category'] == 'Assembly'){
-            handleArray[x][y][layerMap[slat.layer]!['order']-handleSide.key] = int.parse(slat.h5Handles[i + 1]!['descriptor']);
+          if (slat.h5Handles[i + 1] != null && slat.h5Handles[i + 1]!['category'].contains('ASSEMBLY')){
+            handleArray[x][y][layerMap[slat.layer]!['order']-handleSide.key] = int.parse(slat.h5Handles[i + 1]!['value']);
           }
         }
         else if (handleSide.value == 'H2'){
-          if (slat.h2Handles[i + 1] != null && slat.h2Handles[i + 1]!['category'] == 'Assembly'){
-            handleArray[x][y][layerMap[slat.layer]!['order']-handleSide.key] = int.parse(slat.h2Handles[i + 1]!['descriptor']);
+          if (slat.h2Handles[i + 1] != null && slat.h2Handles[i + 1]!['category'].contains('ASSEMBLY')){
+            handleArray[x][y][layerMap[slat.layer]!['order']-handleSide.key] = int.parse(slat.h2Handles[i + 1]!['value']);
           }
         }
       }

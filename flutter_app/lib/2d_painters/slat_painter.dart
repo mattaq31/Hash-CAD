@@ -263,50 +263,61 @@ class SlatPainter extends CustomPainter {
           };
 
           // the below controls the logic and formatting for placing handle markers on slats
-          if ((actionState.displayAssemblyHandles && categoriesPresent.contains('Assembly')) || (actionState.displayCargoHandles && (categoriesPresent.contains('Cargo') || categoriesPresent.contains('Seed')))) {
+          if ((actionState.displayAssemblyHandles && (categoriesPresent.contains('ASSEMBLY_HANDLE') || categoriesPresent.contains('ASSEMBLY_ANTIHANDLE'))) || (actionState.displayCargoHandles && (categoriesPresent.contains('CARGO') || categoriesPresent.contains('SEED')))) {
             String topText = '↑X';
             String bottomText = '↓X';
             Color topColor = Colors.grey;
             Color bottomColor = Colors.grey;
             String topCategory = '';
             String bottomCategory = '';
+            bool topValid = true;
+            bool bottomValid = true;
 
-            void updateHandleData(Map<String, dynamic> handle, String side) {
+            void updateHandleData(Map<String, dynamic> handle, String side, int sideName) {
               final category = handle["category"];
-              final descriptor = handle["descriptor"];
+              final descriptor = handle["value"];
               final isTop = side == "top";
 
               String shortText = descriptor;
               Color color = Colors.grey;
 
-              if (category == 'Cargo') {
+              if(actionState.plateValidation){
+                if (isTop){
+                  topValid = !slat.checkPlaceholder(handleIndex, sideName);
+                }
+                else{
+                  bottomValid = !slat.checkPlaceholder(handleIndex, sideName);
+                }
+              }
+
+              if (category == 'CARGO') {
                 shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
                 color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
-              } else if (category == 'Assembly') {
+              } else if (category.contains('ASSEMBLY')) {
                 color = Colors.green;
-              } else if (category == 'Seed') {
+              } else if (category == 'SEED') {
                 color = appState.cargoPalette['SEED']!.color;
                 shortText = '🌰${getIndexFromSeedText(descriptor)}';
               }
 
               if (isTop) {
-                topText = category == 'Seed' ? shortText :'↑$shortText';
+                topText = category == 'SEED' ? shortText :'↑$shortText';
                 topColor = color;
                 topCategory = category;
               } else {
-                bottomText = category == 'Seed' ? shortText :'↓$shortText';
+                bottomText = category == 'SEED' ? shortText :'↓$shortText';
                 bottomColor = color;
                 bottomCategory = category;
               }
             }
 
-            if (h5 != null) {
+            if (h5 != null  && h5['category'] != 'FLAT') {
               final side = selectedLayerTopside == 'H5' ? 'top' : 'bottom';
-              updateHandleData(h5, side);
+              updateHandleData(h5, side, 5);
             }
-            if (h2 != null) {
+            if (h2 != null && h2['category'] != 'FLAT') {
               final side = selectedLayerTopside == 'H2' ? 'top' : 'bottom';
-              updateHandleData(h2, side);
+              updateHandleData(h2, side, 2);
             }
 
             final position = getRealCoord(slat.slatPositionToCoordinate[handleIndex]!);
@@ -352,6 +363,40 @@ class SlatPainter extends CustomPainter {
                 canvas.drawPath(path, paint);
               } else {
                 canvas.drawRect(rect, paint);
+              }
+
+              final isInvalid = (isTop && !topValid) || (!isTop && !bottomValid);
+
+              // Draw dotted red border if invalid
+              if (isInvalid) {
+                final dotPaint = Paint()
+                  ..color = Colors.red
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.0;
+
+                const double dotLength = 0.5;
+                const double gapLength = 0.5;
+
+                void drawDottedLine(Offset start, Offset end) {
+                  final totalLength = (end - start).distance;
+                  final offset = end - start;
+                  final direction = offset / offset.distance;
+
+                  double drawn = 0;
+                  while (drawn < totalLength) {
+                    final currentStart = start + direction * drawn;
+                    final currentEnd = start + direction * (drawn + dotLength).clamp(0, totalLength);
+
+                    canvas.drawLine(currentStart, currentEnd, dotPaint);
+                    drawn += dotLength + gapLength;
+                  }
+                }
+
+                // Draw all 4 sides with dots
+                drawDottedLine(rect.topLeft, rect.topRight);
+                drawDottedLine(rect.topRight, rect.bottomRight);
+                drawDottedLine(rect.bottomRight, rect.bottomLeft);
+                drawDottedLine(rect.bottomLeft, rect.topLeft);
               }
             }
 

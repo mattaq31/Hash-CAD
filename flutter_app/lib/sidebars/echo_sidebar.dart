@@ -1,10 +1,13 @@
 import 'dart:math';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_management/shared_app_state.dart';
 import '../crisscross_core/handle_plates.dart';
 import '../main_windows/alert_window.dart';
+import '../echo_and_experimental_helpers/echo_export.dart';
+
 
 class EchoTools extends StatefulWidget {
   const EchoTools({super.key});
@@ -36,28 +39,52 @@ Widget buildCategoryIcon({
 }
 
 class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
+
+  FocusNode refVolFocusNode = FocusNode();
+  TextEditingController refVolTextController = TextEditingController();
+
+  FocusNode refConcFocusNode = FocusNode();
+  TextEditingController refConcTextController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      var actionState = context.read<ActionState>(); // Use read instead of watch
+      refVolTextController.text = actionState.echoExportSettings['Reference Volume'].toString();
+      refVolFocusNode.addListener(() {
+        if (!refVolFocusNode.hasFocus) {
+          _updateEchoSettings(actionState);
+        }
+      });
+      refConcTextController.text = actionState.echoExportSettings['Reference Concentration'].toString();
+      refConcFocusNode.addListener(() {
+        if (!refConcFocusNode.hasFocus) {
+          _updateEchoSettings(actionState);
+        }
+      });
+    });
+  }
+
+  void _updateEchoSettings(ActionState actionState) {
+    // Update the action state with the new values from the text controllers
+    actionState.echoExportSettings['Reference Volume'] = int.tryParse(refVolTextController.text);
+    actionState.echoExportSettings['Reference Concentration'] = int.tryParse(refConcTextController.text);
+  }
+
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<DesignState>();
+    var actionState = context.watch<ActionState>();
     return Column(children: [
       Text("Echo Export Tools",
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-      SizedBox(height: 15),
-      FilledButton.icon(
-        onPressed: () {
-          appState.importPlates();
-        },
-        icon: Icon(Icons.delete_sweep, size: 18),
-        label: Text("Import Handle Plates"),
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: TextStyle(fontSize: 16),
-        ),
+      SizedBox(height: 5),
+      Text(
+        "Plate Stack",
+        style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
       ),
-      Divider(thickness: 2, color: Colors.grey.shade300),
-      Text("Plate Stack",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
       SizedBox(height: 5),
       Container(
           constraints: BoxConstraints(
@@ -86,11 +113,13 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
                     HashCadPlate plate = entry.value;
 
                     return ExpansionTile(
-                      shape: RoundedRectangleBorder( // Shape when expanded
+                      shape: RoundedRectangleBorder(
+                        // Shape when expanded
                         side: BorderSide(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      collapsedShape: RoundedRectangleBorder( // Shape when collapsed
+                      collapsedShape: RoundedRectangleBorder(
+                        // Shape when collapsed
                         side: BorderSide(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -177,19 +206,110 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
                   }).toList(),
                 )),
       SizedBox(height: 10),
+      SizedBox(height: 5),
       FilledButton.icon(
         onPressed: () {
-          appState.removeAllPlates();
+          appState.importPlates();
         },
-        label: Text("Clear All"),
-        icon: Icon(Icons.delete),
+        icon: Icon(Icons.lens_blur, size: 18),
+        label: Text("Load Handle Plates"),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red, // Red background
-          foregroundColor: Colors.white, // White text
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           textStyle: TextStyle(fontSize: 16),
         ),
       ),
+      SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FilledButton.icon(
+            onPressed: appState.plateStack.plates.isEmpty? null : () {
+              appState.removeAllPlates();
+            },
+            label: Text("Clear All"),
+            icon: Icon(Icons.delete),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red, // Red background
+              foregroundColor: Colors.white, // White text
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+            ),
+          ),
+          SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: appState.plateStack.plates.isEmpty? null : () {
+              appState.plateAssignAllHandles();
+            },
+            label: Text("Assign"),
+            icon: Icon(Icons.polyline),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+      Divider(thickness: 2, color: Colors.grey.shade300),
+      Text("Echo CSV Export",
+          style: TextStyle(fontSize: 18, color: Colors.grey.shade600)),
+      SizedBox(height: 10),
+      SizedBox(
+        width: 180,
+        child: TextField(
+          controller: refVolTextController,
+          focusNode: refVolFocusNode,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            suffixText: 'nL',
+            labelText: 'Reference Volume',
+          ),
+          textInputAction: TextInputAction.done,
+          inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+          onSubmitted: (value) {
+            _updateEchoSettings(actionState);
+          },
+        ),
+      ),
+      SizedBox(height: 10),
+      SizedBox(
+        width: 180,
+        child: TextField(
+          controller: refConcTextController,
+          focusNode: refConcFocusNode,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            suffixText: 'μM',
+            labelText: 'Reference Concentration',
+          ),
+          textInputAction: TextInputAction.done,
+          inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+          onSubmitted: (value) {
+            _updateEchoSettings(actionState);
+          },
+        ),
+      ),
+      SizedBox(height: 10),
+      FilledButton.icon(
+        onPressed: () {
+            convertSlatsToEchoCsv(
+                slatDict: appState.slats,
+                layerMap: appState.layerMap,
+                destinationPlateName: 'TEST',
+                outputFilename: 'test.csv',
+                outputFolder: '/Users/matt/Desktop',
+                referenceTransferVolumeNl: actionState.echoExportSettings['Reference Volume'],
+                referenceConcentrationUM: actionState.echoExportSettings['Reference Concentration']);
+        },
+        icon: Icon(Icons.star, size: 18),
+        label: Text("Generate Commands"),
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: TextStyle(fontSize: 16),
+        ),
+      ),
+
     ]);
   }
 }

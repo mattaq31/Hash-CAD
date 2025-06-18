@@ -14,7 +14,7 @@ import '../grpc_client_architecture/client_entry.dart';
 import '../grpc_client_architecture/health.pbgrpc.dart';
 
 import 'slat_undo_stack.dart';
-import 'file_io.dart';
+import 'main_design_io.dart';
 import '../main_windows/alert_window.dart';
 import '../2d_painters/helper_functions.dart' as utils;
 
@@ -255,12 +255,12 @@ class DesignState extends ChangeNotifier {
       var layer = slat.layer;
       var topHelix = layerMap[layer]?['top_helix'];
       for (var i = 0; i < slat.maxLength; i++) {
-        if (slat.h2Handles[i+1] != null && slat.h2Handles[i+1]!['category'] != 'Assembly'){
+        if (slat.h2Handles[i+1] != null && !slat.h2Handles[i+1]!['category'].contains('ASSEMBLY')){
           var occupancyID = topHelix == 'H2' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
           occupiedCargoPoints['$layer-$occupancyID']![slat.slatPositionToCoordinate[i+1]!] =  slat.id;
         }
-        if (slat.h5Handles[i+1] != null && slat.h5Handles[i+1]!['category'] != 'Assembly'){
+        if (slat.h5Handles[i+1] != null && !slat.h5Handles[i+1]!['category'].contains('ASSEMBLY')){
           var occupancyID = topHelix == 'H5' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
           occupiedCargoPoints['$layer-$occupancyID']![slat.slatPositionToCoordinate[i+1]!] =  slat.id;
@@ -779,13 +779,16 @@ class DesignState extends ChangeNotifier {
         for (var aLayer in assemblyLayers) {
           if (handleArray[x][y][aLayer] != 0) {
             int slatSide;
+            String category;
             if (aLayer == layerMap[slat.layer]!['order']){
               slatSide = int.parse(layerMap[slat.layer]?['top_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+              category = 'ASSEMBLY_HANDLE';
             }
             else{
               slatSide = int.parse(layerMap[slat.layer]?['bottom_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+              category = 'ASSEMBLY_ANTIHANDLE';
             }
-            slat.setPlaceholderHandle(i + 1, slatSide, '${handleArray[x][y][aLayer]}', 'Assembly');
+            slat.setPlaceholderHandle(i + 1, slatSide, '${handleArray[x][y][aLayer]}', category);
           }
         }
       }
@@ -918,7 +921,7 @@ class DesignState extends ChangeNotifier {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-      slat.setPlaceholderHandle(position, integerSlatSide, cargo.name, 'Cargo');
+      slat.setPlaceholderHandle(position, integerSlatSide, cargo.name, 'CARGO');
       occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
     }
     notifyListeners();
@@ -929,14 +932,14 @@ class DesignState extends ChangeNotifier {
     var slat = slats[slatID]!;
     int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
     if (integerSlatSide == 2){
-      if (slat.h2Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] == 'Seed'){
+      if (slat.h2Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] == 'SEED'){
         removeSeed(slat.layer, slatSide, coordinate);
         return;
       }
       slat.h2Handles.remove(slat.slatCoordinateToPosition[coordinate]!);
     }
     else{
-      if (slat.h5Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] == 'Seed'){
+      if (slat.h5Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] == 'SEED'){
         removeSeed(slat.layer, slatSide, coordinate);
         return;
       }
@@ -992,7 +995,7 @@ class DesignState extends ChangeNotifier {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-      slat.setPlaceholderHandle(position, integerSlatSide, '$nextSeedID-$row-$col', 'Seed');
+      slat.setPlaceholderHandle(position, integerSlatSide, '$nextSeedID-$row-$col', 'SEED');
       occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
 
       // seed takes up space from the slat grid too, not just cargo
@@ -1022,7 +1025,7 @@ class DesignState extends ChangeNotifier {
     /// removing the seed and its related coordinates from the seed roster.
     var seedToRemove;
     for (var seed in seedRoster.entries){
-      if (seed.value.coordinates.containsValue(convertCoordinateSpacetoRealSpace(coordinate))){
+      if (seed.value.coordinates.containsValue(convertCoordinateSpacetoRealSpace(coordinate)) && seed.key.$2 == slatSide){
         for (var coord in seed.value.coordinates.values){
           var convCoord = convertRealSpacetoCoordinateSpace(coord);
           var slat = slats[occupiedCargoPoints['$layerID-$slatSide']![convCoord]];
@@ -1070,6 +1073,65 @@ class DesignState extends ChangeNotifier {
     plateStack.clear();
     notifyListeners();
   }
+
+  void plateAssignAllHandles() {
+    void assignHandleIfPresent(Slat slat, int posn, int side, Map<int, Map<String, dynamic>> handles) {
+
+      if (!handles.containsKey(posn)) {
+        if (plateStack.contains('FLAT', posn, side, 'BLANK')) {
+          final data = plateStack.getOligoData('FLAT', posn, side, 'BLANK');
+          slat.setHandle(
+            posn,
+            side,
+            data['sequence'],
+            data['well'],
+            data['plateName'],
+            'BLANK',
+            'FLAT',
+            data['concentration'],
+          );
+        }
+        return;
+      }
+
+      final handle = handles[posn]!;
+      final category = handle['category'];
+      final originalValue = handle['value'];
+      late final String lookupValue;
+
+      if (category == 'SEED') {
+        // Format the SEED value for lookup
+        lookupValue = originalValue
+            .replaceFirst(RegExp(r'^[^-]+-'), '')
+            .replaceAll('-', '_');
+      } else {
+        lookupValue = originalValue;
+      }
+
+      if (plateStack.contains(category, posn, side, lookupValue)) {
+        final data = plateStack.getOligoData(category, posn, side, lookupValue);
+        slat.setHandle(
+          posn,
+          side,
+          data['sequence'],
+          data['well'],
+          data['plateName'],
+          originalValue,
+          category,
+          data['concentration'],
+        );
+      }
+    }
+
+    for (var slat in slats.values) {
+      for (int posn = 1; posn < slat.maxLength + 1; posn++) {
+        assignHandleIfPresent(slat, posn, 2, slat.h2Handles);
+        assignHandleIfPresent(slat, posn, 5, slat.h5Handles);
+      }
+    }
+    notifyListeners();
+  }
+
 }
 
 /// State management for action mode and display settings
@@ -1089,6 +1151,18 @@ class ActionState extends ChangeNotifier {
   bool isSideBarCollapsed;
   int panelMode;
   String cargoAttachMode;
+  bool plateValidation;
+  Map<int, String> panelMap = {
+    0: 'slats',
+    1: 'assembly',
+    2: 'cargo',
+    3: 'settings',
+  };
+
+  Map<String, dynamic> echoExportSettings =  {
+    'Reference Volume' : 75,
+    'Reference Concentration' : 500,
+  };
 
   ActionState({
     this.slatMode = 'Add',
@@ -1104,16 +1178,15 @@ class ActionState extends ChangeNotifier {
     this.displayGrid = true,
     this.drawingAids = false,
     this.slatNumbering = false,
+    this.plateValidation=false,
     this.panelMode = 0,
     this.cargoAttachMode = 'top'
   });
 
-  Map<int, String> panelMap = {
-    0: 'slats',
-    1: 'assembly',
-    2: 'cargo',
-    3: 'settings',
-  };
+  void updateEchoSetting(String setting, dynamic value){
+    echoExportSettings[setting] = value;
+    notifyListeners();
+  }
 
   void updateSlatMode(String value) {
     slatMode = value;
@@ -1169,6 +1242,11 @@ class ActionState extends ChangeNotifier {
 
   void setCargoHandleDisplay(bool value){
     displayCargoHandles = value;
+    notifyListeners();
+  }
+
+  void setPlateValidation(bool value){
+    plateValidation = value;
     notifyListeners();
   }
 

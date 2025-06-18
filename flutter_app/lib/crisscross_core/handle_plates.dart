@@ -56,6 +56,7 @@ class PlateLibrary {
   final Map<String, String> globalSequences = {};
   final Map<String, String> globalWells = {};
   final Map<String, dynamic> globalConcentrations = {};
+  final Map<String, String> globalPlates = {};
 
   void readPlates(List<Uint8List> plateFiles, List<String> plateNames) {
     for (int i = 0; i < plateFiles.length; i++) {
@@ -67,6 +68,7 @@ class PlateLibrary {
         globalSequences[key] = plate.getSequence(key);
         globalConcentrations[key] = plate.getConcentration(key);
         globalWells[key] = plate.getWell(key);
+        globalPlates[key] = name;
       }
     }
   }
@@ -79,6 +81,7 @@ class PlateLibrary {
   String getSequence(String key) => globalSequences[key] ?? '';
   String getWell(String key) => globalWells[key] ?? '';
   dynamic getConcentration(String key) => globalConcentrations[key];
+  String getPlateName(String key) => globalPlates[key] ?? '';
 
   bool contains(String category, int pos, int side, dynamic id) {
     return globalSequences.containsKey(_makeKey(category, pos, side, id));
@@ -95,12 +98,16 @@ class PlateLibrary {
   dynamic getConcentrationByComponents(String category, int pos, int side, dynamic id) =>
       getConcentration(_makeKey(category, pos, side, id));
 
+  String getPlateNameByComponents(String category, int pos, int side, dynamic id) =>
+      getPlateName(_makeKey(category, pos, side, id));
+
   Map<String, dynamic> getOligoData(String category, int pos, int side, dynamic id) {
     final key = _makeKey(category, pos, side, id);
     return {
       'well': globalWells[key] ?? '',
       'sequence': globalSequences[key] ?? '',
-      'concentration': globalConcentrations[key],
+      'concentration': globalConcentrations[key] ?? 0,
+      'plateName': globalPlates[key] ?? ''
     };
   }
 

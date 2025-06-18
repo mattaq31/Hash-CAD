@@ -151,8 +151,8 @@ Future<int> hammingCompute(Map<String, Slat> slats, Map<String, Map<String, dyna
 
       for (var i = 0; i < slat.maxLength; i++) {
         final handleData = useH5 ? slat.h5Handles[i + 1] : slat.h2Handles[i + 1];
-        if (handleData != null && handleData['category'] == 'Assembly') {
-          descriptorList[i] = int.parse(handleData['descriptor']);
+        if (handleData != null && handleData['category'].contains('ASSEMBLY')) {
+          descriptorList[i] = int.parse(handleData['value']);
         }
       }
 

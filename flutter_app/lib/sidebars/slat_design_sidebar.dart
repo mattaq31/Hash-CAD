@@ -19,7 +19,6 @@ class SlatDesignTools extends StatefulWidget {
 class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserver {
 
   FocusNode slatAddFocusNode = FocusNode();
-
   TextEditingController slatAddTextController = TextEditingController();
 
   @override
