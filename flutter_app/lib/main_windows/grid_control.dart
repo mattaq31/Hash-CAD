@@ -722,67 +722,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           ),
         ),
       ),
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          bottom: 20,
-          left: actionState.isSideBarCollapsed ? 72 + 15 : 72 + 330 + 10,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600), // ← set your limit here
-            child: Wrap(
-              alignment: WrapAlignment.start,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                buildToggleSwitch(
-                  label: 'Border',
-                  value: actionState.displayBorder,
-                  onChanged: (val) => actionState.setBorderDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Grid',
-                  value: actionState.displayGrid,
-                  onChanged: (val) => actionState.setGridDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Drawing Aids',
-                  value: actionState.drawingAids,
-                  onChanged: (val) => actionState.setDrawingAidsDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Slat Coordinates',
-                  value: actionState.slatNumbering,
-                  onChanged: (val) => actionState.setSlatNumberingDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Assembly Handles',
-                  value: actionState.displayAssemblyHandles,
-                  onChanged: (val) => actionState.setAssemblyHandleDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Cargo Handles',
-                  value: actionState.displayCargoHandles,
-                  onChanged: (val) => actionState.setCargoHandleDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Seeds',
-                  value: actionState.displaySeeds,
-                  onChanged: (val) => actionState.setSeedDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Slat IDs',
-                  value: actionState.displaySlatIDs,
-                  onChanged: (val) => actionState.setSlatIDDisplay(val),
-                ),
-                buildToggleSwitch(
-                  label: 'Plate Validation',
-                  value: actionState.plateValidation,
-                  onChanged: (val) => actionState.setPlateValidation(val),
-                ),
-              ],
-            ),
-          ),
-        )
+        TogglePanel(actionState: actionState)
     ]);
   }
 }
