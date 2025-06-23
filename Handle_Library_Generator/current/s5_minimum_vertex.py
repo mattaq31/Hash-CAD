@@ -1,20 +1,17 @@
-import pulp
-from Energy_computation_functions import *
-from sequence_picking_tools import *
-import pickle
-import matplotlib.pyplot as plt
-import numpy as np
-import time
-from collections import Counter
-from collections import Counter, defaultdict
-import random
-import heapq
-import math
-from collections import defaultdict
-import heapq
-import networkx as nx
 
-def heuristic_vertex_cover(V, E):
+import pickle
+
+import numpy as np
+
+from collections import Counter
+import random
+
+from collections import defaultdict
+
+from minimum_vertex_cover import *
+
+
+def heuristic_vertex_cover( E):
     # Initialize an empty set to store the vertex cover
     vertex_cover = set()
 
@@ -49,7 +46,7 @@ def heuristic_vertex_cover(V, E):
 
 
 
-def heuristic_vertex_cover_optimized2(V, E):
+def heuristic_vertex_cover_optimized3( E):
         # Initialize the vertex cover set
         vertex_cover = set()
 
@@ -139,29 +136,101 @@ def select_vertices_to_remove(vertex_cover, num_vertices_to_remove):
 
 
 
+def iterative_vertex_cover_multi(V, E,preserve_V=None, num_vertices_to_remove=150, max_iterations=200, limit = +np.inf):
+    # Initialize
+    multistart = 30
+    bestest_vertex_cover= None
+    for i in range(multistart):
+        size =5
+        if bestest_vertex_cover is None:
+            current_bestest_size = 'None'
+        else:
+            current_bestest_size = len(V) - len(bestest_vertex_cover)
+        print(f"Started try {i + 1} | current bestest independent set size: {current_bestest_size}")
+
+        best_vertex_cover = heuristic_vertex_cover_optimized2(E,preserve_V=preserve_V)
+        current_vertex_cover = best_vertex_cover.copy()
+        population = [current_vertex_cover]  # Start with the best vertex cover as the initial population
+        iteration = 0
+        print("started new try")
+        while iteration < max_iterations:
+            iteration += 1
+            #print(f"Iteration {iteration}, current best size: {len(best_vertex_cover) - len(V)}")
+            if -len(best_vertex_cover) + len(V)>=limit:
+                print('found desired set')
+                break
+    
+            #print('population is of lenght')
+            #print(len(population))
+            what = 0
+            new_guys = []
+            for current_cover in population:
+                what = what +1
+                current_cover2 = current_cover.copy()  # Create a copy to avoid modifying the original in the population
+    
+                # Step a: Remove vertices from the current cover
+                vertices_to_remove = select_vertices_to_remove(current_cover2, num_vertices_to_remove)
+                current_cover2 -= vertices_to_remove
+    
+                # Step b: Update the graph (find uncovered edges)
+                uncovered_edges = find_uncovered_edges(E, current_cover2)
+                # Build a subgraph with only uncovered edges
+                #remaining_vertices = set(u for u, v in uncovered_edges) | set(v for u, v in uncovered_edges)
+    
+                # Re-run the heuristic on the subgraph
+                additional_cover = heuristic_vertex_cover_optimized2(uncovered_edges,preserve_V=None)
+                current_cover2 |= additional_cover  # Update the current vertex cover
+    
+                # Step d: Compare and update best solution
+    
+                #print(len(current_cover2))
+                #print(what)
+                if len(current_cover2) < len(best_vertex_cover):
+                    best_vertex_cover = current_cover2.copy()  # Copy to ensure best_vertex_cover remains separate
+                    print(f"Found a set of size {-len(best_vertex_cover) + len(V)}")
+                    population = [best_vertex_cover]  # Reset population with the new best cover
+                    new_guys= []
+                    break
+                elif len(current_cover2) == len(best_vertex_cover):
+                    if all(current_cover2 != cover for cover in population):
+                        new_guys.append(current_cover2.copy())  # Add a unique copy of the equal-sized cover
+    
+            population = new_guys+population
+            if len(population) > size:
+                population = random.sample(population, size)
+            
+    
+    
+        # Perform final local search on the best solution
+        #best_vertex_cover = local_search_vertex_cover(V, E, best_vertex_cover)
+        if bestest_vertex_cover is None or len(best_vertex_cover) < len(bestest_vertex_cover):
+            bestest_vertex_cover = best_vertex_cover.copy()
+            print("update bestest")
+            
+    return bestest_vertex_cover
 
 
 
 
-
-def iterative_vertex_cover(V, E, num_vertices_to_remove=150, max_iterations=42850, limit = 64):
+def iterative_vertex_cover(V, E,preserve_V=None, num_vertices_to_remove=150, max_iterations=500, limit = +np.inf):
     # Initialize
 
-    size =450
-    best_vertex_cover = heuristic_vertex_cover_optimized2(V, E)
+    size =30
+    best_vertex_cover = heuristic_vertex_cover_optimized2(E,preserve_V=preserve_V)
+    print(f"Found a set of size {-len(best_vertex_cover) + len(V)}")
     current_vertex_cover = best_vertex_cover.copy()
     population = [current_vertex_cover]  # Start with the best vertex cover as the initial population
     iteration = 0
 
     while iteration < max_iterations:
         iteration += 1
-        print(f"Iteration {iteration}, current best size: {len(best_vertex_cover) - len(V)}")
+        #print(f"Iteration {iteration}, current best size: {len(best_vertex_cover) - len(V)}")
         if -len(best_vertex_cover) + len(V)>=limit:
             print('found desired set')
             break
 
-        print('population is of lenght')
-        print(len(population))
+        #print('population is of lenght')
+        #print(len(population))
         what = 0
         new_guys = []
         for current_cover in population:
@@ -175,10 +244,10 @@ def iterative_vertex_cover(V, E, num_vertices_to_remove=150, max_iterations=4285
             # Step b: Update the graph (find uncovered edges)
             uncovered_edges = find_uncovered_edges(E, current_cover2)
             # Build a subgraph with only uncovered edges
-            remaining_vertices = set(u for u, v in uncovered_edges) | set(v for u, v in uncovered_edges)
+            #remaining_vertices = set(u for u, v in uncovered_edges) | set(v for u, v in uncovered_edges)
 
             # Re-run the heuristic on the subgraph
-            additional_cover = heuristic_vertex_cover_optimized2(remaining_vertices, uncovered_edges)
+            additional_cover = heuristic_vertex_cover_optimized2(uncovered_edges,preserve_V=None)
             current_cover2 |= additional_cover  # Update the current vertex cover
 
             # Step d: Compare and update best solution
@@ -187,7 +256,7 @@ def iterative_vertex_cover(V, E, num_vertices_to_remove=150, max_iterations=4285
             #print(what)
             if len(current_cover2) < len(best_vertex_cover):
                 best_vertex_cover = current_cover2.copy()  # Copy to ensure best_vertex_cover remains separate
-                print(f"Found better set of size {len(best_vertex_cover) - len(V)}")
+                print(f"Found a set of size {-len(best_vertex_cover) + len(V)}")
                 population = [best_vertex_cover]  # Reset population with the new best cover
                 new_guys= []
                 break

@@ -1,20 +1,12 @@
-from distutils.command.build import build
+from rope.base.history import History
 
-import pulp
 from Energy_computation_functions import *
 from sequence_picking_tools import *
-import pickle
-import matplotlib.pyplot as plt
 import numpy as np
-import time
-from collections import Counter
-from collections import Counter, defaultdict
 import random
-import heapq
-import math
 from collections import defaultdict
-import heapq
-import networkx as nx
+from datetime import datetime
+from  s5_minimum_vertex import *
 
 
 def heuristic_vertex_cover_optimized2(E, preserve_V=None):
@@ -151,82 +143,150 @@ def build_edges(offtarget_dict, indices, energy_cutoff):
 
 
 
-def iterative_vertex_cover2(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, subsetsize=200, generations= 100):
+def get_default_results_folder():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    folder_path = os.path.join(base_dir, "results")
+    os.makedirs(folder_path, exist_ok=True)
+    return folder_path
 
-   non_cover_vertices= set()
-   history = set()
+def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
+    if not sequence_pairs:
+        print("No sequences to save.")
+        return
 
-   for i in range(generations):
-       # Select sequences with on-target energy in desired range
-        subset, indices = select_subset_in_energy_range(
-           sequence_pairs, 
-           energy_min=min_ontarget, 
-           energy_max=max_ontarget,
-           max_size=subsetsize, 
-           Use_Library=True, 
-           avoid_indices=non_cover_vertices,
-        )
-       
-        sorted_uncovered = list(history)
-        extra_pairs = [sequence_pairs[idx][1] for idx in history]
-        subset += extra_pairs
-        indices += sorted_uncovered
-        # Compute off-target energies for the subset
-        off_e_subset = compute_offtarget_energies(subset, Use_Library=True)
+    folder_path = get_default_results_folder()
 
-        # Build the off-target interaction graph
-        Edges = build_edges(off_e_subset,indices, offtarget_limit)
+    if filename is None:
+        seq_length = len(sequence_pairs[0][0])
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        filename = f"{len(sequence_pairs)}seq_{seq_length}bp_{timestamp}.txt"
 
-        # Run the heuristic vertex cover algorithm
-        removed_vertices = heuristic_vertex_cover_optimized2(Edges,history)
+    full_path = os.path.join(folder_path, filename)
 
-        # Identify sequences not selected by the heuristic
-        Vertices = set(indices)
-        new_non_cover_vertices = Vertices- removed_vertices
-        
-        if len(new_non_cover_vertices) >= len(non_cover_vertices):
+    with open(full_path, "w") as f:
+        for seq, rc_seq in sequence_pairs:
+            f.write(f"{seq}\t{rc_seq}\n")
+
+    print(f"Saved {len(sequence_pairs)} sequence pairs to:\n{full_path}")
+
+def load_sequence_pairs_from_txt(filename):
+    folder_path = get_default_results_folder()
+    full_path = os.path.join(folder_path, filename)
+
+    if not os.path.exists(full_path):
+        raise FileNotFoundError(f"No such file: {full_path}")
+
+    sequence_pairs = []
+    with open(full_path, "r") as f:
+        for line in f:
+            parts = line.strip().split("\t")
+            if len(parts) == 2:
+                sequence_pairs.append((parts[0], parts[1]))
+
+    print(f"Loaded {len(sequence_pairs)} sequence pairs from:\n{full_path}")
+    return sequence_pairs
+
+
+
+def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, subsetsize=200, generations=100):
+    non_cover_vertices = set()
+    history = set()
+
+    try:
+        for i in range(generations):
+            # Select sequences with on-target energy in desired range
+            subset, indices = select_subset_in_energy_range(
+                sequence_pairs,
+                energy_min=min_ontarget,
+                energy_max=max_ontarget,
+                max_size=subsetsize,
+                Use_Library=True,
+                avoid_indices=history
+            )
+            sorted_history = sorted(history)
+            extra_pairs = [sequence_pairs[idx][1] for idx in sorted_history]
+            subset += extra_pairs
+            indices += list(sorted_history)
+
+            assert len(indices) == len(set(indices)), (
+                f"Duplicate index found! "
+                f"indices={indices} "
+                f"set(indices)={sorted(set(indices))}"
+            )
+
+            # Compute off-target energies for the subset
+            off_e_subset = compute_offtarget_energies(subset, Use_Library=True)
+
+            # Build the off-target interaction graph
+            Edges = build_edges(off_e_subset, indices, offtarget_limit)
+
+            # Run the heuristic vertex cover algorithm
+            #removed_vertices = heuristic_vertex_cover_optimized2(Edges, history)
+            removed_vertices = iterative_vertex_cover_multi(indices,Edges, preserve_V=history,num_vertices_to_remove=len(indices)//2)
+
+            # Identify sequences not selected by the heuristic
+            Vertices = set(indices)
+            new_non_cover_vertices = Vertices - removed_vertices
             
-            if len(new_non_cover_vertices) >len(non_cover_vertices):
-                history.clear()
+
+            if len(new_non_cover_vertices) >= len(non_cover_vertices):
+                if len(new_non_cover_vertices) > len(non_cover_vertices):
+                    history.clear()
+                non_cover_vertices = new_non_cover_vertices
                 
-            non_cover_vertices = new_non_cover_vertices
-            history.update(new_non_cover_vertices)
+            if len(new_non_cover_vertices) >= len(non_cover_vertices)*0.95:
+                history.update(new_non_cover_vertices)
+                
 
-        print(f"Generation {i + 1:2d} | Current: {len(new_non_cover_vertices):3d} sequences | Best so far: {len(non_cover_vertices):3d} | Preserved pool length: {len(history):3d}")
+            print(f"Generation {i + 1:2d} | Current: {len(new_non_cover_vertices):3d} sequences | Best so far: {len(non_cover_vertices):3d} | Preserved pool length: {len(history):3d}")
 
-   # Return the actual sequence pairs (seq, rc) in same format as sequence_pairs
-   return [sequence_pairs[idx] for idx in sorted(non_cover_vertices)]
+    except KeyboardInterrupt:
+        print("\nInterrupted by user. Saving best result so far...")
+
+    # Save result
+    final_pairs = [sequence_pairs[idx][1] for idx in sorted(non_cover_vertices)]
+    save_sequence_pairs_to_txt(final_pairs)
+
+    return final_pairs
 
 
 if __name__ == "__main__":
     # Run test to see if the functions above work
     # Set a fixed random seed for reproducibility
-    RANDOM_SEED = 40
+    RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
 
     # Create candidate sequences
-    ontarget7mer = create_sequence_pairs_pool(length=6, fivep_ext="", threep_ext="", avoid_gggg=False)
+    ontarget7mer = create_sequence_pairs_pool(length=7, fivep_ext="TT", threep_ext="", avoid_gggg=False)
+    #print(ontarget7mer)
 
     # Define energy thresholds
-    offtarget_limit = -5.5
-    max_ontarget = -7.9
-    min_ontarget = -9.5
+    offtarget_limit = -7.4
+    max_ontarget = -9.6
+    min_ontarget = -10.4
+    '''
     # Select sequences with on-target energy in desired range
     subset, indices = select_subset_in_energy_range(
         ontarget7mer, energy_min=min_ontarget, energy_max=max_ontarget,
         max_size=30, Use_Library=True, avoid_indices=set()
     )
-
+    
     # Compute off-target energies for the subset
-    off_e_subset = compute_offtarget_energies(subset, Use_Library=True)
+    off_e_subset = compute_offtarget_energies(subset, Use_Library=False)
 
     # Build the off-target interaction graph
     Edges = build_edges(off_e_subset, indices, offtarget_limit)
-
+    '''
 
     # Run the heuristic vertex cover algorithm
-    orthogonal_seq_pairs = iterative_vertex_cover2(ontarget7mer, offtarget_limit, max_ontarget, min_ontarget, subsetsize=150, generations= 200)
-    print(orthogonal_seq_pairs)
+    orthogonal_seq_pairs = evolutionary_vertex_cover(ontarget7mer, offtarget_limit, max_ontarget, min_ontarget, subsetsize=300, generations= 1500)
+    save_sequence_pairs_to_txt(orthogonal_seq_pairs, filename='my_sequences.txt')
+    
+    print(load_sequence_pairs_from_txt('my_sequences.txt'))
+    onef = compute_ontarget_energies(orthogonal_seq_pairs, Use_Library=False)
+    offef = compute_offtarget_energies(orthogonal_seq_pairs, Use_Library=False)
+    stats2 = plot_on_off_target_histograms(onef, offef, output_path='test.pdf')
+    print(stats2)
 
 
 
