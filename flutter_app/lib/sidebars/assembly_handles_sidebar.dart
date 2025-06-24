@@ -1,12 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../app_management/shared_app_state.dart';
-import 'package:flutter/material.dart';
-import '../graphics/rating_indicator.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/material.dart';
+
+import '../app_management/shared_app_state.dart';
+import '../graphics/rating_indicator.dart';
 import 'layer_manager.dart';
+import '../main_windows/alert_window.dart';
+
 
 class AssemblyHandleDesignTools extends StatefulWidget {
   const AssemblyHandleDesignTools({super.key});
@@ -54,7 +57,6 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
     var serverState = context.watch<ServerState>();
-
 
     return Column(children: [
       Text("Assembly Handle Generation", textAlign: TextAlign.center,
@@ -170,32 +172,49 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         ],
       ),
       SizedBox(height: 10),
-      FilledButton.icon(
-        onPressed: () {
-          appState.cleanAllHandles();
-        },
-        icon: Icon(Icons.delete_sweep, size: 18),
-        label: Text("Delete all handles"),
-        style: ElevatedButton.styleFrom(
-          padding:
-          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: TextStyle(fontSize: 16),
-        ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FilledButton.icon(
+            onPressed: () {
+              appState.clearAssemblyHandles();
+            },
+            icon: Icon(Icons.delete_sweep, size: 18),
+            label: Text("Delete All"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              padding:
+              EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+            ),
+          ),
+          SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: () async {
+              bool readStatus = await appState.updateAssemblyHandlesFromFile(context);
+              if (!readStatus && context.mounted) {
+                showWarning(
+                  context,
+                  'Error Reading Assembly Handles',
+                  'Failed to read assembly handles from file. Do your assembly handle positions match the corresponding locations in your slat array?',
+                );
+              }
+              if(readStatus) {
+                appState.updateDesignHammingValue();
+                actionState.setAssemblyHandleDisplay(true);
+              }
+            },
+            icon: Icon(Icons.import_contacts, size: 18),
+            label: Text("File Import"),
+            style: ElevatedButton.styleFrom(
+              padding:
+              EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              textStyle: TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
       ),
-      SizedBox(height: 10),
-      FilledButton.icon(
-        onPressed: () {
-
-        },
-        icon: Icon(Icons.delete_sweep, size: 18),
-        label: Text("Import Handles from File"),
-        style: ElevatedButton.styleFrom(
-          padding:
-          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: TextStyle(fontSize: 16),
-        ),
-      ),
-      SizedBox(height: 10),
+      SizedBox(height: 5),
       Divider(thickness: 2, color: Colors.grey.shade300),
       Text("Mismatch Score Calculation", textAlign: TextAlign.center,
           style: TextStyle(

@@ -11,7 +11,7 @@ seed_plate_folder = join(base_directory, 'dna_source_plates', 'seed_plates')
 old_format_plate_folder = join(base_directory, 'dna_source_plates', 'old_plate_format')
 old_core_folder = join(old_format_plate_folder, 'core_plates')
 old_cargo_folder = join(old_format_plate_folder, 'cargo_plates')
-old_assemby_folder = join(old_format_plate_folder, 'assembly_handle_plates')
+old_assembly_folder = join(old_format_plate_folder, 'assembly_handle_plates')
 
 # ASSEMBLY HANDLE PLATES
 

@@ -93,7 +93,7 @@ ass_versions = ['v2'] * 6 + ['v2'] * 6 + ['v2'] * 3 + ['v2'] * 3 + ['v1'] * 3 + 
 # ASSEMBLY HANDLE PREPARATION
 for ass_plate, h_side, category, version in zip(all_ass_plates, ass_sides, ass_categories, ass_versions):
     sp_name = '_'.join(ass_plate.split('_')[0:2])
-    full_file = os.path.join(old_assemby_folder, ass_plate + '.xlsx')
+    full_file = os.path.join(old_assembly_folder, ass_plate + '.xlsx')
     print(sp_name)
     plate = read_dna_plate_mapping(full_file, data_type='2d_excel', plate_size=384).reset_index(drop=True)
 

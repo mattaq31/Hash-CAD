@@ -435,6 +435,20 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
         },
       ),
       SizedBox(height: 10),
+      FilledButton.icon(
+        onPressed: () {
+          appState.deleteAllCargo();
+        },
+        icon: Icon(Icons.delete_sweep, size: 18),
+        label: Text("Delete All"),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          padding:
+          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: TextStyle(fontSize: 16),
+        ),
+      ),
+      SizedBox(height: 10),
       Divider(thickness: 2, color: Colors.grey.shade300),
       LayerManagerWidget(
         appState: appState,

@@ -86,7 +86,7 @@ class EvolveManager:
             self.split_sequence_handles = split_sequence_handles
 
         if isinstance(process_count, float) or isinstance(process_count, int):
-            self.num_processes = process_count
+            self.num_processes = int(process_count)
         else:
             # if no exact count specified, use 67 percent of the cores available on the computer as a reasonable load
             self.num_processes = max(1, int(multiprocessing.cpu_count() / 1.5))

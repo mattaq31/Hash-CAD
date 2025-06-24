@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:universal_html/html.dart' as html; // For web download
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:file_picker/file_picker.dart';
+
 
 List<String> _generatePlateLayout96() {
   final rows = 'ABCDEFGH'.split('');
@@ -25,16 +27,15 @@ List<String> _generatePlateLayout384() {
   ];
 }
 
-void convertSlatsToEchoCsv({
+Future<void> convertSlatsToEchoCsv({
   required Map<String, Slat> slatDict,
   required Map<String, Map<String, dynamic>> layerMap,
   required String destinationPlateName,
-  required String outputFolder,
   required String outputFilename,
   int referenceTransferVolumeNl = 75,
   int referenceConcentrationUM = 500,
   String plateSize = '96',
-}) {
+}) async {
   final List<List<dynamic>> outputCommandList = [];
 
   late List<String> plateFormat;
@@ -57,7 +58,7 @@ void convertSlatsToEchoCsv({
   final sortedSlats = slatDict.entries.toList()
     ..sort((a, b) {
       // Sort by layer first, then index
-      return a.value.layer != b.value.layer ? a.value.layer.compareTo(b.value.layer) : a.value.numericID.compareTo(b.value.numericID);
+      return layerMap[a.value.layer]!['order']! != layerMap[b.value.layer]!['order']! ? layerMap[a.value.layer]!['order']!.compareTo(layerMap[b.value.layer]!['order']!) : a.value.numericID.compareTo(b.value.numericID);
     });
 
   for (final entry in sortedSlats) {
@@ -78,7 +79,7 @@ void convertSlatsToEchoCsv({
     for (final entry in sortedH2 + sortedH5) {
       int id = entry.key;
       var handleData = entry.value;
-      String side = sortedH2.contains(entry) ? 'H2' : 'H5';
+      String side = sortedH2.contains(entry) ? 'h2' : 'h5';
       final volume = (referenceTransferVolumeNl *
               (referenceConcentrationUM / handleData['concentration']))
           .round();
@@ -116,9 +117,22 @@ void convertSlatsToEchoCsv({
       ..click();
     html.Url.revokeObjectUrl(url);
   } else {
-    // Desktop/Flutter app
-    final outputPath = Directory(outputFolder);
-    final file = File('${outputPath.path}/$outputFilename');
+    // Desktop app
+
+    // Get the directory to save the file
+    String? filePath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save As',
+      fileName: outputFilename,
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+    );
+
+    // if filepath is null, return
+    if (filePath == null) {
+      return;
+    }
+
+    final file = File(filePath);
     file.writeAsStringSync(csvString);
   }
 }

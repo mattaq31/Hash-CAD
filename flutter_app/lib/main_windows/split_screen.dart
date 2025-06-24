@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../graphics/3d_painter.dart';
 import '../graphics/crosshatch_shader.dart';
 import 'grid_control.dart';
@@ -10,6 +11,7 @@ import '../app_management/shared_app_state.dart';
 import '../grpc_client_architecture/hamming_evolve_window.dart';
 import '../grpc_client_architecture/server_startup.dart';
 import '../app_management/version_tracker.dart';
+import 'floating_main_title.dart';
 
 
 class SplitScreen extends StatefulWidget {
@@ -207,7 +209,19 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
               ],
             ),
           )],
+          // Floating Title Box
+          Positioned(
+            top: 20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: FloatingEditableTitle(),
+            ),
+          ),
+
           HammingEvolveWindow(),
+
+
           // Overlay spinner when loading
           if (appState.currentlyLoadingDesign)
             Container(

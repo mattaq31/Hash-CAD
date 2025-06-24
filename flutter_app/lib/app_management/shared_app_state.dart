@@ -134,6 +134,7 @@ class DesignState extends ChangeNotifier {
   int cargoAddCount = 1;
   String? cargoAdditionType;
   List<Offset> selectedCargoPositions = [];
+  String designName = 'New Megastructure';
 
   Map<String, Map<Offset, String>> occupiedCargoPoints = {};
   Map<(String, String, Offset), Seed> seedRoster = {};
@@ -205,10 +206,23 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDesignName(String newName) {
+    if(newName == ''){
+      designName = 'New Megastructure';
+    }
+    else {
+      designName = newName;
+    }
+    if(designName.contains(',')){
+      designName = designName.replaceAll(',', '_');
+    }
+
+    notifyListeners();
+  }
 
   void exportCurrentDesign() async {
     /// Exports the current design to an excel file
-    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, gridSize, gridMode);
+    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, gridSize, gridMode, designName);
   }
 
   void importNewDesign() async{
@@ -216,7 +230,7 @@ class DesignState extends ChangeNotifier {
     currentlyLoadingDesign = true;
     notifyListeners();
 
-    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster) = await importDesign();
+    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster, newDesignName) = await importDesign();
     // check if the maps are empty
     if (newSlats.isEmpty || newLayerMap.isEmpty) {
       currentlyLoadingDesign = false;
@@ -230,6 +244,7 @@ class DesignState extends ChangeNotifier {
     slats = newSlats;
     gridMode = newGridMode;
     cargoPalette = newCargoPalette;
+    designName = newDesignName;
     selectedLayerKey = layerMap.keys.first;
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
@@ -833,6 +848,21 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> updateAssemblyHandlesFromFile(BuildContext context) async {
+    /// Reads assembly handles from a file and applies them to the slats (e.g. generated after evolution)
+    ///
+    saveUndoState();
+
+    bool readStatus = await importAssemblyHandlesFromFileIntoSlatArray(slats, layerMap, gridSize);
+    if (!readStatus) {
+      undo2DAction();
+      return false;
+    }
+
+    notifyListeners();
+    return true;
+  }
+
   List<List<List<int>>> getSlatArray(){
     Offset minPos;
     Offset maxPos;
@@ -848,12 +878,11 @@ class DesignState extends ChangeNotifier {
     return extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
   }
 
-  void cleanAllHandles(){
+  void clearAssemblyHandles(){
     saveUndoState();
     /// Removes all handles from the slats
-    /// TODO: PROBLEM WHEN SHIFTING SLAT LAYERS - ASSEMBLY HANDLES ARE CARRIED OVER!
     for (var slat in slats.values) {
-      slat.clearAllHandles();
+      slat.clearAssemblyHandles();
     }
     hammingValueValid = false;
     notifyListeners();
@@ -888,6 +917,26 @@ class DesignState extends ChangeNotifier {
     cargoAdditionType = null;
     notifyListeners();
   }
+
+  void deleteAllCargo(){
+    saveUndoState();
+    // need to remove all cargo of this type from the slats and from the cargo occupancy map (otherwise will error out)
+    for (var slat in slats.values) {
+      for (var side in ['top', 'bottom']) {
+        var targetDict = layerMap[slat.layer]!['${side}_helix'] == 'H5' ? slat.h5Handles : slat.h2Handles;
+        for (int position = 1; position <= slat.maxLength; position++) {
+          if (targetDict[position] != null && targetDict[position]!['category'] == 'CARGO') {
+            targetDict.remove(position);
+            occupiedCargoPoints['${slat.layer}-$side']?.remove(slat.slatPositionToCoordinate[position]!);
+          }
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+
+
 
   /// Updates the number of cargo to be added with the next 'add' click
   void updateCargoAddCount(int value) {

@@ -4,6 +4,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:hash_cad/crisscross_core/handle_plates.dart';
+import 'package:path/path.dart';
 import 'dart:math';
 import 'dart:io';
 
@@ -69,13 +70,12 @@ void exportDesign(Map<String, Slat> slats,
     Map<String, Cargo> cargoPalette,
     Map<String, Map<Offset, String>> occupiedCargoPoints,
     Map<(String, String, Offset), Seed> seedRoster,
-    double gridSize, String gridMode) async{
+    double gridSize, String gridMode, String suggestedDesignName) async{
 
   Offset minPos;
   Offset maxPos;
   (minPos, maxPos) = extractGridBoundary(slats);
   List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
-
   List<List<List<int>>> handleArray = extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
 
   var excel = Excel.createExcel();
@@ -168,7 +168,7 @@ void exportDesign(Map<String, Slat> slats,
         // column/row are flipped in the internal representation - the flip-back to normal values is done here
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).value = IntCellValue(handleArray[row][col][layer]);
         if (handleArray[row][col][layer] != 0) {
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle =CellStyle(backgroundColorHex: '#1AFF1A'.excelColor);
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: row, rowIndex: col)).cellStyle = CellStyle(backgroundColorHex: '#1AFF1A'.excelColor);
         }
       }
     }
@@ -239,11 +239,10 @@ void exportDesign(Map<String, Slat> slats,
   excel.delete('Sheet1'); // removes useless first sheet
 
   if (kIsWeb){
-    // TODO: allow user to change filename in-app for web somehow
-    excel.save(fileName: 'Megastructure.xlsx');
+    excel.save(fileName: '$suggestedDesignName.xlsx');
   }  else {
     // Get the directory to save the file
-    String? filePath = await selectSaveLocation('Megastructure.xlsx');
+    String? filePath = await selectSaveLocation('$suggestedDesignName.xlsx');
     // if filepath is null, return
     if (filePath == null) {
       return;
@@ -289,6 +288,83 @@ String readExcelString(Sheet workSheet, String cell){
       ? cellValue.value.text ?? ''
       : '';
 }
+
+
+bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slatArray, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double minX, double minY, bool rowColFlipped){
+  /// extracts assembly handles from a pre-opened excel workbook and assigns them to slats
+  /// An extra flag (rowColFlipped) is used to determine whether the row/column order should be flipped when reading from Excel (to match with internal representations)
+
+  for (var table in excelFile.tables.keys.where((key) =>
+      key.startsWith('handle_interface_'))) {
+    // runs through each handle layer sheet
+    var handleLayerIndex = int.parse(table.split('_').last) - 1;
+    var sheet = excelFile.tables[table]!;
+    // there are always 2 slat layers to address for each handle (bottom and top)
+    for (var layer in [handleLayerIndex, handleLayerIndex + 1]) {
+      // extract actual layerID
+      String layerID = layerMap.entries
+          .firstWhere((element) => element.value['order'] == layer)
+          .key;
+      // loop through the whole array
+      for (var row = 0; row < sheet.maxRows; row++) {
+        for (var col = 0; col < sheet.maxColumns; col++) {
+
+          // extract cell handle data
+          CellValue? cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
+          Offset positionCoord = Offset(col + minX, row + minY);
+
+          int value = cell is IntCellValue ? cell.value : 0;
+          int slatSide;
+
+          // if a handle is found, assign it to the slat
+          if (value != 0) {
+            String slatID;
+            // build up slat ID from layer and slat value
+            try {
+              if(rowColFlipped){
+                // if the row/column order is flipped, then the column is the first value
+                slatID = "$layerID-I${slatArray[col][row][layer]}";
+              }
+              else {
+                // if the row/column order is not flipped, then the row is the first value
+                slatID = "$layerID-I${slatArray[row][col][layer]}";
+              }
+            }
+            catch (e) {
+              // if the slat ID is not found, then there is a problem in the file - need to return false
+              return false;
+            }
+
+            String category = '';
+
+            // determine which side of the slat the handle is on
+            if (layer == handleLayerIndex) {
+              slatSide = int.parse(layerMap[layerID]?['top_helix'].replaceAll(
+                  RegExp(r'[^0-9]'), ''));
+              category = 'ASSEMBLY_HANDLE';
+            }
+            else {
+              slatSide = int.parse(
+                  layerMap[layerID]?['bottom_helix'].replaceAll(
+                      RegExp(r'[^0-9]'), ''));
+              category = 'ASSEMBLY_ANTIHANDLE';
+            }
+
+            // if slat is not available then something is wrong - either a slat or assembly handle are not aligned
+            if (!slats.containsKey(slatID)){
+              return false;
+            }
+
+            // assign the exact handle to the slat
+            slats[slatID]?.setPlaceholderHandle(slats[slatID]!.slatCoordinateToPosition[positionCoord]!, slatSide, '$value', category);
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 
 Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>)> parseDesignInIsolate(Uint8List fileBytes) async {
 
@@ -397,62 +473,9 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     layerMap[layer]!['slat_count'] = slatCoordinates.length;
   }
 
-  // extracts assembly handles and assigns them to slats
-  // TODO: as before, need to handle errors and problematic cases more gracefully...
-  for (var table in excel.tables.keys.where((key) =>
-      key.startsWith('handle_interface_'))) {
-    // runs through each handle layer sheet
-    var handleLayerIndex = int.parse(table
-        .split('_')
-        .last) - 1;
-    var sheet = excel.tables[table]!;
-    // there are always 2 slat layers to address for each handle (bottom and top)
-    for (var layer in [handleLayerIndex, handleLayerIndex + 1]) {
-      // extract actual layerID
-      String layerID = layerMap.entries
-          .firstWhere((element) => element.value['order'] == layer)
-          .key;
-      // loop through the whole array
-      for (var row = 0; row < sheet.maxRows; row++) {
-        for (var col = 0; col < sheet.maxColumns; col++) {
-          // extract cell handle data
-          var cell = sheet
-              .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
-              .value;
-          int value = cell is IntCellValue ? cell.value : 0;
-          int slatSide;
-
-          // if a handle is found, assign it to the slat
-          if (value != 0) {
-            // build up slat ID from layer and slat value
-            String slatID = "$layerID-I${slatArray[row][col][layer]}";
-            String category = '';
-
-            // determine which side of the slat the handle is on
-            if (layer == handleLayerIndex) {
-              slatSide = int.parse(layerMap[layerID]?['top_helix'].replaceAll(
-                  RegExp(r'[^0-9]'), ''));
-              category = 'ASSEMBLY_HANDLE';
-            }
-            else {
-              slatSide = int.parse(
-                  layerMap[layerID]?['bottom_helix'].replaceAll(
-                      RegExp(r'[^0-9]'), ''));
-              category = 'ASSEMBLY_ANTIHANDLE';
-            }
-
-            // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
-            Offset positionCoord = Offset(col + minX, row + minY);
-
-            // assign the exact handle to the slat
-            slats[slatID]?.setPlaceholderHandle(
-                slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
-                slatSide, '$value', category);
-          }
-        }
-      }
-    }
-  }
+  // assembly handle extraction
+  // TODO: can use errors here to cancel entire function import
+  extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minX, minY, false);
 
   // extracts cargo handles and assigns them to slats
   // TODO: as before, need to handle errors and problematic cases more gracefully...
@@ -560,7 +583,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>)> importDesign() async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, String)> importDesign() async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
   // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
 
@@ -578,6 +601,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     allowedExtensions: ['xlsx'],
   );
 
+  String fileName;
 
   if (result != null) {
     // web has a different file-opening procedure to the desktop app
@@ -588,12 +612,59 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       filePath = result.files.single.path!;
       fileBytes = File(filePath).readAsBytesSync();
     }
+    fileName = basenameWithoutExtension(result.files.first.name);
+
   } else { // if nothing picked, return empty maps
-    return (slats, layerMap, '', cargoPalette, seedRoster);
+    return (slats, layerMap, '', cargoPalette, seedRoster, '');
   }
   // run isolate function
-  return await compute(parseDesignInIsolate, fileBytes);
+  final (slatsOut, layerMapOut, layerName, cargoOut, seedOut) = await compute(parseDesignInIsolate, fileBytes);
+  return (slatsOut, layerMapOut, layerName, cargoOut, seedOut, fileName);
 }
+
+Future <bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize) async{
+
+  Uint8List fileBytes;
+  String filePath;
+
+  // main user dialog box for file selection
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['xlsx'],
+    allowMultiple: false,
+  );
+
+  if (result != null) {
+    // web has a different file-opening procedure to the desktop app
+    if (kIsWeb) {
+      fileBytes = result.files.first.bytes!;
+    }
+    else {
+      filePath = result.files.single.path!;
+      fileBytes = File(filePath).readAsBytesSync();
+    }
+  }else{
+    return true; // if nothing picked, return
+  }
+
+  // clear old handles before importing new ones
+  for (var slat in slats.values) {
+    slat.clearAssemblyHandles();
+  }
+
+  // read in file with Excel package
+  var excel = Excel.decodeBytes(fileBytes);
+
+  // extract slat array
+  Offset minPos;
+  Offset maxPos;
+  (minPos, maxPos) = extractGridBoundary(slats);
+  List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
+
+  // assign assembly handles to slats (returns true if successful, false if there is an error)
+  return extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minPos.dx, minPos.dy, true);
+}
+
 
 Future <void> importPlatesFromFile(PlateLibrary plateLibrary) async{
 

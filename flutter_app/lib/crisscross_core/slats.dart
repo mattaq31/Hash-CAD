@@ -127,6 +127,34 @@ class Slat {
     placeholderList.clear();
   }
 
+  void clearAssemblyHandles() {
+    /// Removes all assembly handles from the slat.
+
+    // Collect keys to remove from h2Handles
+    final keysToRemoveH2 = h2Handles.entries
+        .where((entry) => entry.value['category'].contains('ASSEMBLY'))
+        .map((entry) => entry.key)
+        .toList();
+
+    for (final key in keysToRemoveH2) {
+      h2Handles.remove(key);
+      final inputId = 'handle-$key-h2';
+      placeholderList.remove(inputId);
+    }
+
+    // Collect keys to remove from h5Handles
+    final keysToRemoveH5 = h5Handles.entries
+        .where((entry) => entry.value['category'].contains('ASSEMBLY'))
+        .map((entry) => entry.key)
+        .toList();
+
+    for (final key in keysToRemoveH5) {
+      h5Handles.remove(key);
+      final inputId = 'handle-$key-h5';
+      placeholderList.remove(inputId);
+    }
+  }
+
   double getMolecularWeight() {
     /// Calculates the molecular weight of the slat, based on the handles assigned.
 

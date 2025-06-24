@@ -296,9 +296,8 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
             convertSlatsToEchoCsv(
                 slatDict: appState.slats,
                 layerMap: appState.layerMap,
-                destinationPlateName: 'TEST',
-                outputFilename: 'test.csv',
-                outputFolder: '/Users/matt/Desktop',
+                destinationPlateName: appState.designName.replaceAll(' ', '-'),
+                outputFilename: '${appState.designName}_echo_commands.csv',
                 referenceTransferVolumeNl: actionState.echoExportSettings['Reference Volume'],
                 referenceConcentrationUM: actionState.echoExportSettings['Reference Concentration']);
         },
