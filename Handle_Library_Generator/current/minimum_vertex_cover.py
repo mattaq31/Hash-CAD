@@ -1,6 +1,6 @@
 from rope.base.history import History
 
-from Energy_computation_functions import *
+import Energy_computation_functions as ecf 
 from sequence_picking_tools import *
 import numpy as np
 import random
@@ -215,7 +215,7 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
             )
 
             # Compute off-target energies for the subset
-            off_e_subset = compute_offtarget_energies(subset, Use_Library=True)
+            off_e_subset = ecf.compute_offtarget_energies(subset)
 
             # Build the off-target interaction graph
             Edges = build_edges(off_e_subset, indices, offtarget_limit)
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     random.seed(RANDOM_SEED)
 
     # Create candidate sequences
-    ontarget7mer = create_sequence_pairs_pool(length=7, fivep_ext="TT", threep_ext="", avoid_gggg=False)
+    ontarget7mer = ecf.create_sequence_pairs_pool(length=7, fivep_ext="TT", threep_ext="", avoid_gggg=False)
     #print(ontarget7mer)
 
     # Define energy thresholds
@@ -277,15 +277,17 @@ if __name__ == "__main__":
     # Build the off-target interaction graph
     Edges = build_edges(off_e_subset, indices, offtarget_limit)
     '''
-
+    ecf.choose_precompute_library("my_new_cache.pkl")  # filename setter you already have
+    ecf.USE_LIBRARY = True
     # Run the heuristic vertex cover algorithm
-    orthogonal_seq_pairs = evolutionary_vertex_cover(ontarget7mer, offtarget_limit, max_ontarget, min_ontarget, subsetsize=300, generations= 1500)
+    orthogonal_seq_pairs = evolutionary_vertex_cover(ontarget7mer, offtarget_limit, max_ontarget, min_ontarget, subsetsize=100, generations= 3)
     save_sequence_pairs_to_txt(orthogonal_seq_pairs, filename='my_sequences.txt')
     
     print(load_sequence_pairs_from_txt('my_sequences.txt'))
-    onef = compute_ontarget_energies(orthogonal_seq_pairs, Use_Library=False)
-    offef = compute_offtarget_energies(orthogonal_seq_pairs, Use_Library=False)
-    stats2 = plot_on_off_target_histograms(onef, offef, output_path='test.pdf')
+    ecf.USE_LIBRARY = False
+    onef = ecf.compute_ontarget_energies(orthogonal_seq_pairs)
+    offef = ecf.compute_offtarget_energies(orthogonal_seq_pairs)
+    stats2 = ecf.plot_on_off_target_histograms(onef, offef, output_path='test.pdf')
     print(stats2)
 
 

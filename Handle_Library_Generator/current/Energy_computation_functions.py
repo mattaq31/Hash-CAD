@@ -11,6 +11,10 @@ import sys
 import signal
 import time
 
+# Default file name for the energy library
+_precompute_library_filename = None
+
+USE_LIBRARY = True
 
 # Kezboard Interrupt that protects the saving of the precompute Library to prevent corruption of the precompute library file
 class DelayedKeyboardInterrupt:
@@ -95,13 +99,21 @@ def save_pickle_atomic(data, filepath):
     # This safely replaces the original file with the completed tmp file
     os.replace(tmp_path, filepath)
 
+#Set the name of the energy library file.
+def choose_precompute_library(filename):
+    
+    global _precompute_library_filename
+    _precompute_library_filename = filename
 
 
 # Helper function that returns the file path to the precomputed energy library.
 # This path points to a pickle file containing a dictionary of previously calculated Gibbs free energies.
-# Change this path if you want to generate a new energy library from scratch.
+# The file name is recovered from a global variable. If the variable is None it will use the default dictionary
 def get_library_path():
-    return "pre_computed_energies/interactions_matrix_7mer.pkl"
+
+    folder = "pre_computed_energies"
+    filename = _precompute_library_filename or "interactions_matrix_7mer.pkl"
+    return os.path.join(folder, filename)
 
 
 # Computes the Gibbs free energy of hybridization between two DNA sequences using NUPACK.
@@ -125,8 +137,14 @@ def get_library_path():
 # - The precomputed energy library is cached on first access to avoid repeated disk I/O.
 # - Energies are stored using a canonical sorted key to ensure (seq1, seq2) and (seq2, seq1) map to the same value.
 # - The model parameters are celsius=37, sodium=0.05, magnesium=0.025. If you change them you might want to start a new precompute library
-def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_Library=False):
-
+def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_Library=None):
+    
+    
+    if Use_Library is None:         
+        Use_Library = USE_LIBRARY
+   
+   
+   
     A = Strand(seq1, name='H1')  # name is required for strands
     B = Strand(seq2, name='H2')
     library1 = {}
@@ -142,9 +160,10 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
             else:
                 nupack_compute_energy_precompute_library_fast.library_cache = {}
         library1 = nupack_compute_energy_precompute_library_fast.library_cache
-
+    #print("I can print")
     # Return value from cache if available
     if Use_Library and key in library1:
+        #print("retrived from lib")
         return library1[key]
 
     try:
@@ -181,10 +200,18 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         print(seq1, seq2)
         return -1.0
 
+# initializer for parralel computing 
+def _init_worker(lib_filename, use_lib):
+    
+    global _precompute_library_filename, USE_LIBRARY
+    _precompute_library_filename = lib_filename
+    USE_LIBRARY = use_lib
+    #print("Worker using", _precompute_library_filename, USE_LIBRARY)
+
 
 # helper function for parallel computing on-target energies
-def compute_pair_energy_on(i, seq, rc_seq, Use_Library):
-    return i, nupack_compute_energy_precompute_library_fast(seq, rc_seq, samples=1, Use_Library=Use_Library)
+def compute_pair_energy_on(i, seq, rc_seq):
+    return i, nupack_compute_energy_precompute_library_fast(seq, rc_seq)
 
 # Computes the on-target energies of a list of sequence pairs.
 # Optionally updates and uses a precomputed energy library to speed up future runs.
@@ -196,7 +223,9 @@ def compute_pair_energy_on(i, seq, rc_seq, Use_Library):
 # - Parallel processing is used for efficiency.
 # Returns:
 # - energies: A NumPy array of Gibbs free energies (in kcal/mol) for each sequence pair.
-def compute_ontarget_energies(sequence_list, Use_Library=False):
+def compute_ontarget_energies(sequence_list):
+    
+
     # Preallocate array for better performance
     energies = np.zeros(len(sequence_list))
 
@@ -207,17 +236,23 @@ def compute_ontarget_energies(sequence_list, Use_Library=False):
     print(f"Calculating with {max_workers} cores...")
 
     # parallelize energy computation
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    
+    
+    pool_args = (_precompute_library_filename, USE_LIBRARY)
+
+    with ProcessPoolExecutor(max_workers=max_workers,
+                             initializer=_init_worker,
+                             initargs=pool_args) as executor:
         futures = []
         for i, (seq, rc_seq) in enumerate(sequence_list):
-            futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq, Use_Library))
+            futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq))
 
         for future in tqdm(as_completed(futures), total=len(futures)):
             i, energy = future.result()
             energies[i] = energy
 
     # update the precompute library if required
-    if Use_Library:
+    if USE_LIBRARY:
         # save to existing library or create a new one
         file_name = get_library_path()
 
@@ -234,15 +269,16 @@ def compute_ontarget_energies(sequence_list, Use_Library=False):
         # Save the updated dictionary
         with DelayedKeyboardInterrupt():
             save_pickle_atomic(library1, file_name)
+            print("saved stuff")
 
     return energies
 
 
 
 # helper function for parallel computing off target energies
-def compute_pair_energy_off(i, j, seq1, seq2, Use_Library):
+def compute_pair_energy_off(i, j, seq1, seq2):
     # return i, j, nupack_compute_energy(seq1, seq2)
-    return i, j, nupack_compute_energy_precompute_library_fast(seq1, seq2, Use_Library=Use_Library)
+    return i, j, nupack_compute_energy_precompute_library_fast(seq1, seq2)
 
 # Computes off-target hybridization energies for all pairwise combinations of given list of sequence pairs.
 #
@@ -261,7 +297,9 @@ def compute_pair_energy_off(i, j, seq1, seq2, Use_Library):
 #     'handle_handle_energies': 2D numpy array (N x N). upper triangle excluding diagonal filled with 0 because of redundancy
 #     'antihandle_handle_energies': 2D numpy array (N x N) upper triangle excluding diagonal filled with 0 because of redundancy
 #     'antihandle_antihandle_energies': 2D numpy array (N x N) diagonel filled with 0 because these are the ontarget energies
-def compute_offtarget_energies(sequence_pairs, Use_Library= True):
+def compute_offtarget_energies(sequence_pairs):
+    
+
     # call all seq handles and all rc_seq antihandles. this is an arbitrary choice
     # extract them for the pairs
     handles = [seq for seq, rc_seq in sequence_pairs]
@@ -280,12 +318,16 @@ def compute_offtarget_energies(sequence_pairs, Use_Library= True):
     def parallel_energy_computation(seqs1, seqs2, energy_matrix, condition):
         max_workers = max(1, os.cpu_count() * 3// 4) # Use only 3 quarters of all possible cores on the maching
         print(f'Calculating with {max_workers} cores...')
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        pool_args = (_precompute_library_filename, USE_LIBRARY)
+
+        with ProcessPoolExecutor(max_workers=max_workers,
+                                 initializer=_init_worker,
+                                 initargs=pool_args) as executor:
             futures = []
             for i, seq1 in enumerate(seqs1):
                 for j, seq2 in enumerate(seqs2):
                     if condition(i, j):
-                        futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2, Use_Library))
+                        futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2))
 
             for future in tqdm(as_completed(futures), total=len(futures)):
                 i, j, energy = future.result()
@@ -305,7 +347,7 @@ def compute_offtarget_energies(sequence_pairs, Use_Library= True):
 
 
     #update the precompute library to  make things faster in the future
-    if Use_Library:
+    if USE_LIBRARY:
         file_name = get_library_path()
         if os.path.exists(file_name):
             with open(file_name, "rb") as file:
@@ -390,14 +432,20 @@ def select_subset(sequence_pairs, max_size=200):
 # - list: A list of (seq, rc_seq) pairs within the specified energy range.
 # - list: Their corresponding indices in the original pool.
 def select_subset_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, max_size=np.inf,
-                                  Use_Library=True, avoid_indices=None):
+                                  Use_Library=None, avoid_indices=None):
+    
+    if Use_Library is None:
+        Use_Library = USE_LIBRARY
+    
     if avoid_indices is None:
         avoid_indices = set()
 
     subset = []
     indices = []
     tested_indices = set(avoid_indices)
-
+    
+    
+    # I used shuffel here before. For large numbers of sequence_pairs i.e. around 4^12 shuffel is very slow
     while len(indices) < max_size and len(tested_indices) < len(sequence_pairs):
         index, (seq, rc_seq) = random.choice(sequence_pairs)
 
@@ -437,7 +485,10 @@ def select_subset_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max
 # Returns:
 # - list: A list of (seq, rc_seq) pairs within the specified energy range.
 # - list: Their corresponding IDs from the original pool.
-def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, Use_Library=True, avoid_ids=None):
+def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, Use_Library=None, avoid_ids=None):
+    if Use_Library is None:
+        Use_Library = USE_LIBRARY
+    
     if avoid_ids is None:
         avoid_ids = set()
 
@@ -592,44 +643,34 @@ if __name__ == "__main__":
     #print(ontarget7mer)
     
     # Define energy thresholds
-    
+    choose_precompute_library("test_new1000.pkl")
     offtarget_limit = -5
     max_ontarget = -9.6
     min_ontarget = -10.4
-    '''
-    print(sys.getsizeof(ontarget7mer) / (1000 * 1000))
-    subset = select_subset(ontarget7mer, max_size=200)
-    print(subset)
-    on_e_subset = compute_ontarget_energies(subset, Use_Library=True)
     
+   
+    subset = select_subset(ontarget7mer, max_size=250)
+    print(subset)
+    USE_LIBRARY = True
+    on_e_subset = compute_ontarget_energies(subset)
+    on_e_subset = compute_ontarget_energies(subset)
     # Compute the off-target energies for the subset
-    off_e_subset = compute_offtarget_energies(subset, Use_Library=True)
+    t1=time.time()
+    off_e_subset = compute_offtarget_energies(subset)
+    t2= time.time()
+    print(t2-t1)
+    USE_LIBRARY= True
+    print("lib is on")
+    off_e_subset = compute_offtarget_energies(subset)
+    t3 = time.time()
+    print(t3-t2)
+    print("lib is off")
+    off_e_subset = compute_offtarget_energies(subset)
+    t4 = time.time()
+    print(t4-t3)
+    
     stats = plot_on_off_target_histograms(on_e_subset, off_e_subset, output_path='energy_hist.pdf')
     
-    # Define energy thresholds
-    offtarget_limit = -6
-    max_ontarget = -12
-    min_ontarget = -14
-    
-    # Define energy thresholds
-    offtarget_limit = -5
-    max_ontarget = -7.5
-    min_ontarget = -10
-    '''
-    a = time.time()
-    subset_2, indices = select_subset_in_energy_range2(
-        ontarget7mer
-    )
-    b = time.time()
-    print((b-a))
-    subset_2, indices = select_subset_in_energy_range2(
-        ontarget7mer)
-    print((time.time()-a))
-    
-    subset2, ids = select_all_in_energy_range(ontarget7mer)
-    
-    on_e_subset_2 = compute_ontarget_energies(subset2, Use_Library=False)
-    off_e_subset_2 = compute_offtarget_energies(subset2, Use_Library=False)
-    stats2 = plot_on_off_target_histograms(on_e_subset_2, off_e_subset_2, output_path='energy_hist2.pdf')
+
 
  
