@@ -1,0 +1,618 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="303f9a07-52b5-4814-9643-97233989ce8d" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/6bp_rosscheck79o95_10_sequence_pairs.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/6bp_rosscheck79o95_AHAH_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/6bp_rosscheck79o95_HAH_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/6bp_rosscheck79o95_HH_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/6bp_rosscheck79o95_pool_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/6bp_rosscheck79o95_set_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/Energy_computation_functions.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/after_run_plotting.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/after_run_plotting2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/analysis_and_plot.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/energycutter.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/find_bad_boys.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/find_new_sequences.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/pre_run.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/s5_minimum_vertex_2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/s5_minimum_vertex_backup.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/s6_create_plots_nosave.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/self_validate_two.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/seq_sampler.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/OLD_SCRIPTS/some_stats.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_64_sequence_pairs.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_64_sequence_pairs_flipped.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_64_sequence_pairs_log.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_ahah_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_hah_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_hh_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_pool_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/TT_no_crosscheck96to104_set_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/min_extrem_off.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/not_so_old_plots/TT_no_crosscheck96to104_pool_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/not_so_old_plots/TT_no_crosscheck96to104_set_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/not_so_old_plots/all_on_Energies.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/not_so_old_plots/allenergies_cutat96to104" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/not_so_old_plots/allenergies_cutat96to104_nocut" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/not_so_old_plots/allenergies_cutat96to108" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/not_so_old_plots/handle_energy_dict_set_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s1_compute_all_binding_energies.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s2_pre_analysis_and_plot.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s3_pre_select_compatible_sequences.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s4_runselfvalidate_compatible_sequences.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s5_minimum_vertex.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s6_create_plots.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s7_sort_and_resave_txt.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/s8_plot_after_flipp.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/Old_unsorted/sequence_picking_tools.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_64_sequence_pairs.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_64_sequence_pairs_flipped.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_64_sequence_pairs_log.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_ahah_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_hah_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_hh_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_pool_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/TT_no_crosscheck96to104_set_plot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/min_extrem_off.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s1_compute_all_binding_energies.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s2_pre_analysis_and_plot.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s3_pre_select_compatible_sequences.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s4_runselfvalidate_compatible_sequences.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s5_minimum_vertex.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s6_create_plots.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s7_sort_and_resave_txt.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/s8_plot_after_flipp.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/dump/sequence_picking_tools.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/29seq_9bp_2025-06-17_15-52.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/29seq_9bp_2025-06-17_16-02.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/2seq_6bp_2025-06-12_14-19.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/30seq_9bp_2025-06-12_18-37.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/31seq_9bp_2025-06-12_20-37.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/31seq_9bp_2025-06-13_16-41.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/34seq_9bp_2025-06-12_18-57.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/35seq_9bp_2025-06-12_15-39.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/37seq_9bp_2025-06-23_20-47.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/37seq_9bp_2025-06-23_20-54.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/50seq_9bp_2025-06-12_19-35.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/51seq_9bp_2025-06-12_16-59.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/52seq_9bp_2025-06-12_18-33.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/52seq_9bp_2025-06-12_20-31.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/56seq_9bp_2025-06-17_20-15.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/59seq_9bp_2025-06-13_14-53.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/59seq_9bp_2025-06-18_17-37.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/60seq_9bp_2025-06-18_14-49.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/63seq_9bp_2025-06-18_11-20.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/65seq_9bp_2025-06-15_14-17.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/67seq_9bp_2025-06-23_11-43.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/6seq_6bp_2025-06-12_14-26.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/8seq_6bp_2025-06-12_15-19.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/results/my_sequences.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/scripts/legacy/legacy_sequence_search.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/scripts/legacy/precompute_energies.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/scripts/load_sequences_and_plot.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/scripts/pre_analize_sequences.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/scripts/pre_analize_sequences_in_range.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/scripts/run_sequence_search.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/sequence_generator/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/sequence_generator/helper_functions.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/sequence_generator/sequence_computations.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Handle_Library_Project/sequence_generator/vertex_cover_algorithms.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/6bp_rosscheck79o95_10_sequence_pairs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/6bp_rosscheck79o95_AHAH_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/6bp_rosscheck79o95_HAH_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/6bp_rosscheck79o95_HH_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/6bp_rosscheck79o95_pool_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/6bp_rosscheck79o95_set_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/All_energies.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/All_offtarget_energies.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/Energy_computation_functions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/after_run_plotting.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/after_run_plotting2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/analysis_and_plot.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/energycutter.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/find_bad_boys.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/find_new_sequences.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/pre_run.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/s5_minimum_vertex_2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/s5_minimum_vertex_backup.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/s6_create_plots_nosave.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/self_validate_two.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/seq_sampler.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/OLD_SCRIPTS/some_stats.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_64_sequence_pairs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_64_sequence_pairs_flipped.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_64_sequence_pairs_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_ahah_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_hah_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_hh_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_pool_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/TT_no_crosscheck96to104_set_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/min_extrem_off.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/All_energies.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/All_offtarget_energies.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/TT_no_crosscheck96to104_pool_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/TT_no_crosscheck96to104_set_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/TT_no_crosscheck96to104_set_plotcounts.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/TT_no_crosscheck96to104newsetnoline.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/all_on_Energies.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/allenergies_cutat96to104" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/allenergies_cutat96to104_nocut" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/allenergies_cutat96to108" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/allenergies_with_cutoff_range.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/filtered_energies_cutoff_range.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/handle_energy_dict_set_plot.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/handle_energy_dict_set_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/not_so_old_plots/handle_energy_dict_set_plotcounts.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s1_compute_all_binding_energies.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s2_pre_analysis_and_plot.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s3_pre_select_compatible_sequences.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s4_runselfvalidate_compatible_sequences.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s5_minimum_vertex.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s6_create_plots.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s7_sort_and_resave_txt.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/s8_plot_after_flipp.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old_unsorted/sequence_picking_tools.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/Energy_computation_functions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_64_sequence_pairs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_64_sequence_pairs_flipped.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_64_sequence_pairs_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_ahah_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_hah_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_hh_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_pool_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/TT_no_crosscheck96to104_set_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/min_extrem_off.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/minimum_vertex_cover.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/29seq_9bp_2025-06-17_15-52.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/29seq_9bp_2025-06-17_16-02.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/2seq_6bp_2025-06-12_14-19.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/30seq_9bp_2025-06-12_18-37.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/31seq_9bp_2025-06-12_20-37.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/31seq_9bp_2025-06-13_16-41.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/34seq_9bp_2025-06-12_18-57.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/35seq_9bp_2025-06-12_15-39.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/37seq_9bp_2025-06-23_20-47.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/37seq_9bp_2025-06-23_20-54.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/50seq_9bp_2025-06-12_19-35.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/51seq_9bp_2025-06-12_16-59.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/52seq_9bp_2025-06-12_18-33.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/52seq_9bp_2025-06-12_20-31.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/56seq_9bp_2025-06-17_20-15.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/59seq_9bp_2025-06-13_14-53.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/59seq_9bp_2025-06-18_17-37.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/60seq_9bp_2025-06-18_14-49.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/63seq_9bp_2025-06-18_11-20.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/65seq_9bp_2025-06-15_14-17.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/67seq_9bp_2025-06-23_11-43.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/6seq_6bp_2025-06-12_14-26.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/8seq_6bp_2025-06-12_15-19.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/results/my_sequences.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s1_compute_all_binding_energies.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s2_pre_analysis_and_plot.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s3_pre_select_compatible_sequences.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s4_runselfvalidate_compatible_sequences.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s5_minimum_vertex.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s6_create_plots.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s7_sort_and_resave_txt.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/s8_plot_after_flipp.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/current/sequence_picking_tools.py" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="2y3y97W3t8aKNiOrkR7HH9LrIEA" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.Energy_computation_functions.executor&quot;: &quot;Run&quot;,
+    &quot;Python.K_sequence_computations.executor&quot;: &quot;Run&quot;,
+    &quot;Python.K_vertex_cover_algorithms.executor&quot;: &quot;Run&quot;,
+    &quot;Python.convert_pkl_to_sqlite.executor&quot;: &quot;Run&quot;,
+    &quot;Python.legacy_sequence_search.executor&quot;: &quot;Run&quot;,
+    &quot;Python.load_sequences_and_plot.executor&quot;: &quot;Run&quot;,
+    &quot;Python.minimum_vertex_cover.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pre_analize_sequences.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pre_analize_sequences_in_range.executor&quot;: &quot;Run&quot;,
+    &quot;Python.precompute_energies.executor&quot;: &quot;Run&quot;,
+    &quot;Python.run_sequence_search.executor&quot;: &quot;Run&quot;,
+    &quot;Python.s5_minimum_vertex.executor&quot;: &quot;Run&quot;,
+    &quot;Python.vertex_cover_algorithms (1).executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;katzi-upload&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/katzi/Documents/Crisscross-Design-clean/Handle_Library_Generator/current/pre_computed_energies&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.editor&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/current/pre_computed_energies" />
+      <recent name="$PROJECT_DIR$/current/good_precompute_lib" />
+      <recent name="$PROJECT_DIR$/current" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/../Handle_Library_Project/scripts" />
+      <recent name="$PROJECT_DIR$/../Handle_Library_Project/sequence_generator" />
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/current/dump" />
+      <recent name="$PROJECT_DIR$/current/pre_computed_energies" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.legacy_sequence_search">
+    <configuration default="true" type="DjangoTestsConfigurationType">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="TARGET" value="" />
+      <option name="SETTINGS_FILE" value="" />
+      <option name="CUSTOM_SETTINGS" value="false" />
+      <option name="USE_OPTIONS" value="false" />
+      <option name="OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="ADDITIONAL_ARGS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="legacy_sequence_search" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../Handle_Library_Project/scripts/legacy" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../Handle_Library_Project/scripts/legacy/legacy_sequence_search.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="load_sequences_and_plot" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../Handle_Library_Project/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../Handle_Library_Project/scripts/load_sequences_and_plot.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pre_analize_sequences_in_range" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../Handle_Library_Project/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../Handle_Library_Project/scripts/pre_analize_sequences_in_range.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="precompute_energies" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../Handle_Library_Project/scripts/legacy" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../Handle_Library_Project/scripts/legacy/precompute_energies.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="run_sequence_search" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../Handle_Library_Project/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../Handle_Library_Project/scripts/run_sequence_search.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="Python.FlaskServer">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="launchJavascriptDebuger" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="Tox" factoryName="Tox">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Docutils task">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Sphinx task">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Autodetect">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Doctests">
+      <module name="Handle_Library_Project" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="CLASS_NAME" value="" />
+      <option name="METHOD_NAME" value="" />
+      <option name="FOLDER_NAME" value="" />
+      <option name="TEST_TYPE" value="TEST_SCRIPT" />
+      <option name="PATTERN" value="" />
+      <option name="USE_PATTERN" value="false" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.legacy_sequence_search" />
+      <item itemvalue="Python.load_sequences_and_plot" />
+      <item itemvalue="Python.precompute_energies" />
+      <item itemvalue="Python.run_sequence_search" />
+      <item itemvalue="Python.pre_analize_sequences_in_range" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.legacy_sequence_search" />
+        <item itemvalue="Python.precompute_energies" />
+        <item itemvalue="Python.load_sequences_and_plot" />
+        <item itemvalue="Python.run_sequence_search" />
+        <item itemvalue="Python.pre_analize_sequences_in_range" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-PY-242.23339.19" />
+        <option value="bundled-python-sdk-0029f7779945-399fe30bd8c1-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-242.23339.19" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="303f9a07-52b5-4814-9643-97233989ce8d" name="Changes" comment="" />
+      <created>1749077396964</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1749077396964</updated>
+      <workItem from="1749077398008" duration="70990000" />
+      <workItem from="1749600813487" duration="3613000" />
+      <workItem from="1749605092922" duration="61621000" />
+      <workItem from="1750188221774" duration="125005000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="CUSTOM_BOOLEAN_PROPERTIES">
+                <map>
+                  <entry key="Show.Git.Branches" value="false" />
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XDebuggerManager">
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="ontarget7mer[6]" />
+      </configuration>
+    </watches-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$pre_analize_sequences_in_range.coverage" NAME="pre_analize_sequences_in_range Coverage Results" MODIFIED="1750817650909" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../Handle_Library_Project/scripts" />
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$legacy_sequence_search.coverage" NAME="legacy_sequence_search Coverage Results" MODIFIED="1750881488450" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../Handle_Library_Project/scripts/legacy" />
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$vertex_cover_algorithms__1_.coverage" NAME="vertex_cover_algorithms (1) Coverage Results" MODIFIED="1750812089337" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../Handle_Library_Project/sequence_generator" />
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$convert_pkl_to_sqlite.coverage" NAME="convert_pkl_to_sqlite Coverage Results" MODIFIED="1749686720688" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/current" />
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$pre_analize_sequences.coverage" NAME="pre_analize_sequences Coverage Results" MODIFIED="1750816522905" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../Handle_Library_Project/scripts" />
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$minimum_vertex_cover.coverage" NAME="minimum_vertex_cover Coverage Results" MODIFIED="1750189636303" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/current" />
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$Energy_computation_functions.coverage" NAME="Energy_computation_functions Coverage Results" MODIFIED="1750192060838" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/current" />
+    <SUITE FILE_PATH="coverage/Handle_Library_Generator$s5_minimum_vertex.coverage" NAME="s5_minimum_vertex Coverage Results" MODIFIED="1749517263477" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/current" />
+  </component>
+</project>
