@@ -126,7 +126,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         else:  # in the split case, only half the library is available for any one layer
             handles_per_layer = unique_sequences // sequence_split_factor
             for layer in range(logicforpointmutations.shape[2]):
-                layer_index = i % sequence_split_factor
+                layer_index = layer % sequence_split_factor
                 h_start = 1 + layer_index * handles_per_layer
                 h_end = h_start + handles_per_layer
                 next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h_start, h_end, size=np.sum( logicforpointmutations[:, :, layer]))
