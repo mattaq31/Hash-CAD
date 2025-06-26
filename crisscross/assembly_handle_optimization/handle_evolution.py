@@ -18,8 +18,8 @@ from crisscross.helper_functions import save_list_dict_to_file, create_dir_if_em
 class EvolveManager:
     def __init__(self, slat_array, seed_handle_array=None, slat_length=32, random_seed=8, generational_survivors=3,
                  mutation_rate=5, mutation_type_probabilities=(0.425, 0.425, 0.15), unique_handle_sequences=32,
-                 evolution_generations=200, evolution_population=30, split_sequence_handles=False, process_count=None,
-                 early_hamming_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
+                 evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
+                 process_count=None, early_hamming_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
                  mutation_memory_system='off', memory_length=10):
         """
         Prepares an evolution manager to optimize a handle array for the provided slat array.
@@ -37,6 +37,7 @@ class EvolveManager:
         :param evolution_generations: Number of generations to consider before stopping
         :param evolution_population: Number of handle arrays to mutate in each generation
         :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
+        :param sequence_split_factor: Factor by which to split the handle sequences between layers (default is 2, which means that if handles are split, the first layer will have 1/2 of the handles, etc.)
         :param process_count: Number of threads to use for hamming multiprocessing (if set to default, will use 67% of available cores)
         :param early_hamming_stop: If this hamming distance is achieved, the evolution will stop early
         :param log_tracking_directory: Set to a directory to export plots and metrics during the optimization process (optional)
@@ -84,6 +85,7 @@ class EvolveManager:
             self.split_sequence_handles = eval(split_sequence_handles.capitalize())
         else:
             self.split_sequence_handles = split_sequence_handles
+        self.sequence_split_factor = sequence_split_factor
 
         if isinstance(process_count, float) or isinstance(process_count, int):
             self.num_processes = int(process_count)
@@ -117,7 +119,7 @@ class EvolveManager:
                 candidate_handle_arrays.append(generate_random_slat_handles(self.slat_array, self.number_unique_handles))
         else:
             for j in range(self.evolution_population):
-                candidate_handle_arrays.append(generate_layer_split_handles(self.slat_array,  self.number_unique_handles))
+                candidate_handle_arrays.append(generate_layer_split_handles(self.slat_array,  self.number_unique_handles, self.sequence_split_factor))
 
         if self.handle_array is not None:
             candidate_handle_arrays[0] = self.handle_array
@@ -190,7 +192,8 @@ class EvolveManager:
                                                                      use_memory_type=self.mutation_memory_system,
                                                                      special_hallofshame=self.initial_hallofshame,
                                                                      mutation_type_probabilities=self.mutation_type_probabilities,
-                                                                     split_sequence_handles=self.split_sequence_handles)
+                                                                     split_sequence_handles=self.split_sequence_handles,
+                                                                      sequence_split_factor=self.sequence_split_factor)
 
         for key, payload in hallofshame.items():
             self.memory_hallofshame[key].extend(payload)

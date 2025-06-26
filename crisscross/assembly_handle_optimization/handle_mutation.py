@@ -8,10 +8,11 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                          special_hallofshame=None,
                          mutation_rate=2.0, mutation_type_probabilities=(0.425, 0.425, 0.15),
                          use_memory_type=None,
-                         split_sequence_handles=False):
+                         split_sequence_handles=False,
+                         sequence_split_factor=2):
     """
     Mutates (randomizes handles) a set of candidate arrays into a new generation,
-    while retaining the best scoring arrays  from the previous generation.
+    while retaining the best scoring arrays from the previous generation.
     :param slat_array: Base slat array for design
     :param candidate_handle_arrays: Set of candidate handle arrays from previous generation
     :param hallofshame: Worst handle/antihandle combinations from previous generation
@@ -24,6 +25,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
     :param mutation_type_probabilities: Probability of selecting a specific mutation type for a target handle/antihandle
     (either handle, antihandle or mixed mutations)
     :param split_sequence_handles: Set to true if the handle library needs to be split between subsequent layers
+    :param sequence_split_factor: The number of layers to split the handle library between (default is 2, which means a single layer would have half the available library)
     :return: New generation of handle arrays to be screened
     """
 
@@ -122,15 +124,12 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         if not split_sequence_handles or slat_array.shape[2] < 3:  # just use the entire library for any one handle
             next_gen_member[logicforpointmutations] = np.random.randint(1, unique_sequences + 1, size=np.sum(logicforpointmutations))
         else:  # in the split case, only half the library is available for any one layer
+            handles_per_layer = unique_sequences // sequence_split_factor
             for layer in range(logicforpointmutations.shape[2]):
-                if layer % 2 == 0:
-                    h1 = 1
-                    h2 = int(unique_sequences / 2) + 1
-                else:
-                    h1 = int(unique_sequences / 2) + 1
-                    h2 = unique_sequences + 1
-
-                next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h1, h2, size=np.sum( logicforpointmutations[:, :, layer]))
+                layer_index = i % sequence_split_factor
+                h_start = 1 + layer_index * handles_per_layer
+                h_end = h_start + handles_per_layer
+                next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h_start, h_end, size=np.sum( logicforpointmutations[:, :, layer]))
 
         mutated_handle_arrays.append(next_gen_member)
         mutation_maps.append(logicforpointmutations)

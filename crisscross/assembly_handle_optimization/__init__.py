@@ -15,28 +15,32 @@ def generate_random_slat_handles(base_array, unique_sequences=32):
     return handle_array
 
 
-def generate_layer_split_handles(base_array, unique_sequences=32):
+def generate_layer_split_handles(base_array, unique_sequences=32, split_factor=2):
     """
     Generates an array of handles, with the possible ids split between each layer,
     with the goal of preventing a single slat from being self-complementary.
     :param base_array: Megastructure handle positions in a 3D array
     :param unique_sequences: Number of possible handle sequences
+    :param split_factor: Number of layers to split the handle sequences between
     :return: 2D array with handle IDs
     """
     handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1), dtype=np.uint16)
 
+    if unique_sequences % split_factor != 0:
+        raise ValueError("unique_sequences must be divisible by split_factor")
+
+    handles_per_layer = unique_sequences // split_factor
+
     for i in range(handle_array.shape[2]):
-        if i % 2 == 0:
-            h1 = 1
-            h2 = int(unique_sequences / 2) + 1
-        else:
-            h1 = int(unique_sequences / 2) + 1
-            h2 = unique_sequences + 1
-        layer_handle_array = np.random.randint(h1, h2, size=(handle_array.shape[0], handle_array.shape[1]), dtype=np.uint16)
+        layer_index = i % split_factor
+        h_start = 1 + layer_index * handles_per_layer
+        h_end = h_start + handles_per_layer
+
+        layer_handle_array = np.random.randint(h_start, h_end, size=(handle_array.shape[0], handle_array.shape[1]), dtype=np.uint16)
         handle_array[..., i] = layer_handle_array
+
     for i in range(handle_array.shape[2]):
-        handle_array[np.any(base_array[..., i:i + 2] == 0,
-                            axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
+        handle_array[np.any(base_array[..., i:i + 2] == 0, axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
     return handle_array
 
 
