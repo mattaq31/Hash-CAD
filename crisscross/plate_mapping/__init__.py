@@ -88,7 +88,7 @@ def get_standard_plates(handle_library_v2=False):
     return (core_plate, crisscross_antihandle_y_plates, crisscross_handle_x_plates, seed_plate, center_seed_plate,
             combined_seed_plate, all_8064_seed_plugs)
 
-def get_cutting_edge_plates():
+def get_cutting_edge_plates(handle_library_working_stock_concentration=None):
     """
     Generates standard plates used commonly in most designs.  These are the most updated plates in the current library.
     """
@@ -96,11 +96,13 @@ def get_cutting_edge_plates():
 
     crisscross_antihandle_y_plates = get_plateclass('HashCadPlate',
                                                     cckz_h2_antihandle_plates,
-                                                    assembly_handle_plate_folder)
+                                                    assembly_handle_plate_folder,
+                                                    apply_working_stock_concentration=handle_library_working_stock_concentration)
 
     crisscross_handle_x_plates = get_plateclass('HashCadPlate',
                                                 cckz_h5_handle_plates,
-                                                assembly_handle_plate_folder)
+                                                assembly_handle_plate_folder,
+                                                apply_working_stock_concentration=handle_library_working_stock_concentration)
 
     all_8064_seed_plugs = get_plateclass('HashCadPlate', seed_plug_plate_all_8064, seed_plate_folder)
 

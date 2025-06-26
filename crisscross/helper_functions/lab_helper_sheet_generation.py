@@ -96,7 +96,7 @@ def adjust_column_width(ws):
 
 
 def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume=150, reference_handle_concentration=500,
-                             slat_mixture_volume=50, unique_transfer_volume_plates=None, workbook=None):
+                             slat_mixture_volume=50, unique_transfer_volume_plates=None, workbook=None, handle_mix_ratio=10):
     """
     Prepares a 'master mix' sheet to be used for combining slat mixtures with scaffold
     and core staples into the final slat mixture.
@@ -106,6 +106,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
     :param reference_handle_concentration: Reference staple concentration used for the core staples in uM (this refers to the control handles plate).
     All concentration values will be referenced to this value.
     :param slat_mixture_volume: Reaction volume (in uL) for a single slat annealing mixture.  Can be set to 'max' to use up all available handle mix.
+    :param handle_mix_ratio: Ratio of handle mix concentration to scaffold concentration (default is 10).
     :param unique_transfer_volume_plates: Plates that have special non-standard volumes.
     This will be ignored if the echo sheet is provided with the exact details.
     :param workbook: The workbook to which the new excel sheet should be added.
@@ -114,16 +115,18 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
 
     slat_count = len(slat_dict)
     slat_concentration_distribution = []
+    handle_volume_distribution = []
 
     # calculate the minimum handle concentration for each slat (from the echo pools)
 
     # preference is to use echo sheet for calculation if available (as this has exceptions applied which won't be apparent in the slat dictionary)
     if echo_sheet is not None:
         for slat_name in slat_dict.keys():
-            echo_indices = echo_sheet[echo_sheet['Component'].str.contains(fr"{slat_name}_h\d_", na=False)].index
+            echo_indices = echo_sheet[echo_sheet['Component'].str.contains(fr"{slat_name}_", na=False)].index
             total_handle_mix_volume = sum(echo_sheet.loc[echo_indices]['Transfer Volume'].values)
             slat_concentration_nM = 1000 * (reference_handle_concentration * reference_handle_volume) / total_handle_mix_volume
             slat_concentration_distribution.append(slat_concentration_nM)
+            handle_volume_distribution.append(total_handle_mix_volume)
     else:
         for slat in slat_dict.values():
             total_handle_mix_volume = 0
@@ -134,17 +137,17 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
                     total_handle_mix_volume += reference_handle_volume * int(reference_handle_concentration / handle['concentration'])
             slat_concentration_nM = 1000 * (reference_handle_concentration * reference_handle_volume) / total_handle_mix_volume
             slat_concentration_distribution.append(slat_concentration_nM)
+            handle_volume_distribution.append(total_handle_mix_volume)
 
     min_handle_mix_conc = min(slat_concentration_distribution)
     max_handle_mix_conc = max(slat_concentration_distribution)
 
-    print(Fore.BLUE + f'Info: Lowest handle mixture concentration: {round(min_handle_mix_conc, 1)}nM, highest handle mixture concentration: {round(max_handle_mix_conc, 1)}nM.' + Fore.RESET)
+    print(Fore.BLUE + f'Info: Lowest handle mixture concentration: {round(min_handle_mix_conc, 1)}nM ({max(handle_volume_distribution)/1000} μl total), highest handle mixture concentration: {round(max_handle_mix_conc, 1)}nM ({min(handle_volume_distribution)/1000} μl total).' + Fore.RESET)
 
     if (max_handle_mix_conc - min_handle_mix_conc) / min_handle_mix_conc > 0.2:
         print(Fore.MAGENTA + f'Warning: The handle mixtures generated have a wide concentration range. '
                              f'You could save on some staples by splitting the master mix preparation '
                              f'into two or more batches.' + Fore.RESET)
-
     if workbook is not None:
         wb = workbook
     else:
@@ -176,7 +179,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
 
     # Standard target concentrations
     ws['C1'] = 'Final Concentration'
-    ws['C2'] = 500
+    ws['C2'] = 50 * handle_mix_ratio
     ws['C3'] = 50
     ws['C4'] = 500
     ws['C5'] = 1
@@ -192,7 +195,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
     ws['D7'] = '=D8-sum(D2:D6)'
     if slat_mixture_volume == "max":
         # selects the max reaction volume that reduces staple pool waste, assuming echo transfers only 75% of expected
-        # 0.75 * total femtomoles of slats (based on min conc)/reaction final conc (500 nM), rounded down to the nearest multiple of 5
+        # 0.75 * total femtomoles of slats (based on min conc)/reaction final conc (typically 500 nM), rounded down to the nearest multiple of 5
         ws['D8'] = math.floor(0.75 * min_handle_mix_conc * total_handle_mix_volume/ws['C2'].value/5/1000) * 5
         print(Fore.BLUE + f'Info: You selected "max", so the slat mixtures will use all the staples in your pooled handle mixtures.  The output slat mixture volume will be {ws["D8"].value}μl.' + Fore.RESET)
 
@@ -258,7 +261,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
 
 def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_concentration_uM=2,
                                    slat_mixture_volume=50, workbook=None,
-                                   echo_sheet=None, special_slat_groups=None, peg_concentration=2,):
+                                   echo_sheet=None, special_slat_groups=None, peg_concentration=2):
     """
     Prepares standard instructions for combining and purifying slat mixtures using PEG purification.  Also prepares lists of slat groups as a reference for when in the lab.
     :param slat_dict: Dictionary of slats with slat names as keys and slat objects as values.
@@ -487,7 +490,9 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
                                 echo_sheet=None,
                                 max_slat_concentration_uM=2,
                                 unique_transfer_volume_plates=None,
-                                special_slat_groups=None):
+                                special_slat_groups=None,
+                                handle_mix_ratio=10,
+                                ):
     """
     Prepares a series of excel sheets to aid lab assembler while preparing and purifying slat mixtures.
     :param slat_dict: Dictionary of slats to be assembled (each item in the dict is a Slat Object containing all 64 handles in place)
@@ -502,6 +507,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
     :param max_slat_concentration_uM: Maximum concentration of slats in a combined PEG mixture (in UM) before a warning is triggered.
     :param unique_transfer_volume_plates: Plates that have special non-standard volumes.  This will be ignored if the echo sheet is provided with the exact details.
     :param special_slat_groups: IDs of slats that should be separated from the general slat groups and placed in their own group.
+    :param handle_mix_ratio: Ratio of handle mix concentration to scaffold concentration (default is 10).
     :return: N/A, file saved directly to disk.
     """
 
@@ -511,7 +517,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
 
     # prepares slat assembly mixture details
     prepare_master_mix_sheet(slat_dict, echo_sheet, reference_single_handle_volume, reference_single_handle_concentration,
-                             slat_mixture_volume, unique_transfer_volume_plates, wb)
+                             slat_mixture_volume, unique_transfer_volume_plates, wb, handle_mix_ratio=handle_mix_ratio)
 
     # prepares slat purification details
     prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, slat_mixture_volume,

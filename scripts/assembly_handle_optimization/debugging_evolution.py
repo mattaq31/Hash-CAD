@@ -16,10 +16,10 @@ if __name__ == '__main__':
 
 
     evolve_manager =  EvolveManager(test_slat_array, unique_handle_sequences=32,
-                                    early_hamming_stop=30, evolution_population=943,
+                                    early_hamming_stop=30, evolution_population=10,
                                     generational_survivors=2,
                                     mutation_rate=2,
-                                    process_count=10,
+                                    process_count=4,
                                     evolution_generations=100,
                                     split_sequence_handles=False,
                                     progress_bar_update_iterations=2,

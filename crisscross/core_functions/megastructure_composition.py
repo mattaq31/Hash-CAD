@@ -7,6 +7,7 @@ from matplotlib.patches import Rectangle, Circle, Patch
 from string import ascii_uppercase
 from collections import Counter
 import platform
+import math
 
 # consistent figure formatting between mac, windows and linux
 if platform.system() == 'Darwin':
@@ -200,7 +201,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                      manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
                                      output_plate_size='96', center_only_well_pattern=False,
                                      generate_plate_visualization=True, plate_viz_type='stacked_barcode',
-                                     destination_well_max_volume=25):
+                                     destination_well_max_volume=25, normalize_volumes=False, water_plate_well_count=120):
     """
     Converts a dictionary of slats into an echo liquid handler command list for all handles provided.
     :param slat_dict: Dictionary of slat objects
@@ -221,6 +222,8 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     :param plate_viz_type: Set to 'barcode' to show a barcode of the handle types in each well,
     'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
     :param destination_well_max_volume: The maximum total volume that can be transferred to a well in the output plate (in uL)
+    :param normalize_volumes: Set to True to normalize the volumes in each slat mixture (by adding water to the maximum volume)
+    :param water_plate_well_count: The number of wells to use for the water normalization plate (default is 120)
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 
@@ -279,8 +282,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         else:
             slat_multiplier = 1
 
-        for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data,
-                                                          ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
+        for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data, ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
             try:
                 all_plates_needed.add(handle_data['plate'])
             except KeyError: #if 'plate' not in handle_data:
@@ -339,8 +341,6 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                                              'Destination Well', 'Transfer Volume',
                                                              'Destination Plate Name', 'Source Plate Type'])
 
-    combined_df.to_csv(os.path.join(output_folder, output_filename), index=False)
-
     # Check that the total volume for all destination wells is below a maximum limit to avoid falling into source plate during transfer
     total_handle_mix_volumes_list = []
     for slat_name in slat_dict.keys():
@@ -354,6 +354,37 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         for component_well in component_wells_too_high:
             print("Component: " + component_well[0], "Total volume: %d" % component_well[1])   
         print(Style.RESET_ALL)
+
+    # in the case where there will be large variations between pool volumes (due to different handle concentrations), can attempt to normalize volumes to the maximum by adding additional water/buffer to wells with lower volumes.
+    if normalize_volumes:
+        max_volume = max([x[1] for x in total_handle_mix_volumes_list])
+        total_compensation_volume_required = 0
+        for (slat_name, total_volume, _) in total_handle_mix_volumes_list:
+            if total_volume < max_volume:
+                destination_well = combined_df[combined_df["Component"].str.contains(slat_name + "_")]["Destination Well"].iloc[0]
+                destination_plate = combined_df[combined_df["Component"].str.contains(slat_name + "_")]["Destination Plate Name"].iloc[0]
+                compensation_volume = round((max_volume - total_volume) * 1000) # a specific compensation amount is added to each individual well
+                output_command_list.append([slat_name + '_volume_normalize',
+                                            'WATER_PLATE', '{%s}' % ';'.join(plate384[0:water_plate_well_count]),
+                                            destination_well,
+                                            compensation_volume,
+                                            destination_plate,
+                                            source_plate_type])
+                total_compensation_volume_required += compensation_volume
+                all_plates_needed.add('WATER_PLATE')
+
+        combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
+                                                                 'Destination Well', 'Transfer Volume',
+                                                                 'Destination Plate Name', 'Source Plate Type'])
+        if total_compensation_volume_required == 0:
+            print(Fore.MAGENTA + 'No normalization required - all slats have the same total volume.' + Fore.RESET)
+        else:
+            # the below assumes that you are filling your water plate with 60ul of water per well, of which 20ul are usable.
+            print(Fore.MAGENTA + f"Info: To normalize volumes to a total of {max_volume} μl per well, "
+                                 f"a total of {total_compensation_volume_required/1000} μl of water (or 1xTEF) is required."
+                                 f"  This means you'll need at least {math.ceil(total_compensation_volume_required/40000)} wells in your water plate." + Fore.RESET)
+
+    combined_df.to_csv(os.path.join(output_folder, output_filename), index=False)
 
     if generate_plate_visualization:
         visualize_output_plates(output_well_descriptor_dict, output_plate_size, output_folder,

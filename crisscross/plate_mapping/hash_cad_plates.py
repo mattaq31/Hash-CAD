@@ -15,7 +15,7 @@ class HashCadPlate:
     Each plate also features a 2D layout tab to help visualize in the lab.
     """
 
-    def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_size=384):
+    def __init__(self, plate_name, plate_folder, pre_read_plate_dfs=None, plate_size=384, apply_working_stock_concentration=None):
 
         self.concentrations = defaultdict(bool)
         self.wells = defaultdict(bool)
@@ -36,6 +36,10 @@ class HashCadPlate:
                 self.plates.append(pre_read_plate_dfs[index])
             else:
                 self.plates.append(read_dna_plate_mapping(os.path.join(self.plate_folder, plate + '.xlsx'), data_type='#-CAD', plate_size=plate_size))
+
+        if apply_working_stock_concentration is not None:
+            for p in self.plates:
+                p['concentration'] = apply_working_stock_concentration
 
         self.identify_wells_and_sequences()
 
