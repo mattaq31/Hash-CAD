@@ -566,7 +566,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       }
     }
 
-    if (existingHandle && (assemblyHandleView && handleType == 'Assembly' || cargoHandleView && handleType == 'CARGO' || seedHandleView && handleType == 'SEED')) {
+    if (existingHandle && (assemblyHandleView && handleType.contains('ASSEMBLY') || cargoHandleView && handleType == 'CARGO' || seedHandleView && handleType == 'SEED')) {
       Color color = handleType.contains('ASSEMBLY') ? layerMap[slat.layer]!['color']: handleType == 'CARGO' ? cargoPalette[cargoName]!.color: cargoPalette['SEED']!.color;
       positionHandleInstance(slat.id, handleName, position, color, order, topSide, handleSide, handleType, handleInstanceExists);
     } else if (handleInstanceExists){
