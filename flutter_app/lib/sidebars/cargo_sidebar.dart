@@ -50,7 +50,7 @@ Widget _buildSeedItem(DesignState appState, TextEditingController cargoAddTextCo
         painter: SeedPainter(
           scale: 0.7, // Scale down to fit inside 84x84
           canvasOffset: const Offset(11, 6), // Adjust to center nicely
-          seeds: [Seed(ID: 'dummy', coordinates: generateBasicSeedCoordinates(16, 5, 9, false))],
+          seeds: [Seed(ID: 'dummy', coordinates: generateBasicSeedCoordinates(16, 5, 9, false, false))],
           handleJump: 9,
           cols: 16,
           rows: 5,

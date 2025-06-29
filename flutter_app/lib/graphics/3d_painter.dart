@@ -190,6 +190,9 @@ class InstanceMetrics {
   }
 
   void hideAndRecycle(String name){
+    if (!nameIndex.containsKey(name)) {
+      return; // Name not found, nothing to recycle
+    }
     dummy.position.setValues(99999, 99999, 99999); // place out of sight
     dummy.updateMatrix();
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
@@ -383,8 +386,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
     instanceManager['cargoHandle'] = InstanceMetrics(geometry: three.BoxGeometry(4, 6, 4), threeJs: threeJs, maxIndex: 1000);
 
-    var dummySeed = Seed(ID: 'dummy1', coordinates: generateBasicSeedCoordinates(16, 5, 10, false));
-    var dummyTiltSeed = Seed(ID: 'dummy2', coordinates: generateBasicSeedCoordinates(16, 5, 10, true));
+    // prepares mesh instances of the different seed variants (normal, 60deg and 60deg inverted)
+    var dummySeed = Seed(ID: 'dummy1', coordinates: generateBasicSeedCoordinates(16, 5, 10, false, false));
+    var dummyTiltSeed = Seed(ID: 'dummy2', coordinates: generateBasicSeedCoordinates(16, 5, 10, true, false));
+    var dummyTiltSeedInvert = Seed(ID: 'dummy3', coordinates: generateBasicSeedCoordinates(16, 5, 10, true, true));
 
     var seedGeometry = createSeedTubeGeometry(
       dummySeed.coordinates,
@@ -395,7 +400,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       5,
       1.5,
     );
-
     var tiltSeedGeometry = createSeedTubeGeometry(
       dummyTiltSeed.coordinates,
       gridSize,
@@ -405,9 +409,20 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       5,
       1.5,
     );
+    var tiltSeedGeometryInvert = createSeedTubeGeometry(
+      dummyTiltSeedInvert.coordinates,
+      gridSize,
+      dummyTiltSeedInvert.rotationAngle!,
+      dummyTiltSeedInvert.transverseAngle!,
+      16,
+      5,
+      1.5,
+    );
 
     instanceManager['seed'] = InstanceMetrics(geometry: seedGeometry, threeJs: threeJs, maxIndex: 20);
     instanceManager['tiltSeed'] = InstanceMetrics(geometry: tiltSeedGeometry, threeJs: threeJs, maxIndex: 20);
+    instanceManager['tiltSeedInvert'] = InstanceMetrics(geometry: tiltSeedGeometryInvert, threeJs: threeJs, maxIndex: 20);
+
   }
 
 
@@ -447,10 +462,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   }
 
-  void positionSeedInstance(String name, Color color, double seedAngle, double height, double centerX, double centerZ, bool flip){
+  void positionSeedInstance(String name, Color color, double seedAngle, double transverseAngle, double height, double centerX, double centerZ, bool flip, bool transposeFlip){
+
 
     var position = tmath.Vector3(centerX, height, centerZ);
-
     var rotation = tmath.Euler(0, gridMode == '60' ?  -seedAngle + math.pi/2 : -seedAngle, 0);
 
     // annoyingly, rotation in x can rotate the seed on either its long or short edge (seems to be related to the gimbal lock problem).
@@ -458,26 +473,18 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     // A more elegant solution could potentially be to use quaternions, but this would require further research.
     if (!flip && gridMode == '90'){
       rotation.x = math.pi;
-      if (approxEqual(seedAngle, math.pi/2)){
+      if (approxEqual(seedAngle, math.pi/2) || approxEqual(seedAngle, -math.pi/2)){
         rotation.y += math.pi;
       }
     }
 
     // also annoying is the fact that flips in 90 and 60 degree modes need to be handled differently...
-    if (flip && gridMode == '60') {
-      rotation.x = -math.pi;
-      if (approxEqual(seedAngle, math.pi/2)) {
-        rotation.y += math.pi;
-      }
-      else if (approxEqual(seedAngle, math.pi/6)) {
-        rotation.y += math.pi/3;
-      }
-      else {
-        rotation.y = seedAngle - (3 * math.pi/2);
-      }
+    if (((flip && !transposeFlip) || (!flip && transposeFlip)) && gridMode == '60'){
+      rotation.x = math.pi;
+      rotation.y = seedAngle + math.pi/2;
     }
 
-    String instanceType = gridMode == '60' ? 'tiltSeed' : 'seed';
+    String instanceType = gridMode == '60' ? (transposeFlip ? 'tiltSeedInvert':'tiltSeed') : 'seed';
 
     instanceManager[instanceType]!.allocateIndex(name);
     instanceManager[instanceType]!.setPositionRotation(name, position, rotation);
@@ -671,6 +678,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     if (gridMode != lastGridMode){
       instanceManager['seed']!.recycleAllIndices();
       instanceManager['tiltSeed']!.recycleAllIndices();
+      instanceManager['tiltSeedInvert']!.recycleAllIndices();
       lastGridMode = gridMode;
       seedIDs.clear();
     }
@@ -682,6 +690,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     for (var id in removedIDs) {
       if (gridMode == '60') {
         instanceManager['tiltSeed']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
+        instanceManager['tiltSeedInvert']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
       }
       else{
         instanceManager['seed']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
@@ -691,10 +700,16 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     // TODO: if this becomes laggy, can consider only updating seeds if they've changed position/color/etc
     for (var seed in seedRoster.entries) {
-      positionSeedInstance('${seed.key.$1}_${seed.key.$2}_${seed.key.$3}', color,
-          seed.value.rotationAngle!.toDouble() * (math.pi/180),
-          (layerMap[seed.key.$1]?['order'].toDouble()) * 6.5 + ((seed.key.$2 == 'top'? 1 : -1) * 4.3),
-          seed.value.coordinates[1]!.dx, seed.value.coordinates[1]!.dy, seed.value.tiltFlip!);
+      positionSeedInstance(
+          '${seed.key.$1}_${seed.key.$2}_${seed.key.$3}',
+          color,
+          seed.value.rotationAngle!.toDouble() * (math.pi / 180),
+          seed.value.transverseAngle!.toDouble() * (math.pi / 180),
+          (layerMap[seed.key.$1]?['order'].toDouble()) * 6.5 + ((seed.key.$2 == 'top' ? 1 : -1) * 4.3),
+          seed.value.coordinates[1]!.dx,
+          seed.value.coordinates[1]!.dy,
+          seed.value.tiltFlip!,
+          seed.value.transposeFlip!);
       seedIDs.add(seed.key);
     }
   }
@@ -719,6 +734,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     instanceManager['slat']!.recycleAllIndices();
     instanceManager['seed']!.recycleAllIndices();
     instanceManager['tiltSeed']!.recycleAllIndices();
+    instanceManager['tiltSeedInvert']!.recycleAllIndices();
     instanceManager['honeyCombSlat']!.recycleAllIndices();
     instanceManager['cargoHandle']!.recycleAllIndices();
     instanceManager['honeyCombAssHandle']!.recycleAllIndices();

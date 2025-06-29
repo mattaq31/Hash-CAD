@@ -297,7 +297,7 @@ class SlatPainter extends CustomPainter {
                 color = Colors.green;
               } else if (category == 'SEED') {
                 color = appState.cargoPalette['SEED']!.color;
-                shortText = '🌰${getIndexFromSeedText(descriptor)}';
+                shortText = '🌱${getIndexFromSeedText(descriptor)}';
               }
 
               if (isTop) {
