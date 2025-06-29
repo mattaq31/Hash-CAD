@@ -23,6 +23,12 @@ bool approxEqual(double a, double b, [double epsilon = 1e-4]) {
   return (a - b).abs() < epsilon;
 }
 
+String seedKeyToString((String, String, Offset) key) {
+  final offset = key.$3;
+  // Round coordinates to avoid float precision issues in string
+  return '${key.$1}_${key.$2}_${offset.dx.toStringAsFixed(2)}x${offset.dy.toStringAsFixed(2)}';
+}
+
 class InstanceMetrics {
   int nextIndex;
   int maxIndex;
@@ -688,12 +694,13 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     // deletes seeds that are no longer in the design
     for (var id in removedIDs) {
+      var removedID = seedKeyToString(id);
       if (gridMode == '60') {
-        instanceManager['tiltSeed']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
-        instanceManager['tiltSeedInvert']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
+        instanceManager['tiltSeed']!.hideAndRecycle(removedID);
+        instanceManager['tiltSeedInvert']!.hideAndRecycle(removedID);
       }
       else{
-        instanceManager['seed']!.hideAndRecycle('${id.$1}_${id.$2}_${id.$3}');
+        instanceManager['seed']!.hideAndRecycle(removedID);
       }
       seedIDs.remove(id);
     }
@@ -701,7 +708,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     // TODO: if this becomes laggy, can consider only updating seeds if they've changed position/color/etc
     for (var seed in seedRoster.entries) {
       positionSeedInstance(
-          '${seed.key.$1}_${seed.key.$2}_${seed.key.$3}',
+          seedKeyToString(seed.key),
           color,
           seed.value.rotationAngle!.toDouble() * (math.pi / 180),
           seed.value.transverseAngle!.toDouble() * (math.pi / 180),
@@ -832,7 +839,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   @override
   Widget build(BuildContext context) {
     return Consumer<DesignState>(builder: (context, appState, child) {
-      // TODO: at some point, it would be better if the appState could be directly accessed...
 
       gridSize = appState.gridSize;
       gridMode = appState.gridMode;
@@ -865,50 +871,70 @@ class _ThreeDisplay extends State<ThreeDisplay> {
           ),
           Positioned(
             bottom: 20.0,
-            right: 16.0,
+            right: 15.0,
             child: Row(
               children: [
-                buildFreeToggleSwitch(
-                  label: '6HB display',
+                buildFabIcon(
+                  icon: Icons.hive,
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: '6HB display',
                   value: helixBundleView,
                   onChanged: (val) => setState(() {
                     helixBundleView = val;
                     clearScene();
-                    manageSlats(appState.slats.values.toList(),
-                        appState.layerMap, appState.cargoPalette);
+                    manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
                   }),
                 ),
-                buildFreeToggleSwitch(
-                  label: 'Assembly Handles',
+                buildFabIcon(
+                  icon: Icons.developer_board,
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: 'Assembly Handles',
                   value: assemblyHandleView,
-                  onChanged: (val) => setState(() {assemblyHandleView = val;}),
+                  onChanged: (val) => setState(() {
+                    assemblyHandleView = val;
+                  }),
                 ),
-                buildFreeToggleSwitch(
-                  label: 'Cargo Handles',
+                buildFabIcon(
+                  color: Theme.of(context).colorScheme.primary,
+                  icon: Icons.warehouse,
+                  tooltip: 'Cargo Handles',
                   value: cargoHandleView,
-                  onChanged: (val) => setState(() {cargoHandleView = val;}),
+                  onChanged: (val) => setState(() {
+                    cargoHandleView = val;
+                  }),
                 ),
-                buildFreeToggleSwitch(
-                  label: 'Seed Handles',
+                buildFabIcon(
+                  color: Theme.of(context).colorScheme.primary,
+                  icon: Icons.spa,
+                  tooltip: 'Seed Handles',
                   value: seedHandleView,
-                  onChanged: (val) => setState(() {seedHandleView = val;}),
+                  onChanged: (val) => setState(() {
+                    seedHandleView = val;
+                  }),
                 ),
-                buildFreeToggleSwitch(
-                  label: 'Grid',
+                buildFabIcon(
+                  color: Theme.of(context).colorScheme.primary,
+                  icon: Icons.grid_on,
+                  tooltip: 'Grid',
                   value: gridView,
-                  onChanged: (val) => setState(() {gridView = val;}),
+                  onChanged: (val) => setState(() {
+                    gridView = val;
+                  }),
                 ),
-
-                ElevatedButton(
-                  onPressed: () {
-                    centerOnSlats(instanceManager[helixBundleView ? 'honeyCombSlat' : 'slat']!);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.3),
-                    // Semi-transparent
-                    foregroundColor: Colors.black, // Text/icon color
+                Tooltip(
+                  message: 'Center View',
+                  child: ElevatedButton(
+                    onPressed: () {
+                      centerOnSlats(instanceManager[helixBundleView ? 'honeyCombSlat' : 'slat']!);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(25),
+                    ),
+                    child: const Icon(Icons.filter_center_focus),
                   ),
-                  child: const Icon(Icons.filter_center_focus),
                 ),
               ],
             ),

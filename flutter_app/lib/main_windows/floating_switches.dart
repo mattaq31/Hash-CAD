@@ -57,18 +57,21 @@ class _TogglePanelState extends State<TogglePanel> {
                 const SizedBox(width: 8),
                 buildFabIcon(
                   icon: Icons.border_inner,
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Border',
                   value: widget.actionState.displayBorder,
                   onChanged: widget.actionState.setBorderDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.grid_on,
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Grid',
                   value: widget.actionState.displayGrid,
                   onChanged: widget.actionState.setGridDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.edit_square,
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Drawing Aids',
                   value: widget.actionState.drawingAids,
                   onChanged: widget.actionState.setDrawingAidsDisplay,
@@ -76,35 +79,42 @@ class _TogglePanelState extends State<TogglePanel> {
                 buildFabIcon(
                   icon: Icons.pin,
                   tooltip: 'Slat Coordinates',
+                  color: Theme.of(context).colorScheme.primary,
                   value: widget.actionState.slatNumbering,
                   onChanged: widget.actionState.setSlatNumberingDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.developer_board,
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Assembly Handles',
                   value: widget.actionState.displayAssemblyHandles,
                   onChanged: widget.actionState.setAssemblyHandleDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.warehouse,
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Cargo Handles',
                   value: widget.actionState.displayCargoHandles,
                   onChanged: widget.actionState.setCargoHandleDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.spa,
+                  color: Theme.of(context).colorScheme.primary,
+
                   tooltip: 'Seeds',
                   value: widget.actionState.displaySeeds,
                   onChanged: widget.actionState.setSeedDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.label_important,
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Slat IDs',
                   value: widget.actionState.displaySlatIDs,
                   onChanged: widget.actionState.setSlatIDDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.verified_user,
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Plate Validation',
                   value: widget.actionState.plateValidation,
                   onChanged: widget.actionState.setPlateValidation,
@@ -118,30 +128,30 @@ class _TogglePanelState extends State<TogglePanel> {
     );
   }
 
-
-  Widget buildFabIcon({
-    required IconData icon,
-    required String tooltip,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: FloatingActionButton.small(
-          backgroundColor: value
-              ? Theme.of(context).colorScheme.primary
-              : Colors.grey[300],
-          foregroundColor: value ? Colors.white : Colors.black87,
-          onPressed: () => onChanged(!value),
-          child: Icon(icon),
-        ),
-      ),
-    );
-  }
 }
 
+Widget buildFabIcon({
+  required IconData icon,
+  required String tooltip,
+  required bool value,
+  required Color color,
+  required ValueChanged<bool> onChanged,
+}) {
+  return Tooltip(
+    message: tooltip,
+    child: Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FloatingActionButton.small(
+        backgroundColor: value
+            ? color
+            : Colors.grey[300],
+        foregroundColor: value ? Colors.white : Colors.black87,
+        onPressed: () => onChanged(!value),
+        child: Icon(icon),
+      ),
+    ),
+  );
+}
 
 Widget buildToggleSwitch({
   required String label,
