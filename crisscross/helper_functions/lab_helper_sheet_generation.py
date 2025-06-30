@@ -94,9 +94,16 @@ def adjust_column_width(ws):
         adjusted_width = max_length
         ws.column_dimensions[column_letter].width = adjusted_width
 
+def find_cell_by_value(ws, search_value):
+    for row in ws.iter_rows(values_only=False):
+        for cell in row:
+            if cell.value == search_value:
+                return cell.coordinate
+    return None
 
 def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume=150, reference_handle_concentration=500,
-                             slat_mixture_volume=50, unique_transfer_volume_plates=None, workbook=None, handle_mix_ratio=10):
+                             slat_mixture_volume=50, unique_transfer_volume_plates=None, workbook=None,
+                             handle_mix_ratio=10, split_core_staple_pools=False):
     """
     Prepares a 'master mix' sheet to be used for combining slat mixtures with scaffold
     and core staples into the final slat mixture.
@@ -155,105 +162,132 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
 
     ws = wb.create_sheet("Slat Folding & Master Mix")
 
+    core_staple_mix_count = 4 if split_core_staple_pools else 1
+
     # Titles and formatting
     ws['A1'] = 'Single Slat Folding Quantities (can prepare directly or follow master mix details below)'
     ws['A1'].font = Font(bold=True)
     ws['A2'] = 'H2/H5 Handles from Echo [individual handle] (nM)'
     ws['A3'] = 'P8064 scaffold (nM)'
-    ws['A4'] = 'Core staples pool (each, nM)'
-    ws['A5'] = 'TEF (X)'
-    ws['A6'] = 'MgCl2 (mM)'
-    ws['A7'] = 'UPW (deionized water)'
-    ws['A8'] = 'Total volume (µL)'
-    ws['A9'] = 'Total amount (pmol)'
+
+    if not split_core_staple_pools:
+        ws['A4'] = 'Core staples pool (each, nM)'
+    else:
+        ws['A4'] = 'Core staples pool S0 (each, nM)'
+        ws['A5'] = 'Core staples pool S1 (each, nM)'
+        ws['A6'] = 'Core staples pool S3 (each, nM)'
+        ws['A7'] = 'Core staples pool S4 (each, nM)'
+
+    ws[f'A{4+core_staple_mix_count}'] = 'TEF (X)'
+    ws[f'A{5+core_staple_mix_count}'] = 'MgCl2 (mM)'
+    ws[f'A{6+core_staple_mix_count}'] = 'UPW (deionized water)'
+    ws[f'A{7+core_staple_mix_count}'] = 'Total volume (µL)'
+    ws[f'A{8+core_staple_mix_count}'] = 'Total amount (pmol)'
 
     # Standard concentration values
     ws['B1'] = 'Stock Concentration'
     ws['B2'] = round(min_handle_mix_conc, 1)
     ws['B3'] = 1062
-    ws['B4'] = 3937
-    ws['B5'] = 10
-    ws['B6'] = 1000
-    ws['B2'].fill = orange_fill
-    ws['B3'].fill = red_fill
+    if not split_core_staple_pools:
+        ws['B4'] = 3937
+    else:
+        ws['B4'] = 10000
+        ws['B5'] = 10000
+        ws['B6'] = 10000
+        ws['B7'] = 10000
+
+    ws[f'B{4+core_staple_mix_count}'] = 10
+    ws[f'B{5+core_staple_mix_count}'] = 1000
+    ws[f'B2'].fill = orange_fill
+    ws[f'B3'].fill = red_fill
 
     # Standard target concentrations
     ws['C1'] = 'Final Concentration'
     ws['C2'] = 50 * handle_mix_ratio
     ws['C3'] = 50
     ws['C4'] = 500
-    ws['C5'] = 1
-    ws['C6'] = 6
+    if core_staple_mix_count:
+        ws['C5'] = 500
+        ws['C6'] = 500
+        ws['C7'] = 500
+
+    ws[f'C{4+core_staple_mix_count}'] = 1
+    ws[f'C{5+core_staple_mix_count}'] = 6
 
     # Calculations for single slat volumes
     ws['D1'] = 'Amount to Add (µL)'
-    ws['D2'] = "=round(C2*D$8/B2,2)"
-    ws['D3'] = "=round(C3*D$8/B3,2)"
-    ws['D4'] = "=round(C4*D$8/B4,2)"
-    ws['D5'] = "=round(C5*D$8/B5,2)"
-    ws['D6'] = "=round(C6*D$8/B6,2)"
-    ws['D7'] = '=D8-sum(D2:D6)'
+    for cell_col in range(2,6+core_staple_mix_count):
+        ws[f'D{cell_col}'] = f"=round(C{cell_col}*D${7+core_staple_mix_count}/B{cell_col},2)"
+
+    ws[f'D{6+core_staple_mix_count}'] = f'=D{7+core_staple_mix_count}-sum(D2:D{5+core_staple_mix_count})'
+
     if slat_mixture_volume == "max":
         # selects the max reaction volume that reduces staple pool waste, assuming echo transfers only 75% of expected
         # 0.75 * total femtomoles of slats (based on min conc)/reaction final conc (typically 500 nM), rounded down to the nearest multiple of 5
-        ws['D8'] = math.floor(0.75 * min_handle_mix_conc * total_handle_mix_volume/ws['C2'].value/5/1000) * 5
+        ws[f'D{7+core_staple_mix_count}'] = math.floor(0.75 * min_handle_mix_conc * total_handle_mix_volume/ws['C2'].value/5/1000) * 5
         print(Fore.BLUE + f'Info: You selected "max", so the slat mixtures will use all the staples in your pooled handle mixtures.  The output slat mixture volume will be {ws["D8"].value}μl.' + Fore.RESET)
-
     else:
-        ws['D8'] = slat_mixture_volume # simplest solution: user decides, defaults to 50 µL
+        ws[f'D{7+core_staple_mix_count}'] = slat_mixture_volume # simplest solution: user decides, defaults to 50 µL
 
-    ws['D9'] = '=D8*C3/1000'
+    ws[f'D{8+core_staple_mix_count}'] = f'=D{7+core_staple_mix_count}*C3/1000'
 
     ws['F2'].fill = red_fill
     ws['G2'] = 'Cells with this shading should be adjusted to match the actual values in your experiment.'
     ws['F3'].fill = orange_fill
     ws['G3'] = 'Cells with this shading contain an average or minimum value for a group of slats - if further precision is required for each slat, this needs to be changed.'
 
-    apply_box_border(ws, 'A1', 'D1', 'A9', 'D9')
+    apply_box_border(ws, 'A1', 'D1', f'A{8+core_staple_mix_count}', f'D{8+core_staple_mix_count}')
 
     # Calculations for master mix
-    ws['A11'] = 'Master Mix Preparation (prepare once)'
-    ws['A11'].font = Font(bold=True)
-    ws['B11'] = 'Count or Volume (µL)'
-    ws['A12'] = 'Number of slats (with a buffer of 3 extra slats)'
+    ws[f'A{10+core_staple_mix_count}'] = 'Master Mix Preparation (prepare once)'
+    ws[f'A{10+core_staple_mix_count}'].font = Font(bold=True)
+    ws[f'B{10+core_staple_mix_count}'] = 'Count or Volume (µL)'
+    ws[f'A{11+core_staple_mix_count}'] = 'Number of slats (with a buffer of 3 extra slats)'
 
-    ws['A13'] = 'P8064 scaffold'
-    ws['A14'] = 'Core staples pool'
-    ws['A15'] = 'TEF'
-    ws['A16'] = 'MgCl2'
-    ws['A17'] = 'UPW (deionized water)'
-    ws['A18'] = 'Total volume'
+    ws[f'A{12+core_staple_mix_count}'] = 'P8064 scaffold'
 
-    ws['B12'] = slat_count + 3
-    ws['B13'] = '=D3*B12'
-    ws['B14'] = '=D4*B12'
-    ws['B15'] = '=D5*B12'
-    ws['B16'] = '=D6*B12'
-    ws['B17'] = '=D7*B12'
-    ws['B18'] = '=SUM(B13:B17)'
+    if not split_core_staple_pools:
+        ws[f'A{13+core_staple_mix_count}'] = 'Core staples pool'
+    else:
+        ws[f'A{13+core_staple_mix_count}'] = 'Core staples pool S0'
+        ws[f'A{14+core_staple_mix_count}'] = 'Core staples pool S1'
+        ws[f'A{15+core_staple_mix_count}'] = 'Core staples pool S3'
+        ws[f'A{16+core_staple_mix_count}'] = 'Core staples pool S4'
 
-    apply_box_border(ws, 'A11', 'B11', 'A18', 'B18')
+    ws[f'A{13+(2*core_staple_mix_count)}'] = 'TEF'
+    ws[f'A{14+(2*core_staple_mix_count)}'] = 'MgCl2'
+    ws[f'A{15+(2*core_staple_mix_count)}'] = 'UPW (deionized water)'
+    ws[f'A{16+(2*core_staple_mix_count)}'] = 'Total volume'
+
+    ws[f'B{11+core_staple_mix_count}'] = slat_count + 3
+
+    for component_index, cell_col in enumerate(range(12+core_staple_mix_count, 16+(2*core_staple_mix_count))):
+        ws[f'B{cell_col}'] = f"=D{3+component_index}*B{11+core_staple_mix_count}"
+
+    ws[f'B{16+(2*core_staple_mix_count)}'] = f'=SUM(B{12+core_staple_mix_count}:B{15+(2*core_staple_mix_count)})'
+
+    apply_box_border(ws, f'A{10+core_staple_mix_count}', f'B{10+core_staple_mix_count}', f'A{16+(2*core_staple_mix_count)}', f'B{16+(2*core_staple_mix_count)}')
 
     special_border = Side(border_style='mediumDashDotDot')
     thick_border = Side(border_style='thick')
 
-    ws['A12'].border = Border(top=special_border, left=thick_border, bottom=special_border)
-    ws['B12'].border = Border(top=special_border, right=thick_border, bottom=special_border)
+    ws[f'A{11+core_staple_mix_count}'].border = Border(top=special_border, left=thick_border, bottom=special_border)
+    ws[f'B{11+core_staple_mix_count}'].border = Border(top=special_border, right=thick_border, bottom=special_border)
 
-    # Calculations for master mix + handle mix
-    ws['A20'] = 'Final Slat Mixture (prepare once for each slat)'
-    ws['A20'].font = Font(bold=True)
-    ws['B20'] = 'Volume (µL)'
+    # # Calculations for master mix + handle mix
+    ws[f'A{18+(2*core_staple_mix_count)}'] = 'Final Slat Mixture (prepare once for each slat)'
+    ws[f'A{18+(2*core_staple_mix_count)}'].font = Font(bold=True)
+    ws[f'B{18+(2*core_staple_mix_count)}'] = 'Volume (µL)'
 
-    ws['A21'] = 'Master Mix'
-    ws['A22'] = 'Slat Handle Mixture'
-    ws['A23'] = 'Total volume'
+    ws[f'A{19+(2*core_staple_mix_count)}'] = 'Master Mix'
+    ws[f'A{20+(2*core_staple_mix_count)}'] = 'Slat Handle Mixture'
+    ws[f'A{21+(2*core_staple_mix_count)}'] = 'Total volume'
 
-    ws['B21'] = '=SUM(B13:B17)/B12'
-    ws['B22'] = '=D2'
-    ws['B23'] = '=B21+B22'
+    ws[f'B{19+(2*core_staple_mix_count)}'] = f'=SUM(B{12+core_staple_mix_count}:B{15+(2*core_staple_mix_count)})/B{11+core_staple_mix_count}'
+    ws[f'B{20+(2*core_staple_mix_count)}'] = '=D2'
+    ws[f'B{21+(2*core_staple_mix_count)}'] = f'=B{19+(2*core_staple_mix_count)}+B{20+(2*core_staple_mix_count)}'
 
-    apply_box_border(ws, 'A20', 'B20', 'A23', 'B23')
+    apply_box_border(ws, f'A{18+(2*core_staple_mix_count)}', f'B{18+(2*core_staple_mix_count)}', f'A{21+(2*core_staple_mix_count)}', f'B{21+(2*core_staple_mix_count)}')
 
     adjust_column_width(ws)
 
@@ -360,10 +394,12 @@ def prepare_peg_purification_sheet(slat_dict, groups_per_layer=2, max_slat_conce
         # block 1 - slat counts and volumes
         full_data_groups[group][f'{column}1'] = group
         try:
-            full_data_groups[group][f'{column}3'] = wb["Slat Folding & Master Mix"]["D8"].value
+            coordinate = find_cell_by_value(wb["Slat Folding & Master Mix"], 'Total volume (µL)')
+            full_data_groups[group][f'{column}3'] = wb["Slat Folding & Master Mix"][f"D{coordinate[1:]}"].value
         except KeyError:
             print("No Slat Folding & Master Mix sheet detected. Defaulting to 50 µL reaction volume...")
             full_data_groups[group][f'{column}3'] = slat_mixture_volume
+
         full_data_groups[group][f'{column}4'] = len(full_data_groups[group]['IDs'])
         full_data_groups[group][f'{column}5'] = f"={column}3*{column}4"
         full_data_groups[group][f'{column}6'] = 50
@@ -492,6 +528,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
                                 unique_transfer_volume_plates=None,
                                 special_slat_groups=None,
                                 handle_mix_ratio=10,
+                                split_core_staple_pools=False
                                 ):
     """
     Prepares a series of excel sheets to aid lab assembler while preparing and purifying slat mixtures.
@@ -517,7 +554,8 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
 
     # prepares slat assembly mixture details
     prepare_master_mix_sheet(slat_dict, echo_sheet, reference_single_handle_volume, reference_single_handle_concentration,
-                             slat_mixture_volume, unique_transfer_volume_plates, wb, handle_mix_ratio=handle_mix_ratio)
+                             slat_mixture_volume, unique_transfer_volume_plates, wb, handle_mix_ratio=handle_mix_ratio,
+                             split_core_staple_pools=split_core_staple_pools)
 
     # prepares slat purification details
     prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, slat_mixture_volume,

@@ -233,6 +233,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     output_plate_num_list = []
     output_well_descriptor_dict = {}
     all_plates_needed = set()
+    handle_volume_roundup_alert = False
 
     if output_plate_size == '96':
         plate_format = plate96
@@ -308,7 +309,12 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
             # handle volume needs to be a multiple of 25nl for echo to be able to execute...
             if handle_specific_vol % 25 != 0:
-                raise RuntimeError(f'Handle volume selected for {handle_data} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). Please adjust nominal handle volume to fix.')
+                new_handle_vol =  ((handle_specific_vol + 24) // 25) * 25
+                if not handle_volume_roundup_alert:
+                    print(Fore.LIGHTGREEN_EX + f'Handle volume selected for {slat_name + "_%s_staple_%s" % (handle_side, handle_num)} with {handle_data["category"]}/{handle_data["value"]} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). Handle volume has been rounded up to {new_handle_vol} nl to fix.' + Fore.RESET)
+                    print(Fore.RED + f'Suppressing this message for similar changes.' + Fore.RESET)
+                    handle_volume_roundup_alert = True
+                handle_specific_vol = new_handle_vol
 
             if ',' in slat_name:
                 raise RuntimeError('Slat names cannot contain commas - this will cause issues with the echo csv  file.')
@@ -359,19 +365,21 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     if normalize_volumes:
         max_volume = max([x[1] for x in total_handle_mix_volumes_list])
         total_compensation_volume_required = 0
+        current_water_well = 0
         for (slat_name, total_volume, _) in total_handle_mix_volumes_list:
             if total_volume < max_volume:
                 destination_well = combined_df[combined_df["Component"].str.contains(slat_name + "_")]["Destination Well"].iloc[0]
                 destination_plate = combined_df[combined_df["Component"].str.contains(slat_name + "_")]["Destination Plate Name"].iloc[0]
                 compensation_volume = round((max_volume - total_volume) * 1000) # a specific compensation amount is added to each individual well
                 output_command_list.append([slat_name + '_volume_normalize',
-                                            'WATER_PLATE', '{%s}' % ';'.join(plate384[0:water_plate_well_count]),
+                                            'WATER_PLATE', plate384[current_water_well],
                                             destination_well,
                                             compensation_volume,
                                             destination_plate,
                                             source_plate_type])
                 total_compensation_volume_required += compensation_volume
                 all_plates_needed.add('WATER_PLATE')
+                current_water_well += 1
 
         combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                                  'Destination Well', 'Transfer Volume',
@@ -382,7 +390,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             # the below assumes that you are filling your water plate with 60ul of water per well, of which 20ul are usable.
             print(Fore.MAGENTA + f"Info: To normalize volumes to a total of {max_volume} μl per well, "
                                  f"a total of {total_compensation_volume_required/1000} μl of water (or 1xTEF) is required."
-                                 f"  This means you'll need at least {math.ceil(total_compensation_volume_required/40000)} wells in your water plate." + Fore.RESET)
+                                 f"  This has been split across {current_water_well} wells (fill up from well A1 to well {plate384[current_water_well-1]})." + Fore.RESET)
 
     combined_df.to_csv(os.path.join(output_folder, output_filename), index=False)
 
