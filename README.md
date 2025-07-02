@@ -1,7 +1,7 @@
 # #-CAD and Orthogonal Sequence Generators
 
 <p align="center">
-  <img src="/graphics_screenshots/version_0_2_1.png" alt="Hash-CAD in action" style="width: 99%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/version_0_2_1.png" alt="Hash-CAD in action" style="width: 99%; margin: 0.5%;">
 </p>
 
 <p align="center">
@@ -47,7 +47,7 @@ Details TBC.
   - For conda run the following: `conda install -c conda-forge --file requirements.txt`
   - For [PyVista](https://pyvista.org), install the dependencies from `requirements_pyvista.txt`.
   - For [Blender](https://www.blender.org), simply run `pip install bpy`
-### Usage Guide
+### Usage Guide TODO: move everything to the crisscross folder...
 #### Importing and Editing a Megastructure
 - The file format is identical to that of #-CAD i.e. all info is stored within an Excel file.  The file information should be passed to the `Megastructure` class, which is the main container for a design.  To import a megastructure, simply run:
 ```python
@@ -205,11 +205,11 @@ For further info on customization options, check out the related functions in th
 
 Example graphics generated from the hexagram design are provided below (low-resolution versions):
 <p align="center">
-  <img src="/graphics_screenshots/hexagram_low_res_images/3D_design_view.gif" alt="hexagram_gif" style="width: 18%; margin: 0.5%;">
-  <img src="/graphics_screenshots/hexagram_low_res_images/global_view.jpeg" alt="hexagram X-ray view" style="width: 18%; margin: 0.5%;">
-  <img src="/graphics_screenshots/hexagram_low_res_images/handles_layer_1_2.jpeg" alt="hexagram handles" style="width: 18%; margin: 0.5%;">
-  <img src="/graphics_screenshots/hexagram_low_res_images/layer_1_hexagram.jpeg" alt="hexagram layer 1" style="width: 18%; margin: 0.5%;">
-  <img src="/graphics_screenshots/hexagram_low_res_images/layer_2_hexagram.jpeg" alt="hexagram layer 2" style="width: 18%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/3D_design_view.gif" alt="hexagram_gif" style="width: 18%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/global_view.jpeg" alt="hexagram X-ray view" style="width: 18%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/handles_layer_1_2.jpeg" alt="hexagram handles" style="width: 18%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/layer_1_hexagram.jpeg" alt="hexagram layer 1" style="width: 18%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/layer_2_hexagram.jpeg" alt="hexagram layer 2" style="width: 18%; margin: 0.5%;">
 </p>
 
 **More complete documentation TBC**
