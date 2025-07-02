@@ -33,4 +33,4 @@ version_scheme = "post-release"
 local_scheme = "node-and-date"
 
 [tool.setuptools]
-packages = ["crisscross"]
+packages = ["crisscross","Handle_Library_Project"]
