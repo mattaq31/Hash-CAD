@@ -3,9 +3,9 @@ requires = ["setuptools>=77.0.3", "wheel", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "crisscross"
+name = "crisscross-kit"
 dynamic = ["version"]
-description = "Package for designing, evolving and configuring a crisscross megastructure for laboratory assembly."
+description = "Unified CAD and scripting packages for megastructure design, handle library generation and visualization."
 authors = [
     { name = "Matthew Aquilina" },
     { name = "Florian Katzmeier" },
@@ -21,6 +21,23 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 
+dependencies = [
+    "pandas>=2.3",
+    "numpy>=2.3",
+    "seaborn>=0.13",
+    "matplotlib>=3.10",
+    "openpyxl>=3.1",
+    "xlsxwriter>=3.2",
+    "tqdm>=4.67",
+    "click>=8.2",
+    "rich-click>=1.8",
+    "toml>=0.10"
+]
+
+[project.optional-dependencies]
+3d = ["pyvista", "imageio", "imageio-ffmpeg"]
+blender = ["bpy"]
+
 [project.urls]
 Homepage = "https://github.com/mattaq31/Hash-CAD"
 
@@ -31,6 +48,7 @@ resuspend_plates = "crisscross.cli_functions.plate_resuspension:plate_resuspensi
 [tool.setuptools_scm]
 version_scheme = "post-release"
 local_scheme = "node-and-date"
+tag_regex = "^python-(?P<version>\\d+\\.\\d+\\.\\d+)$"
 
 [tool.setuptools]
-packages = ["crisscross","Handle_Library_Project"]
+packages = ["crisscross","orthoseq_generator"]

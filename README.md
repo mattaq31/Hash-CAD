@@ -1,12 +1,11 @@
-# #-CAD
+# #-CAD and Orthogonal Sequence Generators
 
 <p align="center">
-  <img src="/graphics_screenshots/hexagram.png" alt="Hash-CAD in action" style="width: 47%; margin: 0.5%;">
-  <img src="./graphics_screenshots/evolution.png" alt="Evolution Algorithm Usage" style="width: 47%; margin: 0.5%;">
+  <img src="/graphics_screenshots/version_0_2_1.png" alt="Hash-CAD in action" style="width: 99%; margin: 0.5%;">
 </p>
 
 <p align="center">
-  <em>Unified CAD package for megastructure design, assembly and visualization.</em>
+  <em>Unified CAD and scripting packages for megastructure design, handle library generation and visualization.</em>
 </p>
 
 <p align="center">
@@ -18,7 +17,7 @@
 </p>
 
 ## Main CAD Interface
-Details TBC very soon.
+Details TBC.
 
 ### Installation
 Details TBC.
@@ -27,20 +26,27 @@ Details TBC.
 Details TBC.
 
 ## Crisscross Python API
-\#-CAD was developed alongside a Python API (`crisscross`) that can be used to manipulate megastructures programmatically.  They share the same file format and can be used interchangeably.  The Python interface does provide more flexibility and customizability, at the cost of a steeper learning curve.
+\#-CAD was developed alongside a Python API (`crisscross`) that can be used to manipulate megastructures programmatically.  They share the same file format and can be used interchangeably.  The Python interface provides more flexibility and customizability, at the cost of a steeper learning curve.
 ### Installation and Requirements
 - The Python package was developed using Python 3.11.  Other versions of Python should also work, but it is recommended to use 3.10+.
-- To install the python interface, navigate to the root directory and run:
+- To install the python interface, simply run the below in your environment of choice:
+
+`pip install crisscross_kit`
+- (Optional), if you would like to be able to generate 3D graphics or 3D blender files for further customization, you need to install additional dependencies:
+
+`pip install crisscross_kit[3d]`
+
+`pip install crisscross_kit[blender]`
+#### Developer Installation
+- To install the python interface and allow for changes to the code to be immediately updated in your package, clone this repository and navigate to the root directory.  Next, run:
 
 `pip install -e .`
 
-- Next, install the package dependencies using your package manager of choice.  
-  - For pip run the following: `pip install -r requirements.txt`
+- You may choose to install the package dependencies using other package managers, such as conda.  The requirements are hosted in requirements.txt.  
+  - To install with pip run the following: `pip install -r requirements.txt`
   - For conda run the following: `conda install -c conda-forge --file requirements.txt`
-- (Optional), if you would like to be able to generate 3D graphics or 3D blender files for further customization, you need to install additional dependencies:
-  - For [PyVista](https://pyvista.org), install the dependencies from `requirements_pyvista.txt` (either pip or conda).
+  - For [PyVista](https://pyvista.org), install the dependencies from `requirements_pyvista.txt`.
   - For [Blender](https://www.blender.org), simply run `pip install bpy`
-- Once the dependencies are installed, you can import the `crisscross` library in any Python script.
 ### Usage Guide
 #### Importing and Editing a Megastructure
 - The file format is identical to that of #-CAD i.e. all info is stored within an Excel file.  The file information should be passed to the `Megastructure` class, which is the main container for a design.  To import a megastructure, simply run:

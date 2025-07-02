@@ -1,7 +1,5 @@
 name: Build Hash-CAD internal Python server and Flutter Desktop App
 
-# TODO: This workflow works well for Linux and Windows, but there are still issues with code-signing for mac - need to continue to investigate.
-
 on:
   push:
     tags:
