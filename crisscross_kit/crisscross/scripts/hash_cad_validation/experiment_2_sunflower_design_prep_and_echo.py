@@ -16,8 +16,8 @@ target_versions = ['v0_with_gnps', 'v1', 'v2', 'v3', 'v4', 'v5']
 
 base_design_import_files = [os.path.join(experiment_folder, v, f'{v}_design.xlsx') for v in target_versions]
 regen_graphics = False
-generate_echo = False
-generate_lab_helpers = False
+generate_echo = True
+generate_lab_helpers = True
 
 main_plates = get_cutting_edge_plates(100) # this is the first design that uses the new 100uM working stock concentrations
 src_010 = get_plateclass('HashCadPlate', simpsons_mixplate_antihandles_maxed, cargo_plate_folder)

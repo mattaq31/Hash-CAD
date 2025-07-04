@@ -8,7 +8,7 @@ import re
 
 dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
-base_directory = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir, os.path.pardir))
+base_directory = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir))
 
 plate96 = [x + str(y) for x, y in product(ascii_uppercase[:8], range(1, 12 + 1))]
 plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1))]

@@ -16,7 +16,7 @@ from pydoc import locate
 # This piece of code allows for easy importing of new plates by just specifying the class name as a string rather
 # than a full explicit import.
 available_plate_loaders = {}
-functions_dir = os.path.join(base_directory, 'crisscross', 'plate_mapping')
+functions_dir = os.path.join(base_directory, 'crisscross_kit', 'crisscross', 'plate_mapping')
 for dirpath, _, filenames in os.walk(functions_dir):
     for file in filenames:
         if file.endswith('.py') and file not in ('.DS_Store', '__init__.py'):
