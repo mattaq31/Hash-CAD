@@ -13,10 +13,20 @@
   <a href="https://github.com/mattaq31/Hash-CAD/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
   </a>
+<a href="https://hash-cad.readthedocs.io/en/latest/">
+  <img src="https://img.shields.io/badge/docs-Read%20the%20Docs-8CA1AF.svg?style=flat">
+</a>
   <img src="https://img.shields.io/github/downloads/mattaq31/Hash-CAD/total" alt="GitHub all releases">
   <a href="https://pypi.org/project/crisscross_kit/">
     <img src="https://img.shields.io/pypi/dm/crisscross_kit.svg?label=PyPI%20downloads">
   </a>
+<a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/flutter-web-deploy.yml">
+  <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/flutter-web-deploy.yml?label=Web&style=flat&logo=flutter&logoColor=white" alt="Web CI Status">
+</a>
+
+<a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/python-server-and-desktop-app-deploy.yml">
+  <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/python-server-and-desktop-app-deploy.yml?label=Desktop&style=flat&logo=flutter&logoColor=white" alt="Desktop CI Status">
+</a>
 </p>
 
 ## Main CAD Interface
@@ -30,6 +40,8 @@ Details TBC.
 
 ## Crisscross Python API & Orthogonal Sequence Generation
 Please check the main python [readme](https://github.com/mattaq31/Crisscross-Design/blob/main/crisscross_kit/README.md) for more details on installation and usage of our joint python libraries for crisscross design and handle library orthogonal sequence generation.
+
+Alternatively, check our online documentation [here](https://hash-cad.readthedocs.io/en/latest/) on readthedocs.io.
 
 ## #-CAD Bundled Python Server
 Details TBC.
