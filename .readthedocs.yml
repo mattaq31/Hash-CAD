@@ -9,8 +9,5 @@ python:
   install:
     - requirements: ./crisscross_kit/docs/requirements.txt
 
-sphinx:
-  configuration: false
-
 mkdocs:
   configuration: ./crisscross_kit/docs/mkdocs.yml
