@@ -6,8 +6,14 @@ import 'package:flutter/material.dart';
 import '../crisscross_core/slats.dart';
 import 'helper_functions.dart';
 import '../app_management/shared_app_state.dart';
-
 import '../crisscross_core/seed.dart';
+
+
+bool isColorDark(Color color) {
+  // Convert color brightness to 0-255 scale
+  double brightness = (color.r * 0.299 + color.g * 0.587 + color.b * 0.114);
+  return brightness < 0.5; // You can adjust this threshold if needed
+}
 
 drawSlatDrawingAids(Canvas canvas, Offset p1, Offset p2, Offset slatExtend, double gridSize, Paint rodPaint, Color color, double slatAlpha){
 
@@ -101,8 +107,15 @@ class SlatPainter extends CustomPainter {
       fontSize: appState.gridSize * 0.4, // small enough for grid point
     );
 
-    for (int i = 1; i <= 32; i++) {
-      TextSpan textSpan = TextSpan(text: '$i', style: textStyle);
+    TextStyle textStyleLight = TextStyle(
+      color: Colors.white,
+      fontFamily: 'Roboto',
+      fontWeight: FontWeight.bold,
+      fontSize: appState.gridSize * 0.4, // small enough for grid point
+    );
+
+    for (int i = 1; i <= 64; i++) {
+      TextSpan textSpan = TextSpan(text: i < 33 ? '$i' : '${i-32}', style: i < 33 ? textStyle : textStyleLight);
       TextPainter textPainter = TextPainter(
         text: textSpan,
         textAlign: TextAlign.center,
@@ -236,9 +249,10 @@ class SlatPainter extends CustomPainter {
 
       // Draw slat position numbers if activated
       if (slat.layer == selectedLayer && actionState.slatNumbering) {
+        bool isDark = isColorDark(layerMap[slat.layer]?['color']);
         for (int i = 1; i <= 32; i++) {
           final slatCoord = getRealCoord(slat.slatPositionToCoordinate[i]!);
-          final labelPainter = labelPainters[i];
+          final labelPainter = labelPainters[!isDark ? i : i + 32];
           if (labelPainter == null) continue;
 
           final textOffset = Offset(
