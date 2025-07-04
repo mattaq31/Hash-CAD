@@ -168,7 +168,7 @@ For further info on customization options, check out the related functions in th
 
 Example graphics generated from the hexagram design are provided below (low-resolution versions):
 <p align="center">
-  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/3D_design_view.gif" alt="hexagram_gif" style="width: 30%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/3D_design_view.gif" alt="hexagram_gif" style="margin: 0.5%;">
 </p>
 <p align="center">
   <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/global_view.jpeg" alt="hexagram X-ray view" style="width: 40%; margin: 0.5%;">

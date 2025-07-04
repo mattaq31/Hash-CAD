@@ -13,7 +13,7 @@
 `pip install crisscross_kit[blender]`
 
 #### Developer Installation
-- To install the python interface and allow for changes to the code to be immediately updated in your package, clone this repository and navigate to the root directory.  Next, run:
+- To install the python interface and allow for changes to the code to be immediately updated in your package, clone this repository and navigate to the `crisscross_kit` directory.  Next, run:
 
 `pip install -e .`
 
