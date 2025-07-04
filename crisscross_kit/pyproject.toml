@@ -49,6 +49,7 @@ resuspend_plates = "crisscross.cli_functions.plate_resuspension:plate_resuspensi
 version_scheme = "post-release"
 local_scheme = "node-and-date"
 tag_regex = "^python-(?P<version>\\d+\\.\\d+\\.\\d+)$"
+root = "../"
 
 [tool.setuptools]
 packages = ["crisscross","orthoseq_generator"]
