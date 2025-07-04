@@ -8,15 +8,15 @@
 ```bash
 pip install crisscross_kit
 ```
+
 - (Optional), if you would like to be able to generate 3D graphics or 3D blender files for further customization, you need to install additional dependencies:
+
 ```bash
 pip install crisscross_kit[3d]
 pip install crisscross_kit[blender]
 ```
-
 #### Developer Installation
 - To install the python interface and allow for changes to the code to be immediately updated in your package, clone this repository and navigate to the `crisscross_kit` directory.  Next, run:
-
 ```bash
 pip install -e .
 ```
@@ -29,10 +29,11 @@ pip install -e .
 ### Usage Guides and Documentation
 
 The documentation for both the designer library (`crisscross`) and the orthogonal sequence generator (`orthoseq_generator`) are provided within separate readmes:
+
 - For the crisscross library, details are provided [here](https://github.com/mattaq31/Crisscross-Design/blob/main/crisscross_kit/crisscross/README.md).
 - For the orthogonal sequence generator, details are provided [here](https://github.com/mattaq31/Crisscross-Design/blob/main/crisscross_kit/orthoseq_generator/README.md).
-
-## Building for PyPI
+- 
+### Building for PyPI
 - For developers looking to build the package for PyPI, you can use the following commands from the `crisscross_kit` directory of the repository:
 - First, make sure the build tools are installed:
 ```bash
@@ -47,3 +48,7 @@ python -m build
 twine upload dist/*
 ```
 - You will need to have a PyPI account and set up your credentials in `~/.pypirc` for the upload to work (you will also need to be set as a collaborator on the `crisscross_kit` project too).
+---
+
+!!! quote "Citation"
+    If you use the Crisscross Python Kit or #-CAD in your research, please cite our work (details coming out soon).

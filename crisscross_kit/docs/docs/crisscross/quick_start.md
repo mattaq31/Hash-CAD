@@ -179,3 +179,18 @@ Example graphics generated from the hexagram design are provided below (low-reso
   <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/hexagram_low_res_images/layer_2_hexagram.jpeg" alt="hexagram layer 2" style="width: 40%; margin: 0.5%;">
 </p>
 
+## Building for PyPI
+- For developers looking to build the package for PyPI, you can use the following commands from the `crisscross_kit` directory of the repository:
+- First, make sure the build tools are installed:
+```bash
+pip install build twine setuptools-scm
+```
+- Next, build the package:
+```bash
+python -m build
+```
+- The build command will create a `dist` folder containing the `.whl` and `.tar.gz` files for the package. These can be uploaded to PyPI using:
+```bash
+twine upload dist/*
+```
+- You will need to have a PyPI account and set up your credentials in `~/.pypirc` for the upload to work (you will also need to be set as a collaborator on the `crisscross_kit` project too).

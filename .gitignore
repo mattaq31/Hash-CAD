@@ -110,7 +110,7 @@ venv.bak/
 .ropeproject
 
 # mkdocs documentation
-/site
+/crisscross_kit/docs/site
 
 # mypy
 .mypy_cache/

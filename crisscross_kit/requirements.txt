@@ -8,3 +8,8 @@ click
 rich-click
 toml
 seaborn
+mkdocs
+mkdocstrings
+mkdocstrings-material
+mkdocstrings[python]
+ruff

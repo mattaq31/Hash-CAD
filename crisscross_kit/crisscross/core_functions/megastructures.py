@@ -577,7 +577,6 @@ class Megastructure:
         :param filename_prepend: String to prepend to the filename of the video.
         :param colormap: Colormap to extract layer colors from
         :param cargo_colormap: Colormap to extract cargo colors from
-        :param seed_color: Color of the seed in the design.
         :return: N/A
         """
 
