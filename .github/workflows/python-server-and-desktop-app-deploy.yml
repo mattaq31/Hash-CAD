@@ -60,19 +60,19 @@ jobs:
           key: ${{ matrix.os }}-python-server-${{ hashFiles(
             './flutter_app/python_server/main_server.py',
             './flutter_app/python_server/**/*.py',
-            './crisscross/assembly_handle_optimization/**/*.py')}}
+            './crisscross_kit/crisscross/assembly_handle_optimization/**/*.py')}}
 
       - name: Install environment dependencies
         if: steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
-          pip install -r requirements.txt
+          pip install -r crisscross_kit/requirements.txt
         working-directory: ./flutter_app/python_server
 
       - name: Install custom Python library
         if: steps.cache-python-build.outputs.cache-hit != 'true'
         run: |
           pip install -e .
-        working-directory: .
+        working-directory: ./crisscross_kit
 
       # prepping for intel mac build
       - name: MacOS 13 Prep
