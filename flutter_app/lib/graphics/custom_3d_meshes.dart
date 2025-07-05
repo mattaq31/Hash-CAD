@@ -7,7 +7,7 @@ import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 
 
-three.BufferGeometry createHoneyCombSlat(List<List<double>> helixBundlePositions, double helixBundleSize, double gridSize) {
+three.BufferGeometry createHoneyCombSlat(List<List<double>> helixBundlePositions, double helixBundleSize, double gridSize, bool tipExtensions) {
 
   final mergedGeometry = three.BufferGeometry();
   final mergedPositions = <double>[];
@@ -19,7 +19,7 @@ three.BufferGeometry createHoneyCombSlat(List<List<double>> helixBundlePositions
   for (var pos in helixBundlePositions) {
 
     // Create cylinder geometry
-    CylinderGeometry geometry = CylinderGeometry(helixBundleSize/2, helixBundleSize/2, gridSize * 32, 20);
+    CylinderGeometry geometry = CylinderGeometry(helixBundleSize/2, helixBundleSize/2, tipExtensions? gridSize * 32 : gridSize * 31, 20);
 
     // Translate the geometry to its position
     geometry.translate(pos[1], 0, pos[0]);

@@ -239,9 +239,13 @@ class SlatPainter extends CustomPainter {
         canvas.drawLine(p1 - slatExtend * 0.5, p2, rodPaint);
       }
       else {
-        canvas.drawLine(p1 - slatExtend, p2 + slatExtend, rodPaint);
+        if (!actionState.extendSlatTips){
+          canvas.drawLine(p1, p2, rodPaint);
+        }
+        else {
+          canvas.drawLine(p1 - slatExtend, p2 + slatExtend, rodPaint);
+        }
       }
-
 
       if (actionState.drawingAids){
         drawSlatDrawingAids(canvas, p1, p2, slatExtend, appState.gridSize, rodPaint, layerMap[slat.layer]?['color'], slat.layer != selectedLayer ? 0.2 : 1.0);
@@ -452,6 +456,7 @@ class SlatPainter extends CustomPainter {
         }
       }
 
+      // displays slat IDs as an overlay on top of the slat
       if (actionState.displaySlatIDs && slat.layer == selectedLayer){
         final textPainter = TextPainter(
           text: TextSpan(

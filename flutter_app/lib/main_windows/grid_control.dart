@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
+
 import '../app_management/shared_app_state.dart';
 import '../2d_painters/grid_painter.dart';
 import '../2d_painters/slat_hover_painter.dart';
@@ -11,10 +12,12 @@ import '../2d_painters/delete_painter.dart';
 import '../2d_painters/cargo_hover_painter.dart';
 import '../2d_painters/seed_painter.dart';
 import '../main_windows/floating_switches.dart';
+import '../2d_painters/2d_view_svg_exporter.dart';
 
 
 /// Class that takes care of painting all 2D objects on the grid, including the grid itself, slats and slat hover effects.
 class GridAndCanvas extends StatefulWidget {
+
   const GridAndCanvas({super.key});
 
   @override
@@ -281,7 +284,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     }
     return incomingSlats;
   }
-
 
   Map<int, Offset> generateCargoPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState){
 
@@ -722,6 +724,30 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           ),
         ),
       ),
+        // Top-left floating button that moves with sidebar
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          top: 20,
+          left: actionState.isSideBarCollapsed ? 72 + 15 : 72 + 330 + 10,
+          child: Tooltip(
+            message: 'Export Slat Design to SVG Image',
+            waitDuration: Duration(milliseconds: 500), // Optional: delay before showing
+            child: FloatingActionButton.small(
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: Icon(Icons.camera), // Placeholder icon
+              onPressed: () {
+                exportSlatsToSvg(
+                  slats: appState.slats.values.toList(),
+                  layerMap: appState.layerMap,
+                  appState: appState,
+                  actionState: actionState
+                );
+              },
+            ),
+          ),
+        ),
         TogglePanel(actionState: actionState)
     ]);
   }

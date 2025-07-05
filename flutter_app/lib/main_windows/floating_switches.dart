@@ -84,6 +84,20 @@ class _TogglePanelState extends State<TogglePanel> {
                   onChanged: widget.actionState.setSlatNumberingDisplay,
                 ),
                 buildFabIcon(
+                  icon: Icons.label_important,
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: 'Slat IDs',
+                  value: widget.actionState.displaySlatIDs,
+                  onChanged: widget.actionState.setSlatIDDisplay,
+                ),
+                buildFabIcon(
+                  icon: Icons.expand,
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: 'Draw Slat Tip Extensions',
+                  value: widget.actionState.extendSlatTips,
+                  onChanged: widget.actionState.setExtendSlatTips,
+                ),
+                buildFabIcon(
                   icon: Icons.developer_board,
                   color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Assembly Handles',
@@ -100,17 +114,9 @@ class _TogglePanelState extends State<TogglePanel> {
                 buildFabIcon(
                   icon: Icons.spa,
                   color: Theme.of(context).colorScheme.primary,
-
                   tooltip: 'Seeds',
                   value: widget.actionState.displaySeeds,
                   onChanged: widget.actionState.setSeedDisplay,
-                ),
-                buildFabIcon(
-                  icon: Icons.label_important,
-                  color: Theme.of(context).colorScheme.primary,
-                  tooltip: 'Slat IDs',
-                  value: widget.actionState.displaySlatIDs,
-                  onChanged: widget.actionState.setSlatIDDisplay,
                 ),
                 buildFabIcon(
                   icon: Icons.verified_user,

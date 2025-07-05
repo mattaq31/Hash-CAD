@@ -377,7 +377,9 @@ class DesignState extends ChangeNotifier {
       nextLayerKey = previous.layerMetaData['nextLayerKey'];
       nextColorIndex = previous.layerMetaData['nextColorIndex'];
       seedRoster = previous.seedRoster;
-      cargoAdditionType = null;
+      if (!cargoPalette.containsKey(cargoAdditionType)){
+        cargoAdditionType = null;
+      }
     }
     notifyListeners();
   }
@@ -1190,6 +1192,7 @@ class ActionState extends ChangeNotifier {
   bool displayAssemblyHandles;
   bool displayCargoHandles;
   bool displaySlatIDs;
+  bool extendSlatTips;
   bool displaySeeds;
   bool displayGrid;
   bool drawingAids;
@@ -1201,6 +1204,7 @@ class ActionState extends ChangeNotifier {
   int panelMode;
   String cargoAttachMode;
   bool plateValidation;
+
   Map<int, String> panelMap = {
     0: 'slats',
     1: 'assembly',
@@ -1228,6 +1232,7 @@ class ActionState extends ChangeNotifier {
     this.drawingAids = false,
     this.slatNumbering = false,
     this.plateValidation=false,
+    this.extendSlatTips = true,
     this.panelMode = 0,
     this.cargoAttachMode = 'top'
   });
@@ -1279,8 +1284,14 @@ class ActionState extends ChangeNotifier {
     displayBorder = value;
     notifyListeners();
   }
+
   void setDrawingAidsDisplay(bool value){
     drawingAids = value;
+    notifyListeners();
+  }
+
+  void setExtendSlatTips(bool value){
+    extendSlatTips = value;
     notifyListeners();
   }
 

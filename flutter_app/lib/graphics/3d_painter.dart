@@ -283,6 +283,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   bool assemblyHandleView = false;
   bool cargoHandleView = true;
   bool seedHandleView = true;
+  bool slatTipExtendView = true;
 
   bool gridView = true;
   GridHelper gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
@@ -383,10 +384,11 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     });
 
     // preparing instancing meshes for slats, seeds and handles
-    var baseSlatGeometry = CylinderGeometry(2.5, 2.5, gridSize * 32, 20); // actual size should be 310, but adding an extra 10 to improve visuals
+    instanceManager['slat'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 32, 20), threeJs: threeJs, maxIndex: 1000); // actual size should be 310, but adding an extra 10 to improve visuals
+    instanceManager['slatShort'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 31, 20), threeJs: threeJs, maxIndex: 1000);
 
-    instanceManager['slat'] = InstanceMetrics(geometry: baseSlatGeometry, threeJs: threeJs, maxIndex: 1000);
-    instanceManager['honeyCombSlat'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize), threeJs: threeJs, maxIndex: 1000);
+    instanceManager['honeyCombSlat'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, true), threeJs: threeJs, maxIndex: 1000);
+    instanceManager['honeyCombSlatShort'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, false), threeJs: threeJs, maxIndex: 1000);
 
     instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
     instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
@@ -461,7 +463,25 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     var position = tmath.Vector3(centerX, height, centerZ);
     var rotation = tmath.Euler(0, -slatAngle, math.pi / 2);
 
-    String instanceType = helixBundleView ? 'honeyCombSlat' : 'slat';
+    String instanceType;
+
+    if (helixBundleView){
+      if (slatTipExtendView){
+        instanceType = 'honeyCombSlat';
+      }
+      else{
+        instanceType = 'honeyCombSlatShort';
+      }
+    }
+    else{
+      if (slatTipExtendView){
+        instanceType = 'slat';
+      }
+      else{
+        instanceType = 'slatShort';
+      }
+    }
+
     instanceManager[instanceType]!.allocateIndex(name);
     instanceManager[instanceType]!.setPositionRotation(name, position, rotation);
     instanceManager[instanceType]!.setColor(name, color);
@@ -645,13 +665,16 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       double slatAngle = calculateSlatAngle(p1, p2);
       Offset slatExtend = calculateSlatExtend(p1, p2, 2 * (gridSize * 32 / 2 - gridSize / 2));
 
+      double finalX = p1.dx + slatExtend.dx;
+      double finalY = p1.dy + slatExtend.dy;
+
       String slatType = helixBundleView ? 'honeyCombSlat' : 'slat';
 
       if (instanceManager[slatType]?.getIndex(slat.id) == null) {
         slatIDs.add(slat.id);
         positionSlatInstance(slat.id, layerMap[slat.layer]?['color'], slatAngle,
             layerMap[slat.layer]?['order'].toDouble() * 6.5,
-            p1.dx + slatExtend.dx, p1.dy + slatExtend.dy);
+            finalX, finalY);
       }
 
       else {
@@ -723,12 +746,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   /// Removes a slat from the 3D scene
   void removeSlat(String id){
-    if (helixBundleView) {
-      instanceManager['honeyCombSlat']!.hideAndRecycle(id);
-    }
-    else{
-      instanceManager['slat']!.hideAndRecycle(id);
-    }
+
+    instanceManager['honeyCombSlat']!.hideAndRecycle(id);
+    instanceManager['honeyCombSlatShort']!.hideAndRecycle(id);
+    instanceManager['slat']!.hideAndRecycle(id);
+    instanceManager['slatShort']!.hideAndRecycle(id);
+
     if (handleIDs.containsKey(id)) {
       for (var handleInstance in handleIDs[id]!.entries) {
         instanceManager[handleInstance.value]!.hideAndRecycle(handleInstance.key);
@@ -739,10 +762,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   void clearScene() {
     instanceManager['slat']!.recycleAllIndices();
+    instanceManager['slatShort']!.recycleAllIndices();
     instanceManager['seed']!.recycleAllIndices();
     instanceManager['tiltSeed']!.recycleAllIndices();
     instanceManager['tiltSeedInvert']!.recycleAllIndices();
     instanceManager['honeyCombSlat']!.recycleAllIndices();
+    instanceManager['honeyCombSlatShort']!.recycleAllIndices();
     instanceManager['cargoHandle']!.recycleAllIndices();
     instanceManager['honeyCombAssHandle']!.recycleAllIndices();
     instanceManager['assHandle']!.recycleAllIndices();
@@ -881,6 +906,17 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   value: helixBundleView,
                   onChanged: (val) => setState(() {
                     helixBundleView = val;
+                    clearScene();
+                    manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+                  }),
+                ),
+                buildFabIcon(
+                  icon: Icons.expand,
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: 'Draw Slat Tip Extensions',
+                  value: slatTipExtendView,
+                  onChanged: (val) => setState(() {
+                    slatTipExtendView = val;
                     clearScene();
                     manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
                   }),
