@@ -200,7 +200,27 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
     """
     Attempts to find a small vertex cover via multiple randomized restarts and iterative refinement.
 
-    :param V: All vertices in the graph (e.g., list or set of IDs).  
+    Algorithm Outline
+    -----------------
+    1. For each of `multistart` attempts:
+       a. Compute an initial cover via the greedy heuristic.
+       b. Initialize a population containing that cover.
+       c. Repeat up to `max_iterations`:
+          * For each cover in the population:
+            - Remove `num_vertices_to_remove` random vertices (respecting `preserve_V`).
+            - Find uncovered edges and re-cover via the heuristic.
+            - If the new cover is smaller, reset the population to this cover.
+            - If it’s the same size but unique, add it to the population.
+          * Trim the population to `population_size` by random sampling.
+          * Optionally print progress.
+       d. If this attempt’s best cover is smaller than the global best, update it.
+
+    Notes
+    -----
+    Because minimum vertex cover is NP-hard, this is a heuristic: it runs quickly but
+    does not guarantee an optimal solution.
+
+    :param V: All vertices in the graph (e.g., list or set of IDs).
               *Note:* V is only used for printing/monitoring; the graph is fully encoded by E.
     :type V: iterable
 
@@ -230,25 +250,6 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
 
     :returns: The best (smallest) vertex cover found across all restarts.
     :rtype: set
-
-    .. rubric:: Algorithm Outline
-
-    1. For each of `multistart` attempts:
-       a. Compute an initial cover via the greedy heuristic.  
-       b. Initialize a population containing that cover.  
-       c. Repeat up to `max_iterations`:
-          * For each cover in the population:
-            - Remove `num_vertices_to_remove` random vertices (respecting `preserve_V`).
-            - Find uncovered edges and re-cover via the heuristic.
-            - If the new cover is smaller, reset the population to this cover.
-            - If it’s the same size but unique, add it to the population.
-          * Trim the population to `population_size` by random sampling.
-          * Optionally print progress.
-       d. If this attempt’s best cover is smaller than the global best, update it and continue.
-
-    .. note::
-       Because minimum vertex cover is NP-hard, this is a heuristic: it runs fast but
-       does not guarantee an optimal solution.
     """
 
     # This keeps track of the overall best (i.e., smallest) vertex cover found across all multistart iterations.
