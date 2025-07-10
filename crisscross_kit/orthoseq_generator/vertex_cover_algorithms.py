@@ -8,50 +8,75 @@ from collections import defaultdict
 
 
 def heuristic_vertex_cover_optimized2(E, preserve_V=None):
+        '''
+        This function is the core of the sequence search algorithm. It's a heuristic approach to solve the np hard minimum vertex cover problem.
+        Inspired by:
+             - Joshi (2020), "Neighbourhood Evaluation Criteria for Vertex Cover Problem"
+            - StackExchange: https://cs.stackexchange.com/q/74546
+            
+        Heuristic algorithm to compute a vertex cover in an undirected graph, optimized by
+        selecting highest‐degree vertices with minimal overlap among themselves.
+    
+        Input:
+            - E (iterable of tuple): Set of edges (u, v). Vertices can be any hashable.
+            - preserve_V (set, optional): Vertices you’d like to preferentially keep out of the cover. They can still be removed just less likely
+    
+        Output:
+            - set: A vertex cover (i.e. set of vertices touching every edge in E).
+    
+        Notes:
+            - Self‐edges (u == v) are immediately added to the cover.
+            - We build an adjacency list (ignoring self‐edges), track degrees, then:
+                1. Find the max degree.
+                2. Among those vertices, choose one with the fewest neighbors that also have max degree.
+                3. Break ties randomly, but prefer vertices *not* in preserve_V.
+            - Remove the chosen vertex and all incident edges, updating degrees,
+              until no edges remain.
+        '''
+       
+       
+       
+       
+       
         if preserve_V is None:
             preserve_V = set()
         
-        # Initialize the vertex cover set
+        
         vertex_cover = set()
 
-        # Remove self-edges
-
-        for u, v in E:  # Create a copy of the set for iteration
+        # 1) Immediately cover all self‐edges
+        for u, v in E:  
             if u == v:
                 vertex_cover.add(u)
 
-
-
-
-        # build adjacent list
-
+        # 2) Build adjacency list for all non‐self edges
         adj_list = defaultdict(set)
         for u, v in E:
             if u!= v:
-                # adj_list is an list of list. here vertex u has and adjescent vertex v and vice versa
+                # adj_list is a list of list. here vertex u has v as an adjacent vertex and vice versa
                 adj_list[u].add(v)
                 adj_list[v].add(u)
 
-        # Initialize degrees dictionary
-        degrees = {v: len(neighbors) for v, neighbors in adj_list.items()}
+        # 3) Initialize degree counts
         # keys are vertexes 
         # entries are number of neighbors
-        
-        
-        # Loop until all edges are covered
-        while degrees:
-            # Find the maximum degree
-            max_degree = max(degrees.values())
+        degrees = {v: len(neighbors) for v, neighbors in adj_list.items()}
 
-            # Get all vertices with the maximum degree
+        
+        
+        # 4) Greedily pick vertices until all edges are covered
+        while degrees:
+            # a) Find vertices of maximum degree
+            max_degree = max(degrees.values())
             max_degree_vertices = [v for v, deg in degrees.items() if deg == max_degree]
 
-            # Calculate neighbor overlap for each max degree vertex
+           
 
+            # b) Among those, pick those with minimal “overlap” between them. 
             min_overlap_count = +float('inf')
             min_overlap_vertices = []
             for v in max_degree_vertices:
-                # Calculate the overlap: count of neighbors also in max_degree_vertices
+                # Calculate the overlap: count of neighbors that are also part of in max_degree_vertices
                 overlap_count = sum(1 for neighbor in adj_list[v] if neighbor in max_degree_vertices)
 
                 # Select the vertex with the least neighbor overlap
@@ -61,7 +86,7 @@ def heuristic_vertex_cover_optimized2(E, preserve_V=None):
                 elif overlap_count == min_overlap_count:
                     min_overlap_vertices.append(v)  # Add to the list if it's a tie
 
-            # Prefer selecting a vertex that is NOT in preserve_V
+            # c) Last resort tie breaking. Pick at random but prefer ones not in preserve_V if possible 
             non_preserved = [v for v in min_overlap_vertices if v not in preserve_V]
 
             if non_preserved:
@@ -71,7 +96,7 @@ def heuristic_vertex_cover_optimized2(E, preserve_V=None):
 
             vertex_cover.add(selected_vertex)
 
-            # Remove the selected vertex from degrees and adjacency list
+            # d) Remove selected vertex and its edges
             neighbors = adj_list.pop(selected_vertex)
             degrees.pop(selected_vertex)
 
@@ -80,6 +105,7 @@ def heuristic_vertex_cover_optimized2(E, preserve_V=None):
                 adj_list[neighbor].remove(selected_vertex)
                 degrees[neighbor] -= 1
                 if degrees[neighbor] == 0:
+                    # prune isolated vertices
                     degrees.pop(neighbor)
                     adj_list.pop(neighbor)
 
@@ -87,7 +113,18 @@ def heuristic_vertex_cover_optimized2(E, preserve_V=None):
 
 
 def find_uncovered_edges(E, vertex_cover):
-    # Returns the set of edges not covered by the current vertex cover
+    '''
+    Finds edges that are not covered by the current vertex cover. 
+    Technically speaking the input variable is no longer a vertex cover.
+
+    Input:
+        - E (iterable of tuple): Collection of edges (u, v).
+        - vertex_cover (set): Set of vertices currently in the cover.
+
+    Output:
+        - set: Edges (u, v) from E for which neither u nor v is in vertex_cover.
+               Self‐edges (u == v) are included if u is not in the cover.
+    '''
     uncovered_edges = set()
     for u, v in E:
         if u not in vertex_cover and v not in vertex_cover:
@@ -97,69 +134,127 @@ def find_uncovered_edges(E, vertex_cover):
     return uncovered_edges
 
 
-# Builds a list of index-pair edges from an off-target energy dictionary and a given index mapping.
-# Only pairs with energies below the specified cutoff are included.
-# Self-edges (i, i) are included.
-#
-# Parameters:
-# - offtarget_dict: dictionary containing energy matrices with keys:
-#     'handle_handle_energies', 'antihandle_handle_energies', 'antihandle_antihandle_energies'
-# - indices: list of indices (e.g. into a full sequence list) used to map subset positions to global positions
-# - energy_cutoff: float threshold below which an energy defines an edge
-#
-# Returns:
-# - edges: list of (i, j) index pairs (edges) in global index space
 def build_edges(offtarget_dict, indices, energy_cutoff):
+    '''
+    Builds a list of global index‐pair edges from off‐target energy matrices. (indices with respect to the initially created sequences list)
+
+    Input:
+        - offtarget_dict (dict): Contains three N×N numpy arrays under keys:
+            • 'handle_handle_energies'
+            • 'antihandle_handle_energies'
+            • 'antihandle_antihandle_energies'
+        - indices (list of int): Maps row/column positions in the matrices back to global sequence indices.
+        - energy_cutoff (float): Threshold; any pair with energy < this value is considered an edge.
+
+    Output:
+        - list of tuple: Each tuple (i, j) is a global‐index edge where the off‐target energy is below cutoff.
+
+    Procedure:
+        1. Extract all (i,j) positions from each matrix where energy < cutoff.
+        2. Stack these positions together and sort each pair so (i,j) and (j,i) collapse to one.
+        3. Remove duplicate pairs.
+        4. Map local indices back to global indices via the `indices` list.
+    '''
     hh = offtarget_dict['handle_handle_energies']
     hah = offtarget_dict['antihandle_handle_energies']
     ahah = offtarget_dict['antihandle_antihandle_energies']
 
-    # Find all index pairs where energy is below cutoff
+    # 1) Find all local index pairs where energy is below the cutoff
     hh_infixes = np.argwhere(hh < energy_cutoff)
     hah_infixes = np.argwhere(hah < energy_cutoff)
     ahah_infixes = np.argwhere(ahah < energy_cutoff)
 
-    # Combine
+    # 2) Combine all results into one array
     combined_infixes = np.vstack((hh_infixes, hah_infixes, ahah_infixes))
-    # Sort to make interaction  1,3 and 3,1 the same
+
+    # 3) Sort each pair so that (i,j) and (j,i) become identical
     combined_infixes = np.sort(combined_infixes, axis=1)
-    # remove double counts. incompatible is incompatible
+
+    # 4) Remove duplicate rows to avoid counting the same edge twice
     combined_infixes = np.unique(combined_infixes, axis=0)
 
-    # Map back to original (global) indices
+    # 5) Map local positions back to global sequence indices
     edges = [(indices[i], indices[j]) for i, j in combined_infixes]
 
     return edges
 
 
 
+
 def select_vertices_to_remove(vertex_cover, num_vertices_to_remove):
-    # Selects vertices to remove from the vertex cover
-    # Here we use random selection; you can change this to other criteria
+    '''
+    Selects a subset of vertices to remove from an existing vertex cover.
+
+    Input:
+        - vertex_cover (set): Current set of cover vertices.
+        - num_vertices_to_remove (int): Desired number of vertices to remove.
+
+    Output:
+        - set: Randomly chosen vertices (size ≤ num_vertices_to_remove).
+
+    '''
     return set(random.sample(list(vertex_cover), min(num_vertices_to_remove, len(vertex_cover))))
 
 
 def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=150, max_iterations=200, limit=+np.inf, multistart=30, population_size=5, show_progress=False):
-    # Initialize
-    
+    '''
+       Attempts to find a small vertex cover via multiple randomized
+       restarts and iterative refinement. 
+       
+       Notes:
+           - This function does not use V for any computation. V is only used for printing and monitoring progress.
+             This is because the whole graph is encoded by the edges. Possible orphan vertices do not matter because they are independent anyway and could never be captured by a vertex cover
+           - For each of multistart attempts:
+               1. Compute an initial cover via heuristic.
+               2. Initialize a population of one cover.
+               3. Repeat up to max_iterations:
+                  a. For each cover in population:
+                     i. Remove num_vertices_to_remove randomly (respecting preserve_V if set).
+                     ii. Find uncovered edges and re-cover via heuristic.
+                     iii. If improved, reset population to this new cover.
+                          If equal‐sized and unique, add to population.
+                  b. Trim population to population_size by random sampling.
+                  c. Optionally print progress.
+               4. Update the overall best cover if this attempt yields smaller size.
+           - Returns the globally best cover found.
+
+
+       Input:
+           :param V (iterable): All vertices in the graph (e.g., list or set of IDs).
+           :param E (iterable of tuple): All edges (u, v) in global index space.
+           :param preserve_V (set, optional): Vertices to preferentially keep out of removal.
+           :param num_vertices_to_remove (int): Number of vertices to drop each iteration.
+           :param max_iterations (int): Max refine steps per restart.
+           :param limit (float): Target threshold for |V| - |cover|; stops early if reached.
+           :param multistart (int): Number of independent greedy restarts.
+           :param population_size (int): Max number of equal‐sized covers to retain each iteration.
+           :param show_progress (bool): If True, prints status each iteration.
+
+       Output:
+           :return: set: Best (smallest) vertex cover found across all restarts.
+
+
+       '''
+
+    # This keeps track of the overall best (i.e., smallest) vertex cover found across all multistart iterations.
+    # There is also a separate "best_vertex_cover" inside each iteration (the inner loop).
     bestest_vertex_cover = None
    
     for i in range(multistart):
         
-        if bestest_vertex_cover is None:
-            current_bestest_size = 'None'
-        else:
-            current_bestest_size = len(V) - len(bestest_vertex_cover)
         
-
+        # Create one initial greedy cover.
         best_vertex_cover = heuristic_vertex_cover_optimized2(E, preserve_V=preserve_V)
         current_vertex_cover = best_vertex_cover.copy()
         population = [current_vertex_cover]  # Start with the best vertex cover as the initial population
         iteration = 0
-        #print("started new try")
+        
+        
+        
         while iteration < max_iterations:
             iteration += 1
-            # print(f"Iteration {iteration}, current best size: {len(best_vertex_cover) - len(V)}")
+
+            # Early exit if desired independent set size reached
             if -len(best_vertex_cover) + len(V) >= limit:
                 print('found desired set')
                 break
@@ -168,46 +263,49 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
             # print(len(population))
             
             new_guys = []
+            #Do the following for all good candidates already in the population
             for current_cover in population:
                
                 current_cover2 = current_cover.copy()  # Create a copy to avoid modifying the original in the population
 
-                # Step a: Remove vertices from the current cover
+                # Step a: Remove random vertices from the current cover
                 vertices_to_remove = select_vertices_to_remove(current_cover2, num_vertices_to_remove)
                 current_cover2 -= vertices_to_remove
 
-                # Step b: Update the graph (find uncovered edges)
+                # Step b: find uncovered edges that appeared due to step a and build a new graph with these uncovered endges
                 uncovered_edges = find_uncovered_edges(E, current_cover2)
-                # Build a subgraph with only uncovered edges
-                # remaining_vertices = set(u for u, v in uncovered_edges) | set(v for u, v in uncovered_edges)
+                
 
-                # Re-run the heuristic on the subgraph
+
+                # Re-run the heuristic on the new sub graph of uncovered edges
                 additional_cover = heuristic_vertex_cover_optimized2(uncovered_edges, preserve_V=None)
-                current_cover2 |= additional_cover  # Update the current vertex cover
+                current_cover2 |= additional_cover  # Add the newly found cover of the sub graph to the remaining cover  to create again a complete vertex cover
 
                 # Step d: Compare and update best solution
-
-                # print(len(current_cover2))
-                
-                
+                # if a smaller cover is found replace the best cover and reset the population
                 if len(current_cover2) < len(best_vertex_cover):
                     best_vertex_cover = current_cover2.copy()  # Copy to ensure best_vertex_cover remains separate
                     #
                     population = [best_vertex_cover]  # Reset population with the new best cover
                     new_guys = []
                     break
+
+                # if the same size is found add it to the population to diversify the search. Its only added to the population if its not already in there. To avoid having duplicates. 
                 elif len(current_cover2) == len(best_vertex_cover):
                     if all(current_cover2 != cover for cover in population):
                         new_guys.append(current_cover2.copy())  # Add a unique copy of the equal-sized cover
-
+                        
+            # update the population outside the population loop to avoid making the loop longer while in it 
             population = new_guys + population
+            
+            # limit the population but ensure random search
             if len(population) > population_size:
                 population = random.sample(population, population_size)
                 
             if show_progress:                                                    
                 print(f"Iteration {iteration+1}: Found {len(population)} sets of size {-len(best_vertex_cover) + len(V)}") 
 
-        
+        # update the bestest_vertex_cover. keep record which of the multistarts resulted in the best.
         if bestest_vertex_cover is None or len(best_vertex_cover) < len(bestest_vertex_cover):
             bestest_vertex_cover = best_vertex_cover.copy()
             print("update bestest")
@@ -222,6 +320,46 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
 
 
 def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, subsetsize=200, generations=100):
+    
+    '''
+    Evolves an independent set of sequences from a set of candidate sequence pairs.
+    Removes high‐energy (off‐target) interactions via vertex‐cover heuristics. 
+
+    Input:
+        - sequence_pairs (list): List of (index, (seq, rc_seq)) tuples for candidate sequences.
+        - offtarget_limit (float): Energy threshold; edges exist where off‐target energy < this value.
+        - max_ontarget (float): Upper bound for acceptable on‐target energy.
+        - min_ontarget (float): Lower bound for acceptable on‐target energy.
+        - subsetsize (int): Number of sequences to sample per generation.
+        - generations (int): Number of evolutionary iterations to perform.
+
+    Output:
+        - list: Final list of (seq, rc_seq) pairs that form the best independent set.
+
+    Procedure:
+        1. Initialize:
+            - non_cover_vertices: current best independent set (sequences not in vertex cover).
+            - history: indices to avoid reselection, preserving diversity.
+        2. For each generation:
+            a. Select a random subset of sequences whose on‐target energies lie within [min_ontarget, max_ontarget], excluding history.
+            b. Add back any previously preserved sequences (history) to the subset.
+            c. Assert no duplicate indices remain.
+            d. Compute all off‐target energies for this subset.
+            e. Build the interaction graph: edges = pairs below offtarget_limit.
+            f. Run the multi‐start, iterative vertex‐cover heuristic to find `removed_vertices` (Vertex cover, Vertices with off target binding).
+            g. Derive the new independent set: all selected indices minus removed_vertices.
+            h. If the new set is at least as large as the previous best, update `non_cover_vertices`; clear history if strictly larger.
+            i. If within 95% of best size, add new set to history to guide future sampling.
+            j. Log generation stats.
+        3. On user interrupt, exit gracefully and save current best.
+        4. After all generations or interruption, save the final sequences to a text file.
+
+    Notes:
+        - This implements a form of genetic “survivor selection” via vertex‐cover: 
+          sequences that interact too strongly (below energy cutoff) are “removed” each generation.
+        - History ensures we add sequences which worked before again to the pool. Maybe a different combination of them works.
+    '''
+
     non_cover_vertices = set()
     history = set()
 
@@ -236,47 +374,55 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
                 Use_Library=True,
                 avoid_indices=history
             )
+            # Re-add previously preserved sequences
             sorted_history = sorted(history)
             extra_pairs = [sequence_pairs[idx][1] for idx in sorted_history]
             subset += extra_pairs
             indices += list(sorted_history)
 
+            # Ensure no duplicate indices
             assert len(indices) == len(set(indices)), (
                 f"Duplicate index found! "
                 f"indices={indices} "
                 f"set(indices)={sorted(set(indices))}"
             )
 
-            # Compute off-target energies for the subset
+            # Compute off-target energies and build interaction graph
             off_e_subset = sc.compute_offtarget_energies(subset)
-
-            # Build the off-target interaction graph
             Edges = build_edges(off_e_subset, indices, offtarget_limit)
 
-            # Run the heuristic vertex cover algorithm
-            #removed_vertices = heuristic_vertex_cover_optimized2(Edges, history)
-            removed_vertices = iterative_vertex_cover_multi(indices,Edges, preserve_V=history,num_vertices_to_remove=len(indices)//2)
+            # Find sequences to remove via vertex-cover heuristic
+            removed_vertices = iterative_vertex_cover_multi(
+                indices, Edges,
+                preserve_V=history,
+                num_vertices_to_remove=len(indices) // 2
+            )
 
-            # Identify sequences not selected by the heuristic
+            # Update independent set
             Vertices = set(indices)
             new_non_cover_vertices = Vertices - removed_vertices
-            
 
+            # If we’ve improved or matched best, update non_cover_vertices and history
             if len(new_non_cover_vertices) >= len(non_cover_vertices):
                 if len(new_non_cover_vertices) > len(non_cover_vertices):
                     history.clear()
                 non_cover_vertices = new_non_cover_vertices
-                
-            if len(new_non_cover_vertices) >= len(non_cover_vertices)*0.95:
-                history.update(new_non_cover_vertices)
-                
 
-            print(f"Generation {i + 1:2d} | Current: {len(new_non_cover_vertices):3d} sequences | Best so far: {len(non_cover_vertices):3d} | Preserved pool length: {len(history):3d}")
+            # If within 95% of best size, preserve these in history
+            if len(new_non_cover_vertices) >= len(non_cover_vertices) * 0.95:
+                history.update(new_non_cover_vertices)
+
+            print(
+                f"Generation {i + 1:2d} | "
+                f"Current: {len(new_non_cover_vertices):3d} | "
+                f"Best: {len(non_cover_vertices):3d} | "
+                f"History size: {len(history):3d}"
+            )
 
     except KeyboardInterrupt:
         print("\nInterrupted by user. Saving best result so far...")
 
-    # Save result
+    # Save final result
     final_pairs = [sequence_pairs[idx][1] for idx in sorted(non_cover_vertices)]
     hf.save_sequence_pairs_to_txt(final_pairs)
 
@@ -285,6 +431,8 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
 
 if __name__ == "__main__":
     # Run test to see if the functions above work
+    # I use this for debugging
+    
     # Set a fixed random seed for reproducibility
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
