@@ -43,9 +43,9 @@ if __name__ == "__main__":
     )
 
     # 3) Define energy thresholds based on prior analysis
-    offtarget_limit = -7.4    # Maximum allowed off-target binding strength (more negative = stricter)
-    max_ontarget = -9.6       # Maximum acceptable on-target binding energy (should bind at least this strongly)
-    min_ontarget = -10.4      # Minimum acceptable on-target binding energy (avoid too strong)
+    offtarget_limit = -7.4    # Maximum allowed off-target binding strength 
+    max_ontarget = -9.6       # Maximum acceptable on-target binding energy 
+    min_ontarget = -10.4      # Minimum acceptable on-target binding energy 
 
     # 4) Configure and enable the precomputed energy cache.
     #    The specified pickle file will be created inside 'pre_computed_energies' if it doesn't exist.

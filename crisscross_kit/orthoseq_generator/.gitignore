@@ -3,3 +3,4 @@
 *.pdf
 .dump/
 .Old_unsorted/
+*.txt
