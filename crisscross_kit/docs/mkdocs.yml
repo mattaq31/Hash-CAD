@@ -90,9 +90,6 @@ nav:
     - Helper Functions: crisscross/helper-functions.md
   - Orthoseq Generator Module:
     - Overview: orthoseq/overview.md
-    - Sequence Computations: orthoseq/sequence-computations.md
-    - Vertex Cover Algorithms: orthoseq/vertex-cover.md
-    - Helper Functions: orthoseq/helper-functions.md
-    - Scripts: orthoseq/scripts.md
+    - Function Documentation: orthoseq/library_reference.md
   - Full API Reference:
     - Complete API: api/complete.md

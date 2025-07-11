@@ -25,7 +25,7 @@
 </a>
 
 <a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/python-server-and-desktop-app-deploy.yml">
-  <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/python-server-and-desktop-app-deploy.yml?label=Desktop&style=flat&logo=flutter&logoColor=white" alt="Desktop CI Status">
+  <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/python-server-and-desktop-app-deploy.yml?branch=main&label=Desktop&style=flat&logo=flutter&logoColor=white&cacheSeconds=30" alt="Desktop CI Status">
 </a>
 </p>
 

@@ -32,7 +32,7 @@ The documentation for both the designer library (`crisscross`) and the orthogona
 
 - For the crisscross library, details are provided [here](https://github.com/mattaq31/Crisscross-Design/blob/main/crisscross_kit/crisscross/README.md).
 - For the orthogonal sequence generator, details are provided [here](https://github.com/mattaq31/Crisscross-Design/blob/main/crisscross_kit/orthoseq_generator/README.md).
-- 
+
 ### Building for PyPI
 - For developers looking to build the package for PyPI, you can use the following commands from the `crisscross_kit` directory of the repository:
 - First, make sure the build tools are installed:
