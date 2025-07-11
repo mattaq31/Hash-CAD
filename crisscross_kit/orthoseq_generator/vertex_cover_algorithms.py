@@ -8,31 +8,41 @@ from collections import defaultdict
 
 
 def heuristic_vertex_cover_optimized2(E, preserve_V=None):
-        '''
-        This function is the core of the sequence search algorithm. It's a heuristic approach to solve the np hard minimum vertex cover problem.
+        """
+        This function is the core of the sequence search algorithm. It’s a heuristic approach
+        to solve the NP-hard minimum vertex cover problem.
+    
         Inspired by:
-             - Joshi (2020), "Neighbourhood Evaluation Criteria for Vertex Cover Problem"
-            - StackExchange: https://cs.stackexchange.com/q/74546
-            
-        Heuristic algorithm to compute a vertex cover in an undirected graph, optimized by
-        selecting highest‐degree vertices with minimal overlap among themselves.
+          - Joshi (2020), "Neighbourhood Evaluation Criteria for Vertex Cover Problem"
+          - StackExchange discussion: https://cs.stackexchange.com/q/74546
     
-        Input:
-            - E (iterable of tuple): Set of edges (u, v). Vertices can be any hashable.
-            - preserve_V (set, optional): Vertices you’d like to preferentially keep out of the cover. They can still be removed just less likely
+        Algorithm Outline
+        -----------------
+        1. Immediately add any self-edge vertices (u == v) to the cover.
+        2. Build an adjacency list for all non-self edges.
+        3. Track the degree (number of neighbors) for each vertex.
+        4. While edges remain:
+           a. Identify the vertex/vertices with maximum degree.
+           b. Among those, select the vertex with the fewest neighbors that also share that max degree.
+           c. Break ties randomly, preferring vertices not in `preserve_V`.
+           d. Add the selected vertex to the cover, remove it and its incident edges, and update degrees.
     
-        Output:
-            - set: A vertex cover (i.e. set of vertices touching every edge in E).
+        Notes
+        -----
+        - `preserve_V` contains vertices that should be avoided when possible, but they can still be chosen.
+        - Self-edges are covered immediately.
+        - Orphan vertices (degree zero) are naturally independent and never need removal.
     
-        Notes:
-            - Self‐edges (u == v) are immediately added to the cover.
-            - We build an adjacency list (ignoring self‐edges), track degrees, then:
-                1. Find the max degree.
-                2. Among those vertices, choose one with the fewest neighbors that also have max degree.
-                3. Break ties randomly, but prefer vertices *not* in preserve_V.
-            - Remove the chosen vertex and all incident edges, updating degrees,
-              until no edges remain.
-        '''
+        :param E: Set of edges (u, v). Vertices can be any hashable.
+        :type E: iterable of tuple
+    
+        :param preserve_V: Vertices you’d like to preferentially keep out of the cover.
+                           They can still be removed, just less likely.
+        :type preserve_V: set, optional
+    
+        :returns: A vertex cover (set of vertices touching every edge in E).
+        :rtype: set
+        """
        
        
        
@@ -113,18 +123,24 @@ def heuristic_vertex_cover_optimized2(E, preserve_V=None):
 
 
 def find_uncovered_edges(E, vertex_cover):
-    '''
-    Finds edges that are not covered by the current vertex cover. 
-    Technically speaking the input variable is no longer a vertex cover.
+    """
+    Finds edges that are not covered by the current vertex cover.
 
-    Input:
-        - E (iterable of tuple): Collection of edges (u, v).
-        - vertex_cover (set): Set of vertices currently in the cover.
+    Description
+    -----------
+    Given a collection of edges `E` and a set `vertex_cover` of vertices, this function returns
+    all edges which are not in the set. Technically, `vertex_cover` is not a full
+    vertex cover of the graph but only a partial vertex cover.
 
-    Output:
-        - set: Edges (u, v) from E for which neither u nor v is in vertex_cover.
-               Self‐edges (u == v) are included if u is not in the cover.
-    '''
+    :param E: Collection of edges (u, v).
+    :type E: iterable of tuple
+
+    :param vertex_cover: Set of vertices currently in the cover.
+    :type vertex_cover: set
+
+    :returns: Edges (u, v) from `E` for which neither u nor v is in `vertex_cover`.
+    :rtype: set
+    """
     uncovered_edges = set()
     for u, v in E:
         if u not in vertex_cover and v not in vertex_cover:
@@ -135,26 +151,34 @@ def find_uncovered_edges(E, vertex_cover):
 
 
 def build_edges(offtarget_dict, indices, energy_cutoff):
-    '''
-    Builds a list of global index‐pair edges from off‐target energy matrices. (indices with respect to the initially created sequences list)
 
-    Input:
-        - offtarget_dict (dict): Contains three N×N numpy arrays under keys:
-            • 'handle_handle_energies'
-            • 'antihandle_handle_energies'
-            • 'antihandle_antihandle_energies'
-        - indices (list of int): Maps row/column positions in the matrices back to global sequence indices.
-        - energy_cutoff (float): Threshold; any pair with energy < this value is considered an edge.
+    """
+    Builds a list of global index‐pair edges from off‐target energy matrices.
+    (Global indices refer to the positions in the originally created sequence-pair list.)
 
-    Output:
-        - list of tuple: Each tuple (i, j) is a global‐index edge where the off‐target energy is below cutoff.
+    Procedure
+    ---------
+    1. Extract all (i, j) positions from each matrix where energy < `energy_cutoff`.
+    2. Stack these positions together and sort each pair so (i, j) and (j, i) collapse to one.
+    3. Remove duplicate pairs.
+    4. Map local indices back to global sequence indices via the `indices` list.
 
-    Procedure:
-        1. Extract all (i,j) positions from each matrix where energy < cutoff.
-        2. Stack these positions together and sort each pair so (i,j) and (j,i) collapse to one.
-        3. Remove duplicate pairs.
-        4. Map local indices back to global indices via the `indices` list.
-    '''
+    :param offtarget_dict: Dictionary containing three N×N numpy arrays under keys:
+        - 'handle_handle_energies'
+        - 'antihandle_handle_energies'
+        - 'antihandle_antihandle_energies'
+    :type offtarget_dict: dict
+
+    :param indices: List of global sequence indices corresponding to matrix rows/columns.
+    :type indices: list of int
+
+    :param energy_cutoff: Threshold below which an energy defines an edge.
+    :type energy_cutoff: float
+
+    :returns: List of (i, j) tuples where each is a global‐index edge with off‐target energy < cutoff.
+    :rtype: list of tuple
+    """
+    
     hh = offtarget_dict['handle_handle_energies']
     hah = offtarget_dict['antihandle_handle_energies']
     ahah = offtarget_dict['antihandle_antihandle_energies']
@@ -164,16 +188,16 @@ def build_edges(offtarget_dict, indices, energy_cutoff):
     hah_infixes = np.argwhere(hah < energy_cutoff)
     ahah_infixes = np.argwhere(ahah < energy_cutoff)
 
-    # 2) Combine all results into one array
+    # 2.1) Combine all results into one array
     combined_infixes = np.vstack((hh_infixes, hah_infixes, ahah_infixes))
 
-    # 3) Sort each pair so that (i,j) and (j,i) become identical
+    # 2.2) Sort each pair so that (i,j) and (j,i) become identical
     combined_infixes = np.sort(combined_infixes, axis=1)
 
-    # 4) Remove duplicate rows to avoid counting the same edge twice
+    # 3) Remove duplicate rows to avoid counting the same edge twice
     combined_infixes = np.unique(combined_infixes, axis=0)
 
-    # 5) Map local positions back to global sequence indices
+    # 4) Map local positions back to global sequence indices
     edges = [(indices[i], indices[j]) for i, j in combined_infixes]
 
     return edges
@@ -182,23 +206,24 @@ def build_edges(offtarget_dict, indices, energy_cutoff):
 
 
 def select_vertices_to_remove(vertex_cover, num_vertices_to_remove):
-    '''
+    """
     Selects a subset of vertices to remove from an existing vertex cover.
 
-    Input:
-        - vertex_cover (set): Current set of cover vertices.
-        - num_vertices_to_remove (int): Desired number of vertices to remove.
+    :param vertex_cover: Current set of cover vertices.
+    :type vertex_cover: set
 
-    Output:
-        - set: Randomly chosen vertices (size ≤ num_vertices_to_remove).
+    :param num_vertices_to_remove: Desired number of vertices to remove.
+    :type num_vertices_to_remove: int
 
-    '''
+    :returns: Randomly chosen vertices to remove (size ≤ num_vertices_to_remove).
+    :rtype: set
+    """
     return set(random.sample(list(vertex_cover), min(num_vertices_to_remove, len(vertex_cover))))
 
 
 def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=150, max_iterations=200, limit=+np.inf, multistart=30, population_size=5, show_progress=False):
     """
-    Attempts to find a small vertex cover via multiple randomized restarts and iterative refinement.
+    Attempts to find a small vertex cover via multiple randomized restarts and iterative refinement. Strategically calls heuristic_vertex_cover_optimized2
 
     Algorithm Outline
     -----------------
@@ -337,44 +362,61 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
 
 def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, subsetsize=200, generations=100):
     
-    '''
-    Evolves an independent set of sequences from a set of candidate sequence pairs.
-    Removes high‐energy (off‐target) interactions via vertex‐cover heuristics. 
+    """
+    Evolves an independent set of sequences from a set of candidate sequence pairs by
+    iteratively removing high-energy (off-target) interactions via vertex-cover heuristics.  
+    Implements a form of genetic “survivor selection” via repeated vertex-cover:
+    new sequences are sampled each generation and those with strong off-target interactions
+    are “removed” again. The `history` variable ensures previously promising sequences
+    re-enter the sampling pool.
 
-    Input:
-        - sequence_pairs (list): List of (index, (seq, rc_seq)) tuples for candidate sequences.
-        - offtarget_limit (float): Energy threshold; edges exist where off‐target energy < this value.
-        - max_ontarget (float): Upper bound for acceptable on‐target energy.
-        - min_ontarget (float): Lower bound for acceptable on‐target energy.
-        - subsetsize (int): Number of sequences to sample per generation.
-        - generations (int): Number of evolutionary iterations to perform.
+    Procedure
+    ---------
+    1. Initialize:
+       - `non_cover_vertices`: best independent set so far (sequences not in the cover).
+       - `history`: indices to avoid reselection, preserving diversity.  
+    2. For each of `generations` iterations:
+       a. Select a random subset of sequences whose on-target energies lie within
+          [`min_ontarget`, `max_ontarget`], excluding those in `history`.  
+       b. Re-add any sequences from `history` to ensure good candidates are retained.  
+       c. Assert that there are no duplicate indices.  
+       d. Compute off-target energies for the subset.  
+       e. Build the off-target interaction graph (edges where energy < `offtarget_limit`).  
+       f. Apply the multi-start, iterative vertex-cover heuristic to find `removed_vertices`.  
+       g. Derive the new independent set: all selected indices minus `removed_vertices`.  
+       h. If this independent set is at least as large as the previous best:
+          - Update `non_cover_vertices`.
+          - Clear `history` if strictly larger.  
+       i. If its size ≥ 95% of the best, add its indices (deduplicated) to `history`.  
+       j. Print generation summary statistics.  
+    3. On user interrupt (Ctrl+C), exit gracefully and proceed to save the current best.  
+    4. After all generations or interruption, save the final independent set to a text file.
 
-    Output:
-        - list: Final list of (seq, rc_seq) pairs that form the best independent set.
+    Notes
+    -----
+    - Catches `KeyboardInterrupt` to allow early exit: the best result so far is saved and plotted.
 
-    Procedure:
-        1. Initialize:
-            - non_cover_vertices: current best independent set (sequences not in vertex cover).
-            - history: indices to avoid reselection, preserving diversity.
-        2. For each generation:
-            a. Select a random subset of sequences whose on‐target energies lie within [min_ontarget, max_ontarget], excluding history.
-            b. Add back any previously preserved sequences (history) to the subset.
-            c. Assert no duplicate indices remain.
-            d. Compute all off‐target energies for this subset.
-            e. Build the interaction graph: edges = pairs below offtarget_limit.
-            f. Run the multi‐start, iterative vertex‐cover heuristic to find `removed_vertices` (Vertex cover, Vertices with off target binding).
-            g. Derive the new independent set: all selected indices minus removed_vertices.
-            h. If the new set is at least as large as the previous best, update `non_cover_vertices`; clear history if strictly larger.
-            i. If within 95% of best size, add new set to history to guide future sampling.
-            j. Log generation stats.
-        3. On user interrupt, exit gracefully and save current best.
-        4. After all generations or interruption, save the final sequences to a text file.
+    :param sequence_pairs: List of (index, (seq, rc_seq)) tuples for candidate sequences.
+    :type sequence_pairs: list of tuple
 
-    Notes:
-        - This implements a form of genetic “survivor selection” via vertex‐cover: 
-          sequences that interact too strongly (below energy cutoff) are “removed” each generation.
-        - History ensures we add sequences which worked before again to the pool. Maybe a different combination of them works.
-    '''
+    :param offtarget_limit: Energy threshold below which an off-target interaction defines an edge.
+    :type offtarget_limit: float
+
+    :param max_ontarget: Upper bound for acceptable on-target energy.
+    :type max_ontarget: float
+
+    :param min_ontarget: Lower bound for acceptable on-target energy.
+    :type min_ontarget: float
+
+    :param subsetsize: Number of sequences to sample per generation.
+    :type subsetsize: int
+
+    :param generations: Number of evolutionary iterations to perform.
+    :type generations: int
+
+    :returns: Final list of (seq, rc_seq) pairs forming the best independent set.
+    :rtype: list of tuple
+    """
 
     non_cover_vertices = set()
     history = set()

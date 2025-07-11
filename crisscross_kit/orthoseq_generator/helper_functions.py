@@ -12,11 +12,23 @@ USE_LIBRARY = True
 
 
 class DelayedKeyboardInterrupt:
-    '''
-    Context manager that delays KeyboardInterrupt (Ctrl+C) during critical operations, such as saving files.
+    """
+    Context manager that delays KeyboardInterrupt (Ctrl+C) during critical operations.
 
-    This prevents corruption of the precomputed energy library by ignoring interrupts until the file write is safely completed.
-    '''
+    This prevents corruption of the precomputed energy library by deferring interrupt
+    handling until the protected block (e.g., file writes) completes.
+
+    Usage
+    -----
+    with DelayedKeyboardInterrupt():
+        # perform critical operation, like saving files
+        save_pickle_atomic(...)
+
+    Notes
+    -----
+    - On entering, replaces the SIGINT handler to queue the signal.
+    - On exit, restores the original handler and re-raises if an interrupt was received.
+    """
     
     def __enter__(self):
         self.signal_received = False
@@ -36,17 +48,24 @@ class DelayedKeyboardInterrupt:
 
 
 def save_pickle_atomic(data, filepath):
-    '''
+    """
     Saves a Python object to disk as a pickle file in a safe and atomic way.
 
-    Input:
-        - data: Python object to save (typically a dictionary).
-        - filepath (str): Full path to the target pickle file.
+    Notes
+    -----
+    - Writes data to a temporary file (`<filepath>.tmp`) first, then atomically replaces
+      the original file to avoid corruption if a crash occurs during writing.
+    - Creates the target directory if it does not exist.
 
-    Notes:
-        - Writes to a temporary file first and then moves it to the target path to avoid file corruption in case of crashes.
-        - Creates the target folder if it does not exist yet.
-    '''
+    :param data: Python object to save (typically a dictionary).
+    :type data: any
+
+    :param filepath: Full path to the target pickle file.
+    :type filepath: str
+
+    :returns: None
+    :rtype: None
+    """
     
     tmp_path = filepath + ".tmp"
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -59,15 +78,19 @@ def save_pickle_atomic(data, filepath):
 
 
 def choose_precompute_library(filename):
-    '''
+    """
     Sets the name of the precomputed energy library file.
 
-    Input:
-        - filename (str): Name of the pickle file where precomputed energies are or will be stored.
+    Notes
+    -----
+    Updates the global variable used by other functions to locate the correct library.
 
-    Notes:
-        - This updates the global variable used by other functions to locate the correct library.
-    '''
+    :param filename: Name of the pickle file where precomputed energies are or will be stored.
+    :type filename: str
+
+    :returns: None
+    :rtype: None
+    """
     
     global _precompute_library_filename
     _precompute_library_filename = filename
@@ -75,16 +98,18 @@ def choose_precompute_library(filename):
 
 
 def get_library_path():
-    '''
+    """
     Returns the full file path to the currently selected precomputed energy library.
 
-    Output:
-        - str: Full path to the pickle file containing the precomputed Gibbs free energy dictionary.
+    Description
+    -----------
+    Constructs a path by combining the 'pre_computed_energies' folder with the
+    filename set via `choose_precompute_library()`. If no filename has been set,
+    defaults to 'test_lib.pkl'.
 
-    Notes:
-        - Uses the global variable set by choose_precompute_library().
-        - If no file name has been set, defaults to 'test_lib.pkl' in the 'pre_computed_energies' folder.
-    '''
+    :returns: Full path to the pickle file containing the precomputed Gibbs free energy dictionary.
+    :rtype: str
+    """
     
     folder = "pre_computed_energies"
     filename = _precompute_library_filename or "test_lib.pkl"
@@ -92,16 +117,20 @@ def get_library_path():
 
 
 def get_default_results_folder():
-    '''
-    Returns the default path to the 'results' folder where output files should be saved. This is the folder where the generated sequences end up. 
 
-    Output:
-        - str: Absolute path to the 'results' directory.
+    """
+    Returns the default path to the 'results' folder where output files containing the generated sequence pairs are saved.
 
-    Notes:
-        - The folder is created automatically if it does not exist.
-        - The path is always relative to the current working directory from which the script was executed (not the script's own location).
-    '''
+    Description
+    -----------
+    The results directory is created automatically if it does not exist.  
+    The path is based on the current working directory from which the script was executed.
+    
+
+    :returns: Absolute path to the 'results' directory.
+    :rtype: str
+    """
+    
     
     base_dir = os.getcwd()  # Directory from which the script was executed
     folder_path = os.path.join(base_dir, "results")
@@ -109,18 +138,25 @@ def get_default_results_folder():
     return folder_path
 
 def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
-    '''
+    """
     Saves a list of DNA sequence pairs to a plain text file in the default results folder.
 
-    Input:
-        - sequence_pairs (list): List of (sequence, reverse_complement) tuples.
-        - filename (str or None): Optional custom file name. If None, the name is generated based on timestamp and sequence length.
+    Description
+    -----------
+    Each line in the output file contains a sequence and its reverse complement,
+    separated by a tab. If `filename` is not provided, an informative name is
+    generated based on the number of sequences, sequence length, and current timestamp.
 
-    Notes:
-        - The file is saved in the 'results' folder created by get_default_results_folder().
-        - The file contains two columns: sequence and reverse complement, separated by a tab.
-        - Automatically generates an informative file name if none is provided.
-    '''
+    :param sequence_pairs: List of (sequence, reverse_complement) tuples.
+    :type sequence_pairs: list of tuple
+
+    :param filename: Optional custom file name. If None, a name is generated based
+                     on timestamp and sequence length.
+    :type filename: str or None
+
+    :returns: None
+    :rtype: None
+    """
     
     if not sequence_pairs:
         print("No sequences to save.")
@@ -142,19 +178,23 @@ def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
     print(f"Saved {len(sequence_pairs)} sequence pairs to:\n{full_path}")
 
 def load_sequence_pairs_from_txt(filename):
-    '''
+    """
     Loads DNA sequence pairs from a plain text file in the default results folder.
 
-    Input:
-        - filename (str): Name of the text file to load.
+    Description
+    -----------
+    Reads a tab-separated text file where each line contains a sequence and its
+    reverse complement. The file is located in the results directory returned by
+    `get_default_results_folder()`.
 
-    Output:
-        - list: List of (sequence, reverse_complement) tuples loaded from the file.
+    :param filename: Name of the text file to load.
+    :type filename: str
 
-    Notes:
-        - The file is expected to contain tab-separated values: sequence <TAB> reverse_complement.
-        - If the file does not exist, raises a FileNotFoundError.
-    '''
+    :returns: List of (sequence, reverse_complement) tuples loaded from the file.
+    :rtype: list of tuple
+
+    :raises FileNotFoundError: If the specified file does not exist.
+    """
     
     folder_path = get_default_results_folder()
     full_path = os.path.join(folder_path, filename)
