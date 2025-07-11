@@ -17,65 +17,87 @@ import time
 
 
 def revcom(sequence):
-    '''
-    Computes the reverse complement of a DNA sequence (input and output are strings).
+    """
+    Computes the reverse complement of a DNA sequence.
 
-    Input:
-        - sequence (str): Single DNA sequence as a string.
+    :param sequence: Single DNA sequence as a string.
+    :type sequence: str
 
-    Output:
-        - str: Reverse complement of the input sequence as a string.
-    '''
+    :returns: Reverse complement of the input sequence as a string.
+    :rtype: str
+    """
     dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
     return "".join(dna_complement[n] for n in reversed(sequence))
 
 
 def has_four_consecutive_bases(seq):
-    '''
-    Returns True if the sequence contains four identical consecutive bases (e.g., "GGGG", "CCCC", "AAAA", "TTTT").
+    """
+    Returns True if the sequence contains four identical consecutive bases 
+    (e.g., "GGGG", "CCCC", "AAAA", "TTTT").
 
-    Note:
-        - In principle, other sequence constraints could be added here.
+    Notes
+    -----
+    Additional sequence constraints (e.g., homopolymer runs of other lengths)
+    can be added here as needed.
 
-    Input:
-        - seq (str): DNA sequence as a string.
+    :param seq: DNA sequence as a string.
+    :type seq: str
 
-    Output:
-        - bool: True or False.
-    '''
+    :returns: True if any base appears four times in a row, False otherwise.
+    :rtype: bool
+    """
     return 'GGGG' in seq or 'CCCC' in seq or 'AAAA' in seq or 'TTTT' in seq
 
 
 def sorted_key(seq1, seq2):
-    '''
+    """
     Returns a tuple with the two input sequences sorted alphabetically.
 
-    This ensures that (seq1, seq2) and (seq2, seq1) are mapped to the same thing and are treated as the same key in a dictionary.
+    Description
+    -----------
+    Ensures that (seq1, seq2) and (seq2, seq1) map to the same dictionary key.
 
-    Input:
-        - seq1 (str)
-        - seq2 (str)
+    :param seq1: First DNA sequence.
+    :type seq1: str
 
-    Output:
-        - tuple: Sorted (seq1, seq2)
-    '''
+    :param seq2: Second DNA sequence.
+    :type seq2: str
+
+    :returns: Tuple of the two sequences in alphabetical order.
+    :rtype: tuple
+    """
     return (min(seq1, seq2), max(seq1, seq2))
 
 
 def create_sequence_pairs_pool(length=7, fivep_ext="", threep_ext="", avoid_gggg=True):
 
-    '''
+    """
     Generates a list of unique DNA sequence pairs (and their reverse complements) with optional flanking sequences.
 
-    Input:
-        - length (int): Length of the core DNA sequences (without flanks).
-        - fivep_ext (str): Optional 5' flanking sequence prepended to each strand.
-        - threep_ext (str): Optional 3' flanking sequence appended to each strand.
-        - avoid_gggg (bool): If True, filters out sequences (and their reverse complements) containing four identical consecutive bases (e.g., "GGGG", "AAAA").
+    Procedure
+    ---------
+    1. Generate all possible core sequences of specified `length`.  
+    2. Compute each sequence's reverse complement and alphabetically sort the pair.  
+    3. If `avoid_gggg` is True, filter out any pair where either sequence contains four identical bases in a row.  
+    4. Prepend `fivep_ext` and append `threep_ext` to both members of each pair.  
+    5. Enumerate the resulting list, assigning a unique integer ID to each pair.
 
-    Output:
-        - list: List of tuples [(index, (sequence, reverse_complement)), ...] where 'index' is a unique ID and the tuple contains the complementary sequence pair.
-    '''
+    :param length: Length of the core DNA sequences (without flanks).
+    :type length: int
+
+    :param fivep_ext: Optional 5′ flanking sequence prepended to each strand.
+    :type fivep_ext: str
+
+    :param threep_ext: Optional 3′ flanking sequence appended to each strand.
+    :type threep_ext: str
+
+    :param avoid_gggg: If True, filters out pairs containing four identical consecutive bases.
+    :type avoid_gggg: bool
+
+    :returns: List of tuples `[(index, (sequence, reverse_complement)), ...]`,
+              where `index` is a unique ID and each tuple contains the complementary pair.
+    :rtype: list of tuple
+    """
 
     # Define the DNA bases
     bases = ['A', 'T', 'G', 'C']
@@ -109,28 +131,34 @@ def create_sequence_pairs_pool(length=7, fivep_ext="", threep_ext="", avoid_gggg
 
 def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_Library=None):
     
-    '''
-    Computes the Gibbs free energy of hybridization between two DNA sequences using NUPACK.
+    """
+    Computes the Gibbs free energy of hybridization between two DNA sequences using NUPACK,
+    with optional caching via a precompute library.
 
-    Input:
-        - seq1 (str): First DNA sequence.
-        - seq2 (str): Second DNA sequence.
-        - type (str): Either 'total' or 'minimum'.
-            - 'total': Computes the total (partition sum) Gibbs free energy of all the secondary structures the two sequences can form.
-            - 'minimum': Returns the minimum free energy (MFE) of the possible binding configurations.
-            - One can argue which is the right one to use here. 'Total' seems more reasonable since this is the energy one would use to compute the binding constant.
-        - Use_Library (bool): If True, attempts to use a precomputed energy value from a local library (cache). Overwrites the global variable setting the library
+    Notes
+    -----
+    - Uses a local cache to avoid redundant NUPACK calls when provided with `Use_Library=True`. The input variable overwrites the global state. 
+    - Energies are stored under a sorted key so (seq1, seq2) and (seq2, seq1) map identically. Saving is not done here
+    - This function is called by multiprocessing. Each instance loads its own precompute library once from file. 
+    - Does not write to the cache during multiprocessing to prevent conflicts.
+    - All energies larger than -1 kcal/mol are mapped to -1 kcal/mol. 0 is used in other routines as an idicator that the energy has not been computed. -1 kcal/mol is already extremely weak. (virtually no interaction) 
+    - Model parameters are fixed at 37°C, sodium=0.05 M, magnesium=0.025 M; change with a fresh cache.
 
-    Output:
-        - float: Gibbs free energy in kcal/mol. If the strands do not interact or an error occurs, returns -1.0 (interpreted as "no interaction").
-          Note: 0 energy is reserved for values not yet computed.
+    :param seq1: First DNA sequence.
+    :type seq1: str
 
-    Notes:
-        - The precomputed energy library is cached on first access to avoid repeated disk I/O.
-        - Energies are stored using a canonical sorted key so (seq1, seq2) and (seq2, seq1) map to the same value.
-        - No saving of energies is done here. This would interfere with multiprocessing.
-        - The model parameters are celsius=37, sodium=0.05, magnesium=0.025. If you change them, you might want to start a new precompute library.
-    '''
+    :param seq2: Second DNA sequence.
+    :type seq2: str
+
+    :param type: Either 'total' (partition sum) or 'minimum' (MFE) calculation. The result of 'total' is what you would use to compute a binding constant.
+    :type type: str
+
+    :param Use_Library: If True, use and load the precompute cache; defaults to global setting.
+    :type Use_Library: bool or None
+
+    :returns: Gibbs free energy in kcal/mol, or -1.0 kcal/mol if no interaction or on error.
+    :rtype: float
+    """
     
     
     # Use global state if no input is given
@@ -196,11 +224,19 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
 
 
 def _init_worker(lib_filename, use_lib):
-    '''
-    Initializer for parallel computing.
+    """
+    Initializes worker processes for parallel energy computations by configuring
+    the precompute library filename and cache usage flag.
 
-    Sets the precompute library filename and the library usage flag for each worker process.
-    '''
+    :param lib_filename: Name of the precompute library file to load.
+    :type lib_filename: str
+
+    :param use_lib: Whether to use the precompute library in this worker.
+    :type use_lib: bool
+
+    :returns: None
+    :rtype: None
+    """
     
     
     hf._precompute_library_filename = lib_filename
@@ -210,35 +246,42 @@ def _init_worker(lib_filename, use_lib):
 
 
 def compute_pair_energy_on(i, seq, rc_seq):
-    '''
+    """
     Helper function for parallel computing of on-target energies.
 
-    Input:
-        - i (int): Sequence index.
-        - seq (str): DNA sequence.
-        - rc_seq (str): Reverse complement sequence.
+    :param i: Sequence index.
+    :type i: int
 
-    Output:
-        - tuple: (index, computed energy value).
-    '''
+    :param seq: DNA sequence.
+    :type seq: str
+
+    :param rc_seq: Reverse complement sequence.
+    :type rc_seq: str
+
+    :returns: Tuple containing the index and its computed Gibbs free energy.
+    :rtype: tuple (int, float)
+    """
     
     return i, nupack_compute_energy_precompute_library_fast(seq, rc_seq)
 
 
 def compute_ontarget_energies(sequence_list):
-    '''
-    Computes the on-target energies of a list of sequence pairs using multiprocessing.
+    """
+    Computes on-target Gibbs free energies for a list of sequence pairs using multiprocessing.
 
-    Input:
-        - sequence_list (list): List of tuples, each containing a sequence and its reverse complement.
+    Notes
+    -----
+    - Uses `ProcessPoolExecutor` (with `initializer=_init_worker`) to parallelize calls to NUPACK via `nupack_compute_energy_precompute_library_fast`.
+    - If `hf.USE_LIBRARY` is True, the initializer function (`_init_worker`) passes the library filename and flag to each worker so that `nupack_compute_energy_precompute_library_fast` can load its cache. After all parallel computations finish, this function saves the cache with the new energies.
+    - Saves the updated cache atomically using `DelayedKeyboardInterrupt` to prevent corruption.
+    - Prints progress and CPU core usage to the console.
 
-    Output:
-        - numpy.ndarray: Array of Gibbs free energies (kcal/mol) for each sequence pair.
+    :param sequence_list: List of tuples, each containing a sequence and its reverse complement.
+    :type sequence_list: list of tuple
 
-    Notes:
-        - Optionally updates and uses a precomputed energy library to speed up future runs.
-        - Parallel processing is used for efficiency. The precompute library is updated at the end of the computation
-    '''
+    :returns: NumPy array of Gibbs free energies (kcal/mol) for each sequence pair.
+    :rtype: numpy.ndarray
+    """
 
     # Preallocate array for better performance
     energies = np.zeros(len(sequence_list))
@@ -289,42 +332,65 @@ def compute_ontarget_energies(sequence_list):
 
 
 def compute_pair_energy_off(i, j, seq1, seq2):
-    '''
-    Helper function for parallel computing of off-target energies.
+    """
+     Helper function for parallel computing of off-target energies.
 
-    Input:
-        - i (int): Index of first sequence.
-        - j (int): Index of second sequence.
-        - seq1 (str)
-        - seq2 (str)
+     :param i: Index of the first sequence.
+     :type i: int
 
-    Output:
-        - tuple: (i, j, computed energy value).
-    '''
+     :param j: Index of the second sequence.
+     :type j: int
+
+     :param seq1: First DNA sequence.
+     :type seq1: str
+
+     :param seq2: Second DNA sequence.
+     :type seq2: str
+
+     :returns: Tuple `(i, j, energy)` where `energy` is the computed Gibbs free energy.
+     :rtype: tuple (int, int, float)
+     """
     return i, j, nupack_compute_energy_precompute_library_fast(seq1, seq2)
 
 
 def compute_offtarget_energies(sequence_pairs):
     
-    '''
+    """
     Computes off-target hybridization energies for all pairwise combinations of a given list of sequence pairs.
 
-    Input:
-        - sequence_pairs (list): List of tuples (sequence, reverse complement).
+    Procedure
+    ---------
+    1. Extract handles and antihandles from `sequence_pairs`.
+    2. Initialize three N×N energy matrices for:
+       - handle-handle interactions
+       - antihandle-antihandle interactions
+       - handle-antihandle interactions
+    3. For each matrix, use `ProcessPoolExecutor` (via `compute_pair_energy_off`) to fill only the required entries:
+       - i ≥ j for the two symmetric matrices
+       - i ≠ j for the mixed handle-antihandle matrix
+    4. If `hf.USE_LIBRARY` is True, the initializer function (`_init_worker`) passes the library filename and flag to each worker so that `nupack_compute_energy_precompute_library_fast` can load its cache. After all parallel computations finish, this function saves the cache with the new energies.
 
-    Output:
-        - dict: Contains three energy matrices:
-            'handle_handle_energies' (N x N array),
-            'antihandle_handle_energies' (N x N array),
-            'antihandle_antihandle_energies' (N x N array).
 
-    Notes:
-        - Off-target interactions are computed for handles with handles, antihandles with antihandles, and handles with antihandles.
-        - Energies are symmetric where applicable and redundant calculations are avoided.
-        - Entries with no interaction or failed computation return energy = -1.0. All Energies higher than -1.0 are mapped to -1.0
-        - Energy of 0 indicates the value was not computed due to redundancy
-        - Optionally updates the precomputed energy library for faster future runs if the corresponding global variable is set
-    '''
+    Notes
+    -----
+    - Off-target interactions are computed for:  
+      1) handle with handle  
+      2) antihandle with antihandle  
+      3) handle with antihandle  
+    - Symmetric matrices only compute the lower triangle (i ≥ j) to avoid redundancy.  
+    - Entries with no interaction or computation errors return -1.0 (mapped for any energy > -1.0).  
+      A value of 0 indicates the energy was skipped due to redundancy.    
+    - Uses `DelayedKeyboardInterrupt` to ensure atomic writes when saving the updated cache.
+
+    :param sequence_pairs: List of (sequence, reverse_complement) tuples.
+    :type sequence_pairs: list of tuple
+
+    :returns: Dictionary containing three N×N numpy arrays with keys:  
+              - 'handle_handle_energies'  
+              - 'antihandle_handle_energies'  
+              - 'antihandle_antihandle_energies'
+    :rtype: dict
+    """
     
     
 
@@ -416,24 +482,24 @@ def compute_offtarget_energies(sequence_pairs):
 
 
 def select_subset(sequence_pairs, max_size=200):
-    '''
-    Selects a random subset of sequence pairs whose on-target energies fall within a given energy range.
+    """
+    Selects a random subset of sequence pairs up to a specified maximum size.
 
-    Input:
-        - sequence_pairs (list): List of (index, (seq, rc_seq)) tuples.
-        - energy_min (float): Minimum energy threshold.
-        - energy_max (float): Maximum energy threshold.
-        - max_size (int): Maximum number of pairs to select.
-        - Use_Library (bool): Whether to use a precomputed energy library.
-        - avoid_indices (set): Indices to skip during selection.
+    Notes
+    -----
+    - If the number of available pairs exceeds `max_size`, randomly samples `max_size` pairs using `random.sample`.
+    - If the number of pairs is less than or equal to `max_size`, returns all pairs.
+    - Uses sampling rather than full shuffling for performance on large datasets.
 
-    Output:
-        - tuple: (list of selected sequence pairs, list of their corresponding indices).
+    :param sequence_pairs: List of `(index, (seq, rc_seq))` tuples.
+    :type sequence_pairs: list of tuple
 
-    Notes:
-        - Random selection is used without shuffle for better performance on very large datasets.
-        - Selection stops once the requested number of valid pairs is found or all candidates are exhausted.
-    '''
+    :param max_size: Maximum number of pairs to select.
+    :type max_size: int
+
+    :returns: List of `(seq, rc_seq)` pairs selected.
+    :rtype: list of tuple
+    """
     
     
     total = len(sequence_pairs)
@@ -455,24 +521,40 @@ def select_subset(sequence_pairs, max_size=200):
 
 def select_subset_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, max_size=np.inf,
                                   Use_Library=None, avoid_indices=None):
-    '''
-    Selects a random subset of sequence pairs whose on-target energies fall within a given energy range.
+    """
+    Selects a random subset of sequence pairs whose on-target energies fall within a given range.
 
-    Input:
-        - sequence_pairs (list): List of (index, (seq, rc_seq)) tuples.
-        - energy_min (float): Minimum energy threshold.
-        - energy_max (float): Maximum energy threshold.
-        - max_size (int): Maximum number of pairs to select.
-        - Use_Library (bool): Whether to use a precomputed energy library.
-        - avoid_indices (set): Indices to skip during selection.
+    Notes
+    -----
+    - Randomly samples without full shuffling for performance on large datasets.
+    - Continues until `max_size` pairs are found or all candidates (excluding `avoid_indices`) are tested.
+    - Uses `nupack_compute_energy_precompute_library_fast` with `Use_Library` to compute or fetch energies.
+    - Prints a summary of how many pairs were selected.
 
-    Output:
-        - tuple: (list of selected sequence pairs, list of their corresponding indices).
+    :param sequence_pairs: List of `(index, (seq, rc_seq))` tuples.
+    :type sequence_pairs: list of tuple
 
-    Notes:
-        - Random selection is used without shuffle for better performance on very large datasets.
-        - Selection stops once the requested number of valid pairs is found or all candidates are exhausted.
-    '''
+    :param energy_min: Minimum allowed Gibbs free energy (inclusive).
+    :type energy_min: float
+
+    :param energy_max: Maximum allowed Gibbs free energy (inclusive).
+    :type energy_max: float
+
+    :param max_size: Maximum number of pairs to select.
+    :type max_size: int or float('inf')
+
+    :param Use_Library: Whether to use a precomputed energy library (overrides global setting if not None).
+    :type Use_Library: bool or None
+
+    :param avoid_indices: Set of indices to skip during selection.
+    :type avoid_indices: set or None
+
+    :returns: Tuple `(subset, indices)` where:
+              - `subset` is a list of `(seq, rc_seq)` pairs within the energy range.
+              - `indices` is a list of their corresponding global indices.
+    :rtype: tuple (list of tuple, list of int)
+    """
+    
     if Use_Library is None:
         Use_Library = hf.USE_LIBRARY
     
@@ -509,19 +591,41 @@ def select_subset_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max
 
 
 def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, Use_Library=None, avoid_ids=None):
-    '''
-    Selects all sequence pairs whose on-target energies fall within a given energy range.
+    """
+      Selects all sequence pairs whose on-target energies fall within a given energy range.
 
-    Input:
-        - sequence_pairs (list): List of (ID, (seq, rc_seq)) tuples.
-        - energy_min (float): Minimum energy threshold.
-        - energy_max (float): Maximum energy threshold.
-        - Use_Library (bool): Whether to use a precomputed energy library.
-        - avoid_ids (set): IDs to skip.
+      Description
+      -----------
+      Iterates through every `(global_index, (seq, rc_seq))` tuple, computes the on-target energy
+      using `nupack_compute_energy_precompute_library_fast`, and collects those where
+      `energy_min <= energy <= energy_max`, skipping any `global_index` values in `avoid_ids`.
+      Note that the ID here refers to the global index in the original sequence-pair list.
 
-    Output:
-        - tuple: (list of matching sequence pairs, list of their IDs).
-    '''
+      Notes
+      -----
+      - If `Use_Library` is True, energies are fetched from or stored in the precompute cache.
+      - Prints progress messages to the console.
+
+      :param sequence_pairs: List of `(global_index, (seq, rc_seq))` tuples.
+      :type sequence_pairs: list of tuple
+
+      :param energy_min: Minimum allowed Gibbs free energy (inclusive).
+      :type energy_min: float
+
+      :param energy_max: Maximum allowed Gibbs free energy (inclusive).
+      :type energy_max: float
+
+      :param Use_Library: Whether to use a precomputed energy library (overrides global if not None).
+      :type Use_Library: bool or None
+
+      :param avoid_ids: Set of global indices to skip during selection.
+      :type avoid_ids: set or None
+
+      :returns: Tuple `(subset, selected_ids)` where:
+                - `subset` is a list of `(seq, rc_seq)` pairs within the energy range.
+                - `selected_ids` is a list of their corresponding global indices.
+      :rtype: tuple (list of tuple, list of int)
+      """
     print("Selecting sequences...")
     
     if Use_Library is None:
@@ -551,29 +655,42 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
 
 
 def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_path=None):
-    '''
+    """
     Plots histograms comparing on-target and off-target Gibbs free energy distributions.
 
-    Input:
-        - on_energies (array-like): On-target energy values.
-        - off_energies (array-like or dict): Off-target energy values or dictionary of energy matrices.
-        - bins (int): Number of bins for histograms.
-        - output_path (str or None): File path to save the plot. If None, only displays the plot.
+    Notes
+    -----
+    - If `off_energies` is a dict, combines:
+        * 'handle_handle_energies'
+        * 'antihandle_handle_energies'
+        * 'antihandle_antihandle_energies'
+      into a single array, excluding zeros (uncomputed values).
+    - Normalizes frequencies so that area under each histogram sums to 1.
+    - Uses consistent bin edges across both distributions for direct comparison.
+    - Saves the figure to `output_path` if provided, otherwise only displays it.
+    - Prints summary statistics after plotting.
 
-    Output:
-        - dict: Summary statistics including mean, standard deviation, and extreme values for both on-target and off-target energies.
+    :param on_energies: On-target energy values.
+    :type on_energies: array-like
 
-    Notes:
-        - If 'off_energies' is provided as a dictionary, all relevant matrices are combined.
-        - Normalized frequency histograms are plotted side by side for comparison.
-    Keys:
-        - 'mean_on'  : Mean of on-target energies
-        - 'std_on'   : Standard deviation of on-target energies
-        - 'max_on'   : Maximum of on-target energies
-        - 'mean_off' : Mean of off-target energies
-        - 'std_off'  : Standard deviation of off-target energies
-        - 'min_off'  : Minimum of off-target energies
-    '''
+    :param off_energies: Off-target energies as an array-like or dict of energy matrices.
+    :type off_energies: array-like or dict
+
+    :param bins: Number of bins for histograms.
+    :type bins: int
+
+    :param output_path: File path to save the plot; if None, the plot is only displayed.
+    :type output_path: str or None
+
+    :returns: Dictionary of summary statistics:
+              - 'mean_on'  : Mean of on-target energies  
+              - 'std_on'   : Standard deviation of on-target energies  
+              - 'max_on'   : Maximum on-target energy  
+              - 'mean_off' : Mean of off-target energies  
+              - 'std_off'  : Standard deviation of off-target energies  
+              - 'min_off'  : Minimum off-target energy  
+    :rtype: dict
+    """
     
     
     # --- Centralized style settings ---

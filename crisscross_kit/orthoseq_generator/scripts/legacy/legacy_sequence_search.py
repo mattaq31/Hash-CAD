@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-'''
-postprocess_subset.py
+"""
 
 Purpose:
     Load a previously saved subset of 7-mer sequence pairs and their off-target energies,
@@ -15,9 +13,7 @@ Main Steps:
     5. Compute the independent set (orthogonal sequences) as the complement of the cover.
     6. Save the independent sequences to a text file.
 
-Usage:
-    python postprocess_subset.py
-'''
+"""
 
 import random
 from orthoseq_generator import helper_functions as hf
