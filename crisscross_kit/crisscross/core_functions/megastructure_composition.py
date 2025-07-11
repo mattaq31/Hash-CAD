@@ -201,7 +201,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                      manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
                                      output_plate_size='96', center_only_well_pattern=False,
                                      generate_plate_visualization=True, plate_viz_type='stacked_barcode',
-                                     destination_well_max_volume=25, normalize_volumes=False, water_plate_well_count=120):
+                                     destination_well_max_volume=25, normalize_volumes=False):
     """
     Converts a dictionary of slats into an echo liquid handler command list for all handles provided.
     :param slat_dict: Dictionary of slat objects
@@ -223,7 +223,6 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
     :param destination_well_max_volume: The maximum total volume that can be transferred to a well in the output plate (in uL)
     :param normalize_volumes: Set to True to normalize the volumes in each slat mixture (by adding water to the maximum volume)
-    :param water_plate_well_count: The number of wells to use for the water normalization plate (default is 120)
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 

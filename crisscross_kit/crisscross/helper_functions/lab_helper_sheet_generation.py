@@ -107,6 +107,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
     """
     Prepares a 'master mix' sheet to be used for combining slat mixtures with scaffold
     and core staples into the final slat mixture.
+
     :param slat_dict: Dictionary of slats with slat names as keys and slat objects as values.
     :param echo_sheet: Exact list of commands sent to the Echo robot for this group of slats.
     :param reference_handle_volume: Reference staple volume for each handle in a pool in nL (this refers to the control handles plate).
@@ -117,6 +118,7 @@ def prepare_master_mix_sheet(slat_dict, echo_sheet=None, reference_handle_volume
     :param unique_transfer_volume_plates: Plates that have special non-standard volumes.
     This will be ignored if the echo sheet is provided with the exact details.
     :param workbook: The workbook to which the new excel sheet should be added.
+    :param split_core_staple_pools: If True, the core staples will be assumed to have been split into 4 pools (S0, S1, S3, S4).
     :return: Workbook with new sheet included.
     """
 
@@ -545,6 +547,7 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
     :param unique_transfer_volume_plates: Plates that have special non-standard volumes.  This will be ignored if the echo sheet is provided with the exact details.
     :param special_slat_groups: IDs of slats that should be separated from the general slat groups and placed in their own group.
     :param handle_mix_ratio: Ratio of handle mix concentration to scaffold concentration (default is 10).
+    :param split_core_staple_pools: If True, the core staples will be assumed to have been split into 4 pools (S0, S1, S3, S4).
     :return: N/A, file saved directly to disk.
     """
 

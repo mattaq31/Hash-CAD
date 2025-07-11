@@ -13,6 +13,7 @@ pip install crisscross_kit
 pip install crisscross_kit[3d]
 pip install crisscross_kit[blender]
 ```
+- To be able to use the `orthoseq_generator`, you will need to separately download and install NUPACK 4.x after installing the `crisscross_kit`.  Please follow their instructions [here](https://www.nupack.org/download/overview) for installation.
 
 #### Developer Installation
 - To install the python interface and allow for changes to the code to be immediately updated in your package, clone this repository and navigate to the `crisscross_kit` directory.  Next, run:
