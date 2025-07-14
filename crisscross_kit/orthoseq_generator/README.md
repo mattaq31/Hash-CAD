@@ -20,9 +20,12 @@ The algorithm works best for sequences up to **13 or 14 nucleotides** long (plus
 
 ## Basic Use
 
-Once installed, you can copy the functions from the `scripts` folder into any directory you like and add that directory to your **PATH** environment variable if desired.
+Installation instructions can be found in the main `README.md` file located in the main [`crisscross_kit`](https://github.com/mattaq31/Hash-CAD) folder. You can download example [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) from GitHub that demonstrate how to use the tool.
 
-There are **four scripts** which are typically executed in order:
+Once `crisscross_kit` is  installed, you can copy the scripts into any directory you like and add that directory to your `PATH` environment variable.
+
+There are four scripts that are typically executed in sequence:
+
 
 ---
 

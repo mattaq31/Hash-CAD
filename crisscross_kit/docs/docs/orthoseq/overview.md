@@ -3,12 +3,13 @@
 ## Problem It Solves
 
 This tool helps you find sets of **orthogonally binding DNA sequence pairs**. The main focus is on selecting sequences based on **thermodynamic binding energy**, not sequence diversity (as commonly used in barcoding).
+The tool allows to specify an on-target binding energy range and an off-target binding limit.
 
 Orthogonality here means:  
 - Each sequence binds strongly to its intended partner (**on-target**)  
 - Sequences do **not** bind significantly to any unintended partner (**off-target**)  
 
-Unlike other orthogonal sequence generators that use **De Bruijn graphs** or focus on **Hamming distance** for barcode generation, this tool uses **NUPACK** to compute actual hybridization energies. The sequence selection is based **solely on thermodynamic interactions**.
+Unlike other orthogonal sequence generators that use **De Bruijn graphs** and/or focus on **Hamming distance** for barcode generation, this tool uses **NUPACK** to compute actual hybridization energies. The sequence selection is based **solely on thermodynamic interactions**.
 
 To maximize the number of orthogonal sequences found under given constraints, we employ:  
 - **Advanced graph-theoretic algorithms** (vertex cover)  
@@ -20,9 +21,12 @@ The algorithm works best for sequences up to **13 or 14 nucleotides** long (plus
 
 ## Basic Use
 
-Once installed, you can copy the functions from the `scripts` folder into any directory you like and add that directory to your **PATH** environment variable if desired.
+Installation instructions can be found in the main `README.md` file located in the main [`crisscross_kit`](https://github.com/mattaq31/Hash-CAD) folder. You should manually download the entire [`Hash-CAD project`](https://github.com/mattaq31/Hash-CAD) from GitHub to access example scripts demonstrating how to use the tool.
 
-There are **four scripts** which are typically executed in order:
+Once installed, you can copy the scripts from the downloaded subfolder `.../crisscross_kit/orthoseq_generator/scripts` into any directory you like and add that directory to your `PATH` environment variable.
+
+There are four scripts that are typically executed in sequence:
+
 
 ---
 
