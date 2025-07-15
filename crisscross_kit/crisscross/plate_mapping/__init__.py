@@ -26,7 +26,7 @@ for dirpath, _, filenames in os.walk(functions_dir):
             classes = [node.name for node in ast.walk(p) if isinstance(node, ast.ClassDef)]
 
             # Convert full path to import path
-            relative_path = os.path.relpath(file_path, base_directory)
+            relative_path = os.path.relpath(file_path, os.path.join(base_directory, 'crisscross_kit'))
             import_path = relative_path.replace(os.path.sep, '.').rsplit('.py', 1)[0]
 
             for _class in classes:
