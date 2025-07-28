@@ -2,7 +2,10 @@ import 'dart:io';
 
 void main() async {
   // Get version from Git
-  String gitTag = await _runCommand('git describe --tags --abbrev=0');
+  String gitTag = await _runCommand(
+    'git tag --sort=-creatordate | grep "^v" | head -n 1',
+  );
+
   String gitCommits = await _runCommand('git rev-list --count HEAD');
   String gitHash = await _runCommand('git rev-parse --short HEAD');
   String buildDate = DateTime.now().toIso8601String();

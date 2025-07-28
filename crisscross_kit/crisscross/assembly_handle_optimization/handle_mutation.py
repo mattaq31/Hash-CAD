@@ -1,6 +1,6 @@
 import numpy as np
 import random
-
+from . import apply_handle_links
 
 def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                          hallofshame, best_score_indices, unique_sequences=32,
@@ -9,7 +9,8 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                          mutation_rate=2.0, mutation_type_probabilities=(0.425, 0.425, 0.15),
                          use_memory_type=None,
                          split_sequence_handles=False,
-                         sequence_split_factor=2):
+                         sequence_split_factor=2,
+                         repeating_unit_constraints=None):
     """
     Mutates (randomizes handles) a set of candidate arrays into a new generation,
     while retaining the best scoring arrays from the previous generation.
@@ -130,6 +131,9 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                 h_start = 1 + layer_index * handles_per_layer
                 h_end = h_start + handles_per_layer
                 next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h_start, h_end, size=np.sum( logicforpointmutations[:, :, layer]))
+
+        apply_handle_links(next_gen_member, repeating_unit_constraints['transplant_handles'])
+        apply_handle_links(next_gen_member, repeating_unit_constraints['link_handles'])
 
         mutated_handle_arrays.append(next_gen_member)
         mutation_maps.append(logicforpointmutations)

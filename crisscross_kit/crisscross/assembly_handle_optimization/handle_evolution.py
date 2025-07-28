@@ -20,7 +20,7 @@ class EvolveManager:
                  mutation_rate=5, mutation_type_probabilities=(0.425, 0.425, 0.15), unique_handle_sequences=32,
                  evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
                  process_count=None, early_hamming_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
-                 mutation_memory_system='off', memory_length=10):
+                 mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None):
         """
         Prepares an evolution manager to optimize a handle array for the provided slat array.
         WARNING: Make sure to use the "if __name__ == '__main__':" block to run this class in a script.
@@ -45,6 +45,7 @@ class EvolveManager:
         - useful for server output files, but does not seem to work consistently on every system (optional)
         :param mutation_memory_system: The type of memory system to use for the handle mutation process. Options are 'all', 'best', 'special', or 'off'.
         :param memory_length: Memory of previous 'worst' handle combinations to retain when selecting positions to mutate.
+        :param repeating_unit_constraints: Two dictionaries containing 'link_handles' and 'transplant_handles' that define constraints on handle mutations (mainly for use with repeating unit designs).
         """
 
         # initial parameter setup
@@ -52,6 +53,7 @@ class EvolveManager:
         self.seed = int(random_seed)
         self.metrics = defaultdict(list)
         self.slat_array = slat_array
+        self.repeating_unit_constraints = {} if repeating_unit_constraints is None else repeating_unit_constraints
         self.handle_array = seed_handle_array # this variable holds the current best handle array in the system (updated throughout evolution)
         self.slat_length = slat_length
         self.generational_survivors = int(generational_survivors)
@@ -116,10 +118,10 @@ class EvolveManager:
         candidate_handle_arrays = []
         if not self.split_sequence_handles or self.slat_array.shape[2] < 3:
             for j in range(self.evolution_population):
-                candidate_handle_arrays.append(generate_random_slat_handles(self.slat_array, self.number_unique_handles))
+                candidate_handle_arrays.append(generate_random_slat_handles(self.slat_array, self.number_unique_handles, **self.repeating_unit_constraints))
         else:
             for j in range(self.evolution_population):
-                candidate_handle_arrays.append(generate_layer_split_handles(self.slat_array,  self.number_unique_handles, self.sequence_split_factor))
+                candidate_handle_arrays.append(generate_layer_split_handles(self.slat_array,  self.number_unique_handles, self.sequence_split_factor, **self.repeating_unit_constraints))
 
         if self.handle_array is not None:
             candidate_handle_arrays[0] = self.handle_array
@@ -182,18 +184,19 @@ class EvolveManager:
 
         self.handle_array = self.next_candidates[np.argmax(physical_scores)] # stores intermediate best array
 
-        candidate_handle_arrays, mutation_maps = mutate_handle_arrays(self.slat_array, self.next_candidates,
-                                                                     hallofshame=hallofshame,
-                                                                     memory_hallofshame=self.memory_hallofshame,
-                                                                     memory_best_parent_hallofshame=self.memory_best_parent_hallofshame,
-                                                                     best_score_indices=indices_of_largest_scores,
-                                                                     unique_sequences=self.number_unique_handles,
-                                                                     mutation_rate=self.mutation_rate,
-                                                                     use_memory_type=self.mutation_memory_system,
-                                                                     special_hallofshame=self.initial_hallofshame,
-                                                                     mutation_type_probabilities=self.mutation_type_probabilities,
-                                                                     split_sequence_handles=self.split_sequence_handles,
-                                                                      sequence_split_factor=self.sequence_split_factor)
+        candidate_handle_arrays, _ = mutate_handle_arrays(self.slat_array, self.next_candidates,
+                                                          hallofshame=hallofshame,
+                                                          memory_hallofshame=self.memory_hallofshame,
+                                                          memory_best_parent_hallofshame=self.memory_best_parent_hallofshame,
+                                                          best_score_indices=indices_of_largest_scores,
+                                                          unique_sequences=self.number_unique_handles,
+                                                          mutation_rate=self.mutation_rate,
+                                                          use_memory_type=self.mutation_memory_system,
+                                                          special_hallofshame=self.initial_hallofshame,
+                                                          mutation_type_probabilities=self.mutation_type_probabilities,
+                                                          split_sequence_handles=self.split_sequence_handles,
+                                                          sequence_split_factor=self.sequence_split_factor,
+                                                          repeating_unit_constraints=self.repeating_unit_constraints)
 
         for key, payload in hallofshame.items():
             self.memory_hallofshame[key].extend(payload)

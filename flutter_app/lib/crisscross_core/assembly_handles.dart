@@ -125,7 +125,7 @@ Future<int> hammingCompute(Map<String, Slat> slats, Map<String, Map<String, dyna
   Map<String, List<int>> handleDict = {};
   Map<String, List<int>> antihandleDict = {};
 
-  //BE CAREFUL, THIS MAKES THE ASSUMPTION THAT HANDLES ARE ALWAYS ON THE TOP OF A SLAT AND VICE VERSA
+  // BE CAREFUL, THIS MAKES THE ASSUMPTION THAT HANDLES ARE ALWAYS ON THE TOP OF A SLAT AND VICE VERSA
   // curates all handles/antihandles into two dicts
   for (final slat in slats.values) {
     final layerInfo = layerMap[slat.layer]!;

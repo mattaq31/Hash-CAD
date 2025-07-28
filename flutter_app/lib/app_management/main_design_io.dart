@@ -329,6 +329,10 @@ bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slat
                 // if the row/column order is not flipped, then the row is the first value
                 slatID = "$layerID-I${slatArray[row][col][layer]}";
               }
+              if (slatID.contains('I0')){
+                // if the slat ID is 0, this means that there is an error or simply that the assembly handle is only assigned to one slat of the two layers.
+                continue;
+              }
             }
             catch (e) {
               // if the slat ID is not found, then there is a problem in the file - need to return false
@@ -351,6 +355,7 @@ bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slat
             }
 
             // if slat is not available then something is wrong - either a slat or assembly handle are not aligned
+            // TODO: since I'm now allowing slats to have handles on one side only, how do I check for a misaligned handle?
             if (!slats.containsKey(slatID)){
               return false;
             }

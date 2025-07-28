@@ -2,13 +2,14 @@ import numpy as np
 from itertools import product
 from collections import defaultdict, OrderedDict
 
-def extract_handle_dicts(handle_array, slat_array, list_indices_only=False):
+def extract_handle_dicts(handle_array, slat_array, list_indices_only=False, custom_index_map=None):
     """
     Extracts all slats from a design and organizes them into dictionaries of handles and antihandles.
     If list_indices_only is set to True, the function will return lists of indices instead of the actual handle values.
     :param handle_array: Array of XxYxZ-1 dimensions containing the IDs of all the handles in the design
     :param slat_array: Array of XxYxZ dimensions containing the positions of all slats in the design
     :param list_indices_only: Set to True to return lists of indices instead of the actual handle values
+    :param custom_index_map: A dictionary mapping (layer, slat_id) tuples to specific indices in the handle_array.
     :return: Two dictionaries or lists containing the handle sequences (or indices) for each slat
      - one for handles and one for antihandles
     """
@@ -30,6 +31,8 @@ def extract_handle_dicts(handle_array, slat_array, list_indices_only=False):
     # extracts handle values for all slats in the design -
     # note that a slat value is only unique within a layer,
     # and so each slat must be identified by both its layer and ID.
+
+    # TODO: if handle/antihandle assumption changed, need to update here too
     for layer_position, layer_slats in enumerate(unique_slats_per_layer):
         # an assumption is made here that the bottom-most slat will always start with handles,
         # then alternate to anti-handles and so on.  Thus, the bottom layer will only have handles
@@ -45,16 +48,25 @@ def extract_handle_dicts(handle_array, slat_array, list_indices_only=False):
 
         # iterate over all slat names in the selected layer, and pulls their handle values into a single list for each slat
         for slat in layer_slats:
+            slat_key = (layer_position + 1, slat)
             if handles_available:
                 if list_indices_only:
                     handle_index_list.append((layer_position, slat, layer_position))
                 else:
-                    handle_dict[(layer_position + 1, slat)] = handle_array[slat_array[..., layer_position] == slat, layer_position]
+                    if custom_index_map and slat_key in custom_index_map:
+                        handle_dict[slat_key] = handle_array[custom_index_map[slat_key]]
+                    else:
+                        handle_dict[slat_key] = handle_array[slat_array[..., layer_position] == slat, layer_position]
+
             if antihandles_available:
                 if list_indices_only:
                     antihandle_index_list.append((layer_position, slat, layer_position - 1))
                 else:
-                    antihandle_dict[(layer_position + 1, slat)] = handle_array[slat_array[..., layer_position] == slat, layer_position - 1]
+                    if custom_index_map and slat_key in custom_index_map:
+                        indices = custom_index_map[slat_key]
+                        antihandle_dict[slat_key] = handle_array[indices]
+                    else:
+                        antihandle_dict[slat_key] = handle_array[slat_array[..., layer_position] == slat, layer_position - 1]
 
     if list_indices_only:
         return handle_index_list, antihandle_index_list

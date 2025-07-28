@@ -23,7 +23,7 @@ if __name__ == '__main__':
                                     evolution_generations=100,
                                     split_sequence_handles=False,
                                     progress_bar_update_iterations=2,
-                                    log_tracking_directory='/Users/matt/Desktop')
+                                    log_tracking_directory='/Users/matt/Desktop/delete_me')
 
     evolve_manager.run_full_experiment(logging_interval=1)
     ergebnüsse = evolve_manager.handle_array # this is the best array result
