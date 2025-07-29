@@ -166,6 +166,11 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                       mainAxisSize: MainAxisSize.max,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        // Add your image here
+                        Image.asset(
+                          'assets/main_icon.png',
+                          height: 80, // Adjust the height as needed
+                        ),
                         Text(
                           VersionInfo.version,
                           style: TextStyle(

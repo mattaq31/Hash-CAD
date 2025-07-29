@@ -1,9 +1,8 @@
 # #-CAD and Crisscross Library Packages
 
 <p align="center">
-  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/version_0_2_1.png" alt="Hash-CAD in action" style="width: 99%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/media_kit/basic_logo.png" alt="Hash-CAD in action" style="width: 50%; margin: 0%;">
 </p>
-
 <p align="center">
   <em>Unified CAD and scripting packages for megastructure design, handle library generation and visualization.</em>
 </p>
@@ -27,6 +26,10 @@
 <a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/python-server-and-desktop-app-deploy.yml">
   <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/python-server-and-desktop-app-deploy.yml?branch=main&label=Desktop&style=flat&logo=flutter&logoColor=white&cacheSeconds=30" alt="Desktop CI Status">
 </a>
+</p>
+
+<p align="center">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/version_0_2_1.png" alt="Hash-CAD in action" style="width: 80%; margin: 0.5%;">
 </p>
 
 ## Main CAD Interface
