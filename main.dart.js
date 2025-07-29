@@ -109996,7 +109996,7 @@ r=m.ax
 q=m.at?A.cx(B.OM,o,o,o):A.cx(B.ev,o,o,o)
 q=A.jT(o,o,o,q,o,o,new A.aOE(m),o,o,o,o)
 p=t.p
-r=A.b([s,new A.Jh(o),A.ne(0,A.cz(A.b([new A.Ho(B.j,q,A.qE(A.db(A.b([new A.zf(A.bhz(o,o,new A.DS("assets/main_icon.png",o,o)),80,o),A.aH("v0.2.3",o,o,o,o,A.aJ(o,o,B.ar,o,o,o,o,o,o,o,o,10,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),A.aH("5226105",o,o,o,o,A.aJ(o,o,B.cs,o,o,o,o,o,o,o,o,8,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),B.mO],p),B.r,B.ey,B.z)),B.Sw,r,new A.aOF(m),B.Vp,o),B.a6m],p),B.r,o,B.H,B.z),o,o,0,o,0,o)],p)
+r=A.b([s,new A.Jh(o),A.ne(0,A.cz(A.b([new A.Ho(B.j,q,A.qE(A.db(A.b([new A.zf(A.bhz(o,o,new A.DS("assets/main_icon.png",o,o)),80,o),A.aH("v0.2.3",o,o,o,o,A.aJ(o,o,B.ar,o,o,o,o,o,o,o,o,10,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),A.aH("b71a54f",o,o,o,o,A.aJ(o,o,B.cs,o,o,o,o,o,o,o,o,8,o,o,o,o,o,!0,o,o,o,o,o,o,o,o),o,o),B.mO],p),B.r,B.ey,B.z)),B.Sw,r,new A.aOF(m),B.Vp,o),B.a6m],p),B.r,o,B.H,B.z),o,o,0,o,0,o)],p)
 if(A.bh()!==B.bx)B.b.L(r,A.b([A.ne(o,A.cz(A.b([A.aH("Activate 3D Display",o,o,o,o,o,o,o),new A.a_9(this.e,new A.aOG(this),B.a6r,o)],p),B.r,o,B.H,B.z),o,o,o,16,16,o)],p))
 r.push(A.ne(o,A.hR(new A.FR(o),o,o),o,o,0,0,20,o))
 r.push(new A.G5(o))
