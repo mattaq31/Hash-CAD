@@ -1,10 +1,18 @@
 import 'dart:io';
 
 void main() async {
-  // Get version from Git
-  String gitTag = await _runCommand(
-    'git tag --sort=-creatordate | grep "^v" | head -n 1',
-  );
+
+  String allTags = await _runCommand('git tag --sort=-creatordate');
+  List<String> tagList = allTags
+      .split('\n')
+      .where((tag) => tag.startsWith('v'))
+      .toList();
+
+  if (tagList.isEmpty) {
+    throw Exception('No tags starting with "v" found.');
+  }
+
+  String gitTag = tagList.first; // Most recent tag at the bottom
 
   String gitCommits = await _runCommand('git rev-list --count HEAD');
   String gitHash = await _runCommand('git rev-parse --short HEAD');
