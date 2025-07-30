@@ -132,8 +132,8 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                 h_end = h_start + handles_per_layer
                 next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h_start, h_end, size=np.sum( logicforpointmutations[:, :, layer]))
 
-        apply_handle_links(next_gen_member, repeating_unit_constraints['transplant_handles'])
-        apply_handle_links(next_gen_member, repeating_unit_constraints['link_handles'])
+        for handle_type, handles in repeating_unit_constraints.items():
+            apply_handle_links(next_gen_member, handles)
 
         mutated_handle_arrays.append(next_gen_member)
         mutation_maps.append(logicforpointmutations)
