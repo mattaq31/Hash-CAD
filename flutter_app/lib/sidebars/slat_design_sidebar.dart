@@ -381,7 +381,16 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
             ),
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
-          Text('(Only slat actions can be be reversed)', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+          SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: "'CMD-Shift-Z/Ctrl-Y'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Redo last action"),
+              ],
+            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
         ],
       ),
       Divider(thickness: 2, color: Colors.grey.shade300),

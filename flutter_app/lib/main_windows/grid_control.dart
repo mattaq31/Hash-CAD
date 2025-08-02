@@ -501,6 +501,28 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               ): () {
                   appState.undo2DAction();
               },
+
+              // Redo shortcuts
+              SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                control: true,
+                shift: true,
+              ): () {
+                appState.undo2DAction(redo: true);
+              },
+              SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                meta: true,
+                shift: true,
+              ): () {
+                appState.undo2DAction(redo: true);
+              },
+              SingleActivator(
+                LogicalKeyboardKey.keyY,
+                control: true,
+              ): () {
+                appState.undo2DAction(redo: true);
+              },
             },
             child: Focus(
               autofocus: true,

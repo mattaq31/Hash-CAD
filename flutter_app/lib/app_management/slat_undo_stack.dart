@@ -62,19 +62,33 @@ class SlatUndoStack {
     // Add a deep copy of the new state
     _history.add(state.copy());
 
-    // Trim history
+    // Trim history and adjust index accordingly
     if (_history.length > _maxHistory) {
       _history.removeAt(0);
+      if (_currentIndex > 0) {
+        _currentIndex--;
+      }
     } else {
       _currentIndex++;
     }
   }
 
   DesignSaveState? undo() {
-    if (_currentIndex > -1) {
+    if (_currentIndex > 0) {
       _currentIndex--;
-      return _history[_currentIndex + 1].copy();
+      return _history[_currentIndex].copy();
     }
     return null;
   }
+
+  DesignSaveState? redo() {
+    if (_currentIndex < _history.length - 1) {
+      _currentIndex++;
+      return _history[_currentIndex].copy();
+    }
+    return null;
+  }
+
+  bool get canUndo => _currentIndex > 0;
+  bool get canRedo => _currentIndex < _history.length - 1;
 }
