@@ -24,7 +24,7 @@ class SplitScreen extends StatefulWidget {
 class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
   // Initial divider position as a fraction of screen width
   double _dividerPosition = 0.5;
-  bool threeViewerActive = defaultTargetPlatform != TargetPlatform.linux;
+  bool threeViewerActive = true; // defaultTargetPlatform != TargetPlatform.linux;
 
   static const WidgetStateProperty<Icon> displayThumbIcon = WidgetStateProperty<Icon>.fromMap(
       <WidgetStatesConstraint, Icon>{
@@ -194,7 +194,8 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
               ],
             ),
           ),
-          if(defaultTargetPlatform != TargetPlatform.linux) ... [
+          // use this if linux does not work with 3D system: defaultTargetPlatform != TargetPlatform.linux
+          if(true) ... [
           Positioned(
             top: 16.0,
             right: 16.0,

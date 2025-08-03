@@ -35,8 +35,8 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
-  three_js: ^0.1.7
-  three_js_helpers: ^0.1.0
+  three_js: ^0.2.0
+  three_js_helpers: ^0.2.0
   grpc: ^4.0.1
   protobuf: ^3.1.0
   path_provider: ^2.1.5
