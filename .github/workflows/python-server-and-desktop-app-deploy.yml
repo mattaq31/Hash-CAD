@@ -202,6 +202,11 @@ jobs:
           flutter build macos --release
         working-directory: flutter_app
 
+      - name: Install GLEW for Linux build
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libglew-dev
+
       - name: Build Flutter Desktop App (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
