@@ -2,8 +2,10 @@ import '../crisscross_core/slats.dart';
 import 'dart:convert';
 import '../crisscross_core/handle_plates.dart';
 import 'dart:io';
+import 'dart:js_interop';
 
-import 'package:universal_html/html.dart' as html; // For web download
+import 'package:web/web.dart' as web;
+
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
@@ -110,12 +112,15 @@ Future<void> convertSlatsToEchoCsv({
   if (kIsWeb) {
     // Web download logic
     final bytes = utf8.encode(csvString);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute("download", outputFilename)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    final blob = web.Blob([bytes.toJS].toJS);
+    final url = web.URL.createObjectURL(blob);
+
+    final anchor = web.HTMLAnchorElement()
+      ..href = url
+      ..download = outputFilename;
+    anchor.click();
+
+    web.URL.revokeObjectURL(url);
   } else {
     // Desktop app
 

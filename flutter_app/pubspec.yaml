@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.3
+version: 0.2.5
 
 environment:
   sdk: ^3.6.1
@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
-  three_js: ^0.2.0
+  three_js: ^0.2.1
   three_js_helpers: ^0.2.0
   grpc: ^4.0.1
   protobuf: ^3.1.0
@@ -57,6 +57,7 @@ dependencies:
   csv: ^6.0.0
   universal_html: ^2.2.4
   xml: ^6.5.0
+  web: ^1.1.1
 
 dependency_overrides:
   three_js_core_loaders:
@@ -64,11 +65,6 @@ dependency_overrides:
       url: https://github.com/Knightro63/three_js.git
       ref: downgraded-image
       path: packages/three_js_core_loaders
-  three_js_advanced_loaders:
-    git:
-      url: https://github.com/Knightro63/three_js.git
-      ref: downgraded-image
-      path: packages/three_js_advanced_loaders
 
 dev_dependencies:
   flutter_test:
@@ -120,7 +116,7 @@ flutter:
 
 msix_config:
   display_name: Hash-CAD
-  msix_version: 0.2.3
+  msix_version: 0.2.5
   architecture: x64
   identity_name: dfci.harvard.edu.hashcad
   sign_msix: false

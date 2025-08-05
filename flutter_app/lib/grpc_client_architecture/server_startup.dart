@@ -87,6 +87,10 @@ Future<int> launchServer() async {
 
 /// Searches for any processes that match the python server and kills them
 Future<void> shutdownServerIfAny() async {
+  if (kIsWeb) {
+    return;
+  }
+
   var name = _getAssetName();
 
   switch (defaultTargetPlatform) {

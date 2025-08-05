@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'dart:ui';
 import 'dart:convert';
+import 'dart:js_interop';
 import 'package:xml/xml.dart';
 import 'package:flutter/foundation.dart';
-import 'package:universal_html/html.dart' as html; // For web download
+import 'package:web/web.dart' as web;
 import 'package:file_picker/file_picker.dart';
-
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
 import 'helper_functions.dart';
@@ -96,12 +96,15 @@ Future<void> exportSlatsToSvg({
   // file export logic
   if (kIsWeb){
     final bytes = utf8.encode(svgString);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute("download", '${appState.designName}_2d_layer_graphics.svg')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    final blob = web.Blob([bytes.toJS].toJS);
+    final url = web.URL.createObjectURL(blob);
+
+    final anchor = web.HTMLAnchorElement()
+      ..href = url
+      ..download = '${appState.designName}_2d_layer_graphics.svg';
+    anchor.click();
+
+    web.URL.revokeObjectURL(url);
   }  else {
     String? filePath = await FilePicker.platform.saveFile(
       dialogTitle: 'Save As',
