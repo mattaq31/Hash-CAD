@@ -1,14 +1,9 @@
 import '../crisscross_core/slats.dart';
-import 'dart:convert';
 import '../crisscross_core/handle_plates.dart';
-import 'dart:io';
-import 'dart:js_interop';
-
-import 'package:web/web.dart' as web;
-
 import 'package:csv/csv.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:file_picker/file_picker.dart';
+
+// Conditional import
+import 'save_csv_web.dart' if (dart.library.io) 'save_csv_desktop.dart';
 
 
 List<String> _generatePlateLayout96() {
@@ -109,35 +104,5 @@ Future<void> convertSlatsToEchoCsv({
     ...outputCommandList
   ]);
 
-  if (kIsWeb) {
-    // Web download logic
-    final bytes = utf8.encode(csvString);
-    final blob = web.Blob([bytes.toJS].toJS);
-    final url = web.URL.createObjectURL(blob);
-
-    final anchor = web.HTMLAnchorElement()
-      ..href = url
-      ..download = outputFilename;
-    anchor.click();
-
-    web.URL.revokeObjectURL(url);
-  } else {
-    // Desktop app
-
-    // Get the directory to save the file
-    String? filePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save As',
-      fileName: outputFilename,
-      type: FileType.custom,
-      allowedExtensions: ['csv'],
-    );
-
-    // if filepath is null, return
-    if (filePath == null) {
-      return;
-    }
-
-    final file = File(filePath);
-    file.writeAsStringSync(csvString);
-  }
+  await saveCsv(csvString, outputFilename);
 }

@@ -1,14 +1,11 @@
-import 'dart:io';
 import 'dart:ui';
-import 'dart:convert';
-import 'dart:js_interop';
 import 'package:xml/xml.dart';
-import 'package:flutter/foundation.dart';
-import 'package:web/web.dart' as web;
-import 'package:file_picker/file_picker.dart';
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
 import 'helper_functions.dart';
+
+// Use conditional imports
+import 'export_svg_web.dart' if (dart.library.io) 'export_svg_desktop.dart';
 
 String _colorToHex(Color color) {
   return '#${color.value.toRadixString(16).padLeft(8, '0').substring(2)}';
@@ -93,34 +90,6 @@ Future<void> exportSlatsToSvg({
   final document = builder.buildDocument();
   final svgString = document.toXmlString(pretty: true);
 
-  // file export logic
-  if (kIsWeb){
-    final bytes = utf8.encode(svgString);
-    final blob = web.Blob([bytes.toJS].toJS);
-    final url = web.URL.createObjectURL(blob);
-
-    final anchor = web.HTMLAnchorElement()
-      ..href = url
-      ..download = '${appState.designName}_2d_layer_graphics.svg';
-    anchor.click();
-
-    web.URL.revokeObjectURL(url);
-  }  else {
-    String? filePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save As',
-      fileName: '${appState.designName}_2d_layer_graphics.svg',
-      type: FileType.custom,
-      allowedExtensions: ['svg'],
-    );
-
-    // if filepath is null, return
-    if (filePath == null) {
-      return;
-    }
-
-    final file = File(filePath);
-    await file.writeAsString(svgString);
-  }
-
+  await saveSvg(svgString, '${appState.designName}_2d_layer_graphics.svg');
 }
 
