@@ -132,7 +132,7 @@ class SlatPainter extends CustomPainter {
   }
 
   /// draws a dotted border around a slat when selected
-  void drawBorder(Canvas canvas, Slat slat, Color color, Offset slatExtend) {
+  void drawBorder(Canvas canvas, Slat slat, Color color, Offset slatExtend, bool slatTipExtended) {
     final paint = Paint()
       ..color = color
       ..strokeWidth = appState.gridSize / 6
@@ -140,15 +140,38 @@ class SlatPainter extends CustomPainter {
 
     final spacing = appState.gridSize / 4;
 
-    // since cos (90 - x) = sin(x) and vice versa
-    // the negative sign is included due to the directionality of the grid (up = -ve, left = -ve, down = +ve, right = +ve)
-    Offset flippedSlatExtend = Offset(-slatExtend.dy, slatExtend.dx);
+    Offset flippedSlatExtend;
+
+    if (appState.gridMode == '60'){
+      // for the 60 degree system, the slats are extended out by 90 degrees from their positions (since they are rectangular).
+      // Their angle doesn't exactly match the grid angle, and so the spacing between slats is not precisely gridSize/2.
+      // If you calculate the geometry (assuming parallel lines), the actual distance between slats is instead gridSize * sqrt(3)/2 i.e. sin 60deg.
+      Offset interSlatExtend = calculateSlatExtend(getRealCoord(slat.slatPositionToCoordinate[1]!), getRealCoord(slat.slatPositionToCoordinate[32]!), appState.gridSize * sqrt(3)/2);
+
+      // since cos (90 - x) = sin(x) and vice versa
+      // the negative sign is included due to the directionality of the grid (up = -ve, left = -ve, down = +ve, right = +ve)
+      flippedSlatExtend = Offset(-interSlatExtend.dy, interSlatExtend.dx);
+    }
+    else {
+      // since cos (90 - x) = sin(x) and vice versa
+      // the negative sign is included due to the directionality of the grid (up = -ve, left = -ve, down = +ve, right = +ve)
+      flippedSlatExtend = Offset(-slatExtend.dy, slatExtend.dx);
+    }
+
 
     // calculations for these are basically 1.5 extensions away from slat edge, and then 1 extension away in the 90 degree direction to create the border for a slat
-    Offset slatP1A = getRealCoord(slat.slatPositionToCoordinate[1]!) - slatExtend * 1.5 + flippedSlatExtend;
-    Offset slatP1B = getRealCoord(slat.slatPositionToCoordinate[1]!) - slatExtend * 1.5 - flippedSlatExtend;
-    Offset slatP2A = getRealCoord(slat.slatPositionToCoordinate[32]!) + slatExtend * 1.5 - flippedSlatExtend;
-    Offset slatP2B = getRealCoord(slat.slatPositionToCoordinate[32]!) + slatExtend * 1.5 + flippedSlatExtend;
+    // if tip extensions are off, then it's just 0.5 extensions away from the slat edge
+    double tipExtension;
+    if (slatTipExtended) {
+      tipExtension = 1.5;
+    } else {
+      tipExtension = 0.5;
+    }
+
+    Offset slatP1A = getRealCoord(slat.slatPositionToCoordinate[1]!) - slatExtend * tipExtension + flippedSlatExtend;
+    Offset slatP1B = getRealCoord(slat.slatPositionToCoordinate[1]!) - slatExtend * tipExtension - flippedSlatExtend;
+    Offset slatP2A = getRealCoord(slat.slatPositionToCoordinate[32]!) + slatExtend * tipExtension - flippedSlatExtend;
+    Offset slatP2B = getRealCoord(slat.slatPositionToCoordinate[32]!) + slatExtend * tipExtension + flippedSlatExtend;
 
     // Function to generate spaced points between two given points
     List<Offset> generateDots(Offset start, Offset end) {
@@ -209,17 +232,19 @@ class SlatPainter extends CustomPainter {
         continue;
       }
 
+      Color mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
+
       if (actionState.isolateSlatLayerView && slat.layer != selectedLayer) {
         continue;
       }
 
       Paint rodPaint = Paint()
-        ..color = layerMap[slat.layer]?['color']
+        ..color = mainColor
         ..strokeWidth = appState.gridSize / 2
         ..style = PaintingStyle.fill;
       if (slat.layer != selectedLayer) {
         rodPaint = Paint()
-          ..color = layerMap[slat.layer]?['color'].withValues(alpha: layerMap[slat.layer]?['color'].a * 0.2)
+          ..color = mainColor.withValues(alpha: mainColor.a * 0.2)
           ..strokeWidth = appState.gridSize / 2
           ..style = PaintingStyle.fill;
       }
@@ -248,12 +273,12 @@ class SlatPainter extends CustomPainter {
       }
 
       if (actionState.drawingAids){
-        drawSlatDrawingAids(canvas, p1, p2, slatExtend, appState.gridSize, rodPaint, layerMap[slat.layer]?['color'], slat.layer != selectedLayer ? 0.2 : 1.0);
+        drawSlatDrawingAids(canvas, p1, p2, slatExtend, appState.gridSize, rodPaint, mainColor, slat.layer != selectedLayer ? 0.2 : 1.0);
       }
 
       // Draw slat position numbers if activated
       if (slat.layer == selectedLayer && actionState.slatNumbering) {
-        bool isDark = isColorDark(layerMap[slat.layer]?['color']);
+        bool isDark = isColorDark(mainColor);
         for (int i = 1; i <= 32; i++) {
           final slatCoord = getRealCoord(slat.slatPositionToCoordinate[i]!);
           final labelPainter = labelPainters[!isDark ? i : i + 32];
@@ -518,7 +543,7 @@ class SlatPainter extends CustomPainter {
       }
 
       if (selectedSlats.contains(slat.id)) {
-        drawBorder(canvas, slat, layerMap[slat.layer]?['color'], slatExtend);
+        drawBorder(canvas, slat, mainColor, slatExtend, (actionState.drawingAids || actionState.extendSlatTips));
       }
     }
 

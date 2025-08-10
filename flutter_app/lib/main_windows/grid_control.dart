@@ -27,7 +27,7 @@ class GridAndCanvas extends StatefulWidget {
 class _GridAndCanvasState extends State<GridAndCanvas> {
 
   double initialScale = 1.0; // scale parameters
-  double minScale = 0.5;
+  double minScale = 0.1;
   double maxScale = 6.0;
 
   int moveRotationStepsRequested = 0;
@@ -168,16 +168,15 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   }
 
   /// logic for changing the slat cursor type based on the current action mode
-  SystemMouseCursor getCursorForSlatMode(String slatMode) {
-    switch (slatMode) {
-      case "Add":
-        return SystemMouseCursors.precise; // Example: crosshair for adding
-      case "Delete":
-        return SystemMouseCursors.precise; // Example: blocked cursor for removal
-      case "Move":
-        return SystemMouseCursors.grab; // Example: pointer for selecting
-      default:
-        return SystemMouseCursors.basic; // Default cursor
+  SystemMouseCursor getCursorForSlatMode(String actionMode) {
+    if (actionMode.contains("Add")) {
+      return SystemMouseCursors.precise;
+    } else if (actionMode.contains("Delete")) {
+      return SystemMouseCursors.none;
+    } else if (actionMode.contains("Move")) {
+      return SystemMouseCursors.grab;
+    } else {
+      return SystemMouseCursors.basic;
     }
   }
 
@@ -543,7 +542,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               },
               // this handles the hovering function in add or delete mode i.e. having a single slat or 'X' follow the mouse to indicate where its position will be if clicked
               child: MouseRegion(
-              cursor: getCursorForSlatMode(actionState.slatMode),  // TODO: it looks better if the cursor changes when hovering over a slat, rather than always being the same in move mode
+              cursor: getCursorForSlatMode(getActionMode(actionState)),  // TODO: it looks better if the cursor changes when hovering over a slat, rather than always being the same in move mode
                 onHover: (event) {
                   keyFocusNode.requestFocus();  // returns focus back to keyboard shortcuts
 
@@ -644,8 +643,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                     final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
 
                     if (getActionMode(actionState) == 'Slat-Move') {
-                      // TODO: on touchpad, the shift click seems to clear the selection instead of add on (probably due to multiple clicks?)
-
                       if (checkCoordinateOccupancy(appState, actionState, [snappedPosition])){
                         if (appState.selectedSlats.isNotEmpty && !isShiftPressed) {
                           appState.clearSelection();
@@ -665,7 +662,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                     children: [
                       CustomPaint(
                         size: Size.infinite,
-                        painter: GridPainter(scale, offset, appState.gridSize, appState.gridMode, actionState.displayGrid, actionState.displayBorder),
+                        painter: GridPainter(scale, offset, appState.gridSize, appState.gridMode, scale < 0.5 ? false : actionState.displayGrid, actionState.displayBorder),
                         child: Container(),
                       ),
                       RepaintBoundary(

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.5
+version: 0.2.5+515
 
 environment:
   sdk: ^3.6.1
@@ -31,11 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
-  three_js: ^0.2.1
+  three_js: ^0.2.2
   three_js_helpers: ^0.2.0
   grpc: ^4.0.1
   protobuf: ^3.1.0
@@ -116,7 +114,7 @@ flutter:
 
 msix_config:
   display_name: Hash-CAD
-  msix_version: 0.2.5
+  msix_version: 0.2.5+515
   architecture: x64
   identity_name: dfci.harvard.edu.hashcad
   sign_msix: false

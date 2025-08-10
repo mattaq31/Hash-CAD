@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
 import 'package:grpc/grpc.dart';
 import 'package:flutter/foundation.dart';
@@ -129,6 +131,7 @@ class DesignState extends ChangeNotifier {
   int nextColorIndex = 2;
   int slatAddCount = 1;
   String slatAddDirection = 'down';
+  Color uniqueSlatColor = Colors.blue;
   int currentHamming = 0;
   bool hammingValueValid = true;
   int cargoAddCount = 1;
@@ -138,6 +141,7 @@ class DesignState extends ChangeNotifier {
 
   Map<String, Map<Offset, String>> occupiedCargoPoints = {};
   Map<(String, String, Offset), Seed> seedRoster = {};
+  Map<String, List<Color>> uniqueSlatColorsByLayer = {};
 
   bool currentlyLoadingDesign = false;
   bool currentlyComputingHamming = false;
@@ -194,6 +198,8 @@ class DesignState extends ChangeNotifier {
     occupiedGridPoints = {};
     seedRoster = {};
     slatAddDirection = 'down';
+    uniqueSlatColor = Colors.blue;
+    uniqueSlatColorsByLayer = {};
     cargoPalette = {
       'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0)),
     };
@@ -221,6 +227,11 @@ class DesignState extends ChangeNotifier {
       designName = designName.replaceAll(',', '_');
     }
 
+    notifyListeners();
+  }
+
+  void setUniqueSlatColor(Color color) {
+    uniqueSlatColor = color;
     notifyListeners();
   }
 
@@ -312,6 +323,16 @@ class DesignState extends ChangeNotifier {
     if (seedKeys.isNotEmpty) {
       String maxSeedKey = seedKeys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
       nextSeedID = nextCapitalLetter(maxSeedKey);
+    }
+
+    // update slat Color UI
+    for (var layer in layerMap.keys) {
+      uniqueSlatColorsByLayer[layer] = [];
+      for (var slat in slats.values) {
+        if (slat.layer == layer && slat.uniqueColor != null && !uniqueSlatColorsByLayer[layer]!.contains(slat.uniqueColor!)) {
+          uniqueSlatColorsByLayer[layer]!.add(slat.uniqueColor!);
+        }
+      }
     }
 
     updateDesignHammingValue();
@@ -900,6 +921,74 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void assignColorToSelectedSlats(Color color) {
+    /// Assigns a color to all selected slats
+    for (var slatID in selectedSlats) {
+      if (slats.containsKey(slatID)) {
+        slats[slatID]!.uniqueColor = color;
+      }
+    }
+
+    // add to sidebar viewer system
+    uniqueSlatColorsByLayer.putIfAbsent(selectedLayerKey, () => []);
+    // check if the color already exists in the list
+    if (!uniqueSlatColorsByLayer[selectedLayerKey]!.contains(color)) {
+      uniqueSlatColorsByLayer[selectedLayerKey]?.add(color);
+    }
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void editSlatColorSearch(String layerKey, int oldColorIndex, Color newColor) {
+    /// Edits the color of all slats of a specific color
+    Color oldColor = uniqueSlatColorsByLayer[layerKey]![oldColorIndex];
+    for (var slat in slats.values) {
+      if (slat.layer == layerKey && slat.uniqueColor == oldColor) {
+        slat.uniqueColor = newColor;
+      }
+    }
+    // update the uniqueSlatColorsByLayer map
+    uniqueSlatColorsByLayer[layerKey]![oldColorIndex] = newColor;
+
+    notifyListeners();
+  }
+
+  void removeSlatColorFromLayer(String layerKey, int colorIndex) {
+    /// Removes a specific color from the list of unique slat colors in a layer
+    Color colorToRemove = uniqueSlatColorsByLayer[layerKey]![colorIndex];
+    for (var slat in slats.values) {
+      if (slat.layer == layerKey && slat.uniqueColor == colorToRemove) {
+        slat.clearColor();
+      }
+    }
+    uniqueSlatColorsByLayer[layerKey]?.removeAt(colorIndex);
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void clearAllSlatColors(){
+    /// Clears the color of all slats
+    for (var slat in slats.values) {
+      slat.clearColor();
+    }
+    uniqueSlatColorsByLayer.clear();
+
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void clearSlatColorsFromLayer(String layer) {
+    /// Clears the color of all slats in a specific layer
+    for (var slat in slats.values) {
+      if (slat.layer == layer) {
+        slat.clearColor();
+      }
+    }
+    uniqueSlatColorsByLayer.remove(layer);
+    saveUndoState();
+    notifyListeners();
+  }
+
   // CARGO OPERATIONS //
 
   // this is just adding another available cargo type to the list (and not attaching it to any slats)
@@ -950,9 +1039,6 @@ class DesignState extends ChangeNotifier {
     saveUndoState();
     notifyListeners();
   }
-
-
-
 
   /// Updates the number of cargo to be added with the next 'add' click
   void updateCargoAddCount(int value) {

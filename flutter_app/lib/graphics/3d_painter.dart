@@ -658,6 +658,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
 
     for (var slat in slats) {
+
+      Color mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
+
       var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
       var p2 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[32]!, gridMode, gridSize, x60Jump, y60Jump);
       // same angle/extension system used here as in 2D system
@@ -672,7 +675,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
       if (instanceManager[slatType]?.getIndex(slat.id) == null) {
         slatIDs.add(slat.id);
-        positionSlatInstance(slat.id, layerMap[slat.layer]?['color'], slatAngle,
+        positionSlatInstance(slat.id, mainColor, slatAngle,
             layerMap[slat.layer]?['order'].toDouble() * 6.5,
             finalX, finalY);
       }
@@ -691,9 +694,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
             !approxEqual(currentPosition.y, incomingLayer) ||
             !approxEqual(currentPosition.z, incomingPositionZ) ||
             !approxEqual(currentRotation.y, incomingSlatAngle) ||
-            currentColor != layerMap[slat.layer]?['color']) {
+            currentColor != mainColor) {
           positionSlatInstance(
-              slat.id, layerMap[slat.layer]?['color'], slatAngle, incomingLayer,
+              slat.id, mainColor, slatAngle, incomingLayer,
               incomingPositionX, incomingPositionZ);
         }
       }

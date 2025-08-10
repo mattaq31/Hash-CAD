@@ -236,6 +236,21 @@ void exportDesign(Map<String, Slat> slats,
     cIndex += 1;
   }
 
+  // COLOUR METADATA
+  int colorStartPoint = cargoStartPoint + cIndex;
+  metadataSheet.merge(CellIndex.indexByString('A$colorStartPoint'), CellIndex.indexByString('G$colorStartPoint'), customValue: TextCellValue('UNIQUE SLAT COLOUR INFO'));
+  metadataSheet.cell(CellIndex.indexByString('A$colorStartPoint')).cellStyle = CellStyle(
+    horizontalAlign: HorizontalAlign.Center,
+  );
+  // export all cargo info from the palette (need a loop)
+  metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint+1}')).value = TextCellValue('ID');
+  metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint+1}')).value = TextCellValue('Colour');
+  int colorIndex = 2;
+  for (var s in slats.values.where((slat) => slat.uniqueColor != null)) {
+    metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint + colorIndex}')).value = TextCellValue(s.id);
+    metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + colorIndex}')).value = TextCellValue('#${s.uniqueColor!.value.toRadixString(16).substring(2).toUpperCase()}');
+    colorIndex += 1;
+  }
   excel.delete('Sheet1'); // removes useless first sheet
 
   if (kIsWeb){
@@ -420,20 +435,26 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   }
   int cargoReadStart = layerReadStart + numLayers + 2;
   int cargoCount = 0;
+
   // read in cargo data, if available (older design files didn't have this metadata)
-  while (readExcelString(metadataSheet, 'A${cargoReadStart + cargoCount}')
-      .trim()
-      .isNotEmpty) {
-    String cargoName = readExcelString(
-        metadataSheet, 'A${cargoReadStart + cargoCount}');
-    String cargoShortName = readExcelString(
-        metadataSheet, 'B${cargoReadStart + cargoCount}');
-    Color cargoColor = Color(int.parse(
-        '0xFF${readExcelString(metadataSheet, 'C${cargoReadStart + cargoCount}')
-            .substring(1)}'));
+  while (readExcelString(metadataSheet, 'A${cargoReadStart + cargoCount}').trim().isNotEmpty  && readExcelString(metadataSheet, 'A${cargoReadStart + cargoCount}').trim() != 'UNIQUE SLAT COLOUR INFO') {
+    String cargoName = readExcelString(metadataSheet, 'A${cargoReadStart + cargoCount}');
+    String cargoShortName = readExcelString(metadataSheet, 'B${cargoReadStart + cargoCount}');
+    Color cargoColor = Color(int.parse('0xFF${readExcelString(metadataSheet, 'C${cargoReadStart + cargoCount}').substring(1)}'));
     cargoPalette[cargoName] =
         Cargo(name: cargoName, shortName: cargoShortName, color: cargoColor);
     cargoCount += 1;
+  }
+  // read in slat colour data, if available (older design files didn't have this metadata)
+  int colorReadStart = cargoReadStart + cargoCount + 2;
+  int colorCount = 0;
+  Map<String, Color> slatColors = {};
+
+  while (readExcelString(metadataSheet, 'A${colorReadStart + colorCount}').trim().isNotEmpty) {
+    String slatID = readExcelString(metadataSheet, 'A${colorReadStart + colorCount}');
+    Color slatColor = Color(int.parse('0xFF${readExcelString(metadataSheet, 'B${colorReadStart + colorCount}').substring(1)}'));
+    slatColors[slatID] = slatColor;
+    colorCount += 1;
   }
 
   // prepares slat array from metadata information
@@ -476,6 +497,13 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       slats["$layer-I${slatBundle.key}"] = Slat(slatBundle.key, "$layer-I${slatBundle.key}", layer, slatBundle.value);
     }
     layerMap[layer]!['slat_count'] = slatCoordinates.length;
+  }
+
+  // applies unique colors to slats, if available
+  for (var slat in slats.values){
+    if (slatColors.containsKey(slat.id)){
+      slat.setColor(slatColors[slat.id]!);
+    }
   }
 
   // assembly handle extraction

@@ -1,8 +1,11 @@
+import 'dart:collection';
+
 import 'package:flutter/services.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import '../app_management/shared_app_state.dart';
 import 'package:flutter/material.dart';
-import  'layer_manager.dart';
+import 'layer_manager.dart';
 
 List<String> getOrderedKeys(Map<String, Map<String, dynamic>> layerMap) {
   return layerMap.keys.toList()
@@ -16,8 +19,8 @@ class SlatDesignTools extends StatefulWidget {
   State<SlatDesignTools> createState() => _SlatDesignTools();
 }
 
-class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserver {
-
+class _SlatDesignTools extends State<SlatDesignTools>
+    with WidgetsBindingObserver {
   FocusNode slatAddFocusNode = FocusNode();
   TextEditingController slatAddTextController = TextEditingController();
 
@@ -43,7 +46,6 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       appState.updateSlatAddCount(1);
     } else {
       appState.updateSlatAddCount(32);
-
     }
     slatAddTextController.text = appState.slatAddCount.toString();
   }
@@ -52,6 +54,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
   Widget build(BuildContext context) {
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
+    final colorScheme = Theme.of(context).colorScheme;
+    final ScrollController _scrollController = ScrollController();
 
     return Column(children: [
       Text("Slat Design",
@@ -59,8 +63,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       SizedBox(height: 5),
       Text(
         "Slat Edit Mode", // Title above the segmented button
-        style:
-        TextStyle(fontSize: 16, color: Colors.grey.shade600),
+        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
       ),
       SizedBox(height: 5),
       SegmentedButton<String>(
@@ -68,15 +71,18 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           ButtonSegment<String>(
               value: "Add",
               label: Text('Add'),
-              icon: Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.primary)),
+              icon: Icon(Icons.add_circle_outline,
+                  color: Theme.of(context).colorScheme.primary)),
           ButtonSegment<String>(
               value: "Delete",
               label: Text('Delete'),
-              icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.primary)),
+              icon: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.primary)),
           ButtonSegment<String>(
               value: 'Move',
-              label: Text('Move'),
-              icon: Icon(Icons.pan_tool, color: Theme.of(context).colorScheme.primary)),
+              label: Text('Edit'),
+              icon: Icon(Icons.pan_tool,
+                  color: Theme.of(context).colorScheme.primary)),
         ],
         selected: <String>{actionState.slatMode},
         onSelectionChanged: (Set<String> newSelection) {
@@ -89,8 +95,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(
         "Setup", // Title above the segmented button
-        style:
-        TextStyle(fontSize: 16, color: Colors.grey.shade600),
+        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
       ),
       SizedBox(height: 10),
       Row(
@@ -101,19 +106,19 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
               if (appState.gridMode != '90') {
                 final result = await showDialog<bool>(
                     context: context,
-                    builder: (BuildContext context) =>
-                        AlertDialog(
-                          title:
-                          const Text('Switching Grid Type'),
+                    builder: (BuildContext context) => AlertDialog(
+                          title: const Text('Switching Grid Type'),
                           content: const Text(
                               'Warning: switching grid type will erase your current design!'),
                           actions: <Widget>[
                             TextButton(
-                              onPressed: () => Navigator.pop(context, false), // Cancel
+                              onPressed: () => Navigator.pop(context, false),
+                              // Cancel
                               child: const Text('Cancel'),
                             ),
                             TextButton(
-                              onPressed: () => Navigator.pop(context, true), // Confirm
+                              onPressed: () => Navigator.pop(context, true),
+                              // Confirm
                               child: const Text('Go ahead'),
                             ),
                           ],
@@ -140,19 +145,19 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
               if (appState.gridMode != '60') {
                 final result = await showDialog<bool>(
                     context: context,
-                    builder: (BuildContext context) =>
-                        AlertDialog(
-                          title:
-                          const Text('Switching Grid Type'),
+                    builder: (BuildContext context) => AlertDialog(
+                          title: const Text('Switching Grid Type'),
                           content: const Text(
                               'Warning: switching grid type will erase your current design!'),
                           actions: <Widget>[
                             TextButton(
-                              onPressed: () => Navigator.pop(context, false), // Cancel
+                              onPressed: () => Navigator.pop(context, false),
+                              // Cancel
                               child: const Text('Cancel'),
                             ),
                             TextButton(
-                              onPressed: () => Navigator.pop(context, true), // Confirm
+                              onPressed: () => Navigator.pop(context, true),
+                              // Confirm
                               child: const Text('Go ahead'),
                             ),
                           ],
@@ -175,7 +180,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           ),
         ],
       ),
-      SizedBox(height: 5),
+      SizedBox(height: 10),
       FilledButton.icon(
         onPressed: () {
           appState.clearAll();
@@ -183,8 +188,10 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
         icon: Icon(Icons.cleaning_services, size: 18),
         label: Text("Clear All"),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red, // Red background
-          foregroundColor: Colors.white, // White text
+          backgroundColor: Colors.red,
+          // Red background
+          foregroundColor: Colors.white,
+          // White text
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           textStyle: TextStyle(fontSize: 16),
           shape: RoundedRectangleBorder(
@@ -196,8 +203,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(
         "Number of Slats to Draw", // Title above the segmented button
-        style:
-        TextStyle(fontSize: 16, color: Colors.grey.shade600),
+        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
       ),
       SizedBox(height: 10),
       Row(
@@ -214,7 +220,9 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
                 labelText: 'Manual Input',
               ),
               textInputAction: TextInputAction.done,
-              inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly
+              ],
               onSubmitted: (value) {
                 _updateSlatAddCount(appState);
               },
@@ -224,9 +232,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
             icon: Icon(Icons.arrow_upward),
             onPressed: () {
               if (appState.slatAddCount < 32) {
-                appState.updateSlatAddCount(appState.slatAddCount+1);
+                appState.updateSlatAddCount(appState.slatAddCount + 1);
                 slatAddTextController.text = appState.slatAddCount.toString();
-
               }
             },
           ),
@@ -234,7 +241,7 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
             icon: Icon(Icons.arrow_downward),
             onPressed: () {
               if (appState.slatAddCount > 1) {
-                appState.updateSlatAddCount(appState.slatAddCount-1);
+                appState.updateSlatAddCount(appState.slatAddCount - 1);
                 slatAddTextController.text = appState.slatAddCount.toString();
               }
             },
@@ -278,6 +285,252 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           ),
         ],
       ),
+      Divider(thickness: 1, color: Colors.grey.shade200),
+      Text("Adjust Slat Colors",
+          style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+      SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 110, // Fixed width to align colons
+            child: Text("Set Colour:",
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 14, color: Colors.black87)),
+          ),
+          SizedBox(width: 5),
+          IconButton(
+            tooltip: 'Assign colour to selected slats',
+            onPressed: () {
+              appState.assignColorToSelectedSlats(appState.uniqueSlatColor);
+            },
+            icon: const Icon(Icons.format_paint, size: 20, color: Colors.white),
+            style: IconButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(8), // Adjust radius as needed
+              ),
+              padding: const EdgeInsets.all(8),
+              minimumSize: const Size(36, 36),
+              // Ensures square shape
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          SizedBox(width: 5),
+          PopupMenuButton(
+            constraints: BoxConstraints(
+              minWidth: 200,
+              // Set min width to prevent overflow
+              maxWidth: 780, // Adjust as needed
+            ),
+            offset: Offset(0, 40),
+            // Position below the button
+            itemBuilder: (context) {
+              return [
+                PopupMenuItem(
+                  child: ColorPicker(
+                    hexInputBar: true,
+                    pickerColor: appState.uniqueSlatColor,
+                    onColorChanged: (color) {
+                      appState.setUniqueSlatColor(color);
+                    },
+                    pickerAreaHeightPercent: 0.5,
+                  ),
+                ),
+              ];
+            },
+            child: Container(
+              width: 35, // Width of the rectangle
+              height: 20, // Height of the rectangle
+              decoration: BoxDecoration(
+                color: appState.uniqueSlatColor,
+                // Use the color from the list
+                border: Border.all(color: Colors.black, width: 1),
+                borderRadius:
+                    BorderRadius.circular(4), // Optional rounded corners
+              ),
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 110, // Fixed width to align colons
+            child: Text("Reset Colours:",
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 14, color: Colors.black87)),
+          ),
+          SizedBox(width: 5),
+          IconButton(
+            tooltip: 'Reset current layer',
+            onPressed: () {
+              appState.clearSlatColorsFromLayer(appState.selectedLayerKey);
+            },
+            icon: const Icon(Icons.format_color_reset_outlined,
+                size: 20, color: Colors.black87),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.grey[300],
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(8), // Adjust radius as needed
+              ),
+              padding: const EdgeInsets.all(8),
+              minimumSize: const Size(36, 36),
+              // Ensures square shape
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          SizedBox(width: 5),
+          IconButton(
+            tooltip: 'Reset all layers',
+            onPressed: () {
+              appState.clearAllSlatColors();
+            },
+            icon: const Icon(Icons.format_color_reset,
+                size: 20, color: Colors.black87),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.grey[300],
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(8), // Adjust radius as needed
+              ),
+              padding: const EdgeInsets.all(8),
+              minimumSize: const Size(36, 36),
+              // Ensures square shape
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          )
+        ],
+      ),
+
+      SizedBox(height: 10),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Text(
+                "Layer Colours:",
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+            ),
+          ),
+          SizedBox(width: 5),
+          Expanded(
+            child: Builder(
+              builder: (context) {
+                final colorSet = appState.uniqueSlatColorsByLayer[appState.selectedLayerKey] ?? [];
+
+                if (colorSet.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 15),
+                      child: Text(
+                        'No colors assigned yet',
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
+                      ),
+                    ),
+                  );
+                }
+
+                return Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  thickness: 8,
+                  radius: Radius.circular(4),
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      children: colorSet.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        Color oldColor = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Tooltip(
+                            message: 'Click to edit slats in this layer with this color',
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                PopupMenuButton(
+                                  tooltip: '',
+                                  constraints: const BoxConstraints(minWidth: 300, maxWidth: 780),
+                                  offset: const Offset(0, 40),
+                                  itemBuilder: (_) => [
+                                    PopupMenuItem(
+                                      enabled: false,
+                                      padding: EdgeInsets.zero,
+                                      child: SingleChildScrollView(
+                                        child: ColorPicker(
+                                          hexInputBar: true,
+                                          pickerColor: oldColor,
+                                          onColorChanged: (newColor) {
+                                            appState.editSlatColorSearch(appState.selectedLayerKey, index, newColor);
+                                          },
+                                          pickerAreaHeightPercent: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  child: Container(
+                                    width: 35,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: oldColor,
+                                      border: Border.all(color: Colors.black, width: 1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: -4,
+                                  right: -6,
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: Material(
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: IconButton(
+                                        padding: EdgeInsets.zero,
+                                        iconSize: 14,
+                                        icon: Icon(Icons.close, color: Colors.black54),
+                                        onPressed: () {
+                                          appState.removeSlatColorFromLayer(appState.selectedLayerKey, index);
+                                        },
+                                        tooltip: 'Reset color to layer color',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+
+
+      SizedBox(height: 5),
       Divider(thickness: 2, color: Colors.grey.shade300),
       LayerManagerWidget(
         appState: appState,
@@ -295,7 +548,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'R'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'R'", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Rotate slat draw direction"),
               ],
             ),
@@ -305,7 +559,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'F'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'F'", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Flip multi-slat draw direction"),
               ],
             ),
@@ -315,7 +570,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'T'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'T'", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Transpose slat draw direction"),
               ],
             ),
@@ -325,7 +581,9 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'Up/Down arrow keys'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'Up/Down arrow keys'",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Change layer"),
               ],
             ),
@@ -335,7 +593,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'A'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'A'", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Add new layer"),
               ],
             ),
@@ -345,7 +604,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'1'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'1'", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Switch to 'Add' mode"),
               ],
             ),
@@ -355,7 +615,8 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'2'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'2'", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Switch to 'Delete' mode"),
               ],
             ),
@@ -365,8 +626,9 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'3'", style: TextStyle(fontWeight: FontWeight.bold)),
-                TextSpan(text: ": Switch to 'Move' mode"),
+                TextSpan(
+                    text: "'3'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: ": Switch to 'Edit' mode"),
               ],
             ),
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
@@ -375,7 +637,9 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'CMD/Ctrl-Z'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'CMD/Ctrl-Z'",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Undo last action"),
               ],
             ),
@@ -385,7 +649,9 @@ class _SlatDesignTools extends State<SlatDesignTools> with WidgetsBindingObserve
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: "'CMD-Shift-Z/Ctrl-Y'", style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(
+                    text: "'CMD-Shift-Z/Ctrl-Y'",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: ": Redo last action"),
               ],
             ),

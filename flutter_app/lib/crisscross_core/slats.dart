@@ -18,11 +18,23 @@ class Slat {
   Map<int, Map<String, dynamic>> h2Handles = {};
   Map<int, Map<String, dynamic>> h5Handles = {};
 
-  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32}) {
+  Color? uniqueColor;
+
+  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32, this.uniqueColor}) {
       slatCoordinates.forEach((key, coord) {
         slatPositionToCoordinate[key] = coord;
         slatCoordinateToPosition[coord] = key;
       });
+  }
+
+  void setColor(Color color) {
+    /// Sets a unique color for the slat, used for visualization.
+    uniqueColor = color;
+  }
+
+  void clearColor() {
+    /// Clears the unique color of the slat.
+    uniqueColor = null;
   }
 
   void updateCoordinates(Map<int, Offset> slatCoordinates){
@@ -184,7 +196,7 @@ class Slat {
   }
 
   Slat copy() {
-    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength);
+    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength, uniqueColor: uniqueColor);
 
     newSlat.h2Handles = {
       for (var entry in h2Handles.entries)
