@@ -5,10 +5,23 @@ from string import ascii_uppercase
 import numpy as np
 import pandas as pd
 import re
+from pathlib import Path
 
 dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
-base_directory = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir))
+
+# attempts to isolate code package base directory location
+_here = Path(__file__).resolve()
+
+# Try dev mode repo root
+dev_root = _here.parents[3]  # 3 pardirs from file
+developer_mode_package = False
+if (dev_root / "pyproject.toml").exists() or (dev_root / ".git").exists():
+    base_directory = str(dev_root)
+    developer_mode_package = True
+else:
+    # Installed mode: crisscross_kit is the package root
+    base_directory = str(_here.parents[2])  # only 2 pardirs from __file__
 
 plate96 = [x + str(y) for x, y in product(ascii_uppercase[:8], range(1, 12 + 1))]
 plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1))]

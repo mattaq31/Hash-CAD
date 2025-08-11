@@ -30,6 +30,7 @@ dependencies = [
     "xlsxwriter>=3.2",
     "tqdm>=4.67",
     "click>=8.2",
+    "colorama>=0.4.6",
     "rich-click>=1.8",
     "toml>=0.10"
 ]
@@ -54,3 +55,7 @@ root = "../"
 
 [tool.setuptools]
 packages = ["crisscross","orthoseq_generator"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"crisscross" = ["../dna_source_plates/**/*.xlsx"]

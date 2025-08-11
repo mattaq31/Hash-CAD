@@ -5,6 +5,7 @@ openpyxl
 xlsxwriter
 tqdm
 click
+colorama
 rich-click
 toml
 seaborn

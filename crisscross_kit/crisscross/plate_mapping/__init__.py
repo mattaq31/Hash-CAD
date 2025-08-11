@@ -9,6 +9,7 @@ from crisscross.plate_mapping.plate_constants import (sanitize_plate_map, base_d
                                                       cckz_h5_handle_plates, cckz_h2_antihandle_plates,
                                                       cckz_h5_sample_handle_plates, cckz_h2_sample_antihandle_plates,
                                                       cnt_patterning, paint_h5_handles, seed_plug_plate_all_8064)
+from crisscross.helper_functions import developer_mode_package
 import os
 import ast
 from pydoc import locate
@@ -16,7 +17,11 @@ from pydoc import locate
 # This piece of code allows for easy importing of new plates by just specifying the class name as a string rather
 # than a full explicit import.
 available_plate_loaders = {}
-functions_dir = os.path.join(base_directory, 'crisscross_kit', 'crisscross', 'plate_mapping')
+if developer_mode_package:
+    functions_dir = os.path.join(base_directory, 'crisscross_kit', 'crisscross', 'plate_mapping')
+else:
+    functions_dir = os.path.join(base_directory, 'crisscross', 'plate_mapping') # in packaged mode, the crisscross_kit folder is lost
+
 for dirpath, _, filenames in os.walk(functions_dir):
     for file in filenames:
         if file.endswith('.py') and file not in ('.DS_Store', '__init__.py'):
