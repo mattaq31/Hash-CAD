@@ -100,17 +100,17 @@ def create_graphical_slat_view(slat_array, layer_palette, cargo_palette=None, in
         start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        layer_color = layer_palette[slat.layer]['color']
+        main_color = slat.unique_color if slat.unique_color is not None else layer_palette[slat.layer]['color']
 
         layer_figures[slat.layer - 1][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                                                 color=layer_color, linewidth=slat_width, zorder=1)
+                                                 color=main_color, linewidth=slat_width, zorder=1)
         layer_figures[slat.layer - 1][1][1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                                                 color=layer_color, linewidth=slat_width, zorder=1)
+                                                 color=main_color, linewidth=slat_width, zorder=1)
 
         global_ax[0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                          color=layer_color, linewidth=slat_width, alpha=0.5, zorder=slat.layer)
+                          color=main_color, linewidth=slat_width, alpha=0.5, zorder=slat.layer)
         global_ax[1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                          color=layer_color, linewidth=slat_width, alpha=0.5, zorder=num_layers - slat.layer)
+                          color=main_color, linewidth=slat_width, alpha=0.5, zorder=num_layers - slat.layer)
 
         handles = [slat.H5_handles, slat.H2_handles]
         sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
@@ -219,7 +219,7 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_palet
         start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
         end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
 
-        layer_color = layer_palette[slat.layer]['color']
+        main_color = slat.unique_color if slat.unique_color is not None else layer_palette[slat.layer]['color']
 
         if slat.layer == 1:
             plot_positions = [0]
@@ -230,7 +230,7 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_palet
 
         for p in plot_positions:
             interface_figures[p][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                                            color=layer_color, linewidth=slat_width, zorder=1, alpha=0.3)
+                                            color=main_color, linewidth=slat_width, zorder=1, alpha=0.3)
 
     # Painting in handles
     for handle_layer_num in range(handle_arrays.shape[2]):

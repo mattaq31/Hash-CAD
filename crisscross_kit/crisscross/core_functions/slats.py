@@ -32,18 +32,20 @@ class Slat:
     """
     Wrapper class to hold all of a slat's handles and related details.
     """
-    def __init__(self, ID, layer, slat_coordinates, slat_length=32, non_assembly_slat=False):
+    def __init__(self, ID, layer, slat_coordinates, slat_length=32, non_assembly_slat=False, unique_color=None):
         """
         :param ID: Slat unique ID (string)
         :param layer: Layer position for slat (normally 1 and above, but can set to 0 for special slats such as crossbars)
         :param slat_coordinates: Exact positions slat occupies on a 2D grid - either a list of tuples or a dict of lists, where the key is the handle number on the slat
         :param slat_length: Number of handles on the slat
         :param non_assembly_slat: If True, this slat is not used for assembly (e.g., crossbar slats)
+        :param unique_color: Optional hexcode color to assign a unique color to the slat for graphics
         """
         self.ID = ID
         self.layer = layer
         self.max_length = slat_length
         self.non_assembly_slat = non_assembly_slat
+        self.unique_color = unique_color
 
         # converts coordinates on a 2d array to the handle number on the slat, and vice-versa
         self.slat_position_to_coordinate = {}

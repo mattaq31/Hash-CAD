@@ -354,6 +354,9 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
     :param filename_prepend: String to prepend to the filename of the video.
     :return: N/A
     """
+
+    # TODO: slat coloring system needs to be improved to allow the introduction of unique slat colors, but with and without animation...
+
     if not bpy_available:
         print(Fore.RED + 'The Blender Python API is not installed.  3D graphical views cannot be created using Blender.')
         return

@@ -774,6 +774,11 @@ class Megastructure:
         for c_key, c_val in self.cargo_palette.items():
             cargo_output_dict[c_key] = [c_val['short name'], c_val['color']]
 
+        color_output_dict = {}
+        for slat_id, slat in self.slats.items():
+            if slat.unique_color is not None:
+                color_output_dict[f'{self.layer_palette[slat.layer]["ID"].split(" ")[-1]}-I{slat.ID.split("slat")[-1]}'] = [slat.unique_color]
+
         metadata = pd.DataFrame.from_dict({'Layer Interface Orientations': [layer_interface_orientations],
                                            'Connection Angle': [self.connection_angle],
                                            'File Format': ['#-CAD'],
@@ -784,7 +789,10 @@ class Megastructure:
                                            **layer_output_dict,
                                            'CARGO INFO': [''],
                                            'ID ':['Short Name', 'Colour'],
-                                           **cargo_output_dict}, orient='index')
+                                           **cargo_output_dict,
+                                           'UNIQUE SLAT COLOUR INFO': [''],
+                                           'ID  ': ['Colour'],
+                                           **color_output_dict}, orient='index')
         metadata.reset_index(inplace=True)
 
         metadata.to_excel(writer, index=False, header=False, sheet_name="metadata")
@@ -799,6 +807,7 @@ class Megastructure:
 
         worksheet.merge_range('A6:G6', 'LAYER INFO', merge_format)
         worksheet.merge_range(f'A{8+len(layer_output_dict)}:G{8+len(layer_output_dict)}', 'CARGO INFO', merge_format)
+        worksheet.merge_range(f'A{10+len(layer_output_dict) + len(cargo_output_dict)}:G{10+len(layer_output_dict) + len(cargo_output_dict)}', 'UNIQUE SLAT COLOUR INFO', merge_format)
 
         # Adjust column widths
         for col_idx in range(metadata.shape[1]):
@@ -931,6 +940,29 @@ class Megastructure:
         if 'SEED' not in cargo_palette:
             cargo_palette['SEED'] = {'short name': 'S1', 'color': '#FF0000'}
 
+        color_info_start = metadata.index.get_loc('UNIQUE SLAT COLOUR INFO') + 2
+
+        # reads in and applies unique slat colors if present
+        unique_slat_color_palette = {}
+        # Read until the next empty row or section for COLOR INFO
+        for ind, i in enumerate(range(color_info_start, len(metadata))):
+            row = metadata.iloc[i]
+            if pd.isna(row[1]):
+                break
+            s_layer = 'Layer ' + row.name.split('-')[0]
+            s_num = row.name.split('-I')[1]
+            # get layer index from layer_palette by matching ID
+            s_layer_index = None
+            for l_index, l_info in layer_palette.items():
+                if l_info['ID'] == s_layer:
+                    s_layer_index = l_index
+                    break
+            unique_slat_color_palette[get_slat_key(s_layer_index, s_num)] = row[1]
+
+        for slat in slats.values():
+            if slat.ID in unique_slat_color_palette:
+                slat.unique_color = unique_slat_color_palette[slat.ID]
+
         try:
             canvas_min_pos = metadata.index.get_loc('Canvas Offset (Min)')
             canvas_max_pos = metadata.index.get_loc('Canvas Offset (Max)')
@@ -942,10 +974,12 @@ class Megastructure:
 
         return slats, handle_array, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords
 
+
 if __name__ == '__main__':
     # testing a typical megastructure import
     design_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/lily/lily_design_hashcad_seed.xlsx'
     design_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/bird/bird_design_hashcad_seed.xlsx'
+    design_file = '/Users/matt/Desktop/T2.xlsx'
 
     megastructure = Megastructure(import_design_file=design_file)
 
@@ -956,7 +990,17 @@ if __name__ == '__main__':
     all_plates = main_plates + cargo_plates
     megastructure.patch_placeholder_handles(all_plates)
     megastructure.patch_flat_staples(main_plates[0])
-    hamming_results = multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(), megastructure.generate_assembly_handle_grid(), request_substitute_risk_score=True)
-    print('Hamming distance from imported array: %s, Duplication Risk: %s' % (hamming_results['Universal'], hamming_results['Substitute Risk']))
+
+    echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
+                                                    destination_plate_name='TEST',
+                                                    reference_transfer_volume_nl=50,
+                                                    output_folder='/Users/matt/Desktop',
+                                                    center_only_well_pattern=False,
+                                                    plate_viz_type='barcode',
+                                                    output_filename=f'TST_echo_commands.csv')
+
+    # hamming_results = multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(), megastructure.generate_assembly_handle_grid(), request_substitute_risk_score=True)
+    # print('Hamming distance from imported array: %s, Duplication Risk: %s' % (hamming_results['Universal'], hamming_results['Substitute Risk']))
     # megastructure.create_standard_graphical_report('/Users/matt/Desktop/test_graphics')
-    megastructure.export_design('TEST.xlsx', '/Users/matt/Desktop')
+    # megastructure.create_blender_3D_view('/Users/matt/Desktop', camera_spin=False, correct_slat_entrance_direction=True, include_bottom_light=False)
+    # megastructure.export_design('TEST.xlsx', '/Users/matt/Desktop')

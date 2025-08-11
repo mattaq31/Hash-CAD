@@ -89,7 +89,7 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
                     # adds identifying slat name
                     ax.text(x, y - 0.39, pool_details[0], ha='center', va='center', fontsize=8)
                 elif slat_display_format == 'barcode':
-                    for pool_ind, pool in enumerate(pool_details[::-1][:2]):
+                    for pool_ind, pool in enumerate(pool_details[::-1][1:3]):
                         for handle_ind, handle in enumerate(pool):
                             # slat positions identified with barcode rectangles
                             # 0.3 = full width, 0.15 = half height, 0.01875 = 1/32 of width
@@ -108,7 +108,7 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
                     # adds identifying slat name
                     ax.text(x, y - 0.37, pool_details[0], ha='center', va='center', fontsize=8)
                 elif slat_display_format == 'stacked_barcode':
-                    for pool_ind, pool in enumerate(pool_details[::-1][:2]):
+                    for pool_ind, pool in enumerate(pool_details[::-1][1:3]):
                         for handle_ind, handle in enumerate(pool):
                             x_offset = handle_ind % 16
                             y_offset = (handle_ind // 16) + (2*pool_ind)
@@ -136,6 +136,15 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
                 # just a dividing line to make two side distinction more obvious
                 ax.plot([x - 0.3, x + 0.3], [y, y], linewidth=1.0, c='y')
 
+                # add a coloured boundary box around the well using the pool_details[3] (unique slat color)
+                if pool_details[3] is not None:
+                    square = Rectangle((x - 0.5, y - 0.5),
+                                       1.0,
+                                       0.9,
+                                       linewidth=2.0,
+                                       facecolor='none',
+                                       edgecolor=pool_details[3])
+                    ax.add_patch(square)
             else:
                 # empty wells
                 if slat_display_format == 'pie':
@@ -340,7 +349,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                     else:  # control handles
                         handle_types += [0]
             all_handle_types.append(handle_types)
-        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [slat_name] + all_handle_types
+        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [slat_name] + all_handle_types + [slat.unique_color]
 
     combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                              'Destination Well', 'Transfer Volume',

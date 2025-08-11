@@ -52,7 +52,7 @@ def create_graphical_3D_view(slat_array, slats, save_folder, layer_palette, carg
 
         layer = slat.layer
         length = slat.max_length
-        layer_color = layer_palette[layer]['color']
+        main_color = slat.unique_color if slat.unique_color is not None else layer_palette[layer]['color']
 
         # TODO: can we represent the cylinders with the precise dimensions of the real thing i.e. with the 12/6nm extension on either end?
         start_point = (pos1[0] * grid_xd, pos1[1] * grid_yd, layer - 1)
@@ -64,7 +64,7 @@ def create_graphical_3D_view(slat_array, slats, save_folder, layer_palette, carg
 
         # Create the cylinder
         cylinder = pv.Cylinder(center=center, direction=direction, radius=slat_width/2, height=length)
-        plotter.add_mesh(cylinder, color=layer_color)
+        plotter.add_mesh(cylinder, color=main_color)
 
         handles = [slat.H5_handles, slat.H2_handles]
         sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
