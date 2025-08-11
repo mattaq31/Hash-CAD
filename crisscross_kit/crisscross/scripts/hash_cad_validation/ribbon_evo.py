@@ -85,17 +85,17 @@ if __name__ == '__main__':
                                                                                         excel_conditional_formatting)
             writer.close()
             break
-    # evolve_manager =  EvolveManager(megastructure.generate_slat_occupancy_grid(),
-    #                                 unique_handle_sequences=64,
-    #                                 early_hamming_stop=31, evolution_population=50,
-    #                                 generational_survivors=3,
-    #                                 mutation_rate=2,
-    #                                 process_count=8,
-    #                                 random_seed=12,
-    #                                 evolution_generations=2000,
-    #                                 split_sequence_handles=False,
-    #                                 progress_bar_update_iterations=2,
-    #                                 repeating_unit_constraints={'transplant_handles': transplant_slats, 'link_handles': linked_handles},
-    #                                 log_tracking_directory='/Users/matt/Desktop/ribbon_evo_run')
-    #
-    # evolve_manager.run_full_experiment(logging_interval=1)
+    evolve_manager =  EvolveManager(megastructure.generate_slat_occupancy_grid(),
+                                    unique_handle_sequences=64,
+                                    early_hamming_stop=31, evolution_population=50,
+                                    generational_survivors=3,
+                                    mutation_rate=2,
+                                    process_count=8,
+                                    random_seed=12,
+                                    evolution_generations=2000,
+                                    split_sequence_handles=False,
+                                    progress_bar_update_iterations=2,
+                                    repeating_unit_constraints={'transplant_handles': transplant_slats, 'link_handles': linked_handles},
+                                    log_tracking_directory='/Users/matt/Desktop/ribbon_evo_run')
+
+    evolve_manager.run_full_experiment(logging_interval=1)
