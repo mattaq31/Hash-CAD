@@ -183,27 +183,43 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   Offset gridSnap(Offset inputPosition, DesignState designState){
     if (designState.gridMode == '90') {
       return Offset(
-        (((inputPosition.dx - offset.dx) / scale) / designState.gridSize).round() *
-            designState.gridSize,
-        (((inputPosition.dy - offset.dy) / scale) / designState.gridSize).round() *
-            designState.gridSize,
+        (((inputPosition.dx - offset.dx) / scale) / designState.gridSize).round() * designState.gridSize,
+        (((inputPosition.dy - offset.dy) / scale) / designState.gridSize).round() * designState.gridSize,
       );
     }
     else if (designState.gridMode == '60'){
-
+      // in the 60deg system, checking the closest y and closest x coordinate independently will not work.  Will need to check two coordinates closest to the input position in one dimension through a euclidean distance check.
       double inX = (inputPosition.dx - offset.dx) / scale;
       double inY = (inputPosition.dy - offset.dy) / scale;
 
-      int row = (inY / designState.y60Jump).round(); // Round to nearest row index
-      double snappedY = row * designState.y60Jump;
+      // Collect candidate rows
+      int baseRow = (inY / designState.y60Jump).floor();
+      List<Offset> candidates = [];
 
-      double xOffset = (row.isOdd ? designState.x60Jump : 0);  // accounts for adding an offset where the checkerboard effect is applied
+      // apply same offset snapping logic as in the normal grid
+      for (int row = baseRow; row <= baseRow + 1; row++) {
+        double snappedY = row * designState.y60Jump;
+        double xOffset = row.isOdd ? designState.x60Jump : 0;
 
-      int col = ((inX - xOffset) / (2 * designState.x60Jump)).round(); // Use rounding as usual
-      double snappedX = xOffset + col * 2 * designState.x60Jump;
+        int col = ((inX - xOffset) / (2 * designState.x60Jump)).round();
+        double snappedX = xOffset + col * 2 * designState.x60Jump;
 
-      return Offset(snappedX, snappedY);
+        candidates.add(Offset(snappedX, snappedY));
+      }
 
+      // Choose nearest candidate by computing Euclidean distance to the input coordinate
+      Offset best = candidates.first;
+      double bestDist = (inX - best.dx) * (inX - best.dx) + (inY - best.dy) * (inY - best.dy);
+
+      for (var cand in candidates.skip(1)) {
+        double dist = (inX - cand.dx) * (inX - cand.dx) + (inY - cand.dy) * (inY - cand.dy);
+        if (dist < bestDist) {
+          best = cand;
+          bestDist = dist;
+        }
+      }
+
+      return best;
     }
     else{
      throw Exception('Grid system not supported');
