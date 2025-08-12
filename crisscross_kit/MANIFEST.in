@@ -1,1 +1,1 @@
-recursive-include dna_source_plates *.xlsx
+recursive-include crisscross/dna_source_plates *.xlsx
