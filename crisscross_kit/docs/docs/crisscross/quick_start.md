@@ -104,7 +104,7 @@ megastructure.assign_seed_handles(seed_dict)
 
 ## Plates, Exporting to Echo Liquid Handler and Experiment Helpers
 
-Once a design is completed, a megastructure can be exported directly to an [Echo Liquid Handler](https://www.beckman.com/liquid-handlers/echo-acoustic-technology) command sheet.  You will first need to provide a set of DNA plates containing your source H2/H5 handles for each component in your design.  For the crisscross development team, our handle plates are stored [here](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/dna_source_plates).  You could use these same plates, or purchase your own sets.  If you do purchase your own set, you will need to prepare excel sheets that follow the same format as those in the `dna_source_plates` folder. The most important part of the formatting system is that each sequence is provided a name that is encoded as follows:
+Once a design is completed, a megastructure can be exported directly to an [Echo Liquid Handler](https://www.beckman.com/liquid-handlers/echo-acoustic-technology) command sheet.  You will first need to provide a set of DNA plates containing your source H2/H5 handles for each component in your design.  For the crisscross development team, our handle plates are stored [here](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/crisscross/dna_source_plates).  You could use these same plates, or purchase your own sets.  If you do purchase your own set, you will need to prepare excel sheets that follow the same format as those in the `dna_source_plates` folder. The most important part of the formatting system is that each sequence is provided a name that is encoded as follows:
 
 `CATEGORY-VALUE-hSIDE-position_SLATPOS` e.g. `CARGO-antiBart-h5-position_5`
 
