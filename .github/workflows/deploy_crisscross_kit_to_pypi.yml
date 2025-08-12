@@ -13,7 +13,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0  # Fetch full history including tags
+          lfs: true
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
