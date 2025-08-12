@@ -940,28 +940,32 @@ class Megastructure:
         if 'SEED' not in cargo_palette:
             cargo_palette['SEED'] = {'short name': 'S1', 'color': '#FF0000'}
 
-        color_info_start = metadata.index.get_loc('UNIQUE SLAT COLOUR INFO') + 2
 
-        # reads in and applies unique slat colors if present
-        unique_slat_color_palette = {}
-        # Read until the next empty row or section for COLOR INFO
-        for ind, i in enumerate(range(color_info_start, len(metadata))):
-            row = metadata.iloc[i]
-            if pd.isna(row[1]):
-                break
-            s_layer = 'Layer ' + row.name.split('-')[0]
-            s_num = row.name.split('-I')[1]
-            # get layer index from layer_palette by matching ID
-            s_layer_index = None
-            for l_index, l_info in layer_palette.items():
-                if l_info['ID'] == s_layer:
-                    s_layer_index = l_index
+        try:
+            color_info_start = metadata.index.get_loc('UNIQUE SLAT COLOUR INFO') + 2
+
+            # reads in and applies unique slat colors if present
+            unique_slat_color_palette = {}
+            # Read until the next empty row or section for COLOR INFO
+            for ind, i in enumerate(range(color_info_start, len(metadata))):
+                row = metadata.iloc[i]
+                if pd.isna(row[1]):
                     break
-            unique_slat_color_palette[get_slat_key(s_layer_index, s_num)] = row[1]
+                s_layer = 'Layer ' + row.name.split('-')[0]
+                s_num = row.name.split('-I')[1]
+                # get layer index from layer_palette by matching ID
+                s_layer_index = None
+                for l_index, l_info in layer_palette.items():
+                    if l_info['ID'] == s_layer:
+                        s_layer_index = l_index
+                        break
+                unique_slat_color_palette[get_slat_key(s_layer_index, s_num)] = row[1]
 
-        for slat in slats.values():
-            if slat.ID in unique_slat_color_palette:
-                slat.unique_color = unique_slat_color_palette[slat.ID]
+            for slat in slats.values():
+                if slat.ID in unique_slat_color_palette:
+                    slat.unique_color = unique_slat_color_palette[slat.ID]
+        except:
+            print(Fore.RED + 'No unique slat color palette found in metadata, using default colors.' + Fore.RESET)
 
         try:
             canvas_min_pos = metadata.index.get_loc('Canvas Offset (Min)')

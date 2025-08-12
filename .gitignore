@@ -135,6 +135,3 @@ scratch/*
 # GUI node modules
 /prototype_gui/node_modules
 /prototype_gui/temp_files
-
-# DNA source plate package data moved by pip install -e . mode.
-/crisscross_kit/dna_source_plates/*

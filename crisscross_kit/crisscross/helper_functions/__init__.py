@@ -9,19 +9,14 @@ from pathlib import Path
 
 dna_complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
-
 # attempts to isolate code package base directory location
 _here = Path(__file__).resolve()
 
-# Try dev mode repo root
-dev_root = _here.parents[3]  # 3 pardirs from file
+base_directory = _here.parents[2]  # 2 pardirs from file - root is where crisscross_kit is located
 developer_mode_package = False
-if (dev_root / "pyproject.toml").exists() or (dev_root / ".git").exists():
-    base_directory = str(dev_root)
+if (base_directory / "pyproject.toml").exists() or (base_directory / ".git").exists():
     developer_mode_package = True
-else:
-    # Installed mode: crisscross_kit is the package root
-    base_directory = str(_here.parents[2])  # only 2 pardirs from __file__
+base_directory = str(base_directory)
 
 plate96 = [x + str(y) for x, y in product(ascii_uppercase[:8], range(1, 12 + 1))]
 plate384 = [x + str(y) for x, y in product(ascii_uppercase[:16], range(1, 24 + 1))]
