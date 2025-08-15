@@ -64,6 +64,7 @@ class InstanceMetrics {
     mesh = three.InstancedMesh(geometry, material, maxIndex);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
     final colors = tmath.Float32Array(maxIndex * 3);
     final colorAttr = tmath.InstancedBufferAttribute(colors, 3);
     mesh.instanceColor = colorAttr;

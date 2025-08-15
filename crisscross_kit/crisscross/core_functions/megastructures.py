@@ -940,7 +940,6 @@ class Megastructure:
         if 'SEED' not in cargo_palette:
             cargo_palette['SEED'] = {'short name': 'S1', 'color': '#FF0000'}
 
-
         try:
             color_info_start = metadata.index.get_loc('UNIQUE SLAT COLOUR INFO') + 2
 
@@ -964,6 +963,7 @@ class Megastructure:
             for slat in slats.values():
                 if slat.ID in unique_slat_color_palette:
                     slat.unique_color = unique_slat_color_palette[slat.ID]
+                slat.layer_color = layer_palette[slat.layer]['color']
         except:
             print(Fore.RED + 'No unique slat color palette found in metadata, using default colors.' + Fore.RESET)
 
@@ -975,6 +975,10 @@ class Megastructure:
             hashcad_canvas_metadata = {'canvas_offset_min': canvas_min, 'canvas_offset_max':canvas_max}
         except:
             hashcad_canvas_metadata = {'canvas_offset_min': (0.0, 0.0), 'canvas_offset_max':(0.0, 0.0)}
+
+        # sets default colors from layer map
+        for slat in slats.values():
+            slat.layer_color = layer_palette[slat.layer]['color']
 
         return slats, handle_array, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords
 

@@ -210,7 +210,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                      manual_plate_well_assignments=None, unique_transfer_volume_for_plates=None,
                                      output_plate_size='96', center_only_well_pattern=False,
                                      generate_plate_visualization=True, plate_viz_type='stacked_barcode',
-                                     destination_well_max_volume=25, normalize_volumes=False):
+                                     destination_well_max_volume=25, normalize_volumes=False, color_output_wells=True):
     """
     Converts a dictionary of slats into an echo liquid handler command list for all handles provided.
     :param slat_dict: Dictionary of slat objects
@@ -232,6 +232,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     'pie' to show a pie chart of the handle types or 'stacked_barcode' to show a more in-detail view
     :param destination_well_max_volume: The maximum total volume that can be transferred to a well in the output plate (in uL)
     :param normalize_volumes: Set to True to normalize the volumes in each slat mixture (by adding water to the maximum volume)
+    :param color_output_wells: Set to True to add a color border to each well according to the slat's layer color or unique color (if available)
     :return: Pandas dataframe corresponding to output ech handler command list
     """
 
@@ -349,7 +350,18 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                     else:  # control handles
                         handle_types += [0]
             all_handle_types.append(handle_types)
-        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [slat_name] + all_handle_types + [slat.unique_color]
+
+        if color_output_wells:
+            if slat.unique_color is not None:
+                group_color = slat.unique_color
+            elif slat.layer_color is not None:
+                group_color = slat.layer_color
+            else:
+                group_color = None
+        else:
+            group_color = None
+
+        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [slat_name] + all_handle_types + [group_color]
 
     combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                              'Destination Well', 'Transfer Volume',
