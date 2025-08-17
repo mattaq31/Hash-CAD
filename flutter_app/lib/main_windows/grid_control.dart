@@ -368,12 +368,43 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     return incomingHandles;
   }
 
-
-  /// Centers the 2D view on all slats in the design
+  /// Centers the 2D view on all slats, accounting for all UI elements
   void centerOnSlats() {
     var appState = context.read<DesignState>();
-    Size canvasSize = MediaQuery.of(context).size;
-    // Collect all slat coordinates from all layers
+    var actionState = context.read<ActionState>();
+
+    // Get screen size
+    Size screenSize = MediaQuery.of(context).size;
+
+    // Calculate actual canvas dimensions
+    double canvasWidth = screenSize.width;
+    double canvasHeight = screenSize.height;
+
+    // Account for 3D viewer split
+    if (actionState.threeJSViewerActive) {
+      canvasWidth *= actionState.splitScreenDividerWidth; // 2D view gets this fraction
+      canvasWidth -= 10.0; // Subtract divider width
+    }
+
+    // Subtract navigation rail width (always present)
+    canvasWidth -= 72.0;
+
+    // Subtract sidebar width when expanded
+    if (!actionState.isSideBarCollapsed) {
+      canvasWidth -= 330.0;
+    }
+
+    // Account for top and bottom UI elements
+    canvasHeight -= 80.0;  // Top padding (floating title)
+    canvasHeight -= 100.0; // Bottom padding (toggle panel)
+
+    // Ensure minimum canvas size
+    Size canvasSize = Size(
+        canvasWidth.clamp(100, double.infinity),
+        canvasHeight.clamp(100, double.infinity)
+    );
+
+    // Collect all slat coordinates
     List<Offset> allSlatCoordinates = [];
     for (String layerKey in appState.occupiedGridPoints.keys) {
       allSlatCoordinates.addAll(appState.occupiedGridPoints[layerKey]!.keys);
@@ -381,12 +412,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
 
     if (allSlatCoordinates.isEmpty) return;
 
-    // Convert coordinates to real space for bounding box calculation
+    // Convert to real space and calculate bounding box
     List<Offset> realSpaceCoordinates = allSlatCoordinates
         .map((coord) => appState.convertCoordinateSpacetoRealSpace(coord))
         .toList();
 
-    // Calculate bounding box
     double minX = realSpaceCoordinates.first.dx;
     double maxX = realSpaceCoordinates.first.dx;
     double minY = realSpaceCoordinates.first.dy;
@@ -399,31 +429,33 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       maxY = math.max(maxY, coord.dy);
     }
 
-    // Calculate center point of all slats
-    Offset center = Offset((minX + maxX) / 2, (minY + maxY) / 2);
+    // Calculate center and dimensions with padding
+    Offset slatCenter = Offset((minX + maxX) / 2, (minY + maxY) / 2);
+    double boundingWidth = (maxX - minX) * 1.1;  // 10% padding
+    double boundingHeight = (maxY - minY) * 1.1;
 
-    // Calculate bounding box dimensions
-    double boundingWidth = maxX - minX;
-    double boundingHeight = maxY - minY;
-
-    // Add some padding around the slats (10% buffer)
-    double paddingFactor = 1.1;
-    boundingWidth *= paddingFactor;
-    boundingHeight *= paddingFactor;
-
-    // Calculate scale to fit all slats in view
-    // We need to fit the bounding box within the canvas
+    // Calculate scale to fit
     double scaleX = canvasSize.width / boundingWidth;
     double scaleY = canvasSize.height / boundingHeight;
-    double newScale = math.min(scaleX, scaleY);
+    double newScale = math.min(scaleX, scaleY).clamp(minScale, maxScale);
 
-    // Clamp scale to your defined limits
-    newScale = newScale.clamp(minScale, maxScale);
+    // Calculate canvas center accounting for UI offsets
+    double canvasCenterX = canvasSize.width / 2;
+    double canvasCenterY = canvasSize.height / 2;
 
-    // Calculate new offset to center the slats
-    // The offset represents the top-left corner of the view in real space
-    Offset canvasCenter = Offset(canvasSize.width / 2, canvasSize.height / 2);
-    Offset newOffset = canvasCenter - (center * newScale);
+    // Add navigation rail offset
+    canvasCenterX += 72.0;
+
+    // Add sidebar offset when expanded
+    if (!actionState.isSideBarCollapsed) {
+      canvasCenterX += 330.0;
+    }
+
+    // Add top padding offset
+    canvasCenterY += 80.0;
+
+    Offset canvasCenter = Offset(canvasCenterX, canvasCenterY);
+    Offset newOffset = canvasCenter - (slatCenter * newScale);
 
     // Apply the new scale and offset
     setState(() {

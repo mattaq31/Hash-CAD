@@ -1306,6 +1306,8 @@ class ActionState extends ChangeNotifier {
   int panelMode;
   String cargoAttachMode;
   bool plateValidation;
+  double splitScreenDividerWidth = 0.5; // 50% split by default
+  bool threeJSViewerActive =  true; // default to true, can be toggled by the user
 
   Map<int, String> panelMap = {
     0: 'slats',
@@ -1364,6 +1366,11 @@ class ActionState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSplitScreenDividerWidth(double value){
+    splitScreenDividerWidth = value;
+    notifyListeners();
+  }
+
   void setAssemblyHandleDisplay(bool value){
     displayAssemblyHandles = value;
     notifyListeners();
@@ -1384,6 +1391,11 @@ class ActionState extends ChangeNotifier {
   }
   void setBorderDisplay(bool value){
     displayBorder = value;
+    notifyListeners();
+  }
+
+  void setThreeJSViewerActive(bool value){
+    threeJSViewerActive = value;
     notifyListeners();
   }
 

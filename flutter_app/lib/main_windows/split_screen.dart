@@ -23,8 +23,6 @@ class SplitScreen extends StatefulWidget {
 
 class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
   // Initial divider position as a fraction of screen width
-  double _dividerPosition = 0.5;
-  bool threeViewerActive = true; // defaultTargetPlatform != TargetPlatform.linux;
 
   static const WidgetStateProperty<Icon> displayThumbIcon = WidgetStateProperty<Icon>.fromMap(
       <WidgetStatesConstraint, Icon>{
@@ -84,28 +82,27 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
               final width = constraints.maxWidth;
 
               // Calculate the width of each half
-              final leftPaneWidth = _dividerPosition * width;
-              final rightPaneWidth = (1 - _dividerPosition) * width - 10;
+              final leftPaneWidth = actionState.splitScreenDividerWidth * width;
+              final rightPaneWidth = (1 - actionState.splitScreenDividerWidth) * width - 10;
 
               return Row(
                 children: [
                   // Left half: the grid
                   SizedBox(
-                    width: threeViewerActive ? leftPaneWidth: width,
+                    width: actionState.threeJSViewerActive ? leftPaneWidth: width,
                     child: GridAndCanvas(),
                   ),
-                  if (threeViewerActive) ... [
+                  if (actionState.threeJSViewerActive) ... [
                     // Divider: draggable center line
                     MouseRegion(
                       cursor: SystemMouseCursors.click, // Change cursor to hand
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
                         onHorizontalDragUpdate: (details) {
-                          setState(() {
-                            _dividerPosition += details.delta.dx / width;
+                            double dividerPosition = actionState.splitScreenDividerWidth + details.delta.dx / width;
                             // Clamp the divider position to be between 0.2 and 0.8
-                            _dividerPosition = _dividerPosition.clamp(0.2, 0.8);
-                          });
+                            dividerPosition = dividerPosition.clamp(0.2, 0.8);
+                            actionState.setSplitScreenDividerWidth(dividerPosition);
                         },
                         child: Container(
                           width: 10.0,
@@ -204,14 +201,11 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                 Text("Activate 3D Display"),
                 Switch(
                   thumbIcon: displayThumbIcon,
-                  value: threeViewerActive,
+                  value: actionState.threeJSViewerActive,
                   onChanged: (bool value) {
-                    setState(() {
-                      threeViewerActive = value;
-                    });
+                    actionState.setThreeJSViewerActive(value);
                   },
                 ),
-
               ],
             ),
           )],
