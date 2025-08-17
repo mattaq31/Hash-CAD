@@ -790,10 +790,13 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Selects or deselects a slat
-  void selectSlat(String ID) {
-    if (selectedSlats.contains(ID)) {
+  void selectSlat(String ID, {bool addOnly = false}) {
+    if (selectedSlats.contains(ID) && !addOnly) {
       selectedSlats.remove(ID);
     } else {
+      if (selectedSlats.contains(ID)) {
+        return;
+      }
       selectedSlats.add(ID);
     }
     notifyListeners();

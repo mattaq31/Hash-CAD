@@ -11,6 +11,7 @@ import '../2d_painters/slat_painter.dart';
 import '../2d_painters/helper_functions.dart';
 import '../2d_painters/delete_painter.dart';
 import '../2d_painters/cargo_hover_painter.dart';
+import '../2d_painters/drag_box_painter.dart';
 import '../2d_painters/seed_painter.dart';
 import '../main_windows/floating_switches.dart';
 import '../2d_painters/2d_view_svg_exporter.dart';
@@ -50,7 +51,14 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   List<Offset> hiddenCargo = []; // cargo that is hidden from view while being moved
 
   bool isShiftPressed = false; // keyboard bool check
+  bool isCtrlPressed = false; // keyboard bool check
+  bool isMetaPressed = false; // keyboard bool check (macOS)
   final FocusNode keyFocusNode = FocusNode(); // Persistent focus node for keyboard
+
+  // controls for drag-select box
+  bool dragBoxActive = false;
+  Offset? dragBoxStart;
+  Offset? dragBoxEnd;
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
@@ -482,7 +490,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         body: Listener(
           // this handles mouse zoom events only
           onPointerSignal: (PointerSignalEvent event) {
-            if (event is PointerScrollEvent) {
+            if (event is PointerScrollEvent && !dragBoxActive) {
               setState(() {
                 var (calcScale, calcOffset) = scrollZoomCalculator(event);
                 scale = calcScale;
@@ -490,28 +498,42 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               });
             }
           },
+
           // the following three event handlers are specifically setup to handle the slat move mode
           onPointerDown: (event){
-            // in move mode, a slat can be moved directly with a click and drag - this detects if a slat is under the pointer when clicked
-            if(actionState.slatMode == "Move"){
-              final Offset snappedPosition = gridSnap(event.position, appState);
-              if (checkCoordinateOccupancy(appState, actionState, [appState.convertRealSpacetoCoordinateSpace(snappedPosition)])){
-                dragActive = true;  // drag mode is signalled here - panning is now disabled
-                slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
+            if (actionState.slatMode == "Move") {
+              // Start drag-box selection
+              if (isCtrlPressed || isMetaPressed) { // ctrl or meta key pressed
+                setState(() {
+                  dragBoxActive = true;
+                  dragBoxStart = event.position;
+                  dragBoxEnd = event.position;
+                });
+              } else { // starts slat drag mode (first need to detect if a slat is under the pointer first)
+                final Offset snappedPosition = gridSnap(event.position, appState);
+                if (checkCoordinateOccupancy(appState, actionState, [appState.convertRealSpacetoCoordinateSpace(snappedPosition)])) {
+                  dragActive = true; // drag mode is signalled here - panning is now disabled
+                  slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
+                }
               }
             }
           },
-
           onPointerMove: (PointerMoveEvent event){
-            // when drag mode is activated, the slat will again follow the cursor (similar to the mouse hover mode)
-            if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
+            if (dragBoxActive) {
+              // Update drag-box
               setState(() {
-                if(hiddenSlats.isEmpty) {
+                dragBoxEnd = event.position;
+              });
+            } else if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
+              // when drag mode is activated, the slat will again follow the cursor (similar to the mouse hover mode)
+              setState(() {
+                if (hiddenSlats.isEmpty) {
                   for (var slat in appState.selectedSlats) {
                     hiddenSlats.add(slat);
                   }
                 }
-                var (localHoverPosition, localHoverValid) = hoverCalculator(event.position, appState, actionState, true);
+                var (localHoverPosition, localHoverValid) =
+                hoverCalculator(event.position, appState, actionState, true);
                 hoverPosition = localHoverPosition;
                 hoverValid = localHoverValid;
               });
@@ -519,7 +541,32 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
           },
           onPointerUp: (event){
             // drag is always cancelled when the pointer is let go
-            if (getActionMode(actionState) == 'Slat-Move') {
+            if (dragBoxActive) {
+              // Finish drag-box selection
+              final rect = Rect.fromPoints((dragBoxStart! - offset) / scale, (dragBoxEnd! - offset) / scale);
+
+              final selected = <String>{};
+              for (var entry in appState.slats.entries) {
+                if (entry.value.layer != appState.selectedLayerKey) continue; // only select slats from the active layer
+                final slat = entry.value;
+                final coords = slat.slatPositionToCoordinate.values.map((coord) => appState.convertCoordinateSpacetoRealSpace(coord));
+                // If any part of slat falls inside the rect → select it
+                if (coords.any((pt) => rect.contains(pt))) {
+                  selected.add(entry.key);
+                }
+              }
+              // add all selected slats
+              for (var ID in selected) {
+                  appState.selectSlat(ID, addOnly: true);
+              }
+
+              setState(() {
+                dragBoxActive = false;
+                dragBoxStart = null;
+                dragBoxEnd = null;
+              });
+
+            } else if (getActionMode(actionState) == 'Slat-Move') {
               setState(() {
                 if (hoverValid && dragActive && hoverPosition != null) {
                   var convCoordHoverPosition = appState.convertRealSpacetoCoordinateSpace(hoverPosition!);
@@ -540,6 +587,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               });
             }
           },
+
           // this handles keyboard events (only)
           child: CallbackShortcuts(
             bindings: {
@@ -564,6 +612,17 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 }
                 else {
                   appState.flipSlatAddDirection();
+                }
+              },
+              // delete shortcut (when in move mode)
+              SingleActivator(LogicalKeyboardKey.delete): () {
+                for (var slat in appState.selectedSlats) {
+                  appState.removeSlat(slat);
+                }
+              },
+              SingleActivator(LogicalKeyboardKey.backspace): () {
+                for (var slat in appState.selectedSlats) {
+                  appState.removeSlat(slat);
                 }
               },
               // Navigation shortcuts
@@ -646,9 +705,17 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   // Handle the shift key state
                   if (event is KeyDownEvent) {
                     isShiftPressed = event.logicalKey.keyLabel.contains('Shift');
+                    isCtrlPressed = event.logicalKey.keyLabel.contains('Control');
+                    isMetaPressed = event.logicalKey.keyLabel.contains('Meta'); // macOS meta key
                   } else if (event is KeyUpEvent) {
                     if (event.logicalKey.keyLabel.contains('Shift')) {
-                      isShiftPressed = false;
+                      isShiftPressed  = false;
+                    }
+                    if (event.logicalKey.keyLabel.contains('Control')) {
+                      isCtrlPressed = false;
+                    }
+                    if (event.logicalKey.keyLabel.contains('Meta')) {
+                      isMetaPressed = false; // macOS meta key
                     }
                   }
                 });
@@ -683,7 +750,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   },
                   onScaleUpdate: (details) {
                     // turn off scaling completely while moving around with a slat in move mode
-                    if (dragActive) {
+                    if (dragActive || dragBoxActive) {
                       return;
                     }
                     setState(() {
@@ -848,6 +915,13 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                               printHandles: false,
                               color: appState.cargoPalette['SEED']!.color),
                           child: Container(),
+                        ),
+                      ),
+                      CustomPaint(
+                        painter: DragPainter(
+                          dragBoxStart,
+                          dragBoxEnd,
+                          dragBoxActive,
                         ),
                       ),
                     ],
