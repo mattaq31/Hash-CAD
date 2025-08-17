@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'dart:math' as math;
 import 'package:provider/provider.dart';
 
 import '../app_management/shared_app_state.dart';
@@ -367,8 +368,74 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     return incomingHandles;
   }
 
+
+  /// Centers the 2D view on all slats in the design
+  void centerOnSlats() {
+    var appState = context.read<DesignState>();
+    Size canvasSize = MediaQuery.of(context).size;
+    // Collect all slat coordinates from all layers
+    List<Offset> allSlatCoordinates = [];
+    for (String layerKey in appState.occupiedGridPoints.keys) {
+      allSlatCoordinates.addAll(appState.occupiedGridPoints[layerKey]!.keys);
+    }
+
+    if (allSlatCoordinates.isEmpty) return;
+
+    // Convert coordinates to real space for bounding box calculation
+    List<Offset> realSpaceCoordinates = allSlatCoordinates
+        .map((coord) => appState.convertCoordinateSpacetoRealSpace(coord))
+        .toList();
+
+    // Calculate bounding box
+    double minX = realSpaceCoordinates.first.dx;
+    double maxX = realSpaceCoordinates.first.dx;
+    double minY = realSpaceCoordinates.first.dy;
+    double maxY = realSpaceCoordinates.first.dy;
+
+    for (Offset coord in realSpaceCoordinates) {
+      minX = math.min(minX, coord.dx);
+      maxX = math.max(maxX, coord.dx);
+      minY = math.min(minY, coord.dy);
+      maxY = math.max(maxY, coord.dy);
+    }
+
+    // Calculate center point of all slats
+    Offset center = Offset((minX + maxX) / 2, (minY + maxY) / 2);
+
+    // Calculate bounding box dimensions
+    double boundingWidth = maxX - minX;
+    double boundingHeight = maxY - minY;
+
+    // Add some padding around the slats (10% buffer)
+    double paddingFactor = 1.1;
+    boundingWidth *= paddingFactor;
+    boundingHeight *= paddingFactor;
+
+    // Calculate scale to fit all slats in view
+    // We need to fit the bounding box within the canvas
+    double scaleX = canvasSize.width / boundingWidth;
+    double scaleY = canvasSize.height / boundingHeight;
+    double newScale = math.min(scaleX, scaleY);
+
+    // Clamp scale to your defined limits
+    newScale = newScale.clamp(minScale, maxScale);
+
+    // Calculate new offset to center the slats
+    // The offset represents the top-left corner of the view in real space
+    Offset canvasCenter = Offset(canvasSize.width / 2, canvasSize.height / 2);
+    Offset newOffset = canvasCenter - (center * newScale);
+
+    // Apply the new scale and offset
+    setState(() {
+      scale = newScale;
+      offset = newOffset;
+    });
+  }
+
+
   @override
   Widget build(BuildContext context) {
+
 
     // watches the current slat and layer statuses
     var appState = context.watch<DesignState>();
@@ -783,7 +850,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
             ),
           ),
         ),
-        TogglePanel(actionState: actionState)
+        TogglePanel(actionState: actionState, onCenterPressed: centerOnSlats)
     ]);
   }
 }

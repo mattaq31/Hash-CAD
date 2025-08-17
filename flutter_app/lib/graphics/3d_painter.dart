@@ -303,6 +303,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     [0, -helixBundleSize],
   ];
 
+  bool showToolBar = false;
+
   @override
   void initState() {
     threeJs = three.ThreeJS(
@@ -903,69 +905,106 @@ class _ThreeDisplay extends State<ThreeDisplay> {
             right: 15.0,
             child: Row(
               children: [
-                buildFabIcon(
-                  icon: Icons.hive,
-                  color: Theme.of(context).colorScheme.primary,
-                  tooltip: '6HB display',
-                  value: helixBundleView,
-                  onChanged: (val) => setState(() {
-                    helixBundleView = val;
-                    clearScene();
-                    manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
-                  }),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) {
+                    final offset = Tween<Offset>(
+                      begin: const Offset(0, 0),
+                      end: Offset.zero,
+                    ).animate(animation);
+
+                    return SlideTransition(
+                      position: offset,
+                      child: FadeTransition(opacity: animation, child: child),
+                    );
+                  },
+                  child: showToolBar ? Row(
+                    children: [
+                      buildFabIcon(
+                        icon: Icons.hive,
+                        color: Theme.of(context).colorScheme.primary,
+                        tooltip: '6HB display',
+                        value: helixBundleView,
+                        onChanged: (val) => setState(() {
+                          helixBundleView = val;
+                          clearScene();
+                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+                        }),
+                      ),
+                      buildFabIcon(
+                        icon: Icons.expand,
+                        color: Theme.of(context).colorScheme.primary,
+                        tooltip: 'Draw Slat Tip Extensions',
+                        value: slatTipExtendView,
+                        onChanged: (val) => setState(() {
+                          slatTipExtendView = val;
+                          clearScene();
+                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+                        }),
+                      ),
+                      buildFabIcon(
+                        icon: Icons.developer_board,
+                        color: Theme.of(context).colorScheme.primary,
+                        tooltip: 'Assembly Handles',
+                        value: assemblyHandleView,
+                        onChanged: (val) => setState(() {
+                          assemblyHandleView = val;
+                        }),
+                      ),
+                      buildFabIcon(
+                        color: Theme.of(context).colorScheme.primary,
+                        icon: Icons.warehouse,
+                        tooltip: 'Cargo Handles',
+                        value: cargoHandleView,
+                        onChanged: (val) => setState(() {
+                          cargoHandleView = val;
+                        }),
+                      ),
+                      buildFabIcon(
+                        color: Theme.of(context).colorScheme.primary,
+                        icon: Icons.spa,
+                        tooltip: 'Seed Handles',
+                        value: seedHandleView,
+                        onChanged: (val) => setState(() {
+                          seedHandleView = val;
+                        }),
+                      ),
+                      buildFabIcon(
+                        color: Theme.of(context).colorScheme.primary,
+                        icon: Icons.grid_on,
+                        tooltip: 'Grid',
+                        value: gridView,
+                        onChanged: (val) => setState(() {
+                          gridView = val;
+                        }),
+                      ),
+                    ],
+                  ) : const SizedBox.shrink(),
                 ),
-                buildFabIcon(
-                  icon: Icons.expand,
-                  color: Theme.of(context).colorScheme.primary,
-                  tooltip: 'Draw Slat Tip Extensions',
-                  value: slatTipExtendView,
-                  onChanged: (val) => setState(() {
-                    slatTipExtendView = val;
-                    clearScene();
-                    manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
-                  }),
-                ),
-                buildFabIcon(
-                  icon: Icons.developer_board,
-                  color: Theme.of(context).colorScheme.primary,
-                  tooltip: 'Assembly Handles',
-                  value: assemblyHandleView,
-                  onChanged: (val) => setState(() {
-                    assemblyHandleView = val;
-                  }),
-                ),
-                buildFabIcon(
-                  color: Theme.of(context).colorScheme.primary,
-                  icon: Icons.warehouse,
-                  tooltip: 'Cargo Handles',
-                  value: cargoHandleView,
-                  onChanged: (val) => setState(() {
-                    cargoHandleView = val;
-                  }),
-                ),
-                buildFabIcon(
-                  color: Theme.of(context).colorScheme.primary,
-                  icon: Icons.spa,
-                  tooltip: 'Seed Handles',
-                  value: seedHandleView,
-                  onChanged: (val) => setState(() {
-                    seedHandleView = val;
-                  }),
-                ),
-                buildFabIcon(
-                  color: Theme.of(context).colorScheme.primary,
-                  icon: Icons.grid_on,
-                  tooltip: 'Grid',
-                  value: gridView,
-                  onChanged: (val) => setState(() {
-                    gridView = val;
-                  }),
+                FloatingActionButton.small(
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  child: Icon(showToolBar ? Icons.close : Icons.tune),
+                  onPressed: () => setState(() => showToolBar = !showToolBar),
                 ),
                 Tooltip(
                   message: 'Center View',
                   child: ElevatedButton(
                     onPressed: () {
-                      centerOnSlats(instanceManager[helixBundleView ? 'honeyCombSlat' : 'slat']!);
+                      String targetInstances;
+                      if (helixBundleView){
+                        targetInstances = 'honeyCombSlat';
+                      }
+                      else{
+                        targetInstances = 'slat';
+                      }
+                      if (!slatTipExtendView){
+                        targetInstances += 'Short';
+                      }
+
+                      centerOnSlats(instanceManager[targetInstances]!);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
@@ -973,7 +1012,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                       shape: const CircleBorder(),
                       padding: const EdgeInsets.all(25),
                     ),
-                    child: const Icon(Icons.filter_center_focus),
+                    child: const Icon(Icons.filter_center_focus, size: 25,),
                   ),
                 ),
               ],

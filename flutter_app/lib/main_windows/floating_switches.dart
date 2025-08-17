@@ -4,7 +4,9 @@ import '../app_management/shared_app_state.dart';
 
 class TogglePanel extends StatefulWidget {
   final ActionState actionState;
-  const TogglePanel({super.key, required this.actionState});
+  final VoidCallback? onCenterPressed; // Add callback parameter
+
+  const TogglePanel({super.key, required this.actionState, this.onCenterPressed});
 
   @override
   State<TogglePanel> createState() => _TogglePanelState();
@@ -20,11 +22,26 @@ class _TogglePanelState extends State<TogglePanel> {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      bottom: 20,
+      bottom: 20.0,
       left: widget.actionState.isSideBarCollapsed ? 72 + 15 : 72 + 330 + 10,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+
+          Tooltip(
+            message: 'Center View',
+            child: ElevatedButton(
+              onPressed: widget.onCenterPressed, // Use the callback
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: const CircleBorder(),
+                padding: const EdgeInsets.all(25),
+              ),
+              child: const Icon(Icons.filter_center_focus, size: 25,),
+            ),
+          ),
+
           // Always-visible settings button
           FloatingActionButton.small(
             foregroundColor: colorScheme.onPrimary,
