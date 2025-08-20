@@ -293,6 +293,10 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             slat_multiplier = 1
 
         for (handle_num, handle_data), handle_side in zip(slat_h2_data + slat_h5_data, ['h2'] * len(slat_h2_data) + ['h5'] * len(slat_h2_data)):
+
+            if handle_data['category'] == 'SKIP': # specially marked handle that will be skipped entirely from the echo command list
+                continue
+
             try:
                 all_plates_needed.add(handle_data['plate'])
             except KeyError: #if 'plate' not in handle_data:
