@@ -108,7 +108,6 @@ def key_to_human(key) -> str:
 
     return f"Type: {cat}; Position: {pos}; Helix: {helix}; Sequence: {seqid}"
 
-
 def _plot_heatmap_with_dots(ax, mat, threshold_ul, plate):
     """
     Square-cell heatmap with full gray grid, bold 4x4 super-grid,
@@ -170,11 +169,6 @@ def _plot_heatmap_with_dots(ax, mat, threshold_ul, plate):
 
     return im
 
-def name_sequence_from_key(key):
-
-
-    return
-
 
 def _plot_hist(ax, vols, threshold_ul, plate, bins=20):
     vols = vols[~np.isnan(vols)]
@@ -222,7 +216,6 @@ def save_plate_report_pdf_from_df(df, outpath, threshold_ul=20.0, bins=20):
             plt.close(fig)
 
     print(f"Saved PDF to: {outpath}")
-
 
 def wells_below_threshold(df, threshold_ul=20.0):
     """

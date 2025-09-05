@@ -30,11 +30,11 @@ if __name__ == '__main__':
     #handle_array = generate_random_slat_handles(test_slat_array, 32)
 
     # use this to read a specific design from file
-    megastructure = Megastructure(import_design_file="D:\Wyss_experiments\Evolution_analysis\megastructures\Hexagon.xlsx")
+    megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports/full_designH30.xlsx")
     slat_array = megastructure.generate_slat_occupancy_grid()
     #handle_array = megastructure.generate_assembly_handle_grid()
     hotstart = None
-    hotstart = rhl("D:/Wyss_experiments/Evolution_analysis/evo_run_hexagon_2/best_handle_array_generation_16000.xlsx")
+    #hotstart = rhl("D:\Wyss_experiments\Evolution_analysis\evo_run_hexagon_2/best_handle_array_generation_24000.xlsx")
     #hotstart=perfect_fake_square()
     #print('Original metrics from file:')
     #print(
@@ -47,13 +47,14 @@ if __name__ == '__main__':
                                     seed_handle_array=hotstart,
                                     early_hamming_stop=32, evolution_population=50,
                                     mutation_type_probabilities=(0.425, 0.425, 0.15),
-                                    generational_survivors=3,
+                                    generational_survivors=5,
                                     mutation_rate=2,
                                     process_count=8,
-                                    evolution_generations=8000,
+                                    evolution_generations=1000,
                                     split_sequence_handles=False,
                                     progress_bar_update_iterations=1,
-                                    log_tracking_directory='D:\Wyss_experiments\Evolution_analysis\evo_run_hexagon_2_16000_onward')
+                                    random_seed=8,
+                                    log_tracking_directory='D:\Wyss_experiments\Evolution_analysis/redo_h30_yichen')
 
     evolve_manager.run_full_experiment(logging_interval=1)
     ergebnüsse = evolve_manager.handle_array # this is the best array result

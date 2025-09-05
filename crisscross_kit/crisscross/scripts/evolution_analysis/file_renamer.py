@@ -36,7 +36,7 @@ def rename_and_move_files(input_folder, output_folder, add_number=4000):
 if __name__ == '__main__':
 
     rename_and_move_files(
-        input_folder="D:\Wyss_experiments\Evolution_analysis\evo_run_hexagon_2_12000_onward",
-        output_folder="D:\Wyss_experiments\Evolution_analysis\evo_run_hexagon_2",
-        add_number=12000
+        input_folder="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\katzi_long_term_hexa_evo",
+        output_folder="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\katzi_long_term_hexa_evo_renamed2",
+        add_number=24000
     )

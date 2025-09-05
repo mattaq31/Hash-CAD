@@ -5,16 +5,16 @@ import matplotlib.colors as mcolors
 import pickle
 
 # --- Style Settings (from your standards) ---
-LINEWIDTH = 2.5
-LINEWIDTH_AXIS = LINEWIDTH
-LINEWIDTH_LINE = LINEWIDTH
-TICK_WIDTH = LINEWIDTH
+LINEWIDTH = 3.5
+LINEWIDTH_AXIS = LINEWIDTH*0.75
+LINEWIDTH_LINE = LINEWIDTH*0.75
+TICK_WIDTH = LINEWIDTH*0.75
 TICK_LENGTH = 6
 
 FONTSIZE_TICKS = 16
 FONTSIZE_LABELS = 19
 FONTSIZE_TITLE = 19
-FONTSIZE_LEGEND = 10
+FONTSIZE_LEGEND = 16
 
 FIGSIZE = (8, 5)
 
@@ -80,37 +80,32 @@ def _iter_records(results):
             yield gen, mt, cnt, sc
 
 
+def extract_match_type_at_elimination(m_type,results):
+    data = {}
+    for generation, match_types, counts, _score in _iter_records(results):
+        for m, c in zip(match_types, counts):
+            data.setdefault(int(m), {})[int(generation)] = int(c)
+
+
+    match_types_sorted = sorted(data.keys())
+    last_eliminated = m_type-1
+    mask = data
+
+    return mask
+
 def plot_match_counts(
     results,
     logscaley=True,
     logscalex=True,
     savepath=None,
     colors=None,
+    x_range=None
 ):
-    """
-    Plots counts vs generation for each match type.
-
-    Parameters
-    ----------
-    results : list
-        Results list (dict or tuple).
-    logscaley : bool
-        Log scale y-axis.
-    logscalex : bool
-        Log scale x-axis.
-    savepath : str or Path
-        Path to save figure.
-    colors : list of str, optional
-        Custom list of colors (hex or names). If None, a default
-        dark-red → red → gray → green → dark-green gradient is used.
-    """
     data = {}
     for generation, match_types, counts, _score in _iter_records(results):
         for m, c in zip(match_types, counts):
             data.setdefault(int(m), {})[int(generation)] = int(c)
 
-    if not data:
-        raise ValueError("No match/count data found in 'results'.")
 
     match_types_sorted = sorted(data.keys())
 
@@ -137,6 +132,8 @@ def plot_match_counts(
             color=color,
         )
 
+    if x_range is not None:
+        ax.set_xlim(x_range)
     ax.set_xlabel("Generation", fontsize=FONTSIZE_LABELS)
     ax.set_ylabel("Occurrences", fontsize=FONTSIZE_LABELS)
     ax.set_title("Elimination of Pairwise Interaction Modes",
@@ -206,8 +203,9 @@ def plot_alt_score(
     logscalex=False,
     logscaley=False,
     savepath=None,
-    color="blue",
+    color="#1a0261",
     yrange=None,
+    xrange=None
 ):
     """Plot the alternative score (recomputed from histogram, same scale)."""
     gens, scores = [], []
@@ -224,6 +222,12 @@ def plot_alt_score(
 
     fig, ax = plt.subplots(figsize=FIGSIZE)
     ax.plot(gens, scores, linewidth=LINEWIDTH_LINE, color=color, label="Evaluations")
+    ax.grid(axis='y')
+    ax.grid(axis='x')
+    # manually add gridlines where you want them
+    #for y in range(0, int(ax.get_ylim()[1]) + 1, 1):  # every 2 units, for example
+    #    ax.axhline(y=y, color="gray", linewidth=1.2, linestyle="-", zorder=0)
+
 
     ax.set_xlabel("Generation", fontsize=FONTSIZE_LABELS)
     ax.set_ylabel("Number of Binding Sites", fontsize=FONTSIZE_LABELS)
@@ -232,11 +236,14 @@ def plot_alt_score(
     if logscaley: ax.set_yscale("log")
     if logscalex: ax.set_xscale("log")
     if yrange is not None: ax.set_ylim(*yrange)
+    if xrange is not None: ax.set_xlim(*xrange)
 
     ax.tick_params(axis="both", which="major",
                    labelsize=FONTSIZE_TICKS, width=TICK_WIDTH, length=TICK_LENGTH)
     for s in ax.spines.values(): s.set_linewidth(LINEWIDTH_AXIS)
-    ax.legend(fontsize=FONTSIZE_LEGEND)
+    ax.legend(fontsize=FONTSIZE_LEGEND, loc="best", frameon=False)
+    plt.tight_layout()
+    plt.tight_layout()
     plt.tight_layout()
     plt.savefig(savepath, bbox_inches="tight") if savepath else plt.show()
 
@@ -301,8 +308,12 @@ def plot_tm_vs_generation(
 
 
 if __name__ == "__main__":
-    pkl_path = Path(r"D:\Wyss_experiments\Evolution_analysis\Mathew_runs\hexagon_64_seq_library_mut_5/evolution_results.pkl")
-    results = load_results_pkl(pkl_path)
+    pkl_path1 = Path(r"D:\Wyss_experiments\Evolution_analysis/evo_run_hexagon_2/evolution_results2.pkl")
+    results1 = load_results_pkl(pkl_path1)
+
+    pkl_path2 = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\katzi_long_term_hexa_evo_renamed2\evolution_results24000_onwards.pkl")
+    results2 = load_results_pkl(pkl_path2)
+    results = results1 + results2
     # use your own color anchors
     my_colors = ["#800000", "#a52a2a", "#555555", "#006400", "#2e8b57"]
 
@@ -311,29 +322,33 @@ if __name__ == "__main__":
         results,
         colors = my_colors,
         logscalex=True,
-        savepath=r"D:\Wyss_experiments\Evolution_analysis\Mathew_runs/match_counts_hexagon_mut5.pdf",
+        savepath=r"D:\Wyss_experiments\Evolution_analysis/match_counts_hexagon.pdf",
+        x_range=[1,1000000]
     )
 
 
     # stored
     plot_stored_score(
         results,
-        savepath=r"D:\Wyss_experiments\Evolution_analysis\Mathew_runs/stored_hexagon_mut5.pdf",
+        savepath=r"D:\Wyss_experiments\Evolution_analysis/stored_score_hexagon.pdf",
         color="crimson",
-        yrange=(2, 5.2),
+        yrange=(1.7, 5.2),
     )
 
     # alt (same scale)
-    fudge_dG = -15  # <- same value used when saving the original scores
-    plot_alt_score(
-        results,
-        fudge_dG=fudge_dG,
-        logscalex=True,
-        savepath=r"D:\Wyss_experiments\Evolution_analysis\Mathew_runs/score_hexagon_alt.pdf",
-        color="blue",
-        yrange=(2.0, 4.6),
-    )
-    '''
+    fudge_dGs = [-15]  # <- same value used when saving the original scores
+
+    for fudge_dG in fudge_dGs:
+        plot_alt_score(
+            results,
+            fudge_dG=fudge_dG,
+            logscalex=True,
+            savepath=r"D:\Wyss_experiments\Evolution_analysis\score_hexagon_alt_score"+ str(fudge_dG) +".pdf",
+            color="#83399e",
+            yrange=[2,4.5],
+            xrange=[0.75,30000]
+        )
+
     fudge = dict(delta_H_cal=-46500.0, delta_S_eff_cal=-138.0, delta_S_init_cal=-30.0)
     plot_tm_vs_generation(
         results,
@@ -343,4 +358,6 @@ if __name__ == "__main__":
         savepath=r"D:\Wyss_experiments\Evolution_analysis\tm_vs_generation_hexagon.pdf",
         color="teal",
     )
-    '''
+
+
+    tes =  extract_match_type_at_elimination(2,results)

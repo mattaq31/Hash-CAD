@@ -83,7 +83,7 @@ def compute_generation_results(file_locations, slat_array, slat_len):
         handle_dict, antihandle_dict = extract_handle_dicts(handle_array, slat_array)
         hamming_results = oneshot_hamming_compute(handle_dict, antihandle_dict, slat_len)
 
-        # matches = number of matching positions at best alignment
+        # matches = number of matching positions
         matches = -(hamming_results - slat_len)
         flat_matches = matches.flatten()
         score = intuitive_score(flat_matches)
@@ -128,11 +128,11 @@ if __name__ == '__main__':
     - Saves everything to a pickle file for plotting elsewhere.
     """
     # Example: read a specific design from file
-    megastructure = Megastructure(import_design_file=r"D:\Wyss_experiments\Evolution_analysis\Mathew_runs\hexagon_design_hashcad_seed.xlsx")
+    megastructure = Megastructure(import_design_file=r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports\full_designH30.xlsx")
     slat_array = megastructure.generate_slat_occupancy_grid()
 
     # Find logged generations
-    folder = r"D:\Wyss_experiments\Evolution_analysis\Mathew_runs\hexagon_64_seq_library_mut_5"
+    folder = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\final_H30_square_evolution"
     file_locations = locate_logged_handle_arrays(folder)
 
     # Parameters
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     results = compute_generation_results(file_locations, slat_array, slat_len)
 
     # Pick where you want the results
-    out_pkl = Path(folder) / "evolution_results.pkl"
+    out_pkl = Path(folder) / "evolution_results24000_onwards.pkl"
     save_results_pkl(results, out_pkl)
 
     # Optional: quick sanity check (no plotting here)
