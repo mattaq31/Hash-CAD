@@ -129,7 +129,8 @@ def multirule_oneshot_hamming(slat_array, handle_array,
                               specific_slat_groups=None,
                               request_substitute_risk_score=False,
                               slat_length=32,
-                              partial_area_score=False):
+                              partial_area_score=False,
+                              return_match_histogram=False):
     """
     Given a slat and handle array, this function computes the hamming distance of all handle/antihandle combinations provided.
     Scores for individual components, such as specific slat groups, can also be requested.
@@ -156,6 +157,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     :param partial_area_score: Calculates Hamming distance and substitution risk among a subset of provided slats when only considering a subset of the handles.
     Provide a dictionary with key as a group name and the values as dictionarys with keys "handle" and "antihandle".
     The corresponding values are dictionaries, where the key is a tuple like so (slat layer, slat ID) and the value is a list of TRUE/FALSE depending on whether that position's handle is included.
+    :param return_match_histogram: If True, returns a histogram of the number of matches of each type (0 matches, 1 match, etc.).
     :return: Dictionary of scores (or slat layer/handle IDS for the worst slat combinations)
      for each of the slat combinations requested from the design
     """
@@ -253,6 +255,14 @@ def multirule_oneshot_hamming(slat_array, handle_array,
             handle_matrix_indices = np.array([handle_ordered_list_partial.index((x,y)) for x,y in slat_dict["handles"].keys()], dtype=np.uint16)
             antihandle_matrix_indices = np.array([antihandle_ordered_list_partial.index((x,y)) for x,y in slat_dict["antihandles"].keys()], dtype=np.uint16)
             score_dict[group_key] = np.min([hamming_results_partial[group_key][hID, ahID, :] for hID, ahID in product(handle_matrix_indices, antihandle_matrix_indices)])
+
+    # Precomputes match histogram (based on oneshot results computed above)
+    if return_match_histogram:
+        matches = -(hamming_results - slat_length)
+        flat_matches = matches.flatten()
+        match_type, counts = np.unique(flat_matches, return_counts=True)
+        # Return as numpy arrays; callers can convert to Python lists if needed
+        score_dict['match_histogram'] = (match_type, counts)
 
     return score_dict
 

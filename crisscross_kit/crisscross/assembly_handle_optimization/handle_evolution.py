@@ -52,6 +52,7 @@ class EvolveManager:
         np.random.seed(int(random_seed))
         self.seed = int(random_seed)
         self.metrics = defaultdict(list)
+        self.mismatch_histograms = []
         self.slat_array = slat_array
         self.repeating_unit_constraints = {} if repeating_unit_constraints is None else repeating_unit_constraints
         self.handle_array = seed_handle_array # this variable holds the current best handle array in the system (updated throughout evolution)
@@ -148,7 +149,7 @@ class EvolveManager:
         multiprocess_start = time.time()
         with multiprocessing.Pool(processes=self.num_processes) as pool:
             results = pool.starmap(multirule_oneshot_hamming,
-                                   [(self.slat_array, self.next_candidates[j], True, True, None, True, self.slat_length)
+                                   [(self.slat_array, self.next_candidates[j], True, True, None, True, self.slat_length, False, True)
                                     for j in range(self.evolution_population)])
         multiprocess_time = time.time() - multiprocess_start
 
@@ -182,10 +183,16 @@ class EvolveManager:
 
         self.metrics['Similarity Score'].append(sum(similarity_scores) / len(similarity_scores))
 
-        self.handle_array = self.next_candidates[np.argmax(physical_scores)] # stores intermediate best array
+        # Select and store the current best handle array
+        best_idx = int(np.argmax(physical_scores))
+        self.handle_array = self.next_candidates[best_idx]
+
+        # Extracts precomputed match histogram from multirule_oneshot_hamming for the best candidate
+        uniq, counts = results[best_idx]['match_histogram']
+        self.mismatch_histograms.append(dict(zip(uniq, counts)))
 
         candidate_handle_arrays, _ = mutate_handle_arrays(self.slat_array, self.next_candidates,
-                                                          hallofshame=hallofshame,
+                                                         hallofshame=hallofshame,
                                                           memory_hallofshame=self.memory_hallofshame,
                                                           memory_best_parent_hallofshame=self.memory_best_parent_hallofshame,
                                                           best_score_indices=indices_of_largest_scores,
@@ -235,7 +242,12 @@ class EvolveManager:
                                                 self.metrics['Similarity Score'],
                                                 self.metrics['Hamming Compute Time']])):
 
-            ax[ind].plot(range(1, len(data)+1), data, linestyle='--', marker='o')
+            if len(data) > 5000:
+                # turn off markers if too many data points
+                ax[ind].plot(range(1, len(data)+1), data, linestyle='--')
+            else:
+                ax[ind].plot(range(1, len(data)+1), data, linestyle='--', marker='o')
+
             ax[ind].set_xlabel('Generation')
             ax[ind].set_ylabel('Measurement')
             ax[ind].set_title(name)
@@ -245,14 +257,42 @@ class EvolveManager:
         plt.savefig(os.path.join(output_folder, 'metrics_visualization.pdf'))
         plt.close(fig)
 
-        # saves the metrics to a csv file for downstream analysis/plotting
+        # save the mismatch histograms to csv file
+        df = pd.DataFrame(self.mismatch_histograms)
+        # rewrite df headers  by appending ' Matches' to each column name
+        df.columns = [f'{col} Matches' for col in df.columns]
+        df.to_csv(os.path.join(output_folder, 'match_histograms.csv'), index=False, header=True)
+
+        # produces a graph tracking each individual mismatch score throughout time
+        fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+        for col in df.columns:
+            if len(df[col].dropna()) > 5000:
+                ax.plot(range(1, len(df[col].dropna()) + 1), df[col].dropna(), linestyle='--', label=col)
+            else:
+                ax.plot(range(1, len(df[col].dropna()) + 1), df[col].dropna(), linestyle='--', marker='o', label=col)
+
+        ax.set_xlabel('Generation')
+        ax.set_ylabel('Number of combinations')
+        ax.set_title('Handle Match Tracking')
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_folder, 'mismatch_tracking_visualization.pdf'), bbox_inches='tight')
+        plt.close(fig)
+
+        # save all other generic metrics to csv file
         save_list_dict_to_file(output_folder, 'metrics.csv', self.metrics, append=False)
 
+        # prepare a checkpoint of the current best handle array
         writer = pd.ExcelWriter(
             os.path.join(output_folder, f'best_handle_array_generation_{self.current_generation}.xlsx'),
             engine='xlsxwriter')
 
-        # prints out slat dataframes in standard format
+        # prints out handle dataframes in standard format
         for layer_index in range(self.handle_array.shape[-1]):
             df = pd.DataFrame(self.handle_array[..., layer_index])
             df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)

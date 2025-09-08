@@ -45,6 +45,7 @@ Homepage = "https://github.com/mattaq31/Hash-CAD"
 [project.scripts]
 handle_evolve = "crisscross.cli_functions.handle_evolution:handle_evolve"
 resuspend_plates = "crisscross.cli_functions.plate_resuspension:plate_resuspension"
+allocate_working_stocks = "crisscross.cli_functions.working_stock_creation:create_working_stock_echo_sheet"
 
 [tool.setuptools_scm]
 version_scheme = "post-release"

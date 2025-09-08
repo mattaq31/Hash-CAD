@@ -188,7 +188,7 @@ def generate_new_plate_from_slat_handle_df(data_df, folder, filename, restart_ro
     """
     Generates a new plate from a dataframe containing sequences, names and notes, then saves it to file.
     TODO: make faster and more elegant.
-    :param data_df: Main sequence data to export containing sequence, slat ID, name and description.
+    :param data_df: Main sequence data to export containing sequence, name and description.
     :param folder: Output folder.
     :param filename: Output filename.
     :param restart_row_by_column: Set this to a column name to restart the row number when the value changes.
