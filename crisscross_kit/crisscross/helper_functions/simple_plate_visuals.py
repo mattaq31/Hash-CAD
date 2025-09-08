@@ -114,8 +114,8 @@ def visualize_plate_with_color_labels(plate_size, well_color_dict,
 
     if plate_title:
         # break up title if longer than a certain length
-        if len(plate_title) > 53:
-            plate_title = '\n'.join([plate_title[i:i + 53] for i in range(0, len(plate_title), 53)])
+        if len(plate_title) > 100:
+            plate_title = '\n'.join([plate_title[i:i + 100] for i in range(0, len(plate_title), 100)])
         plt.suptitle(plate_title, y=0.99, fontsize=25)
 
     if color_label_dict:

@@ -27,6 +27,7 @@ main_plates = get_cutting_edge_plates(100)
 
 ########## LOADING AND CHECKING DESIGN
 for design_file in base_design_import_files:
+
     design_name = os.path.split(design_file)[1].split('.')[0]
 
     print('%%%%%%%%%%%%%%%')
@@ -60,8 +61,9 @@ for design_file in base_design_import_files:
 
     elif design_name == 'Tiny Hexagon Optim':
         db_slats = {}
-        for s_id in range(1, 16, 2):
-            db_slats[f'layer1-slat{s_id}'] = {'H5':[[f'layer1-slat{s_id}', list(range(1, 17))], [f'layer1-slat{s_id+1}', list(range(16, 0, -1))]], 'H2': []}
+        # cannot add double-barrel slats for seeded area as we don't have the seed handles for positions 28-32
+        # for s_id in range(1, 16, 2):
+        #     db_slats[f'layer1-slat{s_id}'] = {'H5':[[f'layer1-slat{s_id}', list(range(1, 17))], [f'layer1-slat{s_id+1}', list(range(16, 0, -1))]]}
         for s_id in range(17, 32, 2):
             db_slats[f'layer1-slat{s_id}'] = {'H5':[[f'layer1-slat{s_id}', list(range(1, 17))], [f'layer1-slat{s_id+1}', list(range(16, 0, -1))]], 'H2': []}
         for s_id in range(33, 48, 2):

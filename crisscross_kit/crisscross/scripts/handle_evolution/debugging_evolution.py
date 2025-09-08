@@ -15,17 +15,17 @@ if __name__ == '__main__':
     print(multirule_precise_hamming(test_slat_array, handle_array, per_layer_check=True, request_substitute_risk_score=True))
 
 
-    evolve_manager =  EvolveManager(test_slat_array, unique_handle_sequences=32,
-                                    early_hamming_stop=30, evolution_population=10,
-                                    generational_survivors=2,
+    evolve_manager =  EvolveManager(test_slat_array, unique_handle_sequences=64,
+                                    early_hamming_stop=30, evolution_population=50,
+                                    generational_survivors=3,
                                     mutation_rate=2,
                                     process_count=4,
-                                    evolution_generations=100,
+                                    evolution_generations=2000,
                                     split_sequence_handles=False,
-                                    progress_bar_update_iterations=2,
+                                    progress_bar_update_iterations=1,
                                     log_tracking_directory='/Users/matt/Desktop/delete_me')
 
-    evolve_manager.run_full_experiment(logging_interval=1)
+    evolve_manager.run_full_experiment(logging_interval=5)
     ergebnüsse = evolve_manager.handle_array # this is the best array result
 
     print('New Results:')
