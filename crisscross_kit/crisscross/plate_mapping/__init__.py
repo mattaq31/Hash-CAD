@@ -29,7 +29,7 @@ for dirpath, _, filenames in os.walk(functions_dir):
 
             # Convert full path to import path
             relative_path = os.path.relpath(file_path, base_directory)
-            import_path = relative_path.replace(os.path.sep, '.').rsplit('.py', 1)[0].replace('crisscross_kit.', '') # fix bc of package naming change
+            import_path = relative_path.replace(os.path.sep, '.').rsplit('.py', 1)[0] # fix bc of package naming change
 
             for _class in classes:
                 available_plate_loaders[_class] = f"{import_path}.{_class}"
