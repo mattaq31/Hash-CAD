@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import product
 from collections import defaultdict, OrderedDict
+import eqcorr2d
 
 def extract_handle_dicts(handle_array, slat_array, list_indices_only=False, custom_index_map=None):
     """
@@ -121,6 +122,7 @@ def oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length):
     hamming_results = slat_length - np.count_nonzero(all_matches, axis=3) # hamming distance maximum is always the length of the slats
 
     return hamming_results
+
 
 
 def multirule_oneshot_hamming(slat_array, handle_array,
