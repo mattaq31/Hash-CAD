@@ -308,18 +308,9 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
             # handle volume needs to be a multiple of 25nl for echo to be able to execute...
             if handle_specific_vol % 25 != 0:
-<<<<<<< HEAD:crisscross_kit/crisscross/core_functions/megastructure_composition.py
-                new_handle_vol =  ((handle_specific_vol + 24) // 25) * 25
-                if not handle_volume_roundup_alert:
-                    print(Fore.LIGHTGREEN_EX + f'Handle volume selected for {slat_name + "_%s_staple_%s" % (handle_side, handle_num)} with {handle_data["category"]}/{handle_data["value"]} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). Handle volume has been rounded up to {new_handle_vol} nl to fix.' + Fore.RESET)
-                    print(Fore.RED + f'Suppressing this message for similar changes.' + Fore.RESET)
-                    handle_volume_roundup_alert = True
-                handle_specific_vol = new_handle_vol
-=======
                 print(f'WARNING: Handle volume selected for {handle_data} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). The transfer volume was rounded up.')
                 handle_specific_vol = ((handle_specific_vol // 25) + 1 ) * 25
                 #raise RuntimeError(f'Handle volume selected for {handle_data} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). Please adjust nominal handle volume to fix.')
->>>>>>> 62e0d61 (new experiments):crisscross/core_functions/megastructure_composition.py
 
             if ',' in slat_name:
                 raise RuntimeError('Slat names cannot contain commas - this will cause issues with the echo csv  file.')
