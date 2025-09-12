@@ -9,7 +9,7 @@ def msvc_flags():
     # Use AVX2 if available; drop to /arch:AVX if your CPU/toolchain needs it.
     flags += ["/arch:AVX2"]
     # OpenMP (won’t hurt even if we set threads=1)
-    flags += ["/openmp"]
+    flags += []
     return flags
 
 def gcc_clang_flags():
