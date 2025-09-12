@@ -3,7 +3,6 @@ from crisscross.assembly_handle_optimization.hamming_compute import multirule_on
 from crisscross.assembly_handle_optimization import generate_random_slat_handles
 from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.scripts.evolution_analysis.analyse_evo import read_handle_log as rhl
 import numpy as np
 
 def perfect_fake_square():
@@ -30,7 +29,7 @@ if __name__ == '__main__':
     #handle_array = generate_random_slat_handles(test_slat_array, 32)
 
     # use this to read a specific design from file
-    megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports/full_designH30.xlsx")
+    megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library/recycling/recycling_design_hashcad_seed.xlsx")
     slat_array = megastructure.generate_slat_occupancy_grid()
     #handle_array = megastructure.generate_assembly_handle_grid()
     hotstart = None
@@ -54,7 +53,7 @@ if __name__ == '__main__':
                                     split_sequence_handles=False,
                                     progress_bar_update_iterations=1,
                                     random_seed=8,
-                                    log_tracking_directory='D:\Wyss_experiments\Evolution_analysis/redo_h30_yichen')
+                                    log_tracking_directory='D:\Wyss_experiments\Evolution_analysis/thalahon')
 
     evolve_manager.run_full_experiment(logging_interval=1)
     ergebnüsse = evolve_manager.handle_array # this is the best array result

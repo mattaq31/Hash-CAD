@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from scripts.analyse_echo_plate_usage.test import plate_name
+from scripts.katzi.analyse_echo_plate_usage.test import plate_name
 
 ROWS_96 = list("ABCDEFGH")
 COLS_96 = list(range(1, 13))
@@ -258,7 +258,8 @@ def make_refill_excel_simple(low_df, outpath):
 # --- example usage with your existing volume df ---
 if __name__ == "__main__":
     # your volume df (already built earlier)
-    df_vol = read_echo_folder(r"D:\Wyss_experiments\Echo_survery")
+    folder= r"D:\Wyss_experiments\Echo_survery"
+    df_vol = read_echo_folder(folder)
 
 
     main_plates = get_cutting_edge_plates(100)
@@ -273,10 +274,10 @@ if __name__ == "__main__":
 
     save_plate_report_pdf_from_df(
         df,
-        outpath=r"D:\Wyss_experiments\Echo_survery\plate_volume_report.pdf",
+        outpath=folder+"\plate_volume_report.pdf",
         threshold_ul=t
     )
 
     low_df = wells_below_threshold(df, threshold_ul=t)
 
-    make_refill_excel_simple(low_df, r"D:\Wyss_experiments\Echo_survery\refill.xlsx")
+    make_refill_excel_simple(low_df, folder+"/refill.xlsx")
