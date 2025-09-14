@@ -15,7 +15,7 @@ concentration_library = {
     'P3536_MA': 500,
     'P3537_MA': 500,
     'P3538_MA': 500,
-    # taster set handle library v2
+    # master set handle library v2
     'P3601_MA': 100,
     'P3602_MA': 100,
     'P3603_MA': 100,
@@ -47,7 +47,7 @@ concentration_library = {
     'P3339_JL': 500,
     'P2854_CW': 500,
     'P3621_SSW': 200,
-    'P3643_MA': 500,
+    'P3643_MA': 200,
     # other
     'P3518_MA': 200,
     'P3510_SSW': 200,
