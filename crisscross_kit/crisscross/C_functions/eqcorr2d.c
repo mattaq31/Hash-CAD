@@ -7,9 +7,7 @@
 #include <string.h>
 #include <limits.h>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+
 
 
 
@@ -541,10 +539,7 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
         return NULL;
     }
 
-#ifdef _OPENMP
-    /* We run under Python multiprocessing; keep OpenMP at 1 thread to avoid oversubscription. */
-    omp_set_num_threads(1);
-#endif
+
 
     /* Convert A_list/B_list to fast sequence form; no copying of array data here. */
     PyObject *A_fast = PySequence_Fast(seqA_obj, "A_list must be a sequence");
