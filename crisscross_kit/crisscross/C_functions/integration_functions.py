@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
     # test this on a real example
 
-    megastructure = Megastructure(import_design_file="C:/Users/Flori/Dropbox/CrissCross/Papers/hash_cad/design_library/hexagon/hexagon_design_hashcad_seed.xlsx")
+    megastructure = Megastructure(import_design_file="/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/hexagon/hexagon_design_hashcad_seed.xlsx")
     slat_array = megastructure.generate_slat_occupancy_grid()
     handle_array = megastructure.generate_assembly_handle_grid()
 
