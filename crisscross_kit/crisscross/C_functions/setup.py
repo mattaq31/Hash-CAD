@@ -22,7 +22,8 @@ else:
     extra_compile_args = ["-O3", "-march=native", "-funroll-loops", "-ffast-math"]
     extra_link_args = []
 
-# -----------------------------------------------------------------------------
+   
+# ------------------  ----------------------------------------------------------
 # Custom build_ext with RPATH sanitization (macOS only)
 # -----------------------------------------------------------------------------
 class build_ext(_build_ext):
@@ -101,8 +102,14 @@ class build_ext(_build_ext):
 # -----------------------------------------------------------------------------
 mymodule = Extension(
     "eqcorr2d",
-    sources=["eqcorr2d.c"],
-    include_dirs=[np.get_include()],
+    sources=[
+        "eqcorr2d_core.c",
+        "eqcorr2d_bindings.c",
+    ],
+    include_dirs=[
+        np.get_include(),
+        str(Path(__file__).parent.resolve()),  # current source dir
+    ],
     define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
@@ -115,8 +122,10 @@ mymodule = Extension(
 # -----------------------------------------------------------------------------
 setup(
     name="eqcorr2d",
-    version="0.1",
+    version="0.2",
     description="2D equality-correlation (full) for uint8 arrays",
+    long_description="Split core/bindings refactor; zeros as don't-care; optional histogram, full maps, and worst-pair tracking.",
+    long_description_content_type="text/plain",
     ext_modules=[mymodule],
     cmdclass={"build_ext": build_ext},
 )
