@@ -6,8 +6,13 @@ from crisscross.core_functions.megastructures import Megastructure
 
 def wrap_eqcorr2d(handle_dict, antihandle_dict,
                   rot0=True, rot90=False, rot180=True, rot270=False,
-                  hist=True, report_full=False, report_worst=True):
-    """takes dicts of arrays (1D or 2D) and runs C ext"""
+                  hist=True, report_full=False, report_worst=True, do_smart=False):
+    """takes dicts of arrays (1D or 2D) and runs C ext
+
+    do_smart: if True, request all rotation outputs but compute only 0/180
+              for 1D pattern
+              s; compute all rotations if either side is 2D.
+    """
 
     def ensure_2d_uint8(arr):
         arr = np.asarray(arr, dtype=np.uint8)
@@ -26,7 +31,7 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
     hist, r0, r90, r180, r270, worst_pairs  = eqcorr2d.compute(
         A_list, B_list,
         int(rot0), int(rot90), int(rot180), int(rot270),
-        int(hist), int(report_full), int(report_worst)
+        int(hist), int(report_full), int(report_worst), int(do_smart)
     )
 
     handle_keys= list(handle_dict.keys())
@@ -115,7 +120,7 @@ if __name__ == "__main__":
 
     # test this on a real example
 
-    megastructure = Megastructure(import_design_file="/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/hexagon/hexagon_design_hashcad_seed.xlsx")
+    megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library\hexagon\hexagon_design_hashcad_seed.xlsx")
     slat_array = megastructure.generate_slat_occupancy_grid()
     handle_array = megastructure.generate_assembly_handle_grid()
 
@@ -149,4 +154,3 @@ if __name__ == "__main__":
     sim_hist = get_similarity_hist(handle_slats, antihandle_slats)
 
     worst_sim_match = get_worst_match(sim_hist)
-

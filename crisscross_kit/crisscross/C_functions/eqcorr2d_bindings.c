@@ -1,64 +1,84 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "eqcorr2d.h"
-
+#include <stddef.h>
+#include <limits.h>
 // Forward declare module methods
 static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args);
 
-// Generate wrappers referencing external loop kernels defined in eqcorr2d_core.c
-#define DECL_WRAP(NAME) \
-static inline void NAME##_hist( \
-    const unsigned char* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1, \
-    const unsigned char* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1, \
-    long long* hist, npy_intp hist_len, int32_t* out, npy_intp Ho, npy_intp Wo, \
-    const int DO_WORST, Py_ssize_t IA, Py_ssize_t IB, worst_tracker_t* WT) { \
-    NAME##_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1, \
-                hist, hist_len, NULL, Ho,Wo, \
-                1, 0, DO_WORST, IA,IB, WT); } \
-static inline void NAME##_full( \
-    const unsigned char* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1, \
-    const unsigned char* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1, \
-    long long* hist, npy_intp hist_len, int32_t* out, npy_intp Ho, npy_intp Wo, \
-    const int DO_WORST, Py_ssize_t IA, Py_ssize_t IB, worst_tracker_t* WT) { \
-    NAME##_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1, \
-                NULL, 0, out, Ho,Wo, \
-                0, 1, DO_WORST, IA,IB, WT); } \
-static inline void NAME##_both( \
-    const unsigned char* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1, \
-    const unsigned char* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1, \
-    long long* hist, npy_intp hist_len, int32_t* out, npy_intp Ho, npy_intp Wo, \
-    const int DO_WORST, Py_ssize_t IA, Py_ssize_t IB, worst_tracker_t* WT) { \
-    NAME##_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1, \
-                hist, hist_len, out, Ho,Wo, \
-                1, 1, DO_WORST, IA,IB, WT); }
+// We only use the 0° core kernel and pre-rotate B into contiguous buffers.
+// The core declaration is provided by eqcorr2d.h, so no redundant declaration here.
 
-// Bring in the external symbol names from the core implementation
-void loop_rot0_mode(
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    long long*, npy_intp, int32_t*, npy_intp, npy_intp,
-    const int, const int, const int, Py_ssize_t, Py_ssize_t, worst_tracker_t*);
-void loop_rot90_mode(
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    long long*, npy_intp, int32_t*, npy_intp, npy_intp,
-    const int, const int, const int, Py_ssize_t, Py_ssize_t, worst_tracker_t*);
-void loop_rot180_mode(
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    long long*, npy_intp, int32_t*, npy_intp, npy_intp,
-    const int, const int, const int, Py_ssize_t, Py_ssize_t, worst_tracker_t*);
-void loop_rot270_mode(
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    const unsigned char*, npy_intp, npy_intp, npy_intp, npy_intp,
-    long long*, npy_intp, int32_t*, npy_intp, npy_intp,
-    const int, const int, const int, Py_ssize_t, Py_ssize_t, worst_tracker_t*);
+static inline void loop_rot0_hist(
+    const u8* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
+    const u8* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
+    hist_t* hist, npy_intp hist_len, out_t* out, npy_intp Ho, npy_intp Wo,
+    int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT) {
+    loop_rot0_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1,
+                   hist, hist_len, NULL, Ho,Wo,
+                   1, 0, DO_WORST, IA,IB, WT);
+}
+static inline void loop_rot0_full(
+    const u8* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
+    const u8* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
+    hist_t* hist, npy_intp hist_len, out_t* out, npy_intp Ho, npy_intp Wo,
+    int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT) {
+    loop_rot0_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1,
+                   NULL, 0, out, Ho,Wo,
+                   0, 1, DO_WORST, IA,IB, WT);
+}
+static inline void loop_rot0_both(
+    const u8* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
+    const u8* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
+    hist_t* hist, npy_intp hist_len, out_t* out, npy_intp Ho, npy_intp Wo,
+    int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT) {
+    loop_rot0_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1,
+                   hist, hist_len, out, Ho,Wo,
+                   1, 1, DO_WORST, IA,IB, WT);
+}
 
-// Instantiate wrappers for the 4 rotations
-DECL_WRAP(loop_rot0)
-DECL_WRAP(loop_rot90)
-DECL_WRAP(loop_rot180)
-DECL_WRAP(loop_rot270)
-#undef DECL_WRAP
+// ---------------- Rotation helpers: prerotate B into contiguous row-major buffers ----------------
+static void pack_to_contig_u8(const unsigned char* src, npy_intp H, npy_intp W,
+                              npy_intp s0, npy_intp s1, unsigned char* dst) {
+    for (npy_intp y=0; y<H; ++y) {
+        const unsigned char* sp = src + y*s0;
+        unsigned char* dp = dst + y*W;
+        for (npy_intp x=0; x<W; ++x) dp[x] = sp[x*s1];
+    }
+}
+
+static void rot90_u8(const unsigned char* src, npy_intp H, npy_intp W,
+                     npy_intp s0, npy_intp s1, unsigned char* dst) {
+    // dst shape: (W,H), clockwise 90°
+    for (npy_intp y = 0; y < W; ++y) {
+        unsigned char* dp = dst + y*H;
+        for (npy_intp x = 0; x < H; ++x) {
+            const unsigned char* sp = src + (H-1 - x)*s0 + y*s1;
+            dp[x] = *sp;
+        }
+    }
+}
+
+static void rot180_u8(const unsigned char* src, npy_intp H, npy_intp W,
+                      npy_intp s0, npy_intp s1, unsigned char* dst) {
+    // dst shape: (H,W)
+    for (npy_intp y = 0; y < H; ++y) {
+        unsigned char* dp = dst + y*W;
+        const unsigned char* sp = src + (H-1 - y)*s0 + (W-1)*s1;
+        for (npy_intp x = 0; x < W; ++x) dp[x] = sp[-(ptrdiff_t)x*s1];
+    }
+}
+
+static void rot270_u8(const unsigned char* src, npy_intp H, npy_intp W,
+                      npy_intp s0, npy_intp s1, unsigned char* dst) {
+    // dst shape: (W,H), clockwise 270° (i.e., 90° CCW)
+    for (npy_intp y = 0; y < W; ++y) {
+        unsigned char* dp = dst + y*H;
+        for (npy_intp x = 0; x < H; ++x) {
+            const unsigned char* sp = src + x*s0 + (W-1 - y)*s1;
+            dp[x] = *sp;
+        }
+    }
+}
 
 // ------------------ main API moved here ------------------
 /* ---------------------------------------------------------------------------------------
@@ -104,13 +124,15 @@ DECL_WRAP(loop_rot270)
 static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
 {
     PyObject *seqA_obj, *seqB_obj;
-    int f0, f90, f180, f270, do_hist, do_full, do_worst;
-    if (!PyArg_ParseTuple(args, "OOppppppp",
+    int f0, f90, f180, f270, do_hist, do_full, do_worst, do_smart;
+    if (!PyArg_ParseTuple(args, "OOpppppppp",
                           &seqA_obj, &seqB_obj,
                           &f0, &f90, &f180, &f270,
-                          &do_hist, &do_full, &do_worst)) {
+                          &do_hist, &do_full, &do_worst, &do_smart)) {
         return NULL;
     }
+    /* fprintf(stderr, ">>> pimmelberger <<<\n");*/
+    /* fflush(stderr);*/
 
     PyObject *A_fast = PySequence_Fast(seqA_obj, "A_list must be a sequence");
     if (!A_fast) return NULL;
@@ -121,6 +143,27 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
     Py_ssize_t nB = PySequence_Fast_GET_SIZE(B_fast);
     PyObject **A_items = PySequence_Fast_ITEMS(A_fast);
     PyObject **B_items = PySequence_Fast_ITEMS(B_fast);
+
+    // Determine requested output flags. In smart mode the caller wants
+    // all four rotations to be present in the returned structure, but we
+    // may choose to skip computing some quarter rotations per pair.
+    int req0 = f0, req90 = f90, req180 = f180, req270 = f270;
+    if (do_smart) {
+        req0 = req90 = req180 = req270 = 1;
+    }
+
+    // Pre-scan A_list to detect if any A is truly 2D (Ha>=2 && Wa>=2).
+    // Smart mode will compute quarter rotations only when either side is 2D.
+    int anyA2D = 0;
+    for (Py_ssize_t i = 0; i < nA; ++i) {
+        PyArrayObject* A = (PyArrayObject*)A_items[i];
+        if (!PyArray_Check(A) || PyArray_TYPE(A) != NPY_UINT8 || PyArray_NDIM(A) != 2) {
+            PyErr_SetString(PyExc_TypeError, "A_list items must be 2D uint8 arrays");
+            goto fail;
+        }
+        const npy_intp Ha = PyArray_DIM(A,0), Wa = PyArray_DIM(A,1);
+        if (Ha >= 2 && Wa >= 2) { anyA2D = 1; break; }
+    }
 
     npy_intp max_prod = 0;
     for (Py_ssize_t j=0; j<nB; ++j) {
@@ -151,15 +194,67 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
 
     PyObject *L0 = Py_None, *L90 = Py_None, *L180 = Py_None, *L270 = Py_None;
     if (do_full) {
-        if (f0)   { L0   = PyList_New(nA); if (!L0)   goto fail; }
-        if (f90)  { L90  = PyList_New(nA); if (!L90)  goto fail; }
-        if (f180) { L180 = PyList_New(nA); if (!L180) goto fail; }
-        if (f270) { L270 = PyList_New(nA); if (!L270) goto fail; }
+        if (req0)   { L0   = PyList_New(nA); if (!L0)   goto fail; }
+        if (req90)  { L90  = PyList_New(nA); if (!L90)  goto fail; }
+        if (req180) { L180 = PyList_New(nA); if (!L180) goto fail; }
+        if (req270) { L270 = PyList_New(nA); if (!L270) goto fail; }
         for (Py_ssize_t i=0; i<nA; ++i) {
-            if (f0)   { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L0,   i, row); }
-            if (f90)  { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L90,  i, row); }
-            if (f180) { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L180, i, row); }
-            if (f270) { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L270, i, row); }
+            if (req0)   { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L0,   i, row); }
+            if (req90)  { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L90,  i, row); }
+            if (req180) { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L180, i, row); }
+            if (req270) { PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L270, i, row); }
+        }
+    }
+
+    // Pre-rotate and pack all B arrays into contiguous row-major buffers so that
+    // we can always call the single 0° kernel with Bs0=Wk and Bs1=1.
+
+
+
+    typedef struct {
+        unsigned char *p0, *p90, *p180, *p270;
+        npy_intp H0, W0, H90, W90, H180, W180, H270, W270;
+    } RotPack;
+    RotPack* packs = (RotPack*)calloc((size_t)nB, sizeof(RotPack));
+    if (!packs) { PyErr_NoMemory(); goto fail_packs; }
+
+    for (Py_ssize_t j=0; j<nB; ++j) {
+        PyArrayObject* B = (PyArrayObject*)B_items[j];
+        const unsigned char* Bp = (const unsigned char*)PyArray_DATA(B);
+        const npy_intp Hb = PyArray_DIM(B,0), Wb = PyArray_DIM(B,1);
+        const npy_intp Bs0 = PyArray_STRIDE(B,0), Bs1 = PyArray_STRIDE(B,1);
+        // Always create contiguous 0° pack
+        packs[j].H0 = Hb; packs[j].W0 = Wb;
+        size_t sz0 = (size_t)(Hb * Wb);
+        packs[j].p0 = (unsigned char*)malloc(sz0);
+        if (!packs[j].p0) { PyErr_NoMemory(); goto fail_packs; }
+        pack_to_contig_u8(Bp, Hb, Wb, Bs0, Bs1, packs[j].p0);
+        // Decide whether quarter rotations might be needed for this B across any A
+        const int B_is_2D = (Hb >= 2 && Wb >= 2);
+        const int need_quarters_any = do_smart ? (anyA2D || B_is_2D) : 0;
+        // Optional rotations
+        if ((do_smart && need_quarters_any) || (!do_smart && req90)) {
+            packs[j].H90 = Wb; packs[j].W90 = Hb;
+            size_t sz = (size_t)(Hb * Wb);
+            packs[j].p90 = (unsigned char*)malloc(sz);
+            if (!packs[j].p90) { PyErr_NoMemory(); goto fail_packs; }
+            rot90_u8(Bp, Hb, Wb, Bs0, Bs1, packs[j].p90);
+        }
+        // 180° is cheap; in smart mode we always prepare 180° because we
+        // compute it for 1D patterns as well.
+        if ((do_smart) || (!do_smart && req180)) {
+            packs[j].H180 = Hb; packs[j].W180 = Wb;
+            size_t sz = (size_t)(Hb * Wb);
+            packs[j].p180 = (unsigned char*)malloc(sz);
+            if (!packs[j].p180) { PyErr_NoMemory(); goto fail_packs; }
+            rot180_u8(Bp, Hb, Wb, Bs0, Bs1, packs[j].p180);
+        }
+        if ((do_smart && need_quarters_any) || (!do_smart && req270)) {
+            packs[j].H270 = Wb; packs[j].W270 = Hb;
+            size_t sz = (size_t)(Hb * Wb);
+            packs[j].p270 = (unsigned char*)malloc(sz);
+            if (!packs[j].p270) { PyErr_NoMemory(); goto fail_packs; }
+            rot270_u8(Bp, Hb, Wb, Bs0, Bs1, packs[j].p270);
         }
     }
 
@@ -186,36 +281,86 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
             PyArrayObject *O0=NULL,*O90=NULL,*O180=NULL,*O270=NULL;
             int32_t *o0=NULL,*o90=NULL,*o180=NULL,*o270=NULL;
             if (do_full) {
-                if (f0)   { npy_intp dims[2] = {Ho0, Wo0};   O0   = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O0) goto fail;   o0   = (int32_t*)PyArray_DATA(O0); }
-                if (f90)  { npy_intp dims[2] = {Ho90, Wo90}; O90  = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O90) goto fail;  o90  = (int32_t*)PyArray_DATA(O90); }
-                if (f180) { npy_intp dims[2] = {Ho180, Wo180}; O180 = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O180) goto fail; o180 = (int32_t*)PyArray_DATA(O180); }
-                if (f270) { npy_intp dims[2] = {Ho270, Wo270}; O270 = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O270) goto fail; o270 = (int32_t*)PyArray_DATA(O270); }
+                if (req0 && /* will allocate only if we actually compute */ 1) {
+                    /* allocation deferred until we know compute flags below */
+                }
+                /* We'll allocate per-rotation arrays only when both requested and computed */
             }
 
-            // Dispatch per rotation with selected outputs
+            // Decide per-pair which rotations to compute (compute flags c*)
+            const int A_is_2D = (Ha >= 2 && Wa >= 2);
+            const int B_is_2D_pair = (Hb >= 2 && Wb >= 2);
+            int c0 = req0, c90 = req90, c180 = req180, c270 = req270;
+            if (do_smart) {
+                const int need_quarters = (A_is_2D || B_is_2D_pair);
+                c0 = 1; c180 = 1; c90 = need_quarters ? 1 : 0; c270 = need_quarters ? 1 : 0;
+            }
+
+            // Now allocate full-result arrays only for rotations that are both
+            // requested (req*) and computed (c*). If a rotation is requested but
+            // not computed, we'll store Py_None in its cell to preserve shape.
+            if (do_full) {
+                if (req0 && c0)   { npy_intp dims[2] = {Ho0, Wo0};   O0   = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O0) goto fail;   o0   = (int32_t*)PyArray_DATA(O0); }
+                if (req90 && c90) { npy_intp dims[2] = {Ho90, Wo90}; O90  = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O90) goto fail;  o90  = (int32_t*)PyArray_DATA(O90); }
+                if (req180 && c180){ npy_intp dims[2] = {Ho180, Wo180}; O180 = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O180) goto fail; o180 = (int32_t*)PyArray_DATA(O180); }
+                if (req270 && c270){ npy_intp dims[2] = {Ho270, Wo270}; O270 = (PyArrayObject*)PyArray_Zeros(2, dims, PyArray_DescrFromType(NPY_INT32), 0); if (!O270) goto fail; o270 = (int32_t*)PyArray_DATA(O270); }
+            }
+
+            // Decide which rotations to compute (compute flags c*)
             const int DO_WORST = do_worst ? 1 : 0;
+
             if (do_hist && !do_full) {
-                if (f0)   loop_rot0_hist  (Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, NULL, Ho0,Wo0,   DO_WORST, i,j, WT);
-                if (f90)  loop_rot90_hist (Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, NULL, Ho90,Wo90, DO_WORST, i,j, WT);
-                if (f180) loop_rot180_hist(Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, NULL, Ho180,Wo180,DO_WORST, i,j, WT);
-                if (f270) loop_rot270_hist(Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, NULL, Ho270,Wo270,DO_WORST, i,j, WT);
+                if (c0)   loop_rot0_hist(Ap,Ha,Wa,As0,As1, packs[j].p0,   packs[j].H0,   packs[j].W0,   /*Bs0*/packs[j].W0, /*Bs1*/1,
+                                         hist, hdim, NULL, Ho0,  Wo0,   DO_WORST, i,j, WT);
+                if (c90 && packs[j].p90)  loop_rot0_hist(Ap,Ha,Wa,As0,As1, packs[j].p90,  packs[j].H90,  packs[j].W90,  /*Bs0*/packs[j].W90,/*Bs1*/1,
+                                         hist, hdim, NULL, Ho90, Wo90,  DO_WORST, i,j, WT);
+                if (c180 && packs[j].p180) loop_rot0_hist(Ap,Ha,Wa,As0,As1, packs[j].p180, packs[j].H180, packs[j].W180, /*Bs0*/packs[j].W180,/*Bs1*/1,
+                                         hist, hdim, NULL, Ho180,Wo180, DO_WORST, i,j, WT);
+                if (c270 && packs[j].p270) loop_rot0_hist(Ap,Ha,Wa,As0,As1, packs[j].p270, packs[j].H270, packs[j].W270, /*Bs0*/packs[j].W270,/*Bs1*/1,
+                                         hist, hdim, NULL, Ho270,Wo270, DO_WORST, i,j, WT);
+
             } else if (!do_hist && do_full) {
-                if (f0)   loop_rot0_full  (Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, NULL, 0, o0, Ho0,Wo0,   DO_WORST, i,j, WT);
-                if (f90)  loop_rot90_full (Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, NULL, 0, o90, Ho90,Wo90, DO_WORST, i,j, WT);
-                if (f180) loop_rot180_full(Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, NULL, 0, o180, Ho180,Wo180,DO_WORST, i,j, WT);
-                if (f270) loop_rot270_full(Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, NULL, 0, o270, Ho270,Wo270,DO_WORST, i,j, WT);
+                if (c0)   loop_rot0_full(Ap,Ha,Wa,As0,As1, packs[j].p0,   packs[j].H0,   packs[j].W0,   /*Bs0*/packs[j].W0, /*Bs1*/1,
+                                         NULL, 0, o0,   Ho0,  Wo0,   DO_WORST, i,j, WT);
+                if (c90 && packs[j].p90)  loop_rot0_full(Ap,Ha,Wa,As0,As1, packs[j].p90,  packs[j].H90,  packs[j].W90,  /*Bs0*/packs[j].W90,/*Bs1*/1,
+                                         NULL, 0, o90,  Ho90, Wo90,  DO_WORST, i,j, WT);
+                if (c180 && packs[j].p180) loop_rot0_full(Ap,Ha,Wa,As0,As1, packs[j].p180, packs[j].H180, packs[j].W180, /*Bs0*/packs[j].W180,/*Bs1*/1,
+                                         NULL, 0, o180, Ho180,Wo180,DO_WORST, i,j, WT);
+                if (c270 && packs[j].p270) loop_rot0_full(Ap,Ha,Wa,As0,As1, packs[j].p270, packs[j].H270, packs[j].W270, /*Bs0*/packs[j].W270,/*Bs1*/1,
+                                         NULL, 0, o270, Ho270,Wo270,DO_WORST, i,j, WT);
+
             } else if (do_hist && do_full) {
-                if (f0)   loop_rot0_both  (Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, o0, Ho0,Wo0,   DO_WORST, i,j, WT);
-                if (f90)  loop_rot90_both (Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, o90, Ho90,Wo90, DO_WORST, i,j, WT);
-                if (f180) loop_rot180_both(Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, o180, Ho180,Wo180,DO_WORST, i,j, WT);
-                if (f270) loop_rot270_both(Ap,Ha,Wa,As0,As1, Bp,Hb,Wb,Bs0,Bs1, hist, hdim, o270, Ho270,Wo270,DO_WORST, i,j, WT);
+                if (c0)   loop_rot0_both(Ap,Ha,Wa,As0,As1, packs[j].p0,   packs[j].H0,   packs[j].W0,   /*Bs0*/packs[j].W0, /*Bs1*/1,
+                                         hist, hdim, o0,   Ho0,  Wo0,   DO_WORST, i,j, WT);
+                if (c90 && packs[j].p90)  loop_rot0_both(Ap,Ha,Wa,As0,As1, packs[j].p90,  packs[j].H90,  packs[j].W90,  /*Bs0*/packs[j].W90,/*Bs1*/1,
+                                         hist, hdim, o90,  Ho90, Wo90,  DO_WORST, i,j, WT);
+                if (c180 && packs[j].p180) loop_rot0_both(Ap,Ha,Wa,As0,As1, packs[j].p180, packs[j].H180, packs[j].W180, /*Bs0*/packs[j].W180,/*Bs1*/1,
+                                         hist, hdim, o180, Ho180,Wo180,DO_WORST, i,j, WT);
+                if (c270 && packs[j].p270) loop_rot0_both(Ap,Ha,Wa,As0,As1, packs[j].p270, packs[j].H270, packs[j].W270, /*Bs0*/packs[j].W270,/*Bs1*/1,
+                                         hist, hdim, o270, Ho270,Wo270,DO_WORST, i,j, WT);
             }
 
             if (do_full) {
-                if (f0)   { PyObject* row = PyList_GET_ITEM(L0, i);   PyList_SET_ITEM(row, j, (PyObject*)O0); }
-                if (f90)  { PyObject* row = PyList_GET_ITEM(L90, i);  PyList_SET_ITEM(row, j, (PyObject*)O90); }
-                if (f180) { PyObject* row = PyList_GET_ITEM(L180, i); PyList_SET_ITEM(row, j, (PyObject*)O180); }
-                if (f270) { PyObject* row = PyList_GET_ITEM(L270, i); PyList_SET_ITEM(row, j, (PyObject*)O270); }
+                if (req0) {
+                    PyObject* row = PyList_GET_ITEM(L0, i);
+                    if (c0) PyList_SET_ITEM(row, j, (PyObject*)O0);
+                    else { Py_INCREF(Py_None); PyList_SET_ITEM(row, j, Py_None); }
+                }
+                if (req90) {
+                    PyObject* row = PyList_GET_ITEM(L90, i);
+                    if (c90 && packs[j].p90) PyList_SET_ITEM(row, j, (PyObject*)O90);
+                    else { Py_INCREF(Py_None); PyList_SET_ITEM(row, j, Py_None); }
+                }
+                if (req180) {
+                    PyObject* row = PyList_GET_ITEM(L180, i);
+                    if (c180 && packs[j].p180) PyList_SET_ITEM(row, j, (PyObject*)O180);
+                    else { Py_INCREF(Py_None); PyList_SET_ITEM(row, j, Py_None); }
+                }
+                if (req270) {
+                    PyObject* row = PyList_GET_ITEM(L270, i);
+                    if (c270 && packs[j].p270) PyList_SET_ITEM(row, j, (PyObject*)O270);
+                    else { Py_INCREF(Py_None); PyList_SET_ITEM(row, j, Py_None); }
+                }
             }
         }
     }
@@ -228,15 +373,26 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
 
     PyObject* ret = Py_BuildValue("OOOOOO",
         do_hist ? (PyObject*)Hist : Py_None,
-        (do_full && f0)   ? L0   : Py_None,
-        (do_full && f90)  ? L90  : Py_None,
-        (do_full && f180) ? L180 : Py_None,
-        (do_full && f270) ? L270 : Py_None,
+        (do_full && req0)   ? L0   : Py_None,
+        (do_full && req90)  ? L90  : Py_None,
+        (do_full && req180) ? L180 : Py_None,
+        (do_full && req270) ? L270 : Py_None,
         do_worst ? worst_pairs : Py_None);
 
     Py_XDECREF(Hist);
     if (do_worst) Py_XDECREF(worst_pairs);
     return ret;
+
+fail_packs:
+    if (packs) {
+        for (Py_ssize_t k=0; k<nB; ++k) {
+            if (packs[k].p0)   { free(packs[k].p0); packs[k].p0 = NULL; }
+            if (packs[k].p90)  { free(packs[k].p90); packs[k].p90 = NULL; }
+            if (packs[k].p180) { free(packs[k].p180); packs[k].p180 = NULL; }
+            if (packs[k].p270) { free(packs[k].p270); packs[k].p270 = NULL; }
+        }
+        free(packs); packs = NULL;
+    }
 
 fail:
     Py_XDECREF(Hist);

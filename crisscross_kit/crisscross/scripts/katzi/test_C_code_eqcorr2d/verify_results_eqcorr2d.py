@@ -67,6 +67,16 @@ if __name__ == "__main__":
         )
     print("C time hist and rotations:", round(time.time() - t0, 4), "s")
 
+    # --- C extension (hist and all rotations with smart) ---
+    t0 = time.time()
+    for i in range(runs):
+        hist_c_allrot_smart, r0, r90, r180, r270, worst_pairs = wrap_eqcorr2d(
+            A_dict, B_dict,
+            rot0=True, rot180=True, rot270=True, rot90=True,
+            hist=True, report_full=False, report_worst=True, do_smart=True
+        )
+    print("C time hist and rotations with dosmart:", round(time.time() - t0, 4), "s")
+
 
     # --- C extension (all flags) ---
     t0 = time.time()
@@ -76,7 +86,7 @@ if __name__ == "__main__":
             rot0=True, rot180=True,rot270=True,rot90=True,
             hist=True, report_full=True, report_worst=True
         )
-    print("C time all flags:", round(time.time() - t0, 4), "s")
+    print("C time all flags no smart:", round(time.time() - t0, 4), "s")
 
     # Python comparison
     t0 = time.time()
@@ -88,6 +98,7 @@ if __name__ == "__main__":
     print(" ")
     print("C Histogram 2D:", hist_c_allrot)
     print("C Histogram 1D:", hist_c)
+    print("C Histogram 1D all rot smart:", hist_c_allrot_smart)
     print("Python Histogram:", hist_py)
 
 
@@ -133,7 +144,7 @@ if __name__ == "__main__":
     hist_c_2D, r0_2D, r90_2D, r180_2D, r270_2D, worst_pairs_2D = wrap_eqcorr2d(
         A_2D_dict, B_2D_dict,
         rot0=True,rot90=True, rot180=True,rot270=True,
-        hist=True, report_full=True, report_worst=True
+        hist=True, report_full=True, report_worst=True, do_smart=True
     )
 
     # compute histogramm by python to cross verify

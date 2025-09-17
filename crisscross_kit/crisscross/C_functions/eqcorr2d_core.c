@@ -21,9 +21,10 @@ int worst_reset(worst_tracker_t* wt, int new_max) {
     return 0;
 }
 
-int worst_add_if_new(worst_tracker_t* wt, Py_ssize_t ia, Py_ssize_t ib) {
+// Update: use npy_intp for indices to match header
+int worst_add_if_new(worst_tracker_t* wt, npy_intp ia, npy_intp ib) {
     if (!wt->pairs || !wt->seen) return 0;
-    Py_ssize_t idx = ia * wt->nB + ib;
+    npy_intp idx = ia * wt->nB + ib;
     if (wt->seen[idx]) return 0;
     wt->seen[idx] = 1;
     PyObject* tup = Py_BuildValue("(nn)", ia, ib);
@@ -59,7 +60,7 @@ int worst_add_if_new(worst_tracker_t* wt, Py_ssize_t ia, Py_ssize_t ib) {
  * counts matches of equal, non-zero entries (acc). Optionally:
  *   - adds acc to a global histogram,
  *   - writes acc into the full 2D output map,
- *   - updates a global “worst” tracker (max acc seen; stores (IA, IB) pairs).
+ *   - updates a global “worst” tracker (max acc seen; stores (IA,IB) pairs).
  *
  * Inputs (this call handles ONE pair A_list[IA] vs B_list[IB])
  * -----------------------------------------------------------
@@ -92,12 +93,12 @@ int worst_add_if_new(worst_tracker_t* wt, Py_ssize_t ia, Py_ssize_t ib) {
  * - Equality test ignores zeros: (a && b && a==b).
  * ---------------------------------------------------------------------- */
 void loop_rot0_mode(
-    const unsigned char* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
-    const unsigned char* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
-    long long* hist, npy_intp hist_len,
-    int32_t* out, npy_intp Ho, npy_intp Wo,
-    const int DO_HIST, const int DO_FULL,
-    const int DO_WORST, Py_ssize_t IA, Py_ssize_t IB, worst_tracker_t* WT)
+    const u8* EQ_RESTRICT A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
+    const u8* EQ_RESTRICT B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
+    hist_t* EQ_RESTRICT hist, npy_intp hist_len,
+    out_t* EQ_RESTRICT out, npy_intp Ho, npy_intp Wo,
+    int DO_HIST, int DO_FULL,
+    int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT)
 {
     const int contiguous = (As1==1) & (Bs1==1);
     for (npy_intp oy = 0; oy < Ho; ++oy) {
@@ -111,206 +112,23 @@ void loop_rot0_mode(
                 if (contiguous) {
                     for (npy_intp by = by0; by <= by1; ++by) {
                         const npy_intp ay = oy - (Hb-1) + by;
-                        const unsigned char* Ap = A + ay*As0 + (ox - (Wb-1) + bx0);
-                        const unsigned char* Bp = B + by*Bs0 + bx0;
+                        const u8* Ap = A + ay*As0 + (ox - (Wb-1) + bx0);
+                        const u8* Bp = B + by*Bs0 + bx0;
                         for (npy_intp bx = bx0; bx <= bx1; ++bx) {
-                            unsigned char a = *Ap++;
-                            unsigned char b = *Bp++;
+                            u8 a = *Ap++;
+                            u8 b = *Bp++;
                             if (a && b && a==b) ++acc;
                         }
                     }
                 } else {
                     for (npy_intp by = by0; by <= by1; ++by) {
                         const npy_intp ay = oy - (Hb-1) + by;
-                        const unsigned char* Arow = A + ay*As0;
-                        const unsigned char* Brow = B + by*Bs0;
+                        const u8* Arow = A + ay*As0;
+                        const u8* Brow = B + by*Bs0;
                         for (npy_intp bx = bx0; bx <= bx1; ++bx) {
                             const npy_intp ax = ox - (Wb-1) + bx;
-                            unsigned char a = *(Arow + ax*As1);
-                            unsigned char b = *(Brow + bx*Bs1);
-                            if (a && b && a==b) ++acc;
-                        }
-                    }
-                }
-            }
-            if (DO_WORST) {
-                if (acc > WT->max_val) {
-                    if (worst_reset(WT, acc) < 0) {}
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
-                } else if (acc == WT->max_val) {
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
-                }
-            }
-            if (DO_HIST) {
-                int bin = acc;
-                if (bin < 0) bin = 0;
-                if (bin >= hist_len) bin = (int)(hist_len - 1);
-                hist[bin] += 1;
-            }
-            if (DO_FULL) out[oy*Wo + ox] = acc;
-        }
-    }
-}
-
-void loop_rot180_mode(
-    const unsigned char* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
-    const unsigned char* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
-    long long* hist, npy_intp hist_len,
-    int32_t* out, npy_intp Ho, npy_intp Wo,
-    const int DO_HIST, const int DO_FULL,
-    const int DO_WORST, Py_ssize_t IA, Py_ssize_t IB, worst_tracker_t* WT)
-{
-    const int contiguous = (As1==1) & (Bs1==1);
-    for (npy_intp oy = 0; oy < Ho; ++oy) {
-        const npy_intp by0 = 0 > oy - (Ha-1) ? 0 : oy - (Ha-1);
-        const npy_intp by1 = (Hb-1) < oy ? (Hb-1) : oy;
-        for (npy_intp ox = 0; ox < Wo; ++ox) {
-            const npy_intp bx0 = 0 > ox - (Wa-1) ? 0 : ox - (Wa-1);
-            const npy_intp bx1 = (Wb-1) < ox ? (Wb-1) : ox;
-            int acc = 0;
-            if (by1 >= by0 && bx1 >= bx0) {
-                if (contiguous) {
-                    for (npy_intp by = by0; by <= by1; ++by) {
-                        const npy_intp ay = oy - by;
-                        const unsigned char* Ap = A + ay*As0 + (ox - bx0);
-                        const unsigned char* Bp = B + (Hb-1 - by)*Bs0 + (Wb-1 - bx0);
-                        for (npy_intp bx = bx0; bx <= bx1; ++bx) {
-                            unsigned char a = *Ap++;
-                            unsigned char b = *Bp--;
-                            if (a && b && a==b) ++acc;
-                        }
-                    }
-                } else {
-                    for (npy_intp by = by0; by <= by1; ++by) {
-                        const npy_intp ay = oy - by;
-                        const unsigned char* Arow = A + ay*As0;
-                        const unsigned char* Brow = B + (Hb-1 - by)*Bs0;
-                        for (npy_intp bx = bx0; bx <= bx1; ++bx) {
-                            const npy_intp ax = ox - bx;
-                            unsigned char a = *(Arow + ax*As1);
-                            unsigned char b = *(Brow + (Wb-1 - bx)*Bs1);
-                            if (a && b && a==b) ++acc;
-                        }
-                    }
-                }
-            }
-            if (DO_WORST) {
-                if (acc > WT->max_val) {
-                    if (worst_reset(WT, acc) < 0) {}
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
-                } else if (acc == WT->max_val) {
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
-                }
-            }
-            if (DO_HIST) {
-                int bin = acc;
-                if (bin < 0) bin = 0;
-                if (bin >= hist_len) bin = (int)(hist_len - 1);
-                hist[bin] += 1;
-            }
-            if (DO_FULL) out[oy*Wo + ox] = acc;
-        }
-    }
-}
-
-void loop_rot90_mode(
-    const unsigned char* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
-    const unsigned char* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
-    long long* hist, npy_intp hist_len,
-    int32_t* out, npy_intp Ho, npy_intp Wo,
-    const int DO_HIST, const int DO_FULL,
-    const int DO_WORST, Py_ssize_t IA, Py_ssize_t IB, worst_tracker_t* WT)
-{
-    const int contiguous = (As1==1) & (Bs1==1);
-    for (npy_intp oy = 0; oy < Ho; ++oy) {
-        const npy_intp by0 = 0 > oy - (Ha-1) ? 0 : oy - (Ha-1);
-        const npy_intp by1 = (Hb-1) < oy ? (Hb-1) : oy;
-        for (npy_intp ox = 0; ox < Wo; ++ox) {
-            const npy_intp bx0 = (Wb-1) - ox < 0 ? 0 : (Wb-1) - ox;
-            const npy_intp bx1 = (Hb-1) < (Wa+Wb-2 - ox) ? (Hb-1) : (Wa+Wb-2 - ox);
-            int acc = 0;
-            if (by1 >= by0 && bx1 >= bx0) {
-                if (contiguous) {
-                    for (npy_intp by = by0; by <= by1; ++by) {
-                        const npy_intp ay = oy - by;
-                        const unsigned char* Ap = A + ay*As0 + (ox - (Wb-1) + bx0);
-                        const unsigned char* Bp = B + (Hb-1 - bx0)*Bs0 + by;
-                        for (npy_intp bx = bx0; bx <= bx1; ++bx) {
-                            unsigned char a = *Ap++;
-                            unsigned char b = *Bp - (npy_intp)Bs0; // move upward along B columns
-                            Bp = Bp - (npy_intp)Bs0;
-                            if (a && b && a==b) ++acc;
-                        }
-                    }
-                } else {
-                    for (npy_intp by = by0; by <= by1; ++by) {
-                        const npy_intp ay = oy - by;
-                        const unsigned char* Arow = A + ay*As0;
-                        for (npy_intp bx = bx0; bx <= bx1; ++bx) {
-                            const npy_intp ax = ox - (Wb-1) + bx;
-                            unsigned char a = *(Arow + ax*As1);
-                            unsigned char b = *(B + (Hb-1 - bx)*Bs0 + by*Bs1);
-                            if (a && b && a==b) ++acc;
-                        }
-                    }
-                }
-            }
-            if (DO_WORST) {
-                if (acc > WT->max_val) {
-                    if (worst_reset(WT, acc) < 0) {}
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
-                } else if (acc == WT->max_val) {
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
-                }
-            }
-            if (DO_HIST) {
-                int bin = acc;
-                if (bin < 0) bin = 0;
-                if (bin >= hist_len) bin = (int)(hist_len - 1);
-                hist[bin] += 1;
-            }
-            if (DO_FULL) out[oy*Wo + ox] = acc;
-        }
-    }
-}
-
-void loop_rot270_mode(
-    const unsigned char* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
-    const unsigned char* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
-    long long* hist, npy_intp hist_len,
-    int32_t* out, npy_intp Ho, npy_intp Wo,
-    const int DO_HIST, const int DO_FULL,
-    const int DO_WORST, Py_ssize_t IA, Py_ssize_t IB, worst_tracker_t* WT)
-{
-    const int contiguous = (As1==1) & (Bs1==1);
-    for (npy_intp oy = 0; oy < Ho; ++oy) {
-        const npy_intp by0 = (Hb-1) - oy < 0 ? 0 : (Hb-1) - oy;
-        const npy_intp by1 = (Wb-1) < (Ha+Hb-2 - oy) ? (Wb-1) : (Ha+Hb-2 - oy);
-        for (npy_intp ox = 0; ox < Wo; ++ox) {
-            const npy_intp bx0 = 0 > ox - (Wa-1) ? 0 : ox - (Wa-1);
-            const npy_intp bx1 = (Hb-1) < ox ? (Hb-1) : ox;
-            int acc = 0;
-            if (by1 >= by0 && bx1 >= bx0) {
-                if (contiguous) {
-                    for (npy_intp by = by0; by <= by1; ++by) {
-                        const npy_intp ay = oy - (Hb-1) + by;
-                        const unsigned char* Ap = A + ay*As0 + (ox - bx0);
-                        const unsigned char* Bp = B + bx0*Bs0 + (Wb-1 - by);
-                        for (npy_intp bx = bx0; bx <= bx1; ++bx) {
-                            unsigned char a = *Ap++;
-                            unsigned char b = *Bp + (npy_intp)Bs0; // move downward along B columns
-                            Bp = Bp + (npy_intp)Bs0;
-                            if (a && b && a==b) ++acc;
-                        }
-                    }
-                } else {
-                    for (npy_intp by = by0; by <= by1; ++by) {
-                        const npy_intp ay = oy - (Hb-1) + by;
-                        const unsigned char* Arow = A + ay*As0;
-                        for (npy_intp bx = bx0; bx <= bx1; ++bx) {
-                            const npy_intp ax = ox - bx;
-                            unsigned char a = *(Arow + ax*As1);
-                            unsigned char b = *(B + bx*Bs0 + (Wb-1 - by)*Bs1);
+                            u8 a = *(Arow + ax*As1);
+                            u8 b = *(Brow + bx*Bs1);
                             if (a && b && a==b) ++acc;
                         }
                     }

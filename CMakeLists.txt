@@ -24,7 +24,7 @@ find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
 set(EQCORR2D_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/crisscross_kit/crisscross/C_functions/eqcorr2d_core.c
     ${CMAKE_CURRENT_SOURCE_DIR}/crisscross_kit/crisscross/C_functions/eqcorr2d_bindings.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/crisscross_kit/crisscross/C_functions/eqcorr2d.h
+    # Note: do NOT list headers here (eqcorr2d.h) — headers are included via target_include_directories
 )
 
 add_library(eqcorr2d MODULE ${EQCORR2D_SRC})
