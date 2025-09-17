@@ -1,6 +1,5 @@
-import os, time
 import numpy as np
-import eqcorr2d
+from . import eqcorr2d_engine
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, multirule_precise_hamming, oneshot_hamming_compute,extract_handle_dicts
 from crisscross.core_functions.megastructures import Megastructure
 
@@ -23,7 +22,7 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
     B_list = [ensure_2d_uint8(b) for b in antihandle_dict.values()]
 
     #  and returns 6 items.
-    hist, r0, r90, r180, r270, worst_pairs  = eqcorr2d.compute(
+    hist, r0, r90, r180, r270, worst_pairs  = eqcorr2d_engine.compute(
         A_list, B_list,
         int(rot0), int(rot90), int(rot180), int(rot270),
         int(hist), int(report_full), int(report_worst)

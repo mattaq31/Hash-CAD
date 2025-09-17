@@ -539,8 +539,6 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
         return NULL;
     }
 
-
-
     /* Convert A_list/B_list to fast sequence form; no copying of array data here. */
     PyObject *A_fast = PySequence_Fast(seqA_obj, "A_list must be a sequence");
     if (!A_fast) return NULL;
@@ -569,6 +567,7 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
 
     PyArrayObject* Hist = NULL;   /* the NumPy array we’ll return as hist */
     long long* hist = NULL;       /* raw pointer to its data for fast increments */
+
     if (do_hist) {
         Hist = (PyArrayObject*)PyArray_Zeros(1, &hdim, PyArray_DescrFromType(NPY_INT64), 0);
         if (!Hist) { Py_DECREF(A_fast); Py_DECREF(B_fast); return NULL; }
@@ -774,12 +773,12 @@ static PyMethodDef methods[] = {
 };
 
 static struct PyModuleDef moduledef = {
-    PyModuleDef_HEAD_INIT, "eqcorr2d",
+    PyModuleDef_HEAD_INIT, "eqcorr2d_engine",
     "Equality-correlation with rotations (zeros ignored).",
     -1, methods
 };
 
-PyMODINIT_FUNC PyInit_eqcorr2d(void) {
+PyMODINIT_FUNC PyInit_eqcorr2d_engine(void) {
     import_array();                 /* required by NumPy C-API */
     return PyModule_Create(&moduledef);
 }
