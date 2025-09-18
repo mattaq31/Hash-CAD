@@ -94,26 +94,31 @@ def create_graphical_slat_view(slat_array, layer_palette, cargo_palette=None, in
                                 'view as it does not seem to have a normal set of grid coordinates.' % slat_id)
             continue
 
-        start_pos = slat.slat_position_to_coordinate[1]
-        end_pos = slat.slat_position_to_coordinate[slat.max_length]
-
-        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
-        end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
-
+        # plucks the position of every single handle on the slat (irrespective of shape/type)
+        positions = [physical_point_scale_convert(slat.slat_position_to_coordinate[i], grid_xd, grid_yd) for i in range(1, slat.max_length + 1)]
         main_color = slat.unique_color if slat.unique_color is not None else layer_palette[slat.layer]['color']
 
-        layer_figures[slat.layer - 1][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                                                 color=main_color, linewidth=slat_width, zorder=1)
-        layer_figures[slat.layer - 1][1][1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                                                 color=main_color, linewidth=slat_width, zorder=1)
+        ys, xs = zip(*positions)
 
-        global_ax[0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                          color=main_color, linewidth=slat_width, alpha=0.5, zorder=slat.layer)
-        global_ax[1].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                          color=main_color, linewidth=slat_width, alpha=0.5, zorder=num_layers - slat.layer)
+        # per-layer views
+        layer_figures[slat.layer - 1][1][0].plot(
+            xs, ys, color=main_color, linewidth=slat_width, zorder=1,
+            solid_capstyle='round', solid_joinstyle='round', antialiased=True)
+        layer_figures[slat.layer - 1][1][1].plot(
+            xs, ys, color=main_color, linewidth=slat_width, zorder=1,
+            solid_capstyle='round', solid_joinstyle='round', antialiased=True)
+
+        # global views
+        global_ax[0].plot(
+            xs, ys, color=main_color, linewidth=slat_width, alpha=0.5, zorder=slat.layer,
+            solid_capstyle='round', solid_joinstyle='round', antialiased=True)
+        global_ax[1].plot(
+            xs, ys, color=main_color, linewidth=slat_width, alpha=0.5, zorder=num_layers - slat.layer,
+            solid_capstyle='round', solid_joinstyle='round', antialiased=True)
 
         handles = [slat.H5_handles, slat.H2_handles]
         sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
+
         for handles, side in zip(handles, sides):
             for handle_index, handle in handles.items():
                 coordinates = slat.slat_position_to_coordinate[handle_index]
@@ -214,11 +219,6 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_palet
                                 'view as it does not seem to have a normal set of grid coordinates.' % slat_id)
             continue
 
-        start_pos = slat.slat_position_to_coordinate[1]
-        end_pos = slat.slat_position_to_coordinate[slat.max_length]
-        start_pos = physical_point_scale_convert(start_pos, grid_xd, grid_yd)  # this is necessary to ensure scaling is correct for 60deg angle slats
-        end_pos = physical_point_scale_convert(end_pos, grid_xd, grid_yd)
-
         main_color = slat.unique_color if slat.unique_color is not None else layer_palette[slat.layer]['color']
 
         if slat.layer == 1:
@@ -228,9 +228,15 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_palet
         else:
             plot_positions = [slat.layer - 1, slat.layer - 2]
 
+        # plucks the position of every single handle on the slat (irrespective of shape/type)
+        positions = [physical_point_scale_convert(slat.slat_position_to_coordinate[i], grid_xd, grid_yd) for i in range(1, slat.max_length + 1)]
+        ys, xs = zip(*positions)
+
         for p in plot_positions:
-            interface_figures[p][1][0].plot([start_pos[1], end_pos[1]], [start_pos[0], end_pos[0]],
-                                            color=main_color, linewidth=slat_width, zorder=1, alpha=0.3)
+            interface_figures[p][1][0].plot(xs, ys,
+                                            color=main_color, linewidth=slat_width, zorder=1, alpha=0.3,
+                                            solid_capstyle = 'round', solid_joinstyle = 'round', antialiased = True)
+
 
     # Painting in handles
     for handle_layer_num in range(handle_arrays.shape[2]):

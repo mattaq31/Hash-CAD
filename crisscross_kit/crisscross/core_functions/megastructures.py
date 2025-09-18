@@ -90,7 +90,6 @@ class Megastructure:
         :param connection_angle: The angle at which the slats will be connected.  For now, only 90 and 60 grids are supported.
         E.g. for a 2 layer design, [2, 5, 2] implies that the bottom layer will have H2 handles sticking out,
         the connecting interface will have H5 handles and the top layer will have H2 handles again.
-        TODO: how to enforce slat length?  Will this need to change in the future?
         TODO: how do we consider the additional 12nm/6nm on either end of the slat?
         """
 
