@@ -80,6 +80,42 @@ def get_seperate_worst_lists(c_results):
         handle_list.append(tuble[0])
         antihandle_list.append(tuble[1])
     return (handle_list, antihandle_list)
+#Do not use this. It would only work if all 1D slats are fully occupied with handles and antihandles
+def compensate_do_smart(hist,handle_dict, antihandle_dict,standart_slat_lenght=32,libraray_length=64):
+    #extract values from dicts
+    handles = list(handle_dict.values())
+    antihandles = list(antihandle_dict.values())
+    #count 1D and 2D handles in a loop
+    count_1D_handles =0
+    count_2D_handles =0
+    for handle in handles:
+        if handle.shape[0]==1:
+            count_1D_handles = count_1D_handles+1
+        else:
+            count_2D_handles = count_2D_handles+1
+    #count 1D and 2D antihandles in a loop
+    count_1D_antihandles =0
+    count_2D_antihandles =0
+    for antihandle in antihandles:
+        if antihandle.shape[0]==1:
+            count_1D_antihandles = count_1D_antihandles+1
+        else:
+            count_2D_antihandles = count_2D_antihandles+1
+    #calculate number of combinations not tested by do_smart
+    not_tested_combinations = count_1D_handles*count_1D_antihandles*2 # times 2 for 90 and 270
+    left_out_array_lenght=(standart_slat_lenght+1-1)*(standart_slat_lenght+1-1) # this is number of entries of the result arrays not computed
+    all_left_out_entries = not_tested_combinations*left_out_array_lenght
+    #now calculate expected distribution of these combinations. since the dimension is only 1D of each we can eighter have a matchtype 1 ore 0.
+    # the probability for a matchtype 0 is 1/libraray_length
+    p0 = 1/libraray_length
+    hit1= all_left_out_entries*p0
+    hit0= all_left_out_entries*(1-p0)
+    #now add these to the histogram
+    corrected_hist = hist.copy()
+    corrected_hist[0] = corrected_hist[0]+int(hit0)
+    corrected_hist[1] = corrected_hist[1]+int(hit1)
+
+    return corrected_hist
 
 
 def get_similarity_hist(handle_dict, antihandle_dict,rot0=True, rot90=False, rot180=True, rot270=False):
@@ -118,7 +154,7 @@ def get_similarity_hist(handle_dict, antihandle_dict,rot0=True, rot90=False, rot
 
 if __name__ == "__main__":
 
-    # test this on a real example
+    # example integration
 
     megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library\hexagon\hexagon_design_hashcad_seed.xlsx")
     slat_array = megastructure.generate_slat_occupancy_grid()

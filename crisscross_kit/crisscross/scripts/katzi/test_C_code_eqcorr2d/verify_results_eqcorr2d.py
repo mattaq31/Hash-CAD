@@ -32,8 +32,8 @@ if __name__ == "__main__":
     #N, L = 2, 5
 
     # creat test slat dictionaries with the usual data type
-    A_dict = {(1,i): np.random.randint(0, 65, lenght, dtype=np.uint16) for i in range(noSlats)}
-    B_dict = {(2,j): np.random.randint(0, 65, lenght, dtype=np.uint16) for j in range(noSlats)}
+    A_dict = {(1,i): np.random.randint(0, 65, lenght, dtype=np.uint8) for i in range(noSlats)}
+    B_dict = {(2,j): np.random.randint(0, 65, lenght, dtype=np.uint8) for j in range(noSlats)}
 
     # --- C extension (hist only) ---
     runs=3 # increse for better average times

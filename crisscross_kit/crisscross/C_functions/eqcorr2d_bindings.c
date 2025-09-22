@@ -154,6 +154,10 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
 
     // Pre-scan A_list to detect if any A is truly 2D (Ha>=2 && Wa>=2).
     // Smart mode will compute quarter rotations only when either side is 2D.
+    /* Mark A as "truly 2D" only when both dimensions >= 2.
+     Smart-mode uses this to decide whether quarter rotations (90/270)
+   of B might be needed for this A; if neither side is 2D we can skip
+   expensive 90/270 rotations and compute only 0°/180°. */
     int anyA2D = 0;
     for (Py_ssize_t i = 0; i < nA; ++i) {
         PyArrayObject* A = (PyArrayObject*)A_items[i];
