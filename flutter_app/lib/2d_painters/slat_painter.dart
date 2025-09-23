@@ -78,8 +78,6 @@ drawSlatDrawingAids(Canvas canvas, Offset p1, Offset p2, Offset slatExtend, doub
     }
 }
 
-
-
 /// Custom painter for the slats themselves
 class SlatPainter extends CustomPainter {
   final double scale;
@@ -446,12 +444,12 @@ class SlatPainter extends CustomPainter {
             drawHandleMarker(rectTop, topColor, topCategory, true);
             drawHandleMarker(rectBottom, bottomColor, bottomCategory, false);
 
-            void drawText(String text, Offset offset, double fontSize) {
+            void drawText(String text, Offset offset, Color textColor, double fontSize) {
               final textPainter = TextPainter(
                 text: TextSpan(
                   text: text,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textColor,
                     fontFamily: 'Roboto',
                     fontSize: fontSize,
                     fontWeight: FontWeight.bold,
@@ -469,8 +467,8 @@ class SlatPainter extends CustomPainter {
               textPainter.paint(canvas, actualOffset);
             }
 
-            drawText(topText, Offset(position.dx, position.dy - halfHeight / 2), halfHeight * 0.8);
-            drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2), halfHeight * 0.8);
+            drawText(topText, Offset(position.dx, position.dy - halfHeight / 2), isColorDark(topColor) ? Colors.white : Colors.black,  halfHeight * 0.8);
+            drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2), isColorDark(bottomColor) ? Colors.white : Colors.black, halfHeight * 0.8);
 
             canvas.drawLine(
               Offset(rectTop.left, position.dy),
