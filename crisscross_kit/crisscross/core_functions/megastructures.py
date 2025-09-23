@@ -510,7 +510,65 @@ class Megastructure:
             slat_id_animation_classification[s_slat] = group_tracker
 
         return slat_id_animation_classification
+    
+    def get_slat_match_counts(self):
+        """
+        Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
+        Useful for computing the hamming distance of a design with variable slat types.
+        :return: Dictionary of match counts (key = number of matches, value = number of slat pairs with that many matches)
+        TODO: what to do in the case of slats with multiple layers e.g. the sierpinski slats?
+        """
+        
+        megastructure_match_count = defaultdict(int) # key = number of matches, value = number of slat pairs with that many matches
+        completed_slats = set() # just a tracker to prevent duplicate entries
+        
+        # arrays obtained from design as usual
+        slat_array = self.generate_slat_occupancy_grid()
+        handle_array = self.generate_assembly_handle_grid()
 
+        # loops through all slats in the design
+        for s_key, slat in self.slats.items():
+            if not slat.non_assembly_slat:
+                matches_with_other_slats = defaultdict(int)
+                
+                # checks slats in the layer above
+                if slat.layer != len(self.layer_palette):
+                    # runs through all the coordinates of a specific slat
+                    for coordinate in slat.slat_position_to_coordinate.values():
+                        
+                        # checks if there's a handle match
+                        if handle_array[coordinate[0], coordinate[1], slat.layer-1] != 0:
+                            
+                            other_slat = slat_array[coordinate[0], coordinate[1], slat.layer]
+                            # ignores areas where there are actually no overlapping slats
+                            if other_slat == 0:
+                                continue
+                            
+                            # records match    
+                            other_slat_key = get_slat_key(slat.layer+1, other_slat)
+                            if other_slat_key not in completed_slats:
+                                matches_with_other_slats[other_slat_key] += 1
+                
+                # checks slats in the layer below - same logic as above
+                if slat.layer != 1:
+                    for coordinate in slat.slat_position_to_coordinate.values():
+                        if handle_array[coordinate[0], coordinate[1], slat.layer - 2] != 0:
+                            other_slat = slat_array[coordinate[0], coordinate[1], slat.layer - 2]
+                            if other_slat == 0:
+                                continue
+                            other_slat_key = get_slat_key(slat.layer - 1, other_slat)
+                            if other_slat_key not in completed_slats:
+                                matches_with_other_slats[other_slat_key] += 1
+
+                # enumerates all matches found and updates the overall count
+                for k, v in matches_with_other_slats.items():
+                    megastructure_match_count[v] += 1
+
+                # prevents other slats from matching with this slat again
+                completed_slats.add(s_key)
+
+        return megastructure_match_count
+        
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
                                    include_cargo=True, include_seed=True,
                                    filename_prepend='',
