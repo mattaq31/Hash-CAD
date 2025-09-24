@@ -20,7 +20,6 @@ class SlatHoverPainter extends CustomPainter {
   final bool ignorePreSelectedSlats;
   final List<Slat> preSelectedSlats;
   final Offset moveAnchor;
-  final int moveRotationSteps;
   final bool moveTranspose;
   final DesignState appState;
   final ActionState actionState;
@@ -30,7 +29,7 @@ class SlatHoverPainter extends CustomPainter {
   SlatHoverPainter(this.scale, this.canvasOffset, this.slatColor,
       this.hoverValid, this.futureSlatEndPoints, this.hoverPosition,
       this.ignorePreSelectedSlats, this.preSelectedSlats, this.moveAnchor,
-      this.moveRotationSteps, this.moveTranspose, this.appState, this.actionState)
+      this.moveTranspose, this.appState, this.actionState)
   {
     labelPainters = <int, TextPainter>{};
     TextStyle textStyle = TextStyle(
@@ -64,7 +63,7 @@ class SlatHoverPainter extends CustomPainter {
       final Paint hoverRodPaint = Paint()
         ..color = slatColor.withValues(alpha: 0.5) // Semi-transparent slat
         ..strokeWidth = appState.gridSize / 2
-        ..style = PaintingStyle.fill;
+        ..style = PaintingStyle.stroke;
 
       if (!hoverValid) {  // invalid slat
         hoverRodPaint.shader = CrossHatchShader.shader;
@@ -75,23 +74,15 @@ class SlatHoverPainter extends CustomPainter {
       if (ignorePreSelectedSlats) {
         int index = 1;
         for (var slatCoords in futureSlatEndPoints.values) {
-          Offset slatExtend = calculateSlatExtend(slatCoords[1]!, slatCoords[32]!, appState.gridSize);
 
-          if(actionState.drawingAids){
-            canvas.drawLine(slatCoords[1]! - slatExtend * 0.5, slatCoords[32]!, hoverRodPaint);
-            drawSlatDrawingAids(canvas, slatCoords[1]!, slatCoords[32]!, slatExtend, appState.gridSize, hoverRodPaint, hoverRodPaint.color, 1.0);
-          }
-          else {
-            canvas.drawLine(
-                slatCoords[1]! - slatExtend, slatCoords[32]! + slatExtend,
-                hoverRodPaint);
-          }
-          // Draw numbers 1 and 32
-          final label1 = labelPainters[index]!;
-          final label32 = labelPainters[index]!;
+          drawSlat(slatCoords.values.toList(), canvas, appState, actionState, hoverRodPaint);
 
-          label1.paint(canvas, slatCoords[1]! - Offset(label1.width / 2, label1.height / 2));
-          label32.paint(canvas, slatCoords[32]! - Offset(label32.width / 2, label32.height / 2));
+          // Draw numbers at the beginning and end of the new slat
+          final labelBegin = labelPainters[index]!;
+          final labelFin = labelPainters[index]!;
+
+          labelBegin.paint(canvas, slatCoords[1]! - Offset(labelBegin.width / 2, labelBegin.height / 2));
+          labelFin.paint(canvas, slatCoords[slatCoords.length]! - Offset(labelFin.width / 2, labelFin.height / 2));
           index += 1;
         }
       }
@@ -99,37 +90,22 @@ class SlatHoverPainter extends CustomPainter {
       else {
         Offset anchorTranslate = hoverPosition! - moveAnchor;
         for (var slat in preSelectedSlats) {
-          var p1 = appState.convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!);
-          var p2 = appState.convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[32]!);
 
-          if (moveRotationSteps != 0) {
-            // rotate the slat by the specified number of steps
-            // TODO: this system works but is janky - rotating multiple slats together can result in them clashing - either should accept this or think it through further...
-            double slatAngle = calculateSlatAngle(p1, p2);
-            double newAngle = slatAngle + (moveRotationSteps * (appState.gridMode == '60' ? pi/3 : pi / 2));
-            double xExtend = cos(newAngle) * appState.gridSize * 32;
-            double yExtend = sin(newAngle) * appState.gridSize * 32;
-            p2 = Offset(
-              p1.dx + xExtend,
-              p1.dy + yExtend,
-            );
-          }
+          // gathers all the coordinates for the selected slat
+          List unSortedCoords = slat.slatPositionToCoordinate.entries
+              .toList()
+            ..sort((a, b) => a.key.compareTo(b.key)); // sort by the integer key
 
+          List<Offset> coords = unSortedCoords.map((e) => appState.convertCoordinateSpacetoRealSpace(e.value)).toList();
           if (moveTranspose){
-            // reverse the slat's direction if transpose is active
-            var p1Clone = Offset(p1.dx, p1.dy);
-            p1 = p2;
-            p2 = p1Clone;
+            // reverse the coordinates
+            coords = coords.reversed.toList();
           }
 
-          Offset slatExtend = calculateSlatExtend(p1, p2, appState.gridSize);
-          if(actionState.drawingAids){
-            canvas.drawLine(p1 - (slatExtend * 0.5) + anchorTranslate,  p2 + anchorTranslate, hoverRodPaint);
-            drawSlatDrawingAids(canvas, p1 + anchorTranslate, p2 + anchorTranslate, slatExtend, appState.gridSize, hoverRodPaint, hoverRodPaint.color, 1.0);
-          }
-          else {
-            canvas.drawLine(p1 - slatExtend + anchorTranslate, p2 + slatExtend + anchorTranslate, hoverRodPaint);
-          }
+          // apply the anchor translation to the coordinates before drawing
+          coords = coords.map((e) => e + anchorTranslate).toList();
+
+          drawSlat(coords, canvas, appState, actionState, hoverRodPaint);
         }
       }
     }

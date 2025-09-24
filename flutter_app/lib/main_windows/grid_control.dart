@@ -32,7 +32,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   double minScale = 0.1;
   double maxScale = 6.0;
 
-  int moveRotationStepsRequested = 0;
   bool moveFlipRequested = false;
 
   double scale = 0.8; // actual running scale value
@@ -583,7 +582,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
                 slatMoveAnchor = Offset.zero;
                 moveFlipRequested = false; // reset the flip request
-                moveRotationStepsRequested = 0; // reset the rotation request
               });
             }
           },
@@ -875,7 +873,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                             !dragActive,
                             appState.selectedSlats.map((e) => appState.slats[e]!).toList(),
                             slatMoveAnchor,
-                            moveRotationStepsRequested,
                             moveFlipRequested,
                             appState,
                             actionState
