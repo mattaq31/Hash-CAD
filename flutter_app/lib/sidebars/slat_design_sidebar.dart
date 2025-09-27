@@ -12,6 +12,208 @@ List<String> getOrderedKeys(Map<String, Map<String, dynamic>> layerMap) {
     ..sort((a, b) => layerMap[b]!['order'].compareTo(layerMap[a]!['order']));
 }
 
+Widget slatIcon(DesignState appState) {
+  bool isSelected = appState.slatAdditionType == 'tube';
+  return GestureDetector(
+    onTap: () {
+      appState.setSlatAdditionType('tube');
+    },
+    child: Container(
+      width: 40, // Shrunk size
+      height: 40,
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+        borderRadius: BorderRadius.circular(6),
+        border: isSelected
+            ? Border.all(color: Colors.black, width: 2)
+            : null,
+        boxShadow: isSelected
+            ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 6,
+            spreadRadius: 1,
+          )
+        ]
+            : [],
+      ),
+    ),
+  );
+}
+
+
+Widget dBSlatIcon(DesignState appState) {
+  bool isSelected = appState.slatAdditionType == 'double-barrel';
+  return GestureDetector(
+    onTap: () {
+      appState.setSlatAdditionType('double-barrel');
+    },
+    child: Container(
+      width: 40, // Shrunk size
+      height: 40,
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+        borderRadius: BorderRadius.circular(6),
+        border: isSelected
+            ? Border.all(color: Colors.black, width: 2)
+            : null,
+        boxShadow: isSelected
+            ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 6,
+            spreadRadius: 1,
+          )
+        ]
+            : [],
+      ),
+    ),
+  );
+}
+
+//  Widgets/painters for labeled pictographs in slat palette
+typedef GlyphPainterBuilder = CustomPainter Function(Color color);
+
+class SlatOption extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+  final GlyphPainterBuilder painterBuilder;
+
+  const SlatOption({
+    super.key,
+    required this.label,
+    required this.isSelected,
+    required this.color,
+    required this.painterBuilder,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? Colors.black : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 1),
+                  )
+                ]
+              : [],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade800,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: CustomPaint(
+                painter: painterBuilder(color),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SlatGlyphPainter extends CustomPainter {
+  final Color color;
+  SlatGlyphPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final double padding = 6;
+    final double barHeight = 8;
+
+    final rect = Rect.fromLTWH(
+      - padding * 7,
+      (size.height - barHeight) / 2,
+      size.width + 6 * padding,
+      barHeight,
+    );
+
+    canvas.drawRect(rect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant SlatGlyphPainter oldDelegate) => oldDelegate.color != color;
+}
+
+class DoubleBarrelGlyphPainter extends CustomPainter {
+  final Color color;
+  DoubleBarrelGlyphPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final double padding = 6;
+    final double barHeight = 6;
+    final double spacing = 6;
+    final totalHeight = barHeight * 2 + spacing;
+    final top = (size.height - totalHeight) / 2;
+
+    final r1 = Rect.fromLTWH(
+      - padding * 7,
+      top,
+      size.width + 6 * padding,
+      barHeight,
+    );
+    final r2 = Rect.fromLTWH(
+      - padding * 7,
+      top + barHeight + spacing,
+      size.width + 6 * padding,
+      barHeight,
+    );
+
+    final r3 = Rect.fromLTWH(
+      - padding * 7,
+      top,
+      10,
+      barHeight * 3,
+    );
+
+    canvas.drawRect(r1, paint);
+    canvas.drawRect(r2, paint);
+    canvas.drawRect(r3, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant DoubleBarrelGlyphPainter oldDelegate) => oldDelegate.color != color;
+}
+
 class SlatDesignTools extends StatefulWidget {
   const SlatDesignTools({super.key});
 
@@ -200,6 +402,38 @@ class _SlatDesignTools extends State<SlatDesignTools>
         ),
       ),
       // Buttons
+      Divider(thickness: 1, color: Colors.grey.shade200),
+      Text(
+        "Slat Palette", // Title above the segmented button
+        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      ),
+      Container(
+        // decoration: BoxDecoration(
+        //   border: Border.all(color: Colors.grey.shade400, width: 1),
+        //   borderRadius: BorderRadius.circular(8),
+        // ),
+        width: (40 + 4) * 5 + 12,
+        padding: const EdgeInsets.all(6),
+        child: Column(
+          children: [
+            SlatOption(
+              label: 'CC6HB',
+              isSelected: appState.slatAdditionType == 'tube',
+              color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+              painterBuilder: (color) => SlatGlyphPainter(color: color),
+              onTap: () => appState.setSlatAdditionType('tube'),
+            ),
+            SizedBox(height: 6),
+            SlatOption(
+              label: 'Double-Barrel',
+              isSelected: appState.slatAdditionType == 'double-barrel',
+              color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+              painterBuilder: (color) => DoubleBarrelGlyphPainter(color: color),
+              onTap: () => appState.setSlatAdditionType('double-barrel'),
+            ),
+          ],
+        ),
+      ),
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(
         "Number of Slats to Draw", // Title above the segmented button

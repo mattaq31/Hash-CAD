@@ -426,6 +426,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     String fullKey = readExcelString(metadataSheet, 'A${i + layerReadStart}');
     layerMap[fullKey.substring('Layer '.length)] = {
       'direction': readExcelInt(metadataSheet, 'B${i + layerReadStart}'),
+      'DBDirection': readExcelInt(metadataSheet, 'B${i + layerReadStart}'), // TODO: remove once decided on which type of direction system to use...
       'top_helix': readExcelString(metadataSheet, 'C${i + layerReadStart}'),
       'bottom_helix': readExcelString(metadataSheet, 'D${i + layerReadStart}'),
       'next_slat_id': readExcelInt(metadataSheet, 'E${i + layerReadStart}'),

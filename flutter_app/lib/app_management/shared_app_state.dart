@@ -53,6 +53,7 @@ class DesignState extends ChangeNotifier {
   Map<(String, int), Offset> slatDirectionGenerators = {
     ('90', 90): Offset(1, 0),
     ('90', 180): Offset(0, 1),
+
     ('60', 180): Offset(0, 2),
     ('60', 120): Offset(1, 1),
     ('60', 240): Offset(-1, 1),
@@ -61,17 +62,46 @@ class DesignState extends ChangeNotifier {
   Map<(String, int), Offset> multiSlatGenerators = {
     ('90', 90): Offset(0, 1),
     ('90', 180): Offset(1, 0),
+
     ('60', 180): Offset(1, 1),
     ('60', 120): Offset(0, 2),
     ('60', 240): Offset(0, 2),
   };
-
   Map<(String, int), Offset> multiSlatGeneratorsAlternate = {
     ('90', 90): Offset(0, -1),
     ('90', 180): Offset(-1, 0),
     ('60', 180): Offset(-1, 1),
     ('60', 120): Offset(1, -1),
     ('60', 240): Offset(-1, -1),
+  };
+
+  // trialling a new system for slat addition using a full 360deg rotation and no flips
+  Map<(String, int), Offset> multiSlatGeneratorsDB = {
+    ('90', 90): Offset(0, 1),
+    ('90', 180): Offset(-1, 0),
+    ('90', 270): Offset(0, -1),
+    ('90', 0): Offset(1, 0),
+
+    ('60', 180): Offset(-1, -1),
+    ('60', 120): Offset(-1, 1),
+    ('60', 240): Offset(0, -2),
+    ('60', 300): Offset(1, -1),
+    ('60', 0): Offset(1, 1),
+    ('60', 60): Offset(0, 2),
+  };
+
+  Map<(String, int), Offset> slatDirectionGeneratorsDB = {
+    ('90', 90): Offset(1, 0),
+    ('90', 180): Offset(0, 1),
+    ('90', 270): Offset(-1, 0),
+    ('90', 0): Offset(0, -1),
+
+    ('60', 180): Offset(0, 2),
+    ('60', 120): Offset(1, 1),
+    ('60', 240): Offset(-1, 1),
+    ('60', 300): Offset(-1, -1),
+    ('60', 0): Offset(0, -2),
+    ('60', 60): Offset(1, -1),
   };
 
   // when checking seed occupancy, use these values to extend beyond the standard hover position
@@ -98,6 +128,7 @@ class DesignState extends ChangeNotifier {
   Map<String, Map<String, dynamic>> layerMap = {
     'A': {
       "direction": 120, // slat default direction
+      "DBDirection": 120, // temporary alternative drawing system
       'order': 0, // draw order - has to be updated when layers are moved
       'top_helix': 'H5',
       'bottom_helix': 'H2',
@@ -108,6 +139,7 @@ class DesignState extends ChangeNotifier {
     },
     'B': {
       "direction": 240,
+      "DBDirection": 240, // temporary alternative drawing system
       'next_slat_id': 1,
       'slat_count': 0,
       'top_helix': 'H5',
@@ -136,6 +168,7 @@ class DesignState extends ChangeNotifier {
   bool hammingValueValid = true;
   int cargoAddCount = 1;
   String? cargoAdditionType;
+  String slatAdditionType = 'tube';
   List<Offset> selectedCargoPositions = [];
   String designName = 'New Megastructure';
 
@@ -200,6 +233,7 @@ class DesignState extends ChangeNotifier {
     slatAddDirection = 'down';
     uniqueSlatColor = Colors.blue;
     uniqueSlatColorsByLayer = {};
+    slatAdditionType = 'tube';
     cargoPalette = {
       'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0)),
     };
@@ -345,6 +379,7 @@ class DesignState extends ChangeNotifier {
     layerMap = {
       'A': {
         "direction": gridMode == '90' ? 90 : 120, // slat default direction
+        "DBDirection": gridMode == '90' ? 90 : 120, // temporary alternative drawing system
         'order': 0, // draw order - has to be updated when layers are moved
         'top_helix': 'H5',
         'bottom_helix': 'H2',
@@ -355,6 +390,7 @@ class DesignState extends ChangeNotifier {
       },
       'B': {
         "direction": 180,
+        "DBDirection": 180, // temporary alternative drawing system
         'next_slat_id': 1,
         'top_helix': 'H5',
         'bottom_helix': 'H2',
@@ -449,7 +485,7 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Rotates the direction of a layer from horizontal to vertical or vice versa
+  /// Rotates the direction of a layer through all available directions
   void rotateLayerDirection(String layerKey) {
     if (gridMode == '90'){
       if (layerMap[layerKey]?['direction'] == 90) {
@@ -457,6 +493,7 @@ class DesignState extends ChangeNotifier {
       } else {
         layerMap[layerKey]?['direction'] = 90;
       }
+      layerMap[layerKey]?['DBDirection'] += 90; // fully rotates around the entire range of possible angles
     }
     else if (gridMode == '60'){
       if (layerMap[layerKey]?['direction'] == 180) {
@@ -468,9 +505,14 @@ class DesignState extends ChangeNotifier {
       else {
         layerMap[layerKey]?['direction'] = 180;
       }
+      layerMap[layerKey]?['DBDirection'] += 60; // fully rotates around the entire range of possible angles
     }
     else{
       throw Exception('Invalid grid mode: $gridMode');
+    }
+
+    if (layerMap[layerKey]?['DBDirection'] == 360){
+      layerMap[layerKey]?['DBDirection'] = 0;
     }
     notifyListeners();
   }
@@ -699,6 +741,7 @@ class DesignState extends ChangeNotifier {
   void addLayer() {
     layerMap[nextLayerKey] = {
       "direction": layerMap.values.last['direction'],
+      "DBDirection": layerMap.values.last['direction'], // temporary alternative drawing system
       'next_slat_id': 1,
       'slat_count': 0,
       'top_helix': 'H5',
@@ -742,11 +785,16 @@ class DesignState extends ChangeNotifier {
 
   // SLAT OPERATIONS //
 
+  void setSlatAdditionType(String type){
+    slatAdditionType = type;
+    notifyListeners();
+  }
+
   /// Adds slats to the design
   void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
 
     for (var slat in slatCoordinates.entries) {
-      slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}',layer, slat.value);
+      slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}',layer, slat.value, slatType: slatAdditionType);
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
       occupiedGridPoints.putIfAbsent(layer, () => {});
       occupiedGridPoints[layer]?.addAll({

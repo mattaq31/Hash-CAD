@@ -392,10 +392,10 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     instanceManager['honeyCombSlat'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, true), threeJs: threeJs, maxIndex: 500);
     instanceManager['honeyCombSlatShort'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, false), threeJs: threeJs, maxIndex: 500);
 
-    instanceManager['DBSlat'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60'), threeJs: threeJs, maxIndex: 50);
-    instanceManager['honeyCombDBSlat'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 50);
-    instanceManager['honeyCombDBSlatShort'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 50);
-    instanceManager['DBSlatShort'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60'), threeJs: threeJs, maxIndex: 50);
+    instanceManager['DBSlat'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60'), threeJs: threeJs, maxIndex: 10);
+    instanceManager['honeyCombDBSlat'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 10);
+    instanceManager['honeyCombDBSlatShort'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 10);
+    instanceManager['DBSlatShort'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60'), threeJs: threeJs, maxIndex: 10);
 
     instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
     instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
@@ -415,6 +415,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       5,
       1.5,
     );
+
     var tiltSeedGeometry = createSeedTubeGeometry(
       dummyTiltSeed.coordinates,
       gridSize,
@@ -671,9 +672,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
       Color mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
       double slatAngle;
-      double finalX;
-      double finalY;
-      Offset slatExtend;
 
       if (slat.slatType == 'tube') {
         var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
@@ -681,10 +679,6 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
         // same angle/extension system used here as in 2D system
         slatAngle = calculateSlatAngle(p1, p2);
-        slatExtend = calculateSlatExtend(p1, p2, 2 * (gridSize * slat.slatPositionToCoordinate.length / 2 - gridSize / 2));
-
-        finalX = p1.dx + slatExtend.dx;
-        finalY = p1.dy + slatExtend.dy;
 
       }
       // DB computation
@@ -694,11 +688,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
         // a 180deg change is added to match the way the mesh was created
         slatAngle = calculateSlatAngle(p1, p2) + math.pi;
-
-        // the mesh expects the slat to be placed at its initial point rather than the center
-        finalX = p1.dx;
-        finalY = p1.dy;
       }
+
+      // all meshes placed at their center coordinate
+      Offset centerCoordReal = convertCoordinateSpacetoRealSpace(slat.centerCoordinate, gridMode, gridSize, x60Jump, y60Jump);
+      double finalX = centerCoordReal.dx;
+      double finalY = centerCoordReal.dy;
 
       String slatVisualStyle = selectSlatVisualStyle(slat.slatType);
 
@@ -836,41 +831,48 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   }
 
-  void centerOnSlats(InstanceMetrics slatInstances){
+  void centerOnSlats(List<InstanceMetrics> slatInstances){
+
     if (!isSetupComplete) return;
-
-    final positions = slatInstances.positionIndex;
-    final rotations = slatInstances.rotationIndex;
-    if (positions.isEmpty) return;
-
-    // Get local geometry bounding box
-    final localBox = tmath.BoundingBox();
-    localBox.setFromBuffer(slatInstances.geometry.attributes["position"]!);
+    if (slatInstances.isEmpty) return;
 
     // Start global bounding box
     final boundingBox = tmath.BoundingBox();
 
-    // Reuse a dummy Object3D to apply transforms
+    // Reuse a dummy Object3D for transforms
     final dummy = three.Object3D();
 
-    for (final name in positions.keys) {
-      final position = positions[name]!;
-      final rotation = rotations[name] ?? tmath.Euler(0, 0, 0);
+    for (final instance in slatInstances) {
+      final positions = instance.positionIndex;
+      final rotations = instance.rotationIndex;
 
-      dummy.position = position;
-      dummy.rotation.set(rotation.x, rotation.y, rotation.z);
-      dummy.updateMatrix();
+      if (positions.isEmpty) continue;
 
-      // Transform a clone of the local box
-      final transformedBox = localBox.clone();
-      transformedBox.applyMatrix4(dummy.matrix);
+      // Compute local bounding box for this instance’s geometry
+      final localBox = tmath.BoundingBox();
+      localBox.setFromBuffer(instance.geometry.attributes["position"]!);
 
-      // Merge into global bounding box
-      boundingBox.expandByPoint(transformedBox.min);
-      boundingBox.expandByPoint(transformedBox.max);
+      // Transform each positioned/rotated copy of this geometry
+      for (final name in positions.keys) {
+        final position = positions[name]!;
+        final rotation = rotations[name] ?? tmath.Euler(0, 0, 0);
+
+        dummy.position = position;
+        dummy.rotation.set(rotation.x, rotation.y, rotation.z);
+        dummy.updateMatrix();
+
+        // Clone and transform this geometry’s bounding box
+        final transformedBox = localBox.clone();
+        transformedBox.applyMatrix4(dummy.matrix);
+
+        // Merge into global bounding box
+        boundingBox.expandByPoint(transformedBox.min);
+        boundingBox.expandByPoint(transformedBox.max);
+      }
     }
 
-    tmath.Vector3 center = tmath.Vector3(0, 0, 0);
+    // Get the overall center point
+    final center = tmath.Vector3(0, 0, 0);
     boundingBox.getCenter(center);
 
     // Can use this to indicate centre position (for debugging purposes)
@@ -1065,7 +1067,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                         targetInstances += 'Short';
                       }
 
-                      centerOnSlats(instanceManager[targetInstances]!);
+                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('double-barrel')]!]);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,

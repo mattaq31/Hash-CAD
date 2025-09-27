@@ -97,7 +97,7 @@ class SlatHoverPainter extends CustomPainter {
             ..sort((a, b) => a.key.compareTo(b.key)); // sort by the integer key
 
           List<Offset> coords = unSortedCoords.map((e) => appState.convertCoordinateSpacetoRealSpace(e.value)).toList();
-          if (moveTranspose){
+          if (moveTranspose && slat.slatType == 'tube'){
             // reverse the coordinates
             coords = coords.reversed.toList();
           }

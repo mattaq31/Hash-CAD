@@ -11,12 +11,13 @@ List<three.BufferGeometry> drawTube(List<Vector3> pathPoints, double tubeRadius,
 
   final curve = CatmullRomCurve3(points: pathPoints, closed: false, curveType: curveType, tension: tension);
 
+  int radiusSegments = 20; // radial segments affect the smoothness of the tube
   // Tube around path
   final tube = TubeGeometry(
     curve,
-    2000,       // tubular segments
+    200,       // tubular segments
     tubeRadius,   // radius of slat
-    20,      // radial segments (was 8) for a smoother, more circular tube
+    radiusSegments,
     false,    // not closed (do not loop the path)
   );
 
@@ -26,8 +27,8 @@ List<three.BufferGeometry> drawTube(List<Vector3> pathPoints, double tubeRadius,
   final endPoint = pathPoints.last;
 
   // Build flat disk caps using very thin cylinders aligned along Y (faces in XZ plane)
-  final capSegments = 20; // higher segment count for a smoother circle
-  final double capThickness = 0.001; // very thin to remain flat
+  final capSegments = radiusSegments; // higher segment count for a smoother circle
+  final double capThickness = 0.002; // very thin to remain flat
   final double capRadius = tubeRadius; // match tube radius for honeycomb bundle size
 
   final startCap = CylinderGeometry(capRadius, capRadius, capThickness, capSegments);
@@ -98,56 +99,50 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
       if (pos[0] != 0){
         // do not connect tubes together for side helices
         if (hexaTilt) {
-          // step 1 - go up
-          pathPoints = [
-            // start
-            if (tipExtensions)
-              tmath.Vector3(0, -gridSize * 0.5, 0)
-            else
-              tmath.Vector3(0, 0, 0),
-            // go up
-            tmath.Vector3(0, slatLength, 0),
-          ];
-          // add tube already, no connection
-          localGeometries.addAll(drawTube(pathPoints, radius));
 
-          // step 2 - go back down (no across)
-          double offset = pos[0] > 0 ? radius * 2 : 0;
-          pathPoints = [
-            // start
-            tmath.Vector3(0, slatLength + y60jump - offset, -x60jump),
-            // down to end
-            if (tipExtensions)
-              tmath.Vector3(0, y60jump - gridSize * 0.5, -x60jump)
-            else
-              tmath.Vector3(0, y60jump, -x60jump),
-          ];
-          localGeometries.addAll(drawTube(pathPoints, radius));
+          // Construct two vertical legs (up and down) with proper offset so they don't overlap
+          // Up leg: from startY to slatLength
+          final double startY1 = tipExtensions ? -gridSize * 0.5 : 0.0;
+          final double endY1 = slatLength;
+          final double height1 = (endY1 - startY1).abs();
+          var c1 = CylinderGeometry(radius, radius, height1, 20);
+          // place at midpoint between start and end (the geometry's placement origin is at its center)
+          c1.translate(0, (startY1 + endY1) / 2.0, 0);
+          localGeometries.add(c1);
+
+          // Down leg: from (slatLength + y60jump - offset) down to endY2
+          final double offset = pos[0] > 0 ? radius * 2.0 : 0.0;
+          final double startY2 = slatLength + y60jump - offset; // higher Y
+          final double endY2 = tipExtensions ? (y60jump - gridSize * 0.5) : y60jump; // lower Y
+          final double height2 = (startY2 - endY2);
+
+          var c2 = CylinderGeometry(radius, radius, height2, 20);
+          c2.translate(0, (startY2 + endY2) / 2.0, -x60jump); // the x60jump moves it to the other leg
+          localGeometries.add(c2);
         }
 
         // standard 90deg variant (same system as above)
         else {
-          pathPoints = [
-            // start
-            if (tipExtensions)
-              tmath.Vector3(0, -gridSize * 0.5, 0)
-            else
-              tmath.Vector3(0, 0, 0),
-            // go up
-            tmath.Vector3(0, slatLength, 0),
-          ];
-          localGeometries.addAll(drawTube(pathPoints, radius));
-          double offset = pos[0] > 0 ? radius * 2 : 0;
-          pathPoints = [
-            // start
-            tmath.Vector3(0, slatLength - offset, -gridSize),
-            // down to end
-            if (tipExtensions)
-              tmath.Vector3(0, -gridSize * 0.5, -gridSize)
-            else
-              tmath.Vector3(0, 0, -gridSize),
-          ];
-          localGeometries.addAll(drawTube(pathPoints, radius));
+          // Construct two vertical legs (up and down) with proper offset so they don't overlap
+
+          // Up leg: from startY to slatLength
+          final double startY1 = tipExtensions ? -gridSize * 0.5 : 0.0;
+          final double endY1 = slatLength;
+          final double height1 = (endY1 - startY1).abs();
+
+          var c1 = CylinderGeometry(radius, radius, height1, 20);
+          // place at midpoint between start and end (the geometry's placement origin is at its center)
+          c1.translate(0, (startY1 + endY1) / 2.0, 0);
+          localGeometries.add(c1);
+
+          // Down leg
+          final double startY2 = slatLength; // higher Y
+          final double endY2 = tipExtensions ? - gridSize * 0.5 : 0; // lower Y
+          final double height2 = (startY2 - endY2);
+
+          var c2 = CylinderGeometry(radius, radius, height2, 20);
+          c2.translate(0, (startY2 + endY2) / 2.0, -gridSize);
+          localGeometries.add(c2);
         }
 
       }
@@ -241,6 +236,27 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
   merged.setAttributeFromString('position', tmath.Float32BufferAttribute.fromList(mergedPositions, 3));
   merged.setAttributeFromString('normal', tmath.Float32BufferAttribute.fromList(mergedNormals, 3));
   merged.setIndex(tmath.Uint32BufferAttribute.fromList(mergedIndices, 1));
+
+  // Center the geometry around origin for easier manipulation later
+  double minX = double.infinity, minY = double.infinity, minZ = double.infinity;
+  double maxX = -double.infinity, maxY = -double.infinity, maxZ = -double.infinity;
+
+  for (int i = 0; i < mergedPositions.length; i += 3) {
+    final x = mergedPositions[i];
+    final y = mergedPositions[i + 1];
+    final z = mergedPositions[i + 2];
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (z < minZ) minZ = z;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    if (z > maxZ) maxZ = z;
+  }
+  final cx = (minX + maxX) * 0.5;
+  final cy = (minY + maxY) * 0.5;
+  final cz = (minZ + maxZ) * 0.5;
+
+  merged.translate(-cx, -cy, -cz);
 
   return merged;
 }

@@ -200,7 +200,7 @@ class SlatPainter extends CustomPainter {
   }
 
   /// draws a dotted border around a slat when selected
-  void drawBorder(Canvas canvas, List<Offset> coords, Color color, Offset slatExtend, bool slatTipExtended) {
+  void drawBorder(Canvas canvas, List<Offset> coords, Color color, Offset slatExtend, bool slatTipExtended, String slatType, String gridMode) {
     final paint = Paint()
       ..color = color
       ..strokeWidth = appState.gridSize / 6
@@ -242,12 +242,18 @@ class SlatPainter extends CustomPainter {
 
     // if distance between extremities is much less than that expected of a straight line, then the slat must be a double barrel
     // (this is a bit of a hack but should work for now, other solutions will be much more complicated)
-    if (((coords.first - coords.last).distance - ((coords.length-1) * appState.gridSize)).abs() > 1e-6) {
+    if (slatType == 'double-barrel') {
       // select offsets to match normal slat system, with some tweaks to improve visualization
       // of course, if different sizes DBs are introduced, the 15/16 hardcoding will need to be changed...
 
-      slatP2A = coords[15] + slatExtend * 0.7 - flippedSlatExtend;
-      slatP2B = coords[16] + slatExtend * 1.6 + flippedSlatExtend;
+      if (gridMode == '60') {
+        slatP2A = coords[15] + slatExtend * 0.7 - flippedSlatExtend;
+        slatP2B = coords[16] + slatExtend * 1.6 + flippedSlatExtend;
+      }
+      else {
+        slatP2A = coords[15] + slatExtend * 1.3 - flippedSlatExtend;
+        slatP2B = coords[16] + slatExtend * 1.3 + flippedSlatExtend;
+      }
 
       if (slatTipExtended){ // only one side of the DB is extended with tip extenders...
         slatP1A = coords.last - slatExtend * 1.6 + flippedSlatExtend;
@@ -636,7 +642,7 @@ class SlatPainter extends CustomPainter {
       }
 
       if (selectedSlats.contains(slat.id)) {
-        drawBorder(canvas, coords, mainColor, slatExtendFront, (actionState.drawingAids || actionState.extendSlatTips));
+        drawBorder(canvas, coords, mainColor, slatExtendFront, (actionState.drawingAids || actionState.extendSlatTips), slat.slatType, appState.gridMode);
       }
     }
 
