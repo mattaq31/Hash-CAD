@@ -497,9 +497,26 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
         }
       }
     }
+
+    double gridMultiplier = gridMode == '60' ? 1.414 : 1.0;
     for (var slatBundle in slatCoordinates.entries) {
-      slats["$layer-I${slatBundle.key}"] = Slat(slatBundle.key, "$layer-I${slatBundle.key}", layer, slatBundle.value);
+      var coords = slatBundle.value.values.toList();
+      var category = 'tube';
+      // a quick hack to identify if a slat is a double barrel.  TODO: In the future, slat types should probably be explicitly identified.
+      if (((coords.first - coords.last).distance - ((coords.length-1) * gridMultiplier)).abs() > 0.05) {
+        category = 'double-barrel';
+      }
+      // second check: in 60deg mode, vertical slats occupy double distance
+
+      if (gridMode == '60' && (((coords.first - coords.last).distance - ((coords.length-1) * 2)).abs() < 0.05)) {
+        category = 'tube';
+      }
+
+      slats["$layer-I${slatBundle.key}"] = Slat(
+          slatBundle.key, "$layer-I${slatBundle.key}", layer,
+          slatBundle.value, slatType: category);
     }
+
     layerMap[layer]!['slat_count'] = slatCoordinates.length;
   }
 

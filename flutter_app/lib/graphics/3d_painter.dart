@@ -387,11 +387,15 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     });
 
     // preparing instancing meshes for slats, seeds and handles
-    instanceManager['slat'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 32, 20), threeJs: threeJs, maxIndex: 1000); // actual size should be 310, but adding an extra 10 to improve visuals
-    instanceManager['slatShort'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 31, 20), threeJs: threeJs, maxIndex: 1000);
+    instanceManager['Slat'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 32, 20), threeJs: threeJs, maxIndex: 500); // actual size should be 310, but adding an extra 10 to improve visuals
+    instanceManager['SlatShort'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 31, 20), threeJs: threeJs, maxIndex: 500);
+    instanceManager['honeyCombSlat'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, true), threeJs: threeJs, maxIndex: 500);
+    instanceManager['honeyCombSlatShort'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, false), threeJs: threeJs, maxIndex: 500);
 
-    instanceManager['honeyCombSlat'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, true), threeJs: threeJs, maxIndex: 1000);
-    instanceManager['honeyCombSlatShort'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, false), threeJs: threeJs, maxIndex: 1000);
+    instanceManager['DBSlat'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60'), threeJs: threeJs, maxIndex: 50);
+    instanceManager['honeyCombDBSlat'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 50);
+    instanceManager['honeyCombDBSlatShort'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 50);
+    instanceManager['DBSlatShort'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60'), threeJs: threeJs, maxIndex: 50);
 
     instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
     instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 10000);
@@ -430,9 +434,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       1.5,
     );
 
-    instanceManager['seed'] = InstanceMetrics(geometry: seedGeometry, threeJs: threeJs, maxIndex: 20);
-    instanceManager['tiltSeed'] = InstanceMetrics(geometry: tiltSeedGeometry, threeJs: threeJs, maxIndex: 20);
-    instanceManager['tiltSeedInvert'] = InstanceMetrics(geometry: tiltSeedGeometryInvert, threeJs: threeJs, maxIndex: 20);
+    instanceManager['seed'] = InstanceMetrics(geometry: seedGeometry, threeJs: threeJs, maxIndex: 5);
+    instanceManager['tiltSeed'] = InstanceMetrics(geometry: tiltSeedGeometry, threeJs: threeJs, maxIndex: 5);
+    instanceManager['tiltSeedInvert'] = InstanceMetrics(geometry: tiltSeedGeometryInvert, threeJs: threeJs, maxIndex: 5);
 
   }
 
@@ -461,33 +465,36 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     return Offset(extX, extY);
   }
 
-  void positionSlatInstance(String name, Color color, double slatAngle, double height, double centerX, double centerZ){
-
-    var position = tmath.Vector3(centerX, height, centerZ);
-    var rotation = tmath.Euler(0, -slatAngle, math.pi / 2);
-
+  String selectSlatVisualStyle(String slatType){
     String instanceType;
-
+    String slatTypeClean = slatType.replaceAll('tube', 'Slat').replaceAll('double-barrel', 'DBSlat');
     if (helixBundleView){
       if (slatTipExtendView){
-        instanceType = 'honeyCombSlat';
+        instanceType = 'honeyComb$slatTypeClean';
       }
       else{
-        instanceType = 'honeyCombSlatShort';
+        instanceType = 'honeyComb${slatTypeClean}Short';
       }
     }
     else{
       if (slatTipExtendView){
-        instanceType = 'slat';
+        instanceType = slatTypeClean;
       }
       else{
-        instanceType = 'slatShort';
+        instanceType = '${slatTypeClean}Short';
       }
     }
+    return instanceType;
+  }
 
-    instanceManager[instanceType]!.allocateIndex(name);
-    instanceManager[instanceType]!.setPositionRotation(name, position, rotation);
-    instanceManager[instanceType]!.setColor(name, color);
+  void positionSlatInstance(String name, String slatVisualStyle, Color color, double slatAngle, double height, double centerX, double centerZ){
+
+    var position = tmath.Vector3(centerX, height, centerZ);
+    var rotation = tmath.Euler(0, -slatAngle, math.pi / 2);
+
+    instanceManager[slatVisualStyle]!.allocateIndex(name);
+    instanceManager[slatVisualStyle]!.setPositionRotation(name, position, rotation);
+    instanceManager[slatVisualStyle]!.setColor(name, color);
 
   }
 
@@ -663,44 +670,67 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     for (var slat in slats) {
 
       Color mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
+      double slatAngle;
+      double finalX;
+      double finalY;
+      Offset slatExtend;
 
-      var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
-      var p2 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[32]!, gridMode, gridSize, x60Jump, y60Jump);
-      // same angle/extension system used here as in 2D system
+      if (slat.slatType == 'tube') {
+        var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
+        var p2 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[slat.slatPositionToCoordinate.length]!, gridMode, gridSize, x60Jump, y60Jump);
 
-      double slatAngle = calculateSlatAngle(p1, p2);
-      Offset slatExtend = calculateSlatExtend(p1, p2, 2 * (gridSize * 32 / 2 - gridSize / 2));
+        // same angle/extension system used here as in 2D system
+        slatAngle = calculateSlatAngle(p1, p2);
+        slatExtend = calculateSlatExtend(p1, p2, 2 * (gridSize * slat.slatPositionToCoordinate.length / 2 - gridSize / 2));
 
-      double finalX = p1.dx + slatExtend.dx;
-      double finalY = p1.dy + slatExtend.dy;
+        finalX = p1.dx + slatExtend.dx;
+        finalY = p1.dy + slatExtend.dy;
 
-      String slatType = helixBundleView ? 'honeyCombSlat' : 'slat';
+      }
+      // DB computation
+      else{
+        var p1 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
+        var p2 = convertCoordinateSpacetoRealSpace(slat.slatPositionToCoordinate[16]!, gridMode, gridSize, x60Jump, y60Jump);
 
-      if (instanceManager[slatType]?.getIndex(slat.id) == null) {
+        // a 180deg change is added to match the way the mesh was created
+        slatAngle = calculateSlatAngle(p1, p2) + math.pi;
+
+        // the mesh expects the slat to be placed at its initial point rather than the center
+        finalX = p1.dx;
+        finalY = p1.dy;
+      }
+
+      String slatVisualStyle = selectSlatVisualStyle(slat.slatType);
+
+      // if the slat has changed type (tube <-> double-barrel), remove the old instance
+      String alternateType = slat.slatType == 'tube' ? 'double-barrel' : 'tube';
+      if (instanceManager[slatVisualStyle.replaceAll(slat.slatType, alternateType)]?.getIndex(slat.id) == null){
+        removeSlat(slat.id);
+        slatIDs.remove(slat.id);
+      }
+
+      if (instanceManager[slatVisualStyle]?.getIndex(slat.id) == null) {
         slatIDs.add(slat.id);
-        positionSlatInstance(slat.id, mainColor, slatAngle,
+        positionSlatInstance(slat.id, slatVisualStyle, mainColor, slatAngle,
             layerMap[slat.layer]?['order'].toDouble() * 6.5,
             finalX, finalY);
       }
-
       else {
         double incomingSlatAngle = -slatAngle;
-        double incomingPositionZ = p1.dy + slatExtend.dy;
-        double incomingPositionX = p1.dx + slatExtend.dx;
         double incomingLayer = layerMap[slat.layer]?['order'].toDouble() * 6.5;
 
-        tmath.Vector3 currentPosition = instanceManager[slatType]!.getPosition(slat.id)!;
-        tmath.Euler currentRotation = instanceManager[slatType]!.getRotation(slat.id)!;
-        Color currentColor = instanceManager[slatType]!.getColor(slat.id)!;
+        tmath.Vector3 currentPosition = instanceManager[slatVisualStyle]!.getPosition(slat.id)!;
+        tmath.Euler currentRotation = instanceManager[slatVisualStyle]!.getRotation(slat.id)!;
+        Color currentColor = instanceManager[slatVisualStyle]!.getColor(slat.id)!;
 
-        if (!approxEqual(currentPosition.x, incomingPositionX) ||
+        if (!approxEqual(currentPosition.x, finalX) ||
             !approxEqual(currentPosition.y, incomingLayer) ||
-            !approxEqual(currentPosition.z, incomingPositionZ) ||
+            !approxEqual(currentPosition.z, finalY) ||
             !approxEqual(currentRotation.y, incomingSlatAngle) ||
             currentColor != mainColor) {
           positionSlatInstance(
-              slat.id, mainColor, slatAngle, incomingLayer,
-              incomingPositionX, incomingPositionZ);
+              slat.id, slatVisualStyle, mainColor, slatAngle, incomingLayer,
+              finalX, finalY);
         }
       }
       manageHandles(slat, layerMap, cargoPalette);
@@ -755,8 +785,13 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     instanceManager['honeyCombSlat']!.hideAndRecycle(id);
     instanceManager['honeyCombSlatShort']!.hideAndRecycle(id);
-    instanceManager['slat']!.hideAndRecycle(id);
-    instanceManager['slatShort']!.hideAndRecycle(id);
+    instanceManager['Slat']!.hideAndRecycle(id);
+    instanceManager['SlatShort']!.hideAndRecycle(id);
+
+    instanceManager['DBSlat']!.hideAndRecycle(id);
+    instanceManager['honeyCombDBSlat']!.hideAndRecycle(id);
+    instanceManager['DBSlatShort']!.hideAndRecycle(id);
+    instanceManager['honeyCombDBSlatShort']!.hideAndRecycle(id);
 
     if (handleIDs.containsKey(id)) {
       for (var handleInstance in handleIDs[id]!.entries) {
@@ -767,18 +802,38 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   }
 
   void clearScene() {
-    instanceManager['slat']!.recycleAllIndices();
-    instanceManager['slatShort']!.recycleAllIndices();
-    instanceManager['seed']!.recycleAllIndices();
-    instanceManager['tiltSeed']!.recycleAllIndices();
-    instanceManager['tiltSeedInvert']!.recycleAllIndices();
-    instanceManager['honeyCombSlat']!.recycleAllIndices();
-    instanceManager['honeyCombSlatShort']!.recycleAllIndices();
-    instanceManager['cargoHandle']!.recycleAllIndices();
-    instanceManager['honeyCombAssHandle']!.recycleAllIndices();
-    instanceManager['assHandle']!.recycleAllIndices();
+    for (var instance in instanceManager.values) {
+      instance.recycleAllIndices();
+    }
     slatIDs.clear();
     handleIDs.clear();
+    seedIDs.clear();
+  }
+
+  void _onGridModeChanged() {
+    if (!isSetupComplete || threeJs.scene == null) return;
+    // Rebuild DB slat-related geometries that depend on gridMode (60 vs 90)
+    // Remove old meshes from the scene to avoid leaks, then replace InstanceMetrics
+    void replaceInstance(String key, three.BufferGeometry newGeometry, {int maxIndex = 50}) {
+      if (instanceManager.containsKey(key)) {
+        try {
+          threeJs.scene.remove(instanceManager[key]!.mesh);
+        } catch (_) {}
+      }
+      instanceManager[key] = InstanceMetrics(geometry: newGeometry, threeJs: threeJs, maxIndex: maxIndex);
+    }
+
+    // Recreate the geometries with the new grid mode flag
+    final newDB = createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60');
+    final newDBShort = createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60');
+    final newDBHoneyComb = createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true);
+    final newDBHoneyCombShort = createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, gridMode == '60', helixBundlePositions: helixBundlePositions, honeyCombVariant: true);
+
+    replaceInstance('DBSlat', newDB, maxIndex: 50);
+    replaceInstance('honeyCombDBSlat', newDBHoneyComb, maxIndex: 50);
+    replaceInstance('honeyCombDBSlatShort', newDBHoneyCombShort, maxIndex: 50);
+    replaceInstance('DBSlatShort', newDBShort, maxIndex: 50);
+
   }
 
   void centerOnSlats(InstanceMetrics slatInstances){
@@ -875,6 +930,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       gridMode = appState.gridMode;
       y60Jump = appState.y60Jump;
       x60Jump = appState.x60Jump;
+
+      if (gridMode != lastGridMode) {
+        _onGridModeChanged();
+        lastGridMode = gridMode;
+        clearScene();
+      }
 
       manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
       manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color);

@@ -7,6 +7,245 @@ import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 
 
+List<three.BufferGeometry> drawTube(List<Vector3> pathPoints, double tubeRadius, {String curveType = "catmullrom", double tension = 0.01}){
+
+  final curve = CatmullRomCurve3(points: pathPoints, closed: false, curveType: curveType, tension: tension);
+
+  // Tube around path
+  final tube = TubeGeometry(
+    curve,
+    2000,       // tubular segments
+    tubeRadius,   // radius of slat
+    20,      // radial segments (was 8) for a smoother, more circular tube
+    false,    // not closed (do not loop the path)
+  );
+
+  // To visually "close" the tube ends, add caps at the two ends
+  // Determine end positions from centered path
+  final startPoint = pathPoints.first;
+  final endPoint = pathPoints.last;
+
+  // Build flat disk caps using very thin cylinders aligned along Y (faces in XZ plane)
+  final capSegments = 20; // higher segment count for a smoother circle
+  final double capThickness = 0.001; // very thin to remain flat
+  final double capRadius = tubeRadius; // match tube radius for honeycomb bundle size
+
+  final startCap = CylinderGeometry(capRadius, capRadius, capThickness, capSegments);
+  // Move slightly inside along +Y so the outer face is flush and does not protrude
+  startCap.translate(startPoint.x, startPoint.y + capThickness / 2.0, startPoint.z);
+
+  final endCap = CylinderGeometry(capRadius, capRadius, capThickness, capSegments);
+  // Move slightly inside along -Y at the end
+  endCap.translate(endPoint.x, endPoint.y - capThickness / 2.0, endPoint.z);
+
+  return [tube, startCap, endCap];
+}
+
+
+three.BufferGeometry createDBSlat(double radius, double slatLength, double gridSize,
+    double x60jump, double y60jump, bool tipExtensions,
+    bool hexaTilt, {List<List<double>>? helixBundlePositions,
+      bool honeyCombVariant = false}) {
+
+  List<Vector3> pathPoints;
+  List<three.BufferGeometry> geometries = [];
+
+  if (!honeyCombVariant) {
+    // slightly tilted variant to match 60deg grid
+    if (hexaTilt) {
+      pathPoints = [
+        // start
+        if (tipExtensions)
+          tmath.Vector3(0, -gridSize * 0.5, 0)
+        else
+          tmath.Vector3(0, 0, 0),
+        // go up
+        tmath.Vector3(0, slatLength, 0),
+        // across (now towards negative Z)
+        tmath.Vector3(0, slatLength + y60jump, -x60jump),
+        // down to end
+        if (tipExtensions)
+          tmath.Vector3(0, y60jump - gridSize * 0.5, -x60jump)
+        else
+          tmath.Vector3(0, y60jump, -x60jump),
+      ];
+    }
+    // standard 90deg variant
+    else {
+      pathPoints = [
+        // start
+        if (tipExtensions)
+          tmath.Vector3(0, -gridSize * 0.5, 0)
+        else
+          tmath.Vector3(0, 0, 0),
+        // go up
+        tmath.Vector3(0, slatLength, 0),
+        // across (now towards negative Z)
+        tmath.Vector3(0, slatLength, -gridSize),
+        // down to end
+        if (tipExtensions)
+          tmath.Vector3(0, -gridSize * 0.5, -gridSize)
+        else
+          tmath.Vector3(0, 0, -gridSize),
+      ];
+    }
+    geometries = drawTube(pathPoints, radius);
+  }
+  else {
+    for (final pos in helixBundlePositions!) {
+
+      List<three.BufferGeometry> localGeometries = [];
+      if (pos[0] != 0){
+        // do not connect tubes together for side helices
+        if (hexaTilt) {
+          // step 1 - go up
+          pathPoints = [
+            // start
+            if (tipExtensions)
+              tmath.Vector3(0, -gridSize * 0.5, 0)
+            else
+              tmath.Vector3(0, 0, 0),
+            // go up
+            tmath.Vector3(0, slatLength, 0),
+          ];
+          // add tube already, no connection
+          localGeometries.addAll(drawTube(pathPoints, radius));
+
+          // step 2 - go back down (no across)
+          double offset = pos[0] > 0 ? radius * 2 : 0;
+          pathPoints = [
+            // start
+            tmath.Vector3(0, slatLength + y60jump - offset, -x60jump),
+            // down to end
+            if (tipExtensions)
+              tmath.Vector3(0, y60jump - gridSize * 0.5, -x60jump)
+            else
+              tmath.Vector3(0, y60jump, -x60jump),
+          ];
+          localGeometries.addAll(drawTube(pathPoints, radius));
+        }
+
+        // standard 90deg variant (same system as above)
+        else {
+          pathPoints = [
+            // start
+            if (tipExtensions)
+              tmath.Vector3(0, -gridSize * 0.5, 0)
+            else
+              tmath.Vector3(0, 0, 0),
+            // go up
+            tmath.Vector3(0, slatLength, 0),
+          ];
+          localGeometries.addAll(drawTube(pathPoints, radius));
+          double offset = pos[0] > 0 ? radius * 2 : 0;
+          pathPoints = [
+            // start
+            tmath.Vector3(0, slatLength - offset, -gridSize),
+            // down to end
+            if (tipExtensions)
+              tmath.Vector3(0, -gridSize * 0.5, -gridSize)
+            else
+              tmath.Vector3(0, 0, -gridSize),
+          ];
+          localGeometries.addAll(drawTube(pathPoints, radius));
+        }
+
+      }
+      else {
+        // run the normal u-connection pathing for the top/bottom helices
+        // slightly tilted variant to match 60deg grid
+        if (hexaTilt) {
+          pathPoints = [
+            // start
+            if (tipExtensions)
+              tmath.Vector3(0, -gridSize * 0.5, 0)
+            else
+              tmath.Vector3(0, 0, 0),
+            // go up
+            tmath.Vector3(0, slatLength, 0),
+            // across (now towards negative Z)
+            tmath.Vector3(0, slatLength + y60jump, -x60jump),
+            // down to end
+            if (tipExtensions)
+              tmath.Vector3(0, y60jump - gridSize * 0.5, -x60jump)
+            else
+              tmath.Vector3(0, y60jump, -x60jump),
+          ];
+        }
+        // standard 90deg variant
+        else {
+          pathPoints = [
+            // start
+            if (tipExtensions)
+              tmath.Vector3(0, -gridSize * 0.5, 0)
+            else
+              tmath.Vector3(0, 0, 0),
+            // go up
+            tmath.Vector3(0, slatLength, 0),
+            // across (now towards negative Z)
+            tmath.Vector3(0, slatLength, -gridSize),
+            // down to end
+            if (tipExtensions)
+              tmath.Vector3(0, -gridSize * 0.5, -gridSize)
+            else
+              tmath.Vector3(0, 0, -gridSize),
+          ];
+        }
+        localGeometries = drawTube(pathPoints, radius);
+      }
+
+      for (var geometry in localGeometries) {
+        // Translate the geometry to its position
+        geometry.translate(pos[1], 0, pos[0]);
+        geometries.add(geometry);
+      }
+    }
+  }
+  // Merge tube and caps into one BufferGeometry
+  final merged = three.BufferGeometry();
+  final mergedPositions = <double>[];
+  final mergedNormals = <double>[];
+  final mergedIndices = <int>[];
+  int indexOffset = 0;
+
+  void appendGeometry(three.BufferGeometry g) {
+    final posAttr = g.attributes['position'] as tmath.BufferAttribute;
+    final normAttr = g.attributes['normal'] as tmath.BufferAttribute;
+    // copy vertices
+    for (int i = 0; i < posAttr.count; i++) {
+      mergedPositions.add(posAttr.getX(i)!.toDouble());
+      mergedPositions.add(posAttr.getY(i)!.toDouble());
+      mergedPositions.add(posAttr.getZ(i)!.toDouble());
+      mergedNormals.add(normAttr.getX(i)!.toDouble());
+      mergedNormals.add(normAttr.getY(i)!.toDouble());
+      mergedNormals.add(normAttr.getZ(i)!.toDouble());
+    }
+    if (g.index != null) {
+      final idx = g.index!;
+      for (int i = 0; i < idx.count; i++) {
+        mergedIndices.add(idx.getX(i)!.toInt() + indexOffset);
+      }
+    } else {
+      for (int i = 0; i < posAttr.count; i++) {
+        mergedIndices.add(i + indexOffset);
+      }
+    }
+    indexOffset += posAttr.count;
+  }
+
+  // put all the geometry parts together
+  for (var geom in geometries){
+    appendGeometry(geom);
+  }
+
+  merged.setAttributeFromString('position', tmath.Float32BufferAttribute.fromList(mergedPositions, 3));
+  merged.setAttributeFromString('normal', tmath.Float32BufferAttribute.fromList(mergedNormals, 3));
+  merged.setIndex(tmath.Uint32BufferAttribute.fromList(mergedIndices, 1));
+
+  return merged;
+}
+
+
 three.BufferGeometry createHoneyCombSlat(List<List<double>> helixBundlePositions, double helixBundleSize, double gridSize, bool tipExtensions) {
 
   final mergedGeometry = three.BufferGeometry();
