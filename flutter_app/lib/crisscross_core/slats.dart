@@ -1,5 +1,21 @@
 import 'package:flutter/material.dart';
-import '../2d_painters/helper_functions.dart';
+
+
+Offset calculateCenter(Iterable<Offset> points) {
+  double sumX = 0.0;
+  double sumY = 0.0;
+  int count = 0;
+
+  for (final point in points) {
+    sumX += point.dx;
+    sumY += point.dy;
+    count++;
+  }
+
+  if (count == 0) return Offset.zero;
+  final inv = 1.0 / count;
+  return Offset(sumX * inv, sumY * inv);
+}
 
 class Slat {
   /// Wrapper class to hold all of a slat's handles and related details.
@@ -12,6 +28,7 @@ class Slat {
   // Maps positions on the slat to coordinates on a 2D grid and vice-versa
   Map<int, Offset> slatPositionToCoordinate = {};
   Map<Offset, int> slatCoordinateToPosition = {};
+  Offset centerCoordinate = Offset.zero;
 
   List<String> placeholderList = [];
 
@@ -19,12 +36,14 @@ class Slat {
   Map<int, Map<String, dynamic>> h5Handles = {};
 
   Color? uniqueColor;
+  String slatType;
 
-  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32, this.uniqueColor}) {
+  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32, this.uniqueColor, this.slatType = 'tube'}) {
       slatCoordinates.forEach((key, coord) {
         slatPositionToCoordinate[key] = coord;
         slatCoordinateToPosition[coord] = key;
       });
+      centerCoordinate = calculateCenter(slatCoordinates.values.toList());
   }
 
   void setColor(Color color) {
@@ -40,6 +59,7 @@ class Slat {
   void updateCoordinates(Map<int, Offset> slatCoordinates){
     slatPositionToCoordinate = slatCoordinates;
     slatCoordinateToPosition = {for (var offset in slatCoordinates.entries) offset.value : offset.key};
+    centerCoordinate = calculateCenter(slatCoordinates.values);
   }
 
   void reverseDirection() {
@@ -196,7 +216,7 @@ class Slat {
   }
 
   Slat copy() {
-    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength, uniqueColor: uniqueColor);
+    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength, uniqueColor: uniqueColor, slatType: slatType);
 
     newSlat.h2Handles = {
       for (var entry in h2Handles.entries)

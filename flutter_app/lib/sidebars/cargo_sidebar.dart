@@ -212,7 +212,6 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
   Widget build(BuildContext context) {
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
-    var serverState = context.watch<ServerState>();
 
     return Column(children: [
       Text("Cargo and Seed Placement",

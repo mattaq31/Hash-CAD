@@ -32,7 +32,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   double minScale = 0.1;
   double maxScale = 6.0;
 
-  int moveRotationStepsRequested = 0;
   bool moveFlipRequested = false;
 
   double scale = 0.8; // actual running scale value
@@ -156,7 +155,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         }
       }
       else {
-        Map<int, Map<int, Offset>> allSlatCoordinates = generateSlatPositions(snapPosition, false, false, appState);
+        Map<int, Map<int, Offset>> allSlatCoordinates = generateSlatPositions(snapPosition, false, appState);
         queryCoordinates = allSlatCoordinates.values.expand((innerMap) => innerMap.values).toList();
       }
     }
@@ -266,43 +265,70 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     }
   }
 
-  Map<int, Map<int, Offset>> generateSlatPositions(Offset cursorPoint, bool endPointsOnly, bool realSpaceFormat, DesignState appState){
+  Map<int, Map<int, Offset>> generateSlatPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState){
 
     // slats added to a persistent list here
     Map<int, Map<int, Offset>> incomingSlats = {};
-    int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
+
+    int direction;
+    if (appState.slatAdditionType == 'tube'){
+      direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
+    }
+    else{
+      direction = appState.layerMap[appState.selectedLayerKey]!["DBDirection"];
+    }
+
     Offset cursorCoordinate, slatMultiJump, slatInnerJump;
     double transposeDirection = appState.slatAddDirection == 'down' ? 1 : -1;
+
+    var multiGenerator = appState.slatAdditionType == 'tube' ? appState.multiSlatGenerators : appState.multiSlatGeneratorsDB;
+    var directionGenerator = appState.slatAdditionType == 'tube' ? appState.slatDirectionGenerators : appState.slatDirectionGeneratorsDB;
 
     if (realSpaceFormat){
       cursorCoordinate = cursorPoint;
       if (appState.gridMode == '60'){
-        slatMultiJump = multiplyOffsets(appState.multiSlatGenerators[(appState.gridMode, direction)]!, Offset(appState.x60Jump, appState.y60Jump));
-        slatInnerJump = multiplyOffsets(appState.slatDirectionGenerators[(appState.gridMode, direction)]!, Offset(appState.x60Jump, appState.y60Jump));
+        slatMultiJump = multiplyOffsets(multiGenerator[(appState.gridMode, direction)]!, Offset(appState.x60Jump, appState.y60Jump));
+        slatInnerJump = multiplyOffsets(directionGenerator[(appState.gridMode, direction)]!, Offset(appState.x60Jump, appState.y60Jump));
       }
       else{
-        slatMultiJump = appState.multiSlatGenerators[(appState.gridMode, direction)]! * appState.gridSize;
-        slatInnerJump = appState.slatDirectionGenerators[(appState.gridMode, direction)]! * appState.gridSize;
+        slatMultiJump = multiGenerator[(appState.gridMode, direction)]! * appState.gridSize;
+        slatInnerJump = directionGenerator[(appState.gridMode, direction)]! * appState.gridSize;
       }
     }
     else{
       cursorCoordinate = appState.convertRealSpacetoCoordinateSpace(cursorPoint);
-      slatMultiJump = appState.multiSlatGenerators[(appState.gridMode, direction)]!;
-      slatInnerJump = appState.slatDirectionGenerators[(appState.gridMode, direction)]!;
+      slatMultiJump = multiGenerator[(appState.gridMode, direction)]!;
+      slatInnerJump = directionGenerator[(appState.gridMode, direction)]!;
     }
 
-    slatMultiJump = slatMultiJump * transposeDirection;
-    slatInnerJump = slatInnerJump * transposeDirection;
+    int shearOffset = 0;
+    if (appState.slatAdditionType == 'tube') {
+      slatMultiJump = slatMultiJump * transposeDirection;
+      slatInnerJump = slatInnerJump * transposeDirection;
+    }
+    else{
+      // for DB slats in 60degree mode, slats can have a different 'shear' value too
+      // this is controlled by the T keyboard shortcut
+
+      if (appState.gridMode == '60' && transposeDirection == -1){
+        shearOffset = 1;
+      }
+    }
 
     for (int j = 0; j < appState.slatAddCount; j++) {
       incomingSlats[j] = {};
-      if (endPointsOnly){
-        incomingSlats[j]?[1] = cursorCoordinate + (slatMultiJump * j.toDouble());
-        incomingSlats[j]?[32] = cursorCoordinate + (slatMultiJump * j.toDouble()) + (slatInnerJump * 32);
-      }
-      else {
-        for (int i = 0; i < 32; i++) {
+      for (int i = 0; i < 32; i++) {
+        if (appState.slatAdditionType == 'tube') {
           incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * j.toDouble()) + (slatInnerJump * i.toDouble());
+        }
+        else{
+          // double barrel slat generation
+          if (i < 16){
+            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * j.toDouble() * 2) + (slatInnerJump * i.toDouble());
+          }
+          else{
+            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * (1 + (j.toDouble() * 2))) + (slatInnerJump * (31 + shearOffset - i).toDouble());
+          }
         }
       }
     }
@@ -574,7 +600,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   for (var slat in appState.selectedSlats){
                     appState.updateSlatPosition(slat, appState.slats[slat]!.slatPositionToCoordinate.map((key, value) => MapEntry(key, value + convCoordHoverPosition - convCoordAnchor)));
                     if (moveFlipRequested) {
-                      appState.slats[slat]!.reverseDirection();
+                      if (appState.slats[slat]!.slatType == 'tube') { // double barrel flips are currently blocked
+                        appState.slats[slat]!.reverseDirection();
+                      }
                     }
                   }
                 }
@@ -583,7 +611,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
                 slatMoveAnchor = Offset.zero;
                 moveFlipRequested = false; // reset the flip request
-                moveRotationStepsRequested = 0; // reset the rotation request
               });
             }
           },
@@ -774,7 +801,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                       }
                       // slats added to a persistent list here
                       Map<int, Map<int, Offset>> incomingSlats = {};
-                      incomingSlats = generateSlatPositions(snappedPosition, false, false, appState);
+                      incomingSlats = generateSlatPositions(snappedPosition, false, appState);
                       // if not already taken, can proceed to add a new slat
                       appState.clearSelection();
                       appState.addSlats(appState.selectedLayerKey, incomingSlats);
@@ -870,12 +897,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                             offset,
                             appState.layerMap[appState.selectedLayerKey]?['color'],
                             hoverValid,
-                            (hoverPosition != null  && getActionMode(actionState) == 'Slat-Add') ? generateSlatPositions(hoverPosition!, false, true, appState): {},
+                            (hoverPosition != null  && getActionMode(actionState) == 'Slat-Add') ? generateSlatPositions(hoverPosition!, true, appState): {},
                             hoverPosition,
                             !dragActive,
                             appState.selectedSlats.map((e) => appState.slats[e]!).toList(),
                             slatMoveAnchor,
-                            moveRotationStepsRequested,
                             moveFlipRequested,
                             appState,
                             actionState

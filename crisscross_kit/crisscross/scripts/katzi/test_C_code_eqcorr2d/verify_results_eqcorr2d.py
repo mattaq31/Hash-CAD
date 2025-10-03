@@ -1,42 +1,41 @@
-from C_functions.integration_functions import *
+import os
+import time
+import numpy as np
+from eqcorr2d.integration_functions import *
 
-# make OpenMP single-threaded (safe with multiprocessing)
-os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 def make_random_1xL(n, L, maxval=64):
     return [np.ascontiguousarray(
-                np.random.randint(1, maxval + 1, (1, L), dtype=np.uint8))
-            for _ in range(n)]
-
-
+        np.random.randint(1, maxval + 1, (1, L), dtype=np.uint8))
+        for _ in range(n)]
 
 
 def find_in(max, list_of_list_of_list_of_array):
-    report=[]
+    report = []
 
     for list_of_list_of_array in list_of_list_of_list_of_array:
         for outer, list_of_array in enumerate(list_of_list_of_array):
             for inner, array in enumerate(list_of_array):
-                if np.sum(max==array)>0:
+                if np.sum(max == array) > 0:
                     report.append((outer, inner))
 
     return list(set(report))
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
 
     # Test 1D behavior of python version vs C version, output consistency and speed
     np.random.seed(42)
-    noSlats, lenght = 196, 32
-    #np.random.seed(42)
-    #N, L = 2, 5
+    noSlats, length = 196, 32
+    # np.random.seed(42)
+    # N, L = 2, 5
 
     # creat test slat dictionaries with the usual data type
     A_dict = {(1,i): np.random.randint(0, 65, lenght, dtype=np.uint8) for i in range(noSlats)}
     B_dict = {(2,j): np.random.randint(0, 65, lenght, dtype=np.uint8) for j in range(noSlats)}
 
     # --- C extension (hist only) ---
-    runs=3 # increse for better average times
+    runs = 3  # increse for better average times
     t0 = time.time()
     for i in range(runs):
         res_c = wrap_eqcorr2d(
@@ -46,7 +45,6 @@ if __name__ == "__main__":
         )
     print("C time:", round(time.time() - t0, 4), "s")
     hist_c = res_c['hist_total']
-
 
     # --- C extension (hist with arrays ) ---
     t0 = time.time()
@@ -99,8 +97,8 @@ if __name__ == "__main__":
     # Python comparison
     t0 = time.time()
     for i in range(runs):
-        matches = lenght - oneshot_hamming_compute(A_dict, B_dict, lenght)
-        hist_py = np.bincount(matches.ravel(), minlength=lenght + 1).astype(np.int64)
+        matches = length - oneshot_hamming_compute(A_dict, B_dict, length)
+        hist_py = np.bincount(matches.ravel(), minlength=length + 1).astype(np.int64)
     print("Python time:", round(time.time() - t0, 4), "s")
 
     print(" ")
@@ -109,43 +107,39 @@ if __name__ == "__main__":
     print("C Histogram 1D all rot smart:", hist_c_allrot_smart)
     print("Python Histogram:", hist_py)
 
-
     print(" ")
 
-    # --- Veryfy 2D correctnes ---
+    # --- Verify 2D correctness ---
 
-
- # test arrays , A1 vs B3 hand calculated
+    # test arrays , A1 vs B3 hand calculated
     A_2D_dict = {
         "A0": np.array([[0, 0, 2, 2],
                         [3, 2, 1, 3]]),
-
 
         "A1": np.array([[1, 2, 1, 3],
                         [3, 0, 0, 0]]),
 
         "A2": np.array([[1, 2, 2, 2]
-                                    ]),
+                        ]),
 
-        #"A4": np.array([[0, 0, 0, 0],
+        # "A4": np.array([[0, 0, 0, 0],
         #                [1, 2, 3, 3]]),
 
     }
 
     B_2D_dict = {
 
-
-        "B0": np.array([[0, 0, 3,1,1,2]
-                                ]),
+        "B0": np.array([[0, 0, 3, 1, 1, 2]
+                        ]),
         "B1": np.array([[0, 0, 3, 0, 0, 0]
                         ]),
 
         "B2": np.array([[0, 0, 3],
                         [1, 1, 2]]),
-        "B3": np.array([[1, 2, 0,0,3],
-                        [1, 1, 2,1,2]]),
+        "B3": np.array([[1, 2, 0, 0, 3],
+                        [1, 1, 2, 1, 2]]),
 
-        #"B4": np.array([[0, 0, 0, 0],
+        # "B4": np.array([[0, 0, 0, 0],
         #                [1, 2, 3, 3]]),
     }
 
@@ -179,7 +173,6 @@ if __name__ == "__main__":
 
     print("Histogram 2D from reported Arrays", counts)
     print("Histogram 2D from function  from report", res_2D['hist_total'])
-
 
     # find/recompute worst pairs in python to cross verify
     if values is not None and len(values) > 0:

@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext as _build_ext
 import sys, platform, os, subprocess
 import numpy as np
@@ -127,9 +127,9 @@ else:
 # Extension module definition
 # -----------------------------------------------------------------------------
 mymodule = Extension(
-    "eqcorr2d",
-    sources=["eqcorr2d_core.c", "eqcorr2d_bindings.c"],
-    include_dirs=[np.get_include(), os.path.abspath(os.path.dirname(__file__))],
+    "eqcorr2d.eqcorr2d_engine",
+    sources=["eqcorr2d/eqcorr2d_engine.c", "eqcorr2d/eqcorr2d_bindings.c"],
+    include_dirs=[np.get_include()],
     define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
@@ -140,7 +140,6 @@ mymodule = Extension(
 # Setup
 # -----------------------------------------------------------------------------
 setup(
-    name="eqcorr2d",
     ext_modules=[mymodule],
     cmdclass={"build_ext": build_ext},
 )

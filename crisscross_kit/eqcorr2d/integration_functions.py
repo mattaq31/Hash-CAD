@@ -1,6 +1,5 @@
-import os, time
 import numpy as np
-import eqcorr2d
+from . import eqcorr2d_engine
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, multirule_precise_hamming, oneshot_hamming_compute,extract_handle_dicts
 from crisscross.core_functions.megastructures import Megastructure
 

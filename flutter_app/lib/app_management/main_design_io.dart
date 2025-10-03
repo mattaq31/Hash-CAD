@@ -13,6 +13,9 @@ import '../crisscross_core/slats.dart';
 import '../crisscross_core/sparse_to_array_conversion.dart';
 import '../crisscross_core/seed.dart';
 
+// Remember the last directory used for opening files in this session (desktop only)
+String? _lastOpenDirectory;
+
 final Random _rand = Random();
 
 final List<Color> qualitativeCargoColors = [
@@ -32,6 +35,7 @@ Future<String?> selectSaveLocation(String defaultFileName) async {
     fileName: defaultFileName,
     type: FileType.custom,
     allowedExtensions: ['xlsx'],
+    initialDirectory: kIsWeb ? null : _lastOpenDirectory,
   );
 
   if (filePath != null) {
@@ -422,6 +426,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     String fullKey = readExcelString(metadataSheet, 'A${i + layerReadStart}');
     layerMap[fullKey.substring('Layer '.length)] = {
       'direction': readExcelInt(metadataSheet, 'B${i + layerReadStart}'),
+      'DBDirection': readExcelInt(metadataSheet, 'B${i + layerReadStart}'), // TODO: remove once decided on which type of direction system to use...
       'top_helix': readExcelString(metadataSheet, 'C${i + layerReadStart}'),
       'bottom_helix': readExcelString(metadataSheet, 'D${i + layerReadStart}'),
       'next_slat_id': readExcelInt(metadataSheet, 'E${i + layerReadStart}'),
@@ -493,9 +498,26 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
         }
       }
     }
+
+    double gridMultiplier = gridMode == '60' ? 1.414 : 1.0;
     for (var slatBundle in slatCoordinates.entries) {
-      slats["$layer-I${slatBundle.key}"] = Slat(slatBundle.key, "$layer-I${slatBundle.key}", layer, slatBundle.value);
+      var coords = slatBundle.value.values.toList();
+      var category = 'tube';
+      // a quick hack to identify if a slat is a double barrel.  TODO: In the future, slat types should probably be explicitly identified.
+      if (((coords.first - coords.last).distance - ((coords.length-1) * gridMultiplier)).abs() > 0.05) {
+        category = 'double-barrel';
+      }
+      // second check: in 60deg mode, vertical slats occupy double distance
+
+      if (gridMode == '60' && (((coords.first - coords.last).distance - ((coords.length-1) * 2)).abs() < 0.05)) {
+        category = 'tube';
+      }
+
+      slats["$layer-I${slatBundle.key}"] = Slat(
+          slatBundle.key, "$layer-I${slatBundle.key}", layer,
+          slatBundle.value, slatType: category);
     }
+
     layerMap[layer]!['slat_count'] = slatCoordinates.length;
   }
 
@@ -632,6 +654,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   FilePickerResult? result = await FilePicker.platform.pickFiles(
     type: FileType.custom,
     allowedExtensions: ['xlsx'],
+    initialDirectory: kIsWeb ? null : _lastOpenDirectory,
   );
 
   String fileName;
@@ -644,6 +667,8 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     else {
       filePath = result.files.single.path!;
       fileBytes = File(filePath).readAsBytesSync();
+      // Remember directory for next time
+      try { _lastOpenDirectory = dirname(filePath); } catch (_) {}
     }
     fileName = basenameWithoutExtension(result.files.first.name);
 
@@ -665,6 +690,7 @@ Future <bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats
     type: FileType.custom,
     allowedExtensions: ['xlsx'],
     allowMultiple: false,
+    initialDirectory: kIsWeb ? null : _lastOpenDirectory,
   );
 
   if (result != null) {
@@ -675,6 +701,8 @@ Future <bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats
     else {
       filePath = result.files.single.path!;
       fileBytes = File(filePath).readAsBytesSync();
+      // Remember directory for next time
+      try { _lastOpenDirectory = dirname(filePath); } catch (_) {}
     }
   }else{
     return true; // if nothing picked, return
@@ -709,6 +737,7 @@ Future <void> importPlatesFromFile(PlateLibrary plateLibrary) async{
     type: FileType.custom,
     allowedExtensions: ['xlsx'],
     allowMultiple: true,
+    initialDirectory: kIsWeb ? null : _lastOpenDirectory,
   );
 
   if (result != null) {
@@ -726,6 +755,10 @@ Future <void> importPlatesFromFile(PlateLibrary plateLibrary) async{
         String plateName = file.name.split('.').first;
         fileBytes.add(File(file.path!).readAsBytesSync());
         plateNames.add(plateName);
+      }
+      // Remember directory for next time using the first selected file
+      if (result.files.isNotEmpty && result.files.first.path != null) {
+        try { _lastOpenDirectory = dirname(result.files.first.path!); } catch (_) {}
       }
     }
   }
