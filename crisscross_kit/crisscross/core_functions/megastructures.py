@@ -892,6 +892,15 @@ class Megastructure:
                     max_len = max(max_len, len(str(val)))
             worksheet.set_column(col_idx, col_idx, max_len + 2)
 
+        # finally, print out the slat_types worksheet
+        slat_type_output_dict = defaultdict(list)
+        for key, slat in self.slats.items():
+            slat_type_output_dict['Layer'].append(slat.layer)
+            slat_type_output_dict['Slat ID'].append(int(slat.ID.split("slat")[-1]))
+            slat_type_output_dict['Type'].append(slat.slat_type)
+        slat_type_df = pd.DataFrame.from_dict(slat_type_output_dict)
+        slat_type_df.to_excel(writer, index=False, header=True, sheet_name="slat_types")
+
         writer.close()
 
     def import_design(self, file):
@@ -905,7 +914,7 @@ class Megastructure:
         layer_count = 0
 
         for i, key in enumerate(design_df.keys()):
-            if 'slat' in key:
+            if 'slat_layer_' in key:
                 layer_count += 1
 
         # preparing and reading in slat/handle arrays
@@ -921,6 +930,17 @@ class Megastructure:
         else:
             handle_array = None
 
+        # reading in slat types (if available, older files did not have this sheet)
+        if 'slat_types' in design_df:
+            slat_type_df = design_df['slat_types']
+            slat_type_df.columns = slat_type_df.iloc[0]  # first row becomes column names
+            slat_type_df = slat_type_df.drop(0).reset_index(drop=True)
+            slat_type_dict = {(int(row["Layer"]), int(row["Slat ID"])): row["Type"] for _, row in slat_type_df.iterrows()}
+            # not all slats have to be defined here, those that aren't will be assumed to be tubes
+        else:
+            # if no slat types are defined, assume all slats are of type 'tube'
+            slat_type_dict = {}
+
         slats = {}
         for i in range(layer_count):
             # in the new system, slat elements are stored in the form ID-POSN which allows for the exact orientation of slats (even reversed directions and so on)
@@ -935,7 +955,8 @@ class Megastructure:
                             id_part, posn_part = cell.split('-', 1)
                             slat_coords[id_part][int(posn_part)] = (row, col)
                 for slat_id, coords in slat_coords.items(): # generate a slat from each ID found in the file
-                    slats[get_slat_key(i + 1, int(slat_id))] = Slat(get_slat_key(i + 1, int(slat_id)), i + 1, coords)
+                    slats[get_slat_key(i + 1, int(slat_id))] = Slat(get_slat_key(i + 1, int(slat_id)), i + 1, coords,
+                                                                    slat_type=slat_type_dict[i+1, int(slat_id)] if (i+1, int(slat_id)) in slat_type_dict else 'tube')
             else:
                 slat_array[..., i] = slat_data  # if using the old system, slat data is just a 2D array of slat IDs, from which a direction is defined as travelling from top to bottom by default
 
