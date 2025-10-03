@@ -4,7 +4,8 @@
 import os
 import time
 import numpy as np
-from crisscross.C_functions.integration_functions import wrap_eqcorr2d, oneshot_hamming_compute
+from eqcorr2d.eqcorr2d_interface import wrap_eqcorr2d
+from crisscross.assembly_handle_optimization.hamming_compute import oneshot_hamming_compute
 
 
 def make_random_1d(n, L, maxval=64):

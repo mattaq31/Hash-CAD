@@ -128,8 +128,8 @@ else:
 # -----------------------------------------------------------------------------
 mymodule = Extension(
     "eqcorr2d.eqcorr2d_engine",
-    sources=["eqcorr2d/eqcorr2d_engine.c", "eqcorr2d/eqcorr2d_bindings.c"],
-    include_dirs=[np.get_include()],
+    sources=["eqcorr2d/c_sources/eqcorr2d_core.c", "eqcorr2d/c_sources/eqcorr2d_bindings.c"],
+    include_dirs=["eqcorr2d/c_sources", np.get_include()],
     define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,

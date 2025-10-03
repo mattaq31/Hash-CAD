@@ -121,7 +121,7 @@ dmypy.json
 .pyre/
 
 # Pycharm configs
-.idea/*
+**/.idea/
 
 # Mac Files
 *.DS_Store

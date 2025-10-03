@@ -274,13 +274,13 @@ static PyMethodDef Eqcorr2dMethods[] = {
 
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
-    "eqcorr2d",
-    "eqcorr2d module",
+    "eqcorr2d_engine",
+    "eqcorr2d_engine module",
     -1,
     Eqcorr2dMethods
 };
 
-PyMODINIT_FUNC PyInit_eqcorr2d(void)
+PyMODINIT_FUNC PyInit_eqcorr2d_engine(void)
 {
     import_array();
     return PyModule_Create(&moduledef);

@@ -1,11 +1,12 @@
 import numpy as np
-from . import eqcorr2d_engine
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, multirule_precise_hamming, oneshot_hamming_compute,extract_handle_dicts
+from eqcorr2d import eqcorr2d_engine
+from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, extract_handle_dicts
 from crisscross.core_functions.megastructures import Megastructure
 
+
 def wrap_eqcorr2d(handle_dict, antihandle_dict,
-                  mode='classic',
-                  hist=True, report_full=False, report_worst=True, do_smart=False):
+                  mode='classic', hist=True, report_full=False,
+                  report_worst=True, do_smart=False):
     """Compute eqcorr2d; return a single structured dict keyed by rotation.
 
     Design goals:
@@ -15,6 +16,7 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
       with per-rotation entries under result['rotations'] and global
       aggregates at the top level.
 
+    TODO: UPDATE THIS DESCRIPTION!
     do_smart behavior (Python-side approximation):
     - Always compute 0° and 180° when requested.
     - For 90° and 270°: if do_smart is True, compute them only when at least
@@ -102,17 +104,17 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
             angles = [0, 60, 120, 180, 240, 300]
 
     # Pre-rotate B only for the selected angles
-    B_rot = { }
+    B_rot = {}
     for angle in angles:
         if mode in ('classic', 'square_grid'):
-            k = {0:0, 90:1, 180:2, 270:3}.get(angle, None)
+            k = {0: 0, 90: 1, 180: 2, 270: 3}.get(angle, None)
             if k is None:
                 # shouldn't happen in these modes
                 raise ValueError(f"Unsupported angle {angle} for mode {mode}")
             B_rot[angle] = [rot90_py(b, k) for b in B_list]
         else:
             # triangle_grid uses 60° steps; currently only 0 and 180 (k60=0 or 3) are implemented
-            k60_map = {0:0, 60:1, 120:2, 180:3, 240:4, 300:5}
+            k60_map = {0: 0, 60: 1, 120: 2, 180: 3, 240: 4, 300: 5}
             k60 = k60_map[angle]
             B_rot[angle] = [rot60_py(b, k60) for b in B_list]
 
@@ -134,7 +136,7 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
         else:
             # 90/270: if do_smart enabled, use selective mask; else full ones
             mask = quarter_mask if do_smart else ones_mask
-        res = eqcorr2d.compute(A_list, B_rot[angle], mask, int(hist), int(report_full), int(report_worst))
+        res = eqcorr2d_engine.compute(A_list, B_rot[angle], mask, int(hist), int(report_full), int(report_worst))
         results_by_rot[angle] = res
         # Prepare per-rotation entry with both index and key-wise worst pairs
         hist_a = res[0] if hist else None
@@ -226,6 +228,7 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
         'worst_keys_combos': worst_keys_combos,
     }
 
+
 def get_worst_match(c_results):
     """Return the worst (highest non-zero) matchtype from a result.
     Supports both the new dict return from wrap_eqcorr2d and the legacy tuple.
@@ -242,6 +245,7 @@ def get_worst_match(c_results):
             worst = matchtype
     return worst
 
+
 def get_sum_score(c_results, fudge_dg=-10):
     """Compute a weighted sum score from histogram.
     Accepts both the new dict return and the legacy tuple.
@@ -256,6 +260,7 @@ def get_sum_score(c_results, fudge_dg=-10):
     for matchtype, count in enumerate(hist):
         summe = summe + count * np.exp(-fudge_dg * matchtype)
     return summe
+
 
 def get_seperate_worst_lists(c_results):
     """Return separate lists of worst handle and antihandle identifiers.
@@ -277,41 +282,41 @@ def get_seperate_worst_lists(c_results):
         return (handle_list, antihandle_list)
 
 
-
-#Do not use this. It would only work if all 1D slats are fully occupied with handles and antihandles
-def compensate_do_smart(hist,handle_dict, antihandle_dict,standart_slat_lenght=32,libraray_length=64):
-    #extract values from dicts
+# Do not use this. It would only work if all 1D slats are fully occupied with handles and antihandles
+def compensate_do_smart(hist, handle_dict, antihandle_dict, standart_slat_lenght=32, libraray_length=64):
+    # extract values from dicts
     handles = list(handle_dict.values())
     antihandles = list(antihandle_dict.values())
-    #count 1D and 2D handles in a loop
-    count_1D_handles =0
-    count_2D_handles =0
+    # count 1D and 2D handles in a loop
+    count_1D_handles = 0
+    count_2D_handles = 0
     for handle in handles:
-        if handle.shape[0]==1:
-            count_1D_handles = count_1D_handles+1
+        if handle.shape[0] == 1:
+            count_1D_handles = count_1D_handles + 1
         else:
-            count_2D_handles = count_2D_handles+1
-    #count 1D and 2D antihandles in a loop
-    count_1D_antihandles =0
-    count_2D_antihandles =0
+            count_2D_handles = count_2D_handles + 1
+    # count 1D and 2D antihandles in a loop
+    count_1D_antihandles = 0
+    count_2D_antihandles = 0
     for antihandle in antihandles:
-        if antihandle.shape[0]==1:
-            count_1D_antihandles = count_1D_antihandles+1
+        if antihandle.shape[0] == 1:
+            count_1D_antihandles = count_1D_antihandles + 1
         else:
-            count_2D_antihandles = count_2D_antihandles+1
-    #calculate number of combinations not tested by do_smart
-    not_tested_combinations = count_1D_handles*count_1D_antihandles*2 # times 2 for 90 and 270
-    left_out_array_lenght=(standart_slat_lenght+1-1)*(standart_slat_lenght+1-1) # this is number of entries of the result arrays not computed
-    all_left_out_entries = not_tested_combinations*left_out_array_lenght
-    #now calculate expected distribution of these combinations. since the dimension is only 1D of each we can eighter have a matchtype 1 ore 0.
+            count_2D_antihandles = count_2D_antihandles + 1
+    # calculate number of combinations not tested by do_smart
+    not_tested_combinations = count_1D_handles * count_1D_antihandles * 2  # times 2 for 90 and 270
+    left_out_array_lenght = (standart_slat_lenght + 1 - 1) * (
+                standart_slat_lenght + 1 - 1)  # this is number of entries of the result arrays not computed
+    all_left_out_entries = not_tested_combinations * left_out_array_lenght
+    # now calculate expected distribution of these combinations. since the dimension is only 1D of each we can eighter have a matchtype 1 ore 0.
     # the probability for a matchtype 0 is 1/libraray_length
-    p0 = 1/libraray_length
-    hit1= all_left_out_entries*p0
-    hit0= all_left_out_entries*(1-p0)
-    #now add these to the histogram
+    p0 = 1 / libraray_length
+    hit1 = all_left_out_entries * p0
+    hit0 = all_left_out_entries * (1 - p0)
+    # now add these to the histogram
     corrected_hist = hist.copy()
-    corrected_hist[0] = corrected_hist[0]+int(hit0)
-    corrected_hist[1] = corrected_hist[1]+int(hit1)
+    corrected_hist[0] = corrected_hist[0] + int(hit0)
+    corrected_hist[1] = corrected_hist[1] + int(hit1)
 
     return corrected_hist
 
@@ -356,27 +361,22 @@ def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid'):
     }
 
 
-
-
 if __name__ == "__main__":
-
     # example integration
 
-    megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library\hexagon\hexagon_design_hashcad_seed.xlsx")
+    megastructure = Megastructure(
+        import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library\hexagon\hexagon_design_hashcad_seed.xlsx")
     slat_array = megastructure.generate_slat_occupancy_grid()
     handle_array = megastructure.generate_assembly_handle_grid()
 
-
     old_dict_results = multirule_oneshot_hamming(slat_array, handle_array,
-                                  report_worst_slat_combinations=True,
-                                  per_layer_check=False,
-                                  specific_slat_groups=None,
-                                  request_substitute_risk_score=True,
-                                  slat_length=32,
-                                  partial_area_score=False,
-                                  return_match_histogram=True)
-
-
+                                                 report_worst_slat_combinations=True,
+                                                 per_layer_check=False,
+                                                 specific_slat_groups=None,
+                                                 request_substitute_risk_score=True,
+                                                 slat_length=32,
+                                                 partial_area_score=False,
+                                                 return_match_histogram=True)
 
     handle_slats, antihandle_slats = extract_handle_dicts(handle_array, slat_array)
     print("hallo")
@@ -389,9 +389,8 @@ if __name__ == "__main__":
 
     worst_handles, worst_antihandles = get_seperate_worst_lists(r_c)
 
-
-    mean_score = sum_score/(len(handle_slats)*len(antihandle_slats)) # this one seems to be the smarter choice
-    mean_score_old = mean_score/126
+    mean_score = sum_score / (len(handle_slats) * len(antihandle_slats))  # this one seems to be the smarter choice
+    mean_score_old = mean_score / 126
 
     sim_hist = get_similarity_hist(handle_slats, antihandle_slats)
 

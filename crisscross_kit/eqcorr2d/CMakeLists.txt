@@ -22,16 +22,19 @@ endif()
 find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
 
 set(EQCORR2D_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/crisscross_kit/crisscross/C_functions/eqcorr2d_core.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/crisscross_kit/crisscross/C_functions/eqcorr2d_bindings.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/c_sources/eqcorr2d_core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/c_sources/eqcorr2d_bindings.c
     # Note: do NOT list headers here (eqcorr2d.h) — headers are included via target_include_directories
 )
 
 add_library(eqcorr2d MODULE ${EQCORR2D_SRC})
 
+# Ensure the C sources directory is on the include path (for eqcorr2d.h)
+target_include_directories(eqcorr2d PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/c_sources)
+
 # Add a tiny C executable that embeds Python and calls the integration wrapper.
 add_executable(eqcorr2d_main
-    ${CMAKE_CURRENT_SOURCE_DIR}/crisscross_kit/crisscross/C_functions/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/c_sources/main.c
 )
 # Put the runnable exe into a subdirectory to avoid locking conflicts with AV/previous runs.
 set_target_properties(eqcorr2d_main PROPERTIES
@@ -46,6 +49,8 @@ endif()
 if(DEFINED Python3_NumPy_INCLUDE_DIRS)
     target_include_directories(eqcorr2d_main PRIVATE ${Python3_NumPy_INCLUDE_DIRS})
 endif()
+# Also include our C sources directory for the executable (for eqcorr2d.h)
+target_include_directories(eqcorr2d_main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/c_sources)
 set_property(TARGET eqcorr2d_main PROPERTY C_STANDARD 11)
 set_property(TARGET eqcorr2d_main PROPERTY C_STANDARD_REQUIRED ON)
 

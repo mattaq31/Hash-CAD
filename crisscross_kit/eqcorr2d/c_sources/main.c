@@ -14,10 +14,13 @@ int main(int argc, char** argv) {
     PyObject *sys = PyImport_ImportModule("sys");
     PyObject *path = sys ? PyObject_GetAttrString(sys, "path") : NULL;
     if (path && PyList_Check(path)) {
+        // Current working directory (runner dir)
         PyObject *p0 = PyUnicode_FromString(".");
         PyList_Insert(path, 0, p0);
         Py_XDECREF(p0);
-        PyObject *p1 = PyUnicode_FromString(".\\crisscross_kit\\crisscross\\C_functions");
+        // Add the project Python package root (crisscross_kit) relative to runners/
+        // runners -> .. (build dir) -> .. (eqcorr2d source dir) -> .. (crisscross_kit)
+        PyObject *p1 = PyUnicode_FromString("../../..");
         PyList_Insert(path, 1, p1);
         Py_XDECREF(p1);
     }
@@ -25,7 +28,7 @@ int main(int argc, char** argv) {
     Py_XDECREF(sys);
 
     /* Import the Python debug driver and call debug_entry() */
-    PyObject *mod = PyImport_ImportModule("crisscross.C_functions.debug_driver");
+    PyObject *mod = PyImport_ImportModule("eqcorr2d.debug_driver");
     PyObject *entry = mod ? PyObject_GetAttrString(mod, "debug_entry") : NULL;
     PyObject *res = NULL;
     if (entry && PyCallable_Check(entry)) {
