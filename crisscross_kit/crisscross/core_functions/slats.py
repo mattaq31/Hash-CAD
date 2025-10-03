@@ -65,6 +65,29 @@ class Slat:
         self.H2_handles = defaultdict(dict)
         self.H5_handles = defaultdict(dict)
 
+        self.one_dimensional_slat = self.check_if_1D()
+
+    def check_if_1D(self):
+
+        coords = self.slat_position_to_coordinate.values().tolist()
+
+        ys = [y for y, x in coords]  # row
+        xs = [x for y, x in coords]
+
+        if len(set(xs)) == 1:  # vertical
+            return True
+        if len(set(ys)) == 1:  # horizontal
+            return True
+
+        # check if all points are collinear (same slope)
+        (x0, y0) = coords[0]
+        (x1, y1) = coords[1]
+        for (x, y) in coords[2:]:
+            if (y1 - y0) * (x - x0) != (y - y0) * (x1 - x0):
+                return False
+        # if we reach this point, the slat must be 1D
+        return True
+
     def reverse_direction(self):
         """
         Reverses the handle order on the slat (this should not affect the design placement of the slat).

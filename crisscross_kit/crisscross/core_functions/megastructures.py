@@ -1001,7 +1001,6 @@ class Megastructure:
 
         try:
             color_info_start = metadata.index.get_loc('UNIQUE SLAT COLOUR INFO') + 2
-
             # reads in and applies unique slat colors if present
             unique_slat_color_palette = {}
             # Read until the next empty row or section for COLOR INFO
@@ -1025,7 +1024,6 @@ class Megastructure:
                 slat.layer_color = layer_palette[slat.layer]['color']
         except:
             print(Fore.RED + 'No unique slat color palette found in metadata, using default colors.' + Fore.RESET)
-
         try:
             canvas_min_pos = metadata.index.get_loc('Canvas Offset (Min)')
             canvas_max_pos = metadata.index.get_loc('Canvas Offset (Max)')
