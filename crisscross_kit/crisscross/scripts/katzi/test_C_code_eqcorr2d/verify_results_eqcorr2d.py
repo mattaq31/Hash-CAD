@@ -39,54 +39,62 @@ if __name__ == "__main__":
     runs=3 # increse for better average times
     t0 = time.time()
     for i in range(runs):
-        hist_c, r0, r90, r180, r270, worst_pairs = wrap_eqcorr2d(
+        res_c = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True,rot270=False,rot90=False,
+            mode='classic',
             hist=True, report_full=False, report_worst=True
         )
     print("C time:", round(time.time() - t0, 4), "s")
+    hist_c = res_c['hist_total']
 
 
     # --- C extension (hist with arrays ) ---
     t0 = time.time()
     for i in range(runs):
-        hist_c, r0, r90, r180, r270, worst_pairs = wrap_eqcorr2d(
+        res_c_arrays = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True,rot270=False,rot90=False,
+            mode='classic',
             hist=True, report_full=True, report_worst=True
         )
     print("C time with arrays:", round(time.time() - t0, 4), "s")
+    r0 = res_c_arrays['rotations'].get(0, {}).get('full')
+    r90 = res_c_arrays['rotations'].get(90, {}).get('full')
+    r180 = res_c_arrays['rotations'].get(180, {}).get('full')
+    r270 = res_c_arrays['rotations'].get(270, {}).get('full')
 
     # --- C extension (hist and all rotations) ---
     t0 = time.time()
     for i in range(runs):
-        hist_c_allrot, r0, r90, r180, r270, worst_pairs = wrap_eqcorr2d(
+        res_allrot = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True,rot270=True,rot90=True,
+            mode='square_grid',
             hist=True, report_full=False, report_worst=True
         )
     print("C time hist and rotations:", round(time.time() - t0, 4), "s")
+    hist_c_allrot = res_allrot['hist_total']
 
     # --- C extension (hist and all rotations with smart) ---
     t0 = time.time()
     for i in range(runs):
-        hist_c_allrot_smart, r0, r90, r180, r270, worst_pairs = wrap_eqcorr2d(
+        res_allrot_smart = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True, rot270=True, rot90=True,
+            mode='square_grid',
             hist=True, report_full=False, report_worst=True, do_smart=True
         )
     print("C time hist and rotations with dosmart:", round(time.time() - t0, 4), "s")
+    hist_c_allrot_smart = res_allrot_smart['hist_total']
 
 
     # --- C extension (all flags) ---
+
     t0 = time.time()
     for i in range(runs):
-        hist_c_allrot, r0, r90, r180, r270, worst_pairs = wrap_eqcorr2d(
+        res_allflags = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True,rot270=True,rot90=True,
-            hist=True, report_full=True, report_worst=True
+            hist=True,mode="square_grid", report_full=True, report_worst=True, do_smart=False
         )
     print("C time all flags no smart:", round(time.time() - t0, 4), "s")
+    hist_c_allrot = res_allflags['hist_total']
 
     # Python comparison
     t0 = time.time()
@@ -141,11 +149,16 @@ if __name__ == "__main__":
         #                [1, 2, 3, 3]]),
     }
 
-    hist_c_2D, r0_2D, r90_2D, r180_2D, r270_2D, worst_pairs_2D = wrap_eqcorr2d(
+    res_2D = wrap_eqcorr2d(
         A_2D_dict, B_2D_dict,
-        rot0=True,rot90=True, rot180=True,rot270=True,
+        mode='square_grid',
         hist=True, report_full=True, report_worst=True, do_smart=True
     )
+
+    r0_2D   = res_2D['rotations'].get(0, {}).get('full')
+    r90_2D  = res_2D['rotations'].get(90, {}).get('full')
+    r180_2D = res_2D['rotations'].get(180, {}).get('full')
+    r270_2D = res_2D['rotations'].get(270, {}).get('full')
 
     # compute histogramm by python to cross verify
     pieces = []
@@ -157,32 +170,33 @@ if __name__ == "__main__":
                 if a is not None:  # entry could be None
                     pieces.append(a.ravel())
 
-    flat = np.concatenate(pieces)
-    (values, counts) = np.unique(flat, return_counts=True)
-
+    flat = np.concatenate(pieces) if pieces else np.array([], dtype=np.int32)
+    (values, counts) = (None, None)
+    if flat.size > 0:
+        (values, counts) = np.unique(flat, return_counts=True)
 
     print("2D stuff:")
 
     print("Histogram 2D from reported Arrays", counts)
-    print("Histogram 2D from function  from report", hist_c_2D)
+    print("Histogram 2D from function  from report", res_2D['hist_total'])
 
 
     # find/recompute worst pairs in python to cross verify
-    max = max(values)
-
-    worst_paris_2D_recomp = find_in(max, [r0_2D, r90_2D, r180_2D, r270_2D])
-
-    worst_paris_2D_recomp= sorted(worst_paris_2D_recomp)
-    worst_paris_2D = sorted(worst_pairs_2D)
+    if values is not None and len(values) > 0:
+        maxv = max(values)
+        worst_paris_2D_recomp = find_in(maxv, [r0_2D, r90_2D, r180_2D, r270_2D])
+        worst_paris_2D_recomp = sorted(worst_paris_2D_recomp)
+    else:
+        worst_paris_2D_recomp = []
+    worst_paris_2D = sorted(res_2D['worst_keys_combos'] or [])
 
     print("C function reported worst:", worst_paris_2D)
     print("Recomputed worst:", worst_paris_2D_recomp)
 
-
     # for hand computations pick A1 and B2. rotate clockwise and compare
 
     print("A1", A_2D_dict["A1"])
-    print("B2",B_2D_dict["B2"])
+    print("B2", B_2D_dict["B2"])
 
     print("rot 0 deg :")
     print(r0_2D[1][2])

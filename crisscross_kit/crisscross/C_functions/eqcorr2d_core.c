@@ -34,23 +34,6 @@ int worst_add_if_new(worst_tracker_t* wt, npy_intp ia, npy_intp ib) {
     return rc;
 }
 
-// The four tight-loop kernels are taken from the original eqcorr2d.c, with identical behavior.
-
-/* Rotation convention (clockwise)
- * -------------------------------
- * We rotate B clockwise by r ∈ {0°, 90°, 180°, 270°} and slide it over A.
- * Index remapping for B’s logical coordinates (by, bx) into its memory:
- *   r = 0°   : B[ by,            bx            ]
- *   r = 90°  : B[ Hb - 1 - bx,   by            ]   // quarter turn CW
- *   r = 180° : B[ Hb - 1 - by,   Wb - 1 - bx   ]   // upside down
- *   r = 270° : B[ bx,            Wb - 1 - by   ]   // three quarters CW
- * Notes:
- * - “Clockwise” matches typical image coordinates (row = y downward, col = x right).
- * - The output map size depends on the rotation:
- *     0°/180°  → (Ha + Hb - 1) × (Wa + Wb - 1)
- *     90°/270° → (Ha + Wb - 1) × (Wa + Hb - 1)
- */
-
 /* ----------------------------------------------------------------------
  * loop_rot0_mode — one A–B pair at 0° rotation
  *

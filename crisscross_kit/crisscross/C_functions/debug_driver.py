@@ -55,7 +55,7 @@ def debug_entry():
     for i in range(runs):
         res = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True, rot270=False, rot90=False,
+            mode='classic',
             hist=True, report_full=False, report_worst=True
         )
     elapsed = round(time.time() - t0, 4)
@@ -69,7 +69,7 @@ def debug_entry():
     for i in range(runs):
         res = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True, rot270=False, rot90=False,
+            mode='classic',
             hist=True, report_full=True, report_worst=True
         )
     elapsed = round(time.time() - t0, 4)
@@ -83,7 +83,7 @@ def debug_entry():
     for i in range(runs):
         res = wrap_eqcorr2d(
             A_dict, B_dict,
-            rot0=True, rot180=True, rot270=True, rot90=True,
+            mode='square_grid',
             hist=True, report_full=False, report_worst=True
         )
     elapsed = round(time.time() - t0, 4)
@@ -182,12 +182,16 @@ def debug_entry():
     t0 = time.time()
     res_2d = wrap_eqcorr2d(
         A_2D_dict, B_2D_dict,
-        rot0=True, rot90=True, rot180=True, rot270=True,
+        mode='square_grid',
         hist=True, report_full=True, report_worst=True, do_smart=True
     )
     elapsed = round(time.time() - t0, 4)
     # also compute flattened histogram from returned full maps for cross-check
-    hist_c_2D, r0_2D, r90_2D, r180_2D, r270_2D, worst_pairs_2D = res_2d
+    # Build histogram pieces from per-rotation full arrays
+    r0_2D   = res_2d['rotations'].get(0, {}).get('full')
+    r90_2D  = res_2d['rotations'].get(90, {}).get('full')
+    r180_2D = res_2d['rotations'].get(180, {}).get('full')
+    r270_2D = res_2d['rotations'].get(270, {}).get('full')
     pieces = []
     for rot in [r0_2D, r90_2D, r180_2D, r270_2D]:
         if rot is None:
