@@ -32,7 +32,7 @@ class Slat:
     """
     Wrapper class to hold all of a slat's handles and related details.
     """
-    def __init__(self, ID, layer, slat_coordinates, non_assembly_slat=False, unique_color=None, layer_color=None):
+    def __init__(self, ID, layer, slat_coordinates, non_assembly_slat=False, unique_color=None, layer_color=None, slat_type='tube'):
         """
         :param ID: Slat unique ID (string)
         :param layer: Layer position for slat (normally 1 and above, but can set to 0 for special slats such as crossbars)
@@ -46,6 +46,7 @@ class Slat:
         self.non_assembly_slat = non_assembly_slat
         self.unique_color = unique_color
         self.layer_color = layer_color
+        self.slat_type = slat_type
 
         # converts coordinates on a 2d array to the handle number on the slat, and vice-versa
         self.slat_position_to_coordinate = {}
@@ -65,11 +66,12 @@ class Slat:
         self.H2_handles = defaultdict(dict)
         self.H5_handles = defaultdict(dict)
 
+        # this is kind of redundant now that we have explicit slat types...
         self.one_dimensional_slat = self.check_if_1D()
 
     def check_if_1D(self):
 
-        coords = self.slat_position_to_coordinate.values().tolist()
+        coords = list(self.slat_position_to_coordinate.values())
 
         ys = [y for y, x in coords]  # row
         xs = [x for y, x in coords]
