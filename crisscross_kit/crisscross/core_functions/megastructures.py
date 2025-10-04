@@ -509,21 +509,6 @@ class Megastructure:
             slat_id_animation_classification[s_slat] = group_tracker
 
         return slat_id_animation_classification
-    
-    def get_slat_match_counts(self):
-        """
-        Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
-        Useful for computing the hamming distance of a design with variable slat types.
-        :return: Dictionary of match counts (key = number of matches, value = number of slat pairs with that many matches)
-        TODO: what to do in the case of slats with multiple layers e.g. the sierpinski slats?
-        """
-        
-        megastructure_match_count = defaultdict(int) # key = number of matches, value = number of slat pairs with that many matches
-        completed_slats = set() # just a tracker to prevent duplicate entries
-        
-        # arrays obtained from design as usual
-        slat_array = self.generate_slat_occupancy_grid()
-        handle_array = self.generate_assembly_handle_grid()
 
 
     def get_slat_match_counts(self):
