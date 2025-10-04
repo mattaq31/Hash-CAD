@@ -1,41 +1,108 @@
+"""
+High-level Python interface around the eqcorr2d C engine.
+
+This module provides a thin but well-documented wrapper that:
+- Accepts dictionaries of binary handle/antihandle occupancy arrays (1D or 2D)
+  keyed by user-facing identifiers.
+- Orchestrates optional geometric rotations in Python (0/90/180/270 for square
+  lattices; 0/60/120/180/240/300 for triangular lattices) by pre-rotating the
+  antihandle arrays before delegating to the C engine. The C core always computes
+  for a fixed orientation; we rotate inputs instead of changing the core.
+- Aggregates per-rotation outputs into a single, stable result dictionary that is
+  easier to consume than the legacy tuple.
+
+Key terms:
+- handle_dict: dict[key -> np.ndarray] of uint8 with shape (H, W) or (L,) for 1D
+  slats. Non-zero entries indicate occupied positions.
+- antihandle_dict: same as handle_dict, but for the opposing set.
+- "matchtype": an integer bin used by the C engine to bucket similarity counts.
+  Larger values typically represent worse similarity.
+
+Modes:
+- classic: only 0° and 180° rotations (historical behavior for 1D slats).
+- square_grid: 0°, 90°, 180°, 270°.
+- triangle_grid: 0°, 60°, 120°, 180°, 240°, 300° (implemented via rotate_array_tri60).
+
+Smart mode (do_smart):
+- If enabled, we still compute 0°/180°.
+- For square_grid, 90°/270° are only computed when at least one side of a pair is
+  truly 2D (H >= 2 and W >= 2). This keeps compute costs lower for pure 1D data.
+- For triangle_grid, the same idea applies to the six-fold rotation set.
+
+Note: This module adds extensive comments and docstrings only. The C code is not
+modified by this interface.
+"""
 import numpy as np
 from eqcorr2d import eqcorr2d_engine
 from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, extract_handle_dicts
 from crisscross.core_functions.megastructures import Megastructure
+from eqcorr2d.rot60 import rotate_array_tri60
 
 
 def wrap_eqcorr2d(handle_dict, antihandle_dict,
                   mode='classic', hist=True, report_full=False,
                   report_worst=True, do_smart=False):
-    """Compute eqcorr2d; return a single structured dict keyed by rotation.
+    """Run eqcorr2d on all handle/antihandle pairs, optionally across rotations.
 
-    Design goals:
-    - Keep the C layer simple (always computes for "rot0" orientation of inputs).
-    - Handle rotations in Python by pre-rotating B for each requested angle.
-    - Make the Python return value easy to consume and extend: a single dict
-      with per-rotation entries under result['rotations'] and global
-      aggregates at the top level.
+    This function is the preferred high-level entry point. It accepts two
+    dictionaries mapping arbitrary keys (e.g., slat ids) to binary occupancy
+    arrays, prepares them for the low-level C engine, optionally pre-rotates the
+    antihandles for the requested angle set, and then aggregates all outputs
+    into a single, well-structured result dictionary.
 
-    TODO: UPDATE THIS DESCRIPTION!
-    do_smart behavior (Python-side approximation):
-    - Always compute 0° and 180° when requested.
-    - For 90° and 270°: if do_smart is True, compute them only when at least
-      one array in A_list or B_list is truly 2D (both dims >= 2). This is a
-      coarse approximation of the previous per-pair smart rule.
+    Parameters
+    - handle_dict: dict[key -> np.ndarray]
+        Binary arrays (uint8), either 1D with shape (L,) or 2D with shape (H, W).
+        Non-zeros mark occupied positions. Each array is converted to C-contiguous
+        uint8 and reshaped to (1, L) for 1D inputs.
+    - antihandle_dict: dict[key -> np.ndarray]
+        Same rules as handle_dict.
+    - mode: str
+        One of 'classic', 'square_grid', or 'triangle_grid'. Determines which
+        rotation group is considered:
+        • classic: [0, 180]
+        • square_grid: [0, 90, 180, 270]
+        • triangle_grid: [0, 60, 120, 180, 240, 300]
+    - hist: bool
+        If True, request histogram accumulation from the C engine. The top-level
+        'hist_total' returned here is the sum across all considered rotations.
+    - report_full: bool
+        If True, per-rotation raw outputs (engine-dependent) are included under
+        result['rotations'][angle]['full'].
+    - report_worst: bool
+        If True, the C engine tracks worst pairs per rotation; this function then
+        converts those index pairs into key pairs and, when hist=True, aggregates
+        the globally worst key combinations across all rotations.
+    - do_smart: bool
+        Heuristic compute saver. For square/triangle grids, 90°/270° (and the
+        non-axial 60° steps) are only evaluated for pairs where at least one
+        operand is truly 2D (H >= 2 and W >= 2). 0°/180° are always evaluated.
 
-    Return structure (dictionary):
+    Returns
+    dict with the following shape:
     {
-      'angles': [list of angles actually computed in this call],
-      'hist_total': np.ndarray or None,  # sum across angles if hist=True
+      'angles': list[int],                # angles actually computed
+      'hist_total': np.ndarray|None,      # summed histogram if hist=True, else None
       'rotations': {
-          0:   {'hist': np.ndarray|None, 'full': list|None,
-                'worst_pairs_idx': list|None, 'worst_pairs_keys': list|None},
-          90:  {...},
-          180: {...},
-          270: {...}
+          angle: {
+              'hist': np.ndarray|None,        # per-rotation histogram (if hist)
+              'full': Any|None,               # per-rotation raw payload (if report_full)
+              'worst_pairs_idx': list|None,   # engine index pairs (if report_worst)
+              'worst_pairs_keys': list|None,  # same pairs mapped to (handle_key, antihandle_key)
+          },
+          ...
       },
-      'worst_keys_combos': list|None  # globally worst (handle_key, antihandle_key) pairs
+      'worst_keys_combos': list|None      # all worst key-pairs at the global worst matchtype
     }
+
+    Notes
+    - The low-level C engine always computes a single orientation. Rotations are
+      handled here by pre-rotating the antihandle arrays B_rot[angle].
+    - For triangle_grid, rotations are performed via rotate_array_tri60 which
+      maps indices on a triangular lattice. Resultting shapes can change; arrays
+      are kept contiguous and in uint8.
+    - When hist=False, 'worst_keys_combos' is left as None, because selecting a
+      global worst requires the histograms to identify the worst matchtype bin.
     """
 
     def ensure_2d_uint8(arr):
@@ -65,11 +132,8 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
         """
         if k60 == 0:
             out = b
-        elif k60 == 3:
-            # 180° is equivalent to np.rot90 with k=2 on square grids
-            out = np.rot90(b, k=2)
         else:
-            raise NotImplementedError("rot60_py for 60/120/240/300 degrees not implemented yet")
+            out = rotate_array_tri60(b, k60, map_only_nonzero=True, return_shift=False)
         if not out.flags['C_CONTIGUOUS'] or out.dtype != np.uint8:
             out = np.ascontiguousarray(out, dtype=np.uint8)
         return out
@@ -283,7 +347,30 @@ def get_seperate_worst_lists(c_results):
 
 
 # Do not use this. It would only work if all 1D slats are fully occupied with handles and antihandles
+
 def compensate_do_smart(hist, handle_dict, antihandle_dict, standart_slat_lenght=32, libraray_length=64):
+    """Attempt to post-correct histograms when do_smart skipped 90°/270° cases.
+
+    WARNING: This correction only makes sense under very restrictive assumptions
+    and is disabled in normal workflows. It assumes all involved 1D slats are
+    fully occupied across a fixed standard length and then injects an expected
+    distribution for the left-out orientations based on a simple library-size
+    probability model. If your slats are sparse or lengths vary, this will be
+    inaccurate. Prefer computing the full rotation set if you need exact stats.
+
+    Parameters
+    - hist: np.ndarray
+        Aggregated histogram to be adjusted.
+    - handle_dict / antihandle_dict: dict
+        Used only to estimate how many 1D×1D pairs were skipped.
+    - standart_slat_lenght: int
+        Assumed length for 1D slats when estimating left-out entries.
+    - libraray_length: int
+        Size of the handle library used to estimate p0 = 1/library_length.
+
+    Returns
+    - corrected_hist: np.ndarray with the estimated counts added to bins 0 and 1.
+    """
     # extract values from dicts
     handles = list(handle_dict.values())
     antihandles = list(antihandle_dict.values())
@@ -322,28 +409,42 @@ def compensate_do_smart(hist, handle_dict, antihandle_dict, standart_slat_lenght
 
 
 def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid'):
-    """Compute a combined similarity histogram for handles and antihandles.
-    Returns a dict aligned with wrap_eqcorr2d's new return format, with only
-    'hist_total' populated. Per-rotation details are not computed here.
+    """Build a library-level similarity histogram (handles+antihandles).
+
+    This helper runs wrap_eqcorr2d twice, once within the handle set and once
+    within the antihandle set, then sums the resulting histograms. Finally it
+    subtracts a simple self-match correction so that exact self-pairs do not
+    inflate the counts.
+
+    Notes
+    - Only the aggregated histogram is returned in the output dict (under
+      'hist_total'). Per-rotation details are not computed here.
+    - The self-match correction subtracts one count at matchtype = number of
+      nonzeros for each individual array. This assumes the engine would count a
+      self-pair as a perfect overlap at that bin.
     """
+    # Compute pairwise stats within the handle set
     res_hh = wrap_eqcorr2d(handle_dict, handle_dict,
                            mode=mode,
                            hist=True, report_full=False, report_worst=False)
     hist_hh = res_hh['hist_total']
 
+    # Compute pairwise stats within the antihandle set
     res_ahah = wrap_eqcorr2d(antihandle_dict, antihandle_dict,
                              mode=mode,
                              hist=True, report_full=False, report_worst=True)
     hist_ahah = res_ahah['hist_total']
 
+    # Sum with safe length alignment
     length = max(len(hist_hh), len(hist_ahah))
     hist_combined = np.zeros(length)
-
     hist_combined[:len(hist_hh)] += hist_hh
     hist_combined[:len(hist_ahah)] += hist_ahah
 
+    # Build self-match correction vector and subtract
     correction = np.zeros(length)
     for handle in list(handle_dict.values()):
+        # A self pair contributes to the bin equal to its number of non-zeros
         self_match = np.count_nonzero(handle)
         correction[self_match] = correction[self_match] + 1
 
@@ -354,7 +455,7 @@ def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid'):
     corrected_result = hist_combined - correction
 
     return {
-        'angles': [],
+        'angles': [],                # no per-rotation info for this helper
         'hist_total': corrected_result,
         'rotations': {},
         'worst_keys_combos': None,

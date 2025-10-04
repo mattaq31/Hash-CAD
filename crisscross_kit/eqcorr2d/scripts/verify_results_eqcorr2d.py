@@ -40,7 +40,7 @@ if __name__ == "__main__":
         res_c = wrap_eqcorr2d(
             A_dict, B_dict,
             mode='classic',
-            hist=True, report_full=False, report_worst=True
+            hist=True, report_full=False, report_worst=True,do_smart=False
         )
     print("C time:", round(time.time() - t0, 4), "s")
     hist_c = res_c['hist_total']
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                         [3, 2, 1, 3]]),
 
         "A1": np.array([[1, 2, 1, 3],
-                        [3, 0, 0, 0]]),
+                        [0, 3, 1, 1]]),
 
         "A2": np.array([[1, 2, 2, 2]
                         ]),
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         "B1": np.array([[0, 0, 3, 0, 0, 0]
                         ]),
 
-        "B2": np.array([[0, 0, 3],
+        "B2": np.array([[0, 2, 3],
                         [1, 1, 2]]),
         "B3": np.array([[1, 2, 0, 0, 3],
                         [1, 1, 2, 1, 2]]),
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     if flat.size > 0:
         (values, counts) = np.unique(flat, return_counts=True)
 
-    print("2D stuff:")
+    print("2D stuff 90 deg:")
 
     print("Histogram 2D from reported Arrays", counts)
     print("Histogram 2D from function  from report", res_2D['hist_total'])
@@ -198,3 +198,64 @@ if __name__ == "__main__":
     print(r180_2D[1][2])
     print("rot 270 deg :")
     print(r270_2D[1][2])
+
+
+# --- 60° triangular grid tests mirroring the 90° square tests ---
+    res_2D_tri = wrap_eqcorr2d(
+        A_2D_dict, B_2D_dict,
+        mode='triangle_grid',
+        hist=True, report_full=True, report_worst=True, do_smart=True
+    )
+
+    rt0    = res_2D_tri['rotations'].get(0,   {}).get('full')
+    rt60   = res_2D_tri['rotations'].get(60,  {}).get('full')
+    rt120  = res_2D_tri['rotations'].get(120, {}).get('full')
+    rt180  = res_2D_tri['rotations'].get(180, {}).get('full')
+    rt240  = res_2D_tri['rotations'].get(240, {}).get('full')
+    rt300  = res_2D_tri['rotations'].get(300, {}).get('full')
+
+    pieces_tri = []
+    for rot in [rt0, rt60, rt120, rt180, rt240, rt300]:
+        if rot is None:
+            continue
+        for row in rot:
+            for a in row:
+                if a is not None:
+                    pieces_tri.append(a.ravel())
+
+    flat_tri = np.concatenate(pieces_tri) if pieces_tri else np.array([], dtype=np.int32)
+    (values_tri, counts_tri) = (None, None)
+    if flat_tri.size > 0:
+        (values_tri, counts_tri) = np.unique(flat_tri, return_counts=True)
+
+    print("2D stuff 60 deg (triangle grid):")
+    print("Histogram 2D (triangle) from reported Arrays", counts_tri)
+    print("Histogram 2D (triangle) from function from report", res_2D_tri['hist_total'])
+
+    if values_tri is not None and len(values_tri) > 0:
+        maxv_tri = max(values_tri)
+        worst_pairs_2D_tri_recomp = find_in(maxv_tri, [rt0, rt60, rt120, rt180, rt240, rt300])
+        worst_pairs_2D_tri_recomp = sorted(worst_pairs_2D_tri_recomp)
+    else:
+        worst_pairs_2D_tri_recomp = []
+    worst_pairs_2D_tri = sorted(res_2D_tri['worst_keys_combos'] or [])
+
+    print("C function reported worst (triangle):", worst_pairs_2D_tri)
+    print("Recomputed worst (triangle):", worst_pairs_2D_tri_recomp)
+
+    # For hand computations pick A1 and B2 again; show all six rotations
+    print("A1", A_2D_dict["A1"]) 
+    print("B2", B_2D_dict["B2"]) 
+
+    print("rot 0 deg (tri):")
+    print(rt0[1][2])
+    print("rot 60 deg:")
+    print(rt60[1][2])
+    print("rot 120 deg:")
+    print(rt120[1][2])
+    print("rot 180 deg:")
+    print(rt180[1][2])
+    print("rot 240 deg:")
+    print(rt240[1][2])
+    print("rot 300 deg:")
+    print(rt300[1][2])
