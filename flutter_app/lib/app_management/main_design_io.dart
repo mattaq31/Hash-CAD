@@ -255,6 +255,41 @@ void exportDesign(Map<String, Slat> slats,
     metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + colorIndex}')).value = TextCellValue('#${s.uniqueColor!.value.toRadixString(16).substring(2).toUpperCase()}');
     colorIndex += 1;
   }
+
+  // Finally, export slat type metadata to a separate sheet for easy editing
+  Sheet slatTypeSheet = excel['slat_types'];
+  slatTypeSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer');
+  slatTypeSheet.cell(CellIndex.indexByString('B1')).value = TextCellValue('Slat ID');
+  slatTypeSheet.cell(CellIndex.indexByString('C1')).value = TextCellValue('Type');
+
+  List<List<CellValue>> rows = [];
+
+  for (var slat in slats.values) {
+    int layerNum = layerMap[slat.layer]!['order'] + 1;
+    int slatIdNum = int.parse(slat.id.split("-I").last);
+
+    rows.add([
+      IntCellValue(layerNum),
+      IntCellValue(slatIdNum),
+      TextCellValue(slat.slatType),
+    ]);
+  }
+  // Sort by layer, then slat ID
+  rows.sort((a, b) {
+    int layerA = (a[0] as IntCellValue).value;
+    int layerB = (b[0] as IntCellValue).value;
+    if (layerA != layerB) return layerA.compareTo(layerB);
+
+    int idA = (a[1] as IntCellValue).value;
+    int idB = (b[1] as IntCellValue).value;
+    return idA.compareTo(idB);
+  });
+
+  // Append sorted rows
+  for (var row in rows) {
+    slatTypeSheet.appendRow(row);
+  }
+
   excel.delete('Sheet1'); // removes useless first sheet
 
   if (kIsWeb){
@@ -462,6 +497,47 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     colorCount += 1;
   }
 
+
+  // TODO: throw error to user here
+  // Read slat type metadata, if available
+  Map <(int, int), String> slatTypeMap = {};
+
+  if (excel.tables.containsKey('slat_types')) {
+    var slatTypeSheet = excel.tables['slat_types']!;
+    if (slatTypeSheet.rows.isNotEmpty) {
+      // First row is headers
+      List<String> headers = slatTypeSheet.rows.first
+          .map((cell) => cell?.value.toString() ?? "")
+          .toList();
+
+      int layerIndex = headers.indexOf("Layer");
+      int slatIdIndex = headers.indexOf("Slat ID");
+      int typeIndex = headers.indexOf("Type");
+
+      if (layerIndex == -1 || slatIdIndex == -1 || typeIndex == -1) {
+        throw Exception("Missing required columns in slat_types sheet");
+      }
+
+      // Iterate over remaining rows
+      for (int i = 1; i < slatTypeSheet.rows.length; i++) {
+        var row = slatTypeSheet.rows[i];
+        if (row.isEmpty) continue;
+
+        var layerStr = row[layerIndex]?.value?.toString();
+        var slatIdStr = row[slatIdIndex]?.value?.toString();
+        var typeStr = row[typeIndex]?.value?.toString();
+
+        if (layerStr != null && slatIdStr != null && typeStr != null) {
+          var layer = int.tryParse(layerStr);
+          var slatId = int.tryParse(slatIdStr);
+          if (layer != null && slatId != null) {
+            slatTypeMap[(layer, slatId)] = typeStr;
+          }
+        }
+      }
+    }
+  }
+
   // prepares slat array from metadata information
   List<List<List<int>>> slatArray = List.generate(
       excel.tables['slat_layer_1']!.maxRows, (_) =>
@@ -499,25 +575,18 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       }
     }
 
-    double gridMultiplier = gridMode == '60' ? 1.414 : 1.0;
     for (var slatBundle in slatCoordinates.entries) {
-      var coords = slatBundle.value.values.toList();
       var category = 'tube';
-      // a quick hack to identify if a slat is a double barrel.  TODO: In the future, slat types should probably be explicitly identified.
-      if (((coords.first - coords.last).distance - ((coords.length-1) * gridMultiplier)).abs() > 0.05) {
-        category = 'double-barrel';
-      }
-      // second check: in 60deg mode, vertical slats occupy double distance
 
-      if (gridMode == '60' && (((coords.first - coords.last).distance - ((coords.length-1) * 2)).abs() < 0.05)) {
-        category = 'tube';
+      // get layer number from layer map
+      if (slatTypeMap.containsKey((layerIndex + 1, slatBundle.key))){
+        category = slatTypeMap[(layerIndex + 1, slatBundle.key)]!;
       }
 
       slats["$layer-I${slatBundle.key}"] = Slat(
           slatBundle.key, "$layer-I${slatBundle.key}", layer,
           slatBundle.value, slatType: category);
     }
-
     layerMap[layer]!['slat_count'] = slatCoordinates.length;
   }
 

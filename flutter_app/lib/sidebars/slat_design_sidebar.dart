@@ -44,10 +44,10 @@ Widget slatIcon(DesignState appState) {
 
 
 Widget dBSlatIcon(DesignState appState) {
-  bool isSelected = appState.slatAdditionType == 'double-barrel';
+  bool isSelected = appState.slatAdditionType == 'double-barrel-A';
   return GestureDetector(
     onTap: () {
-      appState.setSlatAdditionType('double-barrel');
+      appState.setSlatAdditionType('double-barrel-A');
     },
     child: Container(
       width: 40, // Shrunk size
@@ -425,11 +425,11 @@ class _SlatDesignTools extends State<SlatDesignTools>
             ),
             SizedBox(height: 6),
             SlatOption(
-              label: 'Double-Barrel',
-              isSelected: appState.slatAdditionType == 'double-barrel',
+              label: 'Double-Barrel-A',
+              isSelected: appState.slatAdditionType == 'double-barrel-A',
               color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
               painterBuilder: (color) => DoubleBarrelGlyphPainter(color: color),
-              onTap: () => appState.setSlatAdditionType('double-barrel'),
+              onTap: () => appState.setSlatAdditionType('double-barrel-A'),
             ),
           ],
         ),
