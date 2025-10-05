@@ -19,7 +19,7 @@ from crisscross.graphics.static_plots import create_graphical_slat_view, create_
 from crisscross.graphics.pyvista_3d import create_graphical_3D_view
 from crisscross.graphics.blender_3d import create_graphical_3D_view_bpy
 from eqcorr2d.slat_standardized_mapping import generate_standardized_slat_handle_array
-from eqcorr2d.eqcorr2d_interface import wrap_eqcorr2d, get_worst_match, get_sum_score, get_similarity_hist
+from eqcorr2d.eqcorr2d_interface import comprehensive_score_analysis
 
 # consistent figure formatting between mac, windows and linux
 if platform.system() == 'Darwin':
@@ -139,6 +139,8 @@ class Megastructure:
         if len(cargo_dict) > 0:
             self.assign_cargo_handles_with_dict(cargo_dict)
 
+        self.original_slat_array = slat_array
+
     def assign_colormap_for_cargo(self, colormap='Dark2'):
         color_list = mpl.colormaps[colormap].colors
         for ind, cargo_key in enumerate(self.cargo_palette.keys()):
@@ -226,11 +228,14 @@ class Megastructure:
 
                     self.assign_handle_to_slat(selected_slat, slat_position, side, handle_id, 'SEED', 'Seed|%s|%s' % (handle_id, seed_id), seed_plate)
 
-    def generate_slat_occupancy_grid(self):
+    def generate_slat_occupancy_grid(self, use_original_slat_array=False):
         """
         Generates a 3D occupancy grid of the slats in the design.
         :return: 3D numpy array with slat IDs at each position (X, Y, layer)
         """
+
+        if use_original_slat_array:
+            return self.original_slat_array
 
         occupancy_grid = np.zeros((self.slat_grid_coords[0], self.slat_grid_coords[1], len(self.layer_palette)), dtype=int)
 
@@ -511,7 +516,7 @@ class Megastructure:
 
         return slat_id_animation_classification
 
-    def get_slat_match_counts(self):
+    def get_slat_match_counts(self, use_original_slat_array=False, use_external_handle_array=None):
         """
         Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
         Useful for computing the hamming distance of a design with variable slat types.
@@ -523,8 +528,11 @@ class Megastructure:
         completed_slats = set() # just a tracker to prevent duplicate entries
 
         # arrays obtained from design as usual
-        slat_array = self.generate_slat_occupancy_grid()
-        handle_array = self.generate_assembly_handle_grid()
+        slat_array = self.generate_slat_occupancy_grid(use_original_slat_array=use_original_slat_array)
+        if use_external_handle_array:
+            handle_array = use_external_handle_array
+        else:
+            handle_array = self.generate_assembly_handle_grid()
 
         # loops through all slats in the design
         for s_key, slat in self.slats.items():
@@ -569,7 +577,7 @@ class Megastructure:
 
         return megastructure_match_count
 
-    def get_bag_of_slat_handles(self):
+    def get_bag_of_slat_handles(self, use_original_slat_array=False, use_external_handle_array=None, remove_blank_slats=False):
         """
         Obtains two dictionaries - both containing the arrays corresponding to the handle positions of each slat in the
         megastructure (one for handles and one for antihandles).  The keys correspond to the slat ID while the values contain
@@ -581,8 +589,11 @@ class Megastructure:
         antihandle_dict = OrderedDict()
 
         # arrays obtained from design as usual
-        slat_array = self.generate_slat_occupancy_grid()
-        handle_array = self.generate_assembly_handle_grid()
+        slat_array = self.generate_slat_occupancy_grid(use_original_slat_array=use_original_slat_array)
+        if use_external_handle_array is None:
+            handle_array = self.generate_assembly_handle_grid()
+        else:
+            handle_array = use_external_handle_array
 
         # loops through all slats in the design
         for s_key, slat in self.slats.items():
@@ -615,39 +626,35 @@ class Megastructure:
                             sub_array = handle_array[min_row:max_row + 1, min_col:max_col + 1, slat.layer-2]
                             antihandle_dict[s_key] = sub_array
 
+        if remove_blank_slats:
+            # remove all numpy arrays with all zeros (i.e. no handles/antihandles)
+            handle_dict = {k: v for k, v in handle_dict.items() if np.sum(v) > 0}
+            antihandle_dict = {k: v for k, v in antihandle_dict.items() if np.sum(v) > 0}
+
         return handle_dict, antihandle_dict
 
     def get_match_strength_score(self):
+        """
+        Computes the match strength score of the megastructure design based on the assembly handles present.
+        4 items are provided in a dictionary:
+        - the worst match score (i.e. the maximum number of matches between any two slats in the design)
+        - the mean log score (i.e. the log of the mean number of matches between all slat pairs in the design)
+        - the similarity score (i.e. the maximum number of matches between slats of the same type, which could result
+        in a slat taking the place of another slat in the design if strong enough)
+        - the full match histogram, which could be helpful for investigating designs with unexpected scores.
+        """
         # TODO: this function also assumes the pattern handle -> antihandle -> handle -> antihandle etc.
         # TODO: the below two functions both request the slat/handle arrays individually, is this a problem?
 
-        handle_dict, antihandle_dict = self.get_bag_of_slat_handles()
+        # first extract all handles/antihandles in the design
+        handle_dict, antihandle_dict = self.get_bag_of_slat_handles(remove_blank_slats=True)
 
-        # remove all numpy arrays with all zeros (i.e. no handles/antihandles)
-        handle_dict = {k: v for k, v in handle_dict.items() if np.sum(v) > 0}
-        antihandle_dict = {k: v for k, v in antihandle_dict.items() if np.sum(v) > 0}
-
+        # gets the number of matches that are expected in the design based on slat overlaps,
+        # these will be removed from the final histogram
         match_counts = self.get_slat_match_counts()
 
-        full_results = wrap_eqcorr2d(handle_dict, antihandle_dict, do_smart=True, hist=True, report_worst=False,
-                                     mode='triangle_grid' if self.connection_angle == '60' else 'square_grid')
+        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, self.connection_angle)
 
-        for handle_count, number_of_repeats in match_counts.items():
-            full_results['hist_total'][handle_count] -= number_of_repeats
-
-        worst_match = get_worst_match(full_results)
-
-        # truncates the histogram to prevent numerical instability in sum score analysis
-        full_results['hist_total'] = full_results['hist_total'][:worst_match+1]
-        mean_log_score = np.log(get_sum_score(full_results) / (len(handle_dict) * len(antihandle_dict)))
-
-        similarity_results = get_similarity_hist(handle_dict, antihandle_dict, mode='triangle_grid' if self.connection_angle == '60' else 'square_grid')
-
-        similarity_score = get_worst_match(similarity_results)
-
-        return {'worst_match_score': worst_match, 'mean_log_score': mean_log_score,
-                'similarity_score': similarity_score,
-                'match_histogram': full_results['hist_total']}
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
                                    include_cargo=True, include_seed=True,
