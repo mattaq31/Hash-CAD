@@ -1,5 +1,5 @@
 import numpy as np
-from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
+from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
 from server_architecture import hamming_evolve_communication_pb2_grpc, hamming_evolve_communication_pb2
 
 def proto_to_numpy(proto_layers):

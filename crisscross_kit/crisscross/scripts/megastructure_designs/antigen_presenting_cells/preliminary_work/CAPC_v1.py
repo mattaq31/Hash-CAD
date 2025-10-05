@@ -3,8 +3,8 @@ import numpy as np
 
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import read_design_from_excel
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
-from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_precise_hamming
+from crisscross.slat_handle_match_evolver.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 from capc_pattern_generator import capc_pattern_generator
 

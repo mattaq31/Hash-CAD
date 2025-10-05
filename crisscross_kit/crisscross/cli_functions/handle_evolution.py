@@ -6,7 +6,7 @@ import sys
 @click.option('--config_file', '-c', default=None,
               help='[String] Name or path of the evolution config file to be read in.')
 def handle_evolve(config_file):
-    from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
+    from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
     from crisscross.core_functions.megastructures import Megastructure
     import toml
     import numpy as np

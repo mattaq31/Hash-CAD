@@ -1,5 +1,5 @@
 import copy
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 from colorama import Fore, Style
@@ -9,7 +9,7 @@ import pandas as pd
 import platform
 import ast
 
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.slats import get_slat_key, convert_slat_array_into_slat_objects, Slat
 from crisscross.helper_functions import create_dir_if_empty, natural_sort_key
@@ -18,6 +18,8 @@ from crisscross.helper_functions.slat_salient_quantities import connection_angle
 from crisscross.graphics.static_plots import create_graphical_slat_view, create_graphical_assembly_handle_view
 from crisscross.graphics.pyvista_3d import create_graphical_3D_view
 from crisscross.graphics.blender_3d import create_graphical_3D_view_bpy
+from eqcorr2d.slat_standardized_mapping import generate_standardized_slat_handle_array
+from eqcorr2d.eqcorr2d_interface import wrap_eqcorr2d, get_worst_match, get_sum_score, get_similarity_hist
 
 # consistent figure formatting between mac, windows and linux
 if platform.system() == 'Darwin':
@@ -162,7 +164,6 @@ class Megastructure:
             else:
                 slat.set_handle(slat_position_index, slat_side, sequence, well, plate_name,
                                 category, handle_val, concentration, descriptor=descriptor)
-
 
     def assign_assembly_handles(self, handle_arrays, crisscross_handle_plates=None, crisscross_antihandle_plates=None):
         """
@@ -510,7 +511,6 @@ class Megastructure:
 
         return slat_id_animation_classification
 
-
     def get_slat_match_counts(self):
         """
         Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
@@ -532,7 +532,7 @@ class Megastructure:
                 matches_with_other_slats = defaultdict(int)
 
                 # checks slats in the layer above
-                if slat.layer != len(self.layer_palette):
+                if slat.layer != slat_array.shape[-1]:
                     # runs through all the coordinates of a specific slat
                     for coordinate in slat.slat_position_to_coordinate.values():
 
@@ -569,6 +569,85 @@ class Megastructure:
 
         return megastructure_match_count
 
+    def get_bag_of_slat_handles(self):
+        """
+        Obtains two dictionaries - both containing the arrays corresponding to the handle positions of each slat in the
+        megastructure (one for handles and one for antihandles).  The keys correspond to the slat ID while the values contain
+        individual numpy handle arrays, one for each slat.  The handle arrays represent the actual 2D shape of the slat
+        in the design.  Non-2D 60 degree slats are converted into 2D triangular coordinates to make handle match computation
+        significantly simpler.
+        """
+        handle_dict = OrderedDict()
+        antihandle_dict = OrderedDict()
+
+        # arrays obtained from design as usual
+        slat_array = self.generate_slat_occupancy_grid()
+        handle_array = self.generate_assembly_handle_grid()
+
+        # loops through all slats in the design
+        for s_key, slat in self.slats.items():
+            if not slat.non_assembly_slat:
+                rows, cols = zip(*list(slat.slat_position_to_coordinate.values()))
+                # STANDARD TUBULAR SLATS CAN BE CONVERTED INTO 1D ARRAYS DIRECTLY
+                # checks slats in the layer above
+                if slat.layer != slat_array.shape[-1]:
+                    handle_dict[s_key] = handle_array[rows, cols, slat.layer-1]
+
+                # checks slats in the layer below - same logic as above
+                if slat.layer != 1:
+                    antihandle_dict[s_key] = handle_array[rows, cols, slat.layer-2]
+
+                # DB Slats in 60deg mode need to be converted into their standard 90deg format
+                if slat.slat_type != 'tube':
+                    if self.connection_angle == '60':
+                        if s_key in handle_dict:
+                            handle_dict[s_key] = generate_standardized_slat_handle_array(handle_dict[s_key], slat.slat_type)
+                        if s_key in antihandle_dict:
+                            antihandle_dict[s_key] = generate_standardized_slat_handle_array(antihandle_dict[s_key], slat.slat_type)
+                    else:
+                        # extract the exact shape from the handle array
+                        min_row, max_row = min(rows), max(rows)
+                        min_col, max_col = min(cols), max(cols)
+                        if s_key in handle_dict:
+                            sub_array = handle_array[min_row:max_row + 1, min_col:max_col + 1, slat.layer-1]
+                            handle_dict[s_key] = sub_array
+                        if s_key in antihandle_dict:
+                            sub_array = handle_array[min_row:max_row + 1, min_col:max_col + 1, slat.layer-2]
+                            antihandle_dict[s_key] = sub_array
+
+        return handle_dict, antihandle_dict
+
+    def get_match_strength_score(self):
+        # TODO: this function also assumes the pattern handle -> antihandle -> handle -> antihandle etc.
+        # TODO: the below two functions both request the slat/handle arrays individually, is this a problem?
+
+        handle_dict, antihandle_dict = self.get_bag_of_slat_handles()
+
+        # remove all numpy arrays with all zeros (i.e. no handles/antihandles)
+        handle_dict = {k: v for k, v in handle_dict.items() if np.sum(v) > 0}
+        antihandle_dict = {k: v for k, v in antihandle_dict.items() if np.sum(v) > 0}
+
+        match_counts = self.get_slat_match_counts()
+
+        full_results = wrap_eqcorr2d(handle_dict, antihandle_dict, do_smart=True, hist=True, report_worst=False,
+                                     mode='triangle_grid' if self.connection_angle == '60' else 'square_grid')
+
+        for handle_count, number_of_repeats in match_counts.items():
+            full_results['hist_total'][handle_count] -= number_of_repeats
+
+        worst_match = get_worst_match(full_results)
+
+        # truncates the histogram to prevent numerical instability in sum score analysis
+        full_results['hist_total'] = full_results['hist_total'][:worst_match+1]
+        mean_log_score = np.log(get_sum_score(full_results) / (len(handle_dict) * len(antihandle_dict)))
+
+        similarity_results = get_similarity_hist(handle_dict, antihandle_dict, mode='triangle_grid' if self.connection_angle == '60' else 'square_grid')
+
+        similarity_score = get_worst_match(similarity_results)
+
+        return {'worst_match_score': worst_match, 'mean_log_score': mean_log_score,
+                'similarity_score': similarity_score,
+                'match_histogram': full_results['hist_total']}
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
                                    include_cargo=True, include_seed=True,

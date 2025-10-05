@@ -5,7 +5,7 @@ import os
 import time
 import numpy as np
 from eqcorr2d.eqcorr2d_interface import wrap_eqcorr2d
-from crisscross.assembly_handle_optimization.hamming_compute import oneshot_hamming_compute
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import oneshot_hamming_compute
 
 
 def make_random_1d(n, L, maxval=64):

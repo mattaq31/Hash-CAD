@@ -1,7 +1,7 @@
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, multirule_precise_hamming
-from crisscross.assembly_handle_optimization import generate_random_slat_handles
-from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming, multirule_precise_hamming
+from crisscross.slat_handle_match_evolver import generate_random_slat_handles
+from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
 
 if __name__ == '__main__':
     # JUST A TESTING AREA

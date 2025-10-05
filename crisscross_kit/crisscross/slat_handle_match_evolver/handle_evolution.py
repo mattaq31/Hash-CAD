@@ -9,9 +9,9 @@ import time
 import matplotlib.ticker as ticker
 from colorama import Fore
 
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
-from crisscross.assembly_handle_optimization.handle_mutation import mutate_handle_arrays
-from crisscross.assembly_handle_optimization import generate_random_slat_handles, generate_layer_split_handles
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.handle_mutation import mutate_handle_arrays
+from crisscross.slat_handle_match_evolver import generate_random_slat_handles, generate_layer_split_handles
 from crisscross.helper_functions import save_list_dict_to_file, create_dir_if_empty
 
 

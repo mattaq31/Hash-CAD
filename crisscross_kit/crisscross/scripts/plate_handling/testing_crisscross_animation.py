@@ -4,8 +4,8 @@ import pandas as pd
 
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
-from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_precise_hamming
+from crisscross.slat_handle_match_evolver.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping.plate_constants import cargo_plate_folder, nelson_quimby_antihandles
 from crisscross.plate_mapping import get_plateclass, get_standard_plates
 ########################################

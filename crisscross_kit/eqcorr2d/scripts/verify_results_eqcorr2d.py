@@ -1,6 +1,6 @@
 import time
 from eqcorr2d.eqcorr2d_interface import *
-from crisscross.assembly_handle_optimization.hamming_compute import oneshot_hamming_compute
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import oneshot_hamming_compute
 
 
 def make_random_1xL(n, L, maxval=64):

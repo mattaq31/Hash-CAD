@@ -1,9 +1,9 @@
 
 if __name__ == '__main__':
     from crisscross.core_functions.megastructures import Megastructure
-    from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, \
+    from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming, \
         multirule_precise_hamming
-    from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
+    from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
 
     # JUST A TESTING AREA
     test_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/sunflower/sunflower_design_hashcad_seed.xlsx'

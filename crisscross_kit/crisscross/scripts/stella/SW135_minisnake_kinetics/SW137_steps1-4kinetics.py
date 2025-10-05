@@ -1,7 +1,7 @@
 import os
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
 from crisscross.plate_mapping import get_cutting_edge_plates, get_plateclass, get_cargo_plates,\
@@ -93,4 +93,3 @@ for file, design_name in zip(base_design_import_files, target_designs):
                                     echo_sheet=None if not generate_echo else echo_sheet_1,
                                     peg_concentration=2,
                                     peg_groups_per_layer=2)
-        

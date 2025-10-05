@@ -6,7 +6,7 @@ import os
 
 from crisscross.core_functions.slat_design import generate_standard_square_slats
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_precise_hamming
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping.plate_constants import (octahedron_patterning_v1, cargo_plate_folder)
 from crisscross.plate_mapping import get_plateclass, get_standard_plates

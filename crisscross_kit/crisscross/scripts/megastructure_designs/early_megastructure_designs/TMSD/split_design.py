@@ -5,7 +5,7 @@ import os
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
+from crisscross.slat_handle_match_evolver.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.slats import get_slat_key, Slat
 from crisscross.plate_mapping.plate_constants import octahedron_patterning_v1, cargo_plate_folder
 from crisscross.plate_mapping import get_standard_plates, get_plateclass

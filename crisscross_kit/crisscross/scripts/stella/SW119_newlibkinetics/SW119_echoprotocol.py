@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_precise_hamming
 from crisscross.plate_mapping import get_standard_plates
 from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
 

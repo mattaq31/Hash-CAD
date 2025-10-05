@@ -3,7 +3,7 @@ import os
 
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.core_functions.slat_design import generate_standard_square_slats, generate_patterned_square_cco
-from crisscross.assembly_handle_optimization import generate_random_slat_handles
+from crisscross.slat_handle_match_evolver import generate_random_slat_handles
 
 ########################################
 # script setup

@@ -4,7 +4,7 @@ from itertools import product
 from collections import defaultdict, OrderedDict
 
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.hamming_compute import extract_handle_dicts,oneshot_hamming_compute
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import extract_handle_dicts,oneshot_hamming_compute
 
 ########## CONFIG
 

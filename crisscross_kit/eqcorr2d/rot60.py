@@ -87,6 +87,7 @@ def rotate_array_tri60(arr: np.ndarray, k: int = 1, map_only_nonzero: bool = Fal
 
     # Shift to non-negative coordinates for array indexing
     min_x, min_y = int(x.min()), int(y.min())
+
     shift_x, shift_y = -min_x, -min_y
     xs = x + shift_x
     ys = y + shift_y

@@ -34,8 +34,6 @@ modified by this interface.
 """
 import numpy as np
 from eqcorr2d import eqcorr2d_engine
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming, extract_handle_dicts
-from crisscross.core_functions.megastructures import Megastructure
 from eqcorr2d.rot60 import rotate_array_tri60
 
 
@@ -347,7 +345,6 @@ def get_seperate_worst_lists(c_results):
 
 
 # Do not use this. It would only work if all 1D slats are fully occupied with handles and antihandles
-
 def compensate_do_smart(hist, handle_dict, antihandle_dict, standart_slat_lenght=32, libraray_length=64):
     """Attempt to post-correct histograms when do_smart skipped 90°/270° cases.
 
@@ -408,7 +405,7 @@ def compensate_do_smart(hist, handle_dict, antihandle_dict, standart_slat_lenght
     return corrected_hist
 
 
-def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid'):
+def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid', do_smart=True):
     """Build a library-level similarity histogram (handles+antihandles).
 
     This helper runs wrap_eqcorr2d twice, once within the handle set and once
@@ -425,24 +422,24 @@ def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid'):
     """
     # Compute pairwise stats within the handle set
     res_hh = wrap_eqcorr2d(handle_dict, handle_dict,
-                           mode=mode,
+                           mode=mode, do_smart=do_smart,
                            hist=True, report_full=False, report_worst=False)
     hist_hh = res_hh['hist_total']
 
     # Compute pairwise stats within the antihandle set
     res_ahah = wrap_eqcorr2d(antihandle_dict, antihandle_dict,
-                             mode=mode,
+                             mode=mode, do_smart=do_smart,
                              hist=True, report_full=False, report_worst=True)
     hist_ahah = res_ahah['hist_total']
 
     # Sum with safe length alignment
     length = max(len(hist_hh), len(hist_ahah))
-    hist_combined = np.zeros(length)
+    hist_combined = np.zeros(length, dtype=np.int64)
     hist_combined[:len(hist_hh)] += hist_hh
     hist_combined[:len(hist_ahah)] += hist_ahah
 
     # Build self-match correction vector and subtract
-    correction = np.zeros(length)
+    correction = np.zeros(length, dtype=np.int64)
     for handle in list(handle_dict.values()):
         # A self pair contributes to the bin equal to its number of non-zeros
         self_match = np.count_nonzero(handle)
@@ -460,39 +457,3 @@ def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid'):
         'rotations': {},
         'worst_keys_combos': None,
     }
-
-
-if __name__ == "__main__":
-    # example integration
-
-    megastructure = Megastructure(
-        import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library\hexagon\hexagon_design_hashcad_seed.xlsx")
-    slat_array = megastructure.generate_slat_occupancy_grid()
-    handle_array = megastructure.generate_assembly_handle_grid()
-
-    old_dict_results = multirule_oneshot_hamming(slat_array, handle_array,
-                                                 report_worst_slat_combinations=True,
-                                                 per_layer_check=False,
-                                                 specific_slat_groups=None,
-                                                 request_substitute_risk_score=True,
-                                                 slat_length=32,
-                                                 partial_area_score=False,
-                                                 return_match_histogram=True)
-
-    handle_slats, antihandle_slats = extract_handle_dicts(handle_array, slat_array)
-    print("hallo")
-
-    r_c = wrap_eqcorr2d(handle_slats, antihandle_slats)
-
-    worst_match_type = get_worst_match(r_c)
-
-    sum_score = get_sum_score(r_c)
-
-    worst_handles, worst_antihandles = get_seperate_worst_lists(r_c)
-
-    mean_score = sum_score / (len(handle_slats) * len(antihandle_slats))  # this one seems to be the smarter choice
-    mean_score_old = mean_score / 126
-
-    sim_hist = get_similarity_hist(handle_slats, antihandle_slats)
-
-    worst_sim_match = get_worst_match(sim_hist)

@@ -1,2 +1,3 @@
 recursive-include crisscross/dna_source_plates *.xlsx
 recursive-include eqcorr2d/c_sources *.c *.h
+recursive-include eqcorr2d *.xlsx
