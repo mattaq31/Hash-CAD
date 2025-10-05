@@ -37,6 +37,32 @@ from eqcorr2d import eqcorr2d_engine
 from eqcorr2d.rot60 import rotate_array_tri60
 
 
+def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_angle, do_worst=False):
+    # runs the match comparison computation using our eqcorr2D C function
+    full_results = wrap_eqcorr2d(handle_dict, antihandle_dict, do_smart=True, hist=True, report_worst=do_worst,
+                                 mode='triangle_grid' if connection_angle == '60' else 'square_grid')
+
+    # compensates for matches in the design that are expected based on slat overlaps
+    for handle_count, number_of_repeats in match_counts.items():
+        full_results['hist_total'][handle_count] -= number_of_repeats
+
+    # extracts the worst match score
+    worst_match = get_worst_match(full_results)
+
+    # truncates the histogram to prevent numerical instability in sum score analysis
+    full_results['hist_total'] = full_results['hist_total'][:worst_match + 1]
+    mean_log_score = np.log(get_sum_score(full_results) / (len(handle_dict) * len(antihandle_dict)))
+
+    # runs a separate similarity analysis to check for slats that are too similar to each other
+    similarity_results = get_similarity_hist(handle_dict, antihandle_dict,
+                                             mode='triangle_grid' if connection_angle == '60' else 'square_grid')
+    similarity_score = get_worst_match(similarity_results)
+
+    return {'worst_match_score': worst_match, 'mean_log_score': mean_log_score,
+            'similarity_score': similarity_score,
+            'match_histogram': full_results['hist_total']}
+
+
 def wrap_eqcorr2d(handle_dict, antihandle_dict,
                   mode='classic', hist=True, report_full=False,
                   report_worst=True, do_smart=False):
