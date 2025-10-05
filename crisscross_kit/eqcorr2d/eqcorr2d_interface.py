@@ -37,7 +37,7 @@ from eqcorr2d import eqcorr2d_engine
 from eqcorr2d.rot60 import rotate_array_tri60
 
 
-def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_angle, do_worst=False):
+def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle, do_worst=False):
     # runs the match comparison computation using our eqcorr2D C function
     full_results = wrap_eqcorr2d(handle_dict, antihandle_dict, do_smart=True, hist=True, report_worst=do_worst,
                                  mode='triangle_grid' if connection_angle == '60' else 'square_grid')

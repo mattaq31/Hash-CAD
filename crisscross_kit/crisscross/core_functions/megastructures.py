@@ -520,12 +520,14 @@ class Megastructure:
         """
         Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
         Useful for computing the hamming distance of a design with variable slat types.
-        :return: Dictionary of match counts (key = number of matches, value = number of slat pairs with that many matches)
+        :return: Dictionary of match counts (key = number of matches, value = number of slat pairs with that many matches),
+         and a connection graph that lists all slat pairs with a certain number of matches.
         TODO: what to do in the case of slats with multiple layers e.g. the sierpinski slats?
         """
 
         megastructure_match_count = defaultdict(int) # key = number of matches, value = number of slat pairs with that many matches
         completed_slats = set() # just a tracker to prevent duplicate entries
+        connection_graph = defaultdict(list)
 
         # arrays obtained from design as usual
         slat_array = self.generate_slat_occupancy_grid(use_original_slat_array=use_original_slat_array)
@@ -571,11 +573,12 @@ class Megastructure:
                 # enumerates all matches found and updates the overall count
                 for k, v in matches_with_other_slats.items():
                     megastructure_match_count[v] += 1
+                    connection_graph[v].append((s_key, k))
 
                 # prevents other slats from matching with this slat again
                 completed_slats.add(s_key)
 
-        return megastructure_match_count
+        return megastructure_match_count, connection_graph
 
     def get_bag_of_slat_handles(self, use_original_slat_array=False, use_external_handle_array=None, remove_blank_slats=False):
         """
@@ -651,9 +654,9 @@ class Megastructure:
 
         # gets the number of matches that are expected in the design based on slat overlaps,
         # these will be removed from the final histogram
-        match_counts = self.get_slat_match_counts()
+        match_counts, connection_graph = self.get_slat_match_counts()
 
-        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, self.connection_angle)
+        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle)
 
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
