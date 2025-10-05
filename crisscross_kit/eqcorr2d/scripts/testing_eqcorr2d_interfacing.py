@@ -4,7 +4,7 @@ from eqcorr2d.eqcorr2d_interface import wrap_eqcorr2d, get_similarity_hist, get_
 
 # example integration
 megastructure = Megastructure(
-    import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library\hexagon\hexagon_design_hashcad_seed.xlsx")
+    import_design_file="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\design_library\hexagon\hexagon_design_hashcad_seed_crap.xlsx")
 slat_array = megastructure.generate_slat_occupancy_grid()
 handle_array = megastructure.generate_assembly_handle_grid()
 

@@ -13,5 +13,5 @@ def compute(
 ) -> Tuple[
     Optional[np.ndarray],
     Optional[List[List[np.ndarray]]],
-    Optional[List[Tuple[int, int]]],
+    Optional[np.ndarray],  # worst-count matrix of shape (nA, nB), dtype uint32
 ]: ...

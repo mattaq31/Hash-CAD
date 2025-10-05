@@ -150,10 +150,8 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
     if (do_worst) {
         WT = &WT_local;
         WT->max_val = INT_MIN; WT->nA = nA; WT->nB = nB;
-        WT->pairs = PyList_New(0);
-        if (!WT->pairs) { Py_DECREF(A_fast); Py_DECREF(B_fast); Py_XDECREF(Hist); Py_DECREF(Mask); return NULL; }
-        WT->seen = (unsigned char*)calloc((size_t)(nA * nB), 1);
-        if (!WT->seen) { Py_DECREF(A_fast); Py_DECREF(B_fast); Py_XDECREF(Hist); Py_DECREF(WT->pairs); Py_DECREF(Mask); return PyErr_NoMemory(); }
+        WT->counts = (uint32_t*)calloc((size_t)(nA * nB), sizeof(uint32_t));
+        if (!WT->counts) { Py_DECREF(A_fast); Py_DECREF(B_fast); Py_XDECREF(Hist); Py_DECREF(Mask); return PyErr_NoMemory(); }
     }
 
     // Only r0 is produced; other rotation outputs are None in the return tuple
@@ -230,19 +228,25 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
         free(packs); packs = NULL;
     }
 
-    PyObject* worst_pairs = do_worst ? WT->pairs : Py_None;
-    Py_XINCREF(worst_pairs);
+    PyArrayObject* WorstCounts = NULL; 
+    if (do_worst) {
+        npy_intp dims_wc[2] = { (npy_intp)nA, (npy_intp)nB };
+        WorstCounts = (PyArrayObject*)PyArray_Zeros(2, dims_wc, PyArray_DescrFromType(NPY_UINT32), 0);
+        if (!WorstCounts) goto fail;
+        // Copy counts into NumPy array
+        memcpy(PyArray_DATA(WorstCounts), WT->counts, (size_t)(nA * nB * sizeof(uint32_t)));
+    }
 
     Py_DECREF(A_fast); Py_DECREF(B_fast); Py_DECREF(Mask);
-    if (do_worst) free(WT->seen);
+    if (do_worst) { free(WT->counts); }
 
     PyObject* ret = Py_BuildValue("OOO",
         do_hist ? (PyObject*)Hist : Py_None,
         do_full ? L0 : Py_None,
-        do_worst ? worst_pairs : Py_None);
+        do_worst ? (PyObject*)WorstCounts : Py_None);
 
     Py_XDECREF(Hist);
-    if (do_worst) Py_XDECREF(worst_pairs);
+    Py_XDECREF(WorstCounts);
     return ret;
 
 fail_packs:
@@ -262,7 +266,7 @@ fail:
         free(packs); packs = NULL;
     }
     Py_XDECREF(Hist);
-    if (do_worst) { Py_XDECREF(WT->pairs); free(WT->seen); }
+    if (do_worst) { free(WT->counts); }
     Py_DECREF(A_fast); Py_DECREF(B_fast);
     return NULL;
 }

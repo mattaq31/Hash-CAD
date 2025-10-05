@@ -1,37 +1,24 @@
 #include "eqcorr2d.h"
 
-/* ---- worst_tracker_t helpers -------------------------------------------------
- * Purpose: Manage the set of (iA, iB) pairs that achieved the CURRENT global
- * maximum match value during a run. When a strictly larger maximum is found,
- * we reset the tracker (clear bitmap + empty Python list). When we encounter
- * another offset that ties the current maximum, we add the pair if not yet
- * recorded (using a flattened nA*nB bitmap to avoid duplicates).
- *
- * Lifetime notes:
- * - The worst_tracker_t struct itself typically lives on the stack.
- * - The 'seen' bitmap is calloc'd by the binding and free'd there after use.
- * - The 'pairs' list is created in the binding; ownership is transferred to
- *   the Python return tuple (refcounting handled in the binding).
+/* ---- worst_tracker_t helpers (counting version) ---------------------------------
+ * Purpose: Maintain a per-(iA,iB) counter matrix of how often a pair achieved
+ * the CURRENT global maximum match value during a run. When a strictly larger
+ * maximum is found, we reset all counters to zero and start counting anew.
+ * When we encounter another offset that ties the current maximum, we increment
+ * the corresponding counter for (iA,iB). No Python objects are manipulated here.
  * --------------------------------------------------------------------------- */
 int worst_reset(worst_tracker_t* wt, int new_max) {
     wt->max_val = new_max;
-    if (wt->seen) memset(wt->seen, 0, (size_t)(wt->nA * wt->nB));
-    if (!wt->pairs) return 0;
-    if (PyList_SetSlice(wt->pairs, 0, PyList_GET_SIZE(wt->pairs), NULL) < 0) return -1;
+    if (wt->counts) memset(wt->counts, 0, (size_t)(wt->nA * wt->nB * sizeof(uint32_t)));
     return 0;
 }
 
-// Update: use npy_intp for indices to match header
-int worst_add_if_new(worst_tracker_t* wt, npy_intp ia, npy_intp ib) {
-    if (!wt->pairs || !wt->seen) return 0;
+// Increment counter for (ia, ib)
+int worst_count(worst_tracker_t* wt, npy_intp ia, npy_intp ib) {
+    if (!wt->counts) return 0;
     npy_intp idx = ia * wt->nB + ib;
-    if (wt->seen[idx]) return 0;
-    wt->seen[idx] = 1;
-    PyObject* tup = Py_BuildValue("(nn)", ia, ib);
-    if (!tup) return -1;
-    int rc = PyList_Append(wt->pairs, tup);
-    Py_DECREF(tup);
-    return rc;
+    wt->counts[idx] += 1u;
+    return 0;
 }
 
 /* ----------------------------------------------------------------------
@@ -120,9 +107,9 @@ void loop_rot0_mode(
             if (DO_WORST) {
                 if (acc > WT->max_val) {
                     if (worst_reset(WT, acc) < 0) {}
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
+                    if (worst_count(WT, IA, IB) < 0) {}
                 } else if (acc == WT->max_val) {
-                    if (worst_add_if_new(WT, IA, IB) < 0) {}
+                    if (worst_count(WT, IA, IB) < 0) {}
                 }
             }
             if (DO_HIST) {

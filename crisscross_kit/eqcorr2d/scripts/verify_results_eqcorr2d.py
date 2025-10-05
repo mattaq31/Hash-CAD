@@ -96,7 +96,8 @@ if __name__ == "__main__":
     # Python comparison
     t0 = time.time()
     for i in range(runs):
-        matches = length - oneshot_hamming_compute(A_dict, B_dict, length)
+        res_py= oneshot_hamming_compute(A_dict, B_dict,length)
+        matches = length - res_py
         hist_py = np.bincount(matches.ravel(), minlength=length + 1).astype(np.int64)
     print("Python time:", round(time.time() - t0, 4), "s")
 
@@ -135,8 +136,8 @@ if __name__ == "__main__":
 
         "B2": np.array([[0, 2, 3],
                         [1, 1, 2]]),
-        "B3": np.array([[1, 2, 0, 0, 3],
-                        [1, 1, 2, 1, 2]]),
+        "B3": np.array([[3, 2, 0, 0, 3],
+                        [0, 3, 2, 3, 2]]),
 
         # "B4": np.array([[0, 0, 0, 0],
         #                [1, 2, 3, 3]]),

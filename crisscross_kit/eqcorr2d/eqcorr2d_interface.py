@@ -203,18 +203,11 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
         # Prepare per-rotation entry with both index and key-wise worst pairs
         hist_a = res[0] if hist else None
         full_a = res[1] if report_full else None
-        worst_idx = res[2] if report_worst else None
-        worst_keys = None
-        if report_worst and worst_idx is not None:
-            worst_keys = []
-            for tubel in worst_idx:
-                iA, iB = tubel[0], tubel[1]
-                worst_keys.append((handle_keys[iA], antihandle_keys[iB]))
+        worst_counts = res[2] if report_worst else None  # shape (nA, nB) uint32 counts
         per_rotation[angle] = {
             'hist': hist_a,
             'full': full_a,
-            'worst_pairs_idx': worst_idx,
-            'worst_pairs_keys': worst_keys,
+            'worst_counts': worst_counts,
         }
 
     # Aggregate histogram across angles (if requested)
@@ -244,9 +237,9 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
 
     # Determine the true global worst across all rotations and collect all worst pairs
     worst_keys_combos = None
+    worst_keys_multiplicity = None
     if report_worst:
         # We require hist=True to reliably identify the worst match value across rotations
-        # (the C worst tracker does not expose the max value). If hist is False, leave None.
         if hist:
             worst_per_rot = {}
             for angle in angles:
@@ -266,28 +259,48 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
 
             if worst_per_rot:
                 global_worst = max(worst_per_rot.values())
-                # Collect all worst pairs from every rotation that achieves the global worst
-                combo_set = set()
+                # Sum worst-count matrices from rotations that achieve the global worst
+                summed = None
                 for angle, widx in worst_per_rot.items():
                     if widx != global_worst:
                         continue
-                    wpairs = results_by_rot.get(angle, (None, None, None))[2]
-                    if wpairs is None:
+                    wc = results_by_rot.get(angle, (None, None, None))[2]
+                    if wc is None:
                         continue
-                    for tubel in wpairs:
-                        iA, iB = tubel[0], tubel[1]
-                        combo_set.add((handle_keys[iA], antihandle_keys[iB]))
-                worst_keys_combos = sorted(combo_set)  # stable order for tests
+                    wc = np.asarray(wc)
+                    if summed is None:
+                        summed = wc.astype(np.int64, copy=True)
+                    else:
+                        if summed.shape != wc.shape:
+                            raise ValueError("worst-count matrix shape mismatch across rotations")
+                        summed += wc
+                if summed is None:
+                    worst_keys_combos = []
+                    worst_keys_multiplicity = []
+                else:
+                    # Extract all indices with positive counts and map to keys
+                    idxs = np.argwhere(summed > 0)
+                    pairs = []
+                    mults = []
+                    for ia, ib in idxs:
+                        pairs.append((handle_keys[int(ia)], antihandle_keys[int(ib)]))
+                        mults.append((handle_keys[int(ia)], antihandle_keys[int(ib)], int(summed[ia, ib])))
+                    # stable order for tests
+                    worst_keys_combos = sorted(pairs)
+                    worst_keys_multiplicity = sorted(mults)
             else:
                 worst_keys_combos = []
+                worst_keys_multiplicity = []
         else:
             worst_keys_combos = None
+            worst_keys_multiplicity = None
 
     return {
         'angles': angles,
         'hist_total': agg_hist,
         'rotations': per_rotation,
         'worst_keys_combos': worst_keys_combos,
+                'worst_keys_multiplicity': worst_keys_multiplicity,
     }
 
 

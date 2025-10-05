@@ -39,14 +39,13 @@ typedef long long hist_t; // histogram bin type
 // Track (iA, iB) pairs achieving the global maximum match value.
 typedef struct {
     int            max_val;
-    npy_intp       nA, nB;         // counts expressed in npy_intp to avoid Python-only Py_ssize_t here
-    u8*            seen;           // bitmap size nA*nB
-    PyObject*      pairs;          // Python list of (iA, iB) (binding manages creation)
+    npy_intp       nA, nB;         // matrix dimensions (nA rows x nB cols)
+    uint32_t*      counts;         // nA*nB counter matrix; counts[ia*nB + ib]
 } worst_tracker_t;
 
-// Helpers for worst tracking
+// Helpers for worst tracking (counting version)
 int worst_reset(worst_tracker_t *wt, int new_max);
-int worst_add_if_new(worst_tracker_t *wt, npy_intp ia, npy_intp ib);
+int worst_count(worst_tracker_t *wt, npy_intp ia, npy_intp ib);
 
 // Core tight-loop kernel for 0° rotation mode only. All other rotations
 // are handled by pre-rotating B in the binding layer.
