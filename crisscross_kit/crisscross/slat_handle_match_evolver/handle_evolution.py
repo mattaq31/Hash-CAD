@@ -207,8 +207,6 @@ class EvolveManager:
         self.handle_array = self.next_candidates[best_idx]
 
         # Extracts precomputed match histogram from multirule_oneshot_hamming for the best candidate
-        # uniq, counts = results[best_idx]['match_histogram']
-        # self.mismatch_histograms.append(dict(zip(uniq, counts)))
         self.mismatch_histograms.append(results[best_idx]['match_histogram'])
 
         candidate_handle_arrays, _ = mutate_handle_arrays(self.slat_array, self.next_candidates,
