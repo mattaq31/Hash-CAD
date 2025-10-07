@@ -1,9 +1,9 @@
 
 
 if __name__ == '__main__':
-    from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
-    from crisscross.assembly_handle_optimization import generate_random_slat_handles
-    from crisscross.assembly_handle_optimization.handle_evolution import EvolveManager
+    from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
+    from crisscross.slat_handle_match_evolver import generate_random_slat_handles
+    from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
     from crisscross.core_functions.megastructures import Megastructure, get_slat_key
     import pandas as pd
     import os

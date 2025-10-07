@@ -468,7 +468,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   String selectSlatVisualStyle(String slatType){
     String instanceType;
-    String slatTypeClean = slatType.replaceAll('tube', 'Slat').replaceAll('double-barrel', 'DBSlat');
+    String slatTypeClean = slatType.replaceAll('tube', 'Slat').replaceAll('double-barrel-A', 'DBSlat');
     if (helixBundleView){
       if (slatTipExtendView){
         instanceType = 'honeyComb$slatTypeClean';
@@ -698,7 +698,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       String slatVisualStyle = selectSlatVisualStyle(slat.slatType);
 
       // if the slat has changed type (tube <-> double-barrel), remove the old instance
-      String alternateType = slat.slatType == 'tube' ? 'double-barrel' : 'tube';
+      String alternateType = slat.slatType == 'tube' ? 'double-barrel-A' : 'tube';
       if (instanceManager[slatVisualStyle.replaceAll(slat.slatType, alternateType)]?.getIndex(slat.id) == null){
         removeSlat(slat.id);
         slatIDs.remove(slat.id);
@@ -1067,7 +1067,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                         targetInstances += 'Short';
                       }
 
-                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('double-barrel')]!]);
+                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('double-barrel-A')]!]);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,

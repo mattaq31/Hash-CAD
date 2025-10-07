@@ -4,12 +4,12 @@ import numpy as np
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from crisscross.assembly_handle_optimization.hamming_compute import extract_handle_dicts, oneshot_hamming_compute
-from crisscross.assembly_handle_optimization.torch_dqn_prototyping.torch_hamming_compute import torch_index_handles, \
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import extract_handle_dicts, oneshot_hamming_compute
+from crisscross.slat_handle_match_evolver.torch_dqn_prototyping.torch_hamming_compute import torch_index_handles, \
     torch_oneshot_hamming_compute
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.assembly_handle_optimization import generate_random_slat_handles
-from crisscross.assembly_handle_optimization.torch_dqn_prototyping.handle_array_dataloader import HandleArrayDataset
+from crisscross.slat_handle_match_evolver import generate_random_slat_handles
+from crisscross.slat_handle_match_evolver.torch_dqn_prototyping.handle_array_dataloader import HandleArrayDataset
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

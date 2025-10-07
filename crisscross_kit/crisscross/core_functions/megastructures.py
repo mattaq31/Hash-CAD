@@ -1,5 +1,5 @@
 import copy
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 from colorama import Fore, Style
@@ -9,7 +9,7 @@ import pandas as pd
 import platform
 import ast
 
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.slats import get_slat_key, convert_slat_array_into_slat_objects, Slat
 from crisscross.helper_functions import create_dir_if_empty, natural_sort_key
@@ -18,6 +18,8 @@ from crisscross.helper_functions.slat_salient_quantities import connection_angle
 from crisscross.graphics.static_plots import create_graphical_slat_view, create_graphical_assembly_handle_view
 from crisscross.graphics.pyvista_3d import create_graphical_3D_view
 from crisscross.graphics.blender_3d import create_graphical_3D_view_bpy
+from eqcorr2d.slat_standardized_mapping import generate_standardized_slat_handle_array
+from eqcorr2d.eqcorr2d_interface import comprehensive_score_analysis
 
 # consistent figure formatting between mac, windows and linux
 if platform.system() == 'Darwin':
@@ -101,6 +103,7 @@ class Megastructure:
             self.hashcad_canvas_metadata = hashcad_canvas_metadata
             self.slats = slats
             self.slat_grid_coords = slat_grid_coords
+            self.original_slat_array = self.generate_slat_occupancy_grid()
         else:
             if slat_array is None:
                 raise RuntimeError('A slat array must be provided to initialize the megastructure (either imported or directly).')
@@ -120,6 +123,7 @@ class Megastructure:
                 layer_interface_orientations = [2] + [(5, 2)] * (num_layers - 1) + [5]
 
             self.layer_palette = create_default_layer_palette(layer_interface_orientations)
+            self.original_slat_array = slat_array
 
         if connection_angle not in ['60', '90']:
             raise NotImplementedError('Only 90 and 60 degree connection angles are supported.')
@@ -136,6 +140,7 @@ class Megastructure:
             self.assign_assembly_handles(handle_arrays)
         if len(cargo_dict) > 0:
             self.assign_cargo_handles_with_dict(cargo_dict)
+
 
     def assign_colormap_for_cargo(self, colormap='Dark2'):
         color_list = mpl.colormaps[colormap].colors
@@ -162,7 +167,6 @@ class Megastructure:
             else:
                 slat.set_handle(slat_position_index, slat_side, sequence, well, plate_name,
                                 category, handle_val, concentration, descriptor=descriptor)
-
 
     def assign_assembly_handles(self, handle_arrays, crisscross_handle_plates=None, crisscross_antihandle_plates=None):
         """
@@ -225,11 +229,14 @@ class Megastructure:
 
                     self.assign_handle_to_slat(selected_slat, slat_position, side, handle_id, 'SEED', 'Seed|%s|%s' % (handle_id, seed_id), seed_plate)
 
-    def generate_slat_occupancy_grid(self):
+    def generate_slat_occupancy_grid(self, use_original_slat_array=False):
         """
         Generates a 3D occupancy grid of the slats in the design.
         :return: 3D numpy array with slat IDs at each position (X, Y, layer)
         """
+
+        if use_original_slat_array:
+            return self.original_slat_array
 
         occupancy_grid = np.zeros((self.slat_grid_coords[0], self.slat_grid_coords[1], len(self.layer_palette)), dtype=int)
 
@@ -510,21 +517,25 @@ class Megastructure:
 
         return slat_id_animation_classification
 
-
-    def get_slat_match_counts(self):
+    def get_slat_match_counts(self, use_original_slat_array=False, use_external_handle_array=None):
         """
         Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
         Useful for computing the hamming distance of a design with variable slat types.
-        :return: Dictionary of match counts (key = number of matches, value = number of slat pairs with that many matches)
+        :return: Dictionary of match counts (key = number of matches, value = number of slat pairs with that many matches),
+         and a connection graph that lists all slat pairs with a certain number of matches.
         TODO: what to do in the case of slats with multiple layers e.g. the sierpinski slats?
         """
 
         megastructure_match_count = defaultdict(int) # key = number of matches, value = number of slat pairs with that many matches
         completed_slats = set() # just a tracker to prevent duplicate entries
+        connection_graph = defaultdict(list)
 
         # arrays obtained from design as usual
-        slat_array = self.generate_slat_occupancy_grid()
-        handle_array = self.generate_assembly_handle_grid()
+        slat_array = self.generate_slat_occupancy_grid(use_original_slat_array=use_original_slat_array)
+        if use_external_handle_array:
+            handle_array = use_external_handle_array
+        else:
+            handle_array = self.generate_assembly_handle_grid()
 
         # loops through all slats in the design
         for s_key, slat in self.slats.items():
@@ -532,7 +543,7 @@ class Megastructure:
                 matches_with_other_slats = defaultdict(int)
 
                 # checks slats in the layer above
-                if slat.layer != len(self.layer_palette):
+                if slat.layer != slat_array.shape[-1]:
                     # runs through all the coordinates of a specific slat
                     for coordinate in slat.slat_position_to_coordinate.values():
 
@@ -563,11 +574,90 @@ class Megastructure:
                 # enumerates all matches found and updates the overall count
                 for k, v in matches_with_other_slats.items():
                     megastructure_match_count[v] += 1
+                    connection_graph[v].append((s_key, k))
 
                 # prevents other slats from matching with this slat again
                 completed_slats.add(s_key)
 
-        return megastructure_match_count
+        return megastructure_match_count, connection_graph
+
+    def get_bag_of_slat_handles(self, use_original_slat_array=False, use_external_handle_array=None, remove_blank_slats=False):
+        """
+        Obtains two dictionaries - both containing the arrays corresponding to the handle positions of each slat in the
+        megastructure (one for handles and one for antihandles).  The keys correspond to the slat ID while the values contain
+        individual numpy handle arrays, one for each slat.  The handle arrays represent the actual 2D shape of the slat
+        in the design.  Non-2D 60 degree slats are converted into 2D triangular coordinates to make handle match computation
+        significantly simpler.
+        """
+        handle_dict = OrderedDict()
+        antihandle_dict = OrderedDict()
+
+        # arrays obtained from design as usual
+        slat_array = self.generate_slat_occupancy_grid(use_original_slat_array=use_original_slat_array)
+        if use_external_handle_array is None:
+            handle_array = self.generate_assembly_handle_grid()
+        else:
+            handle_array = use_external_handle_array
+
+        # loops through all slats in the design
+        for s_key, slat in self.slats.items():
+            if not slat.non_assembly_slat:
+                rows, cols = zip(*list(slat.slat_position_to_coordinate.values()))
+                # STANDARD TUBULAR SLATS CAN BE CONVERTED INTO 1D ARRAYS DIRECTLY
+                # checks slats in the layer above
+                if slat.layer != slat_array.shape[-1]:
+                    handle_dict[s_key] = handle_array[rows, cols, slat.layer-1]
+
+                # checks slats in the layer below - same logic as above
+                if slat.layer != 1:
+                    antihandle_dict[s_key] = handle_array[rows, cols, slat.layer-2]
+
+                # DB Slats in 60deg mode need to be converted into their standard 90deg format
+                if slat.slat_type != 'tube':
+                    if self.connection_angle == '60':
+                        if s_key in handle_dict:
+                            handle_dict[s_key] = generate_standardized_slat_handle_array(handle_dict[s_key], slat.slat_type)
+                        if s_key in antihandle_dict:
+                            antihandle_dict[s_key] = generate_standardized_slat_handle_array(antihandle_dict[s_key], slat.slat_type)
+                    else:
+                        # extract the exact shape from the handle array
+                        min_row, max_row = min(rows), max(rows)
+                        min_col, max_col = min(cols), max(cols)
+                        if s_key in handle_dict:
+                            sub_array = handle_array[min_row:max_row + 1, min_col:max_col + 1, slat.layer-1]
+                            handle_dict[s_key] = sub_array
+                        if s_key in antihandle_dict:
+                            sub_array = handle_array[min_row:max_row + 1, min_col:max_col + 1, slat.layer-2]
+                            antihandle_dict[s_key] = sub_array
+
+        if remove_blank_slats:
+            # remove all numpy arrays with all zeros (i.e. no handles/antihandles)
+            handle_dict = {k: v for k, v in handle_dict.items() if np.sum(v) > 0}
+            antihandle_dict = {k: v for k, v in antihandle_dict.items() if np.sum(v) > 0}
+
+        return handle_dict, antihandle_dict
+
+    def get_match_strength_score(self):
+        """
+        Computes the match strength score of the megastructure design based on the assembly handles present.
+        4 items are provided in a dictionary:
+        - the worst match score (i.e. the maximum number of matches between any two slats in the design)
+        - the mean log score (i.e. the log of the mean number of matches between all slat pairs in the design)
+        - the similarity score (i.e. the maximum number of matches between slats of the same type, which could result
+        in a slat taking the place of another slat in the design if strong enough)
+        - the full match histogram, which could be helpful for investigating designs with unexpected scores.
+        """
+        # TODO: this function also assumes the pattern handle -> antihandle -> handle -> antihandle etc.
+        # TODO: the below two functions both request the slat/handle arrays individually, is this a problem?
+
+        # first extract all handles/antihandles in the design
+        handle_dict, antihandle_dict = self.get_bag_of_slat_handles(remove_blank_slats=True)
+
+        # gets the number of matches that are expected in the design based on slat overlaps,
+        # these will be removed from the final histogram
+        match_counts, connection_graph = self.get_slat_match_counts()
+
+        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle)
 
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
@@ -877,6 +967,15 @@ class Megastructure:
                     max_len = max(max_len, len(str(val)))
             worksheet.set_column(col_idx, col_idx, max_len + 2)
 
+        # finally, print out the slat_types worksheet
+        slat_type_output_dict = defaultdict(list)
+        for key, slat in self.slats.items():
+            slat_type_output_dict['Layer'].append(slat.layer)
+            slat_type_output_dict['Slat ID'].append(int(slat.ID.split("slat")[-1]))
+            slat_type_output_dict['Type'].append(slat.slat_type)
+        slat_type_df = pd.DataFrame.from_dict(slat_type_output_dict)
+        slat_type_df.to_excel(writer, index=False, header=True, sheet_name="slat_types")
+
         writer.close()
 
     def import_design(self, file):
@@ -890,7 +989,7 @@ class Megastructure:
         layer_count = 0
 
         for i, key in enumerate(design_df.keys()):
-            if 'slat' in key:
+            if 'slat_layer_' in key:
                 layer_count += 1
 
         # preparing and reading in slat/handle arrays
@@ -906,6 +1005,17 @@ class Megastructure:
         else:
             handle_array = None
 
+        # reading in slat types (if available, older files did not have this sheet)
+        if 'slat_types' in design_df:
+            slat_type_df = design_df['slat_types']
+            slat_type_df.columns = slat_type_df.iloc[0]  # first row becomes column names
+            slat_type_df = slat_type_df.drop(0).reset_index(drop=True)
+            slat_type_dict = {(int(row["Layer"]), int(row["Slat ID"])): row["Type"] for _, row in slat_type_df.iterrows()}
+            # not all slats have to be defined here, those that aren't will be assumed to be tubes
+        else:
+            # if no slat types are defined, assume all slats are of type 'tube'
+            slat_type_dict = {}
+
         slats = {}
         for i in range(layer_count):
             # in the new system, slat elements are stored in the form ID-POSN which allows for the exact orientation of slats (even reversed directions and so on)
@@ -920,7 +1030,8 @@ class Megastructure:
                             id_part, posn_part = cell.split('-', 1)
                             slat_coords[id_part][int(posn_part)] = (row, col)
                 for slat_id, coords in slat_coords.items(): # generate a slat from each ID found in the file
-                    slats[get_slat_key(i + 1, int(slat_id))] = Slat(get_slat_key(i + 1, int(slat_id)), i + 1, coords)
+                    slats[get_slat_key(i + 1, int(slat_id))] = Slat(get_slat_key(i + 1, int(slat_id)), i + 1, coords,
+                                                                    slat_type=slat_type_dict[i+1, int(slat_id)] if (i+1, int(slat_id)) in slat_type_dict else 'tube')
             else:
                 slat_array[..., i] = slat_data  # if using the old system, slat data is just a 2D array of slat IDs, from which a direction is defined as travelling from top to bottom by default
 
@@ -1001,7 +1112,6 @@ class Megastructure:
 
         try:
             color_info_start = metadata.index.get_loc('UNIQUE SLAT COLOUR INFO') + 2
-
             # reads in and applies unique slat colors if present
             unique_slat_color_palette = {}
             # Read until the next empty row or section for COLOR INFO
@@ -1025,7 +1135,6 @@ class Megastructure:
                 slat.layer_color = layer_palette[slat.layer]['color']
         except:
             print(Fore.RED + 'No unique slat color palette found in metadata, using default colors.' + Fore.RESET)
-
         try:
             canvas_min_pos = metadata.index.get_loc('Canvas Offset (Min)')
             canvas_max_pos = metadata.index.get_loc('Canvas Offset (Max)')

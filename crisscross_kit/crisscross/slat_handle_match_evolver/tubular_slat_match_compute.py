@@ -123,8 +123,6 @@ def oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length):
 
     return hamming_results
 
-
-
 def multirule_oneshot_hamming(slat_array, handle_array,
                               report_worst_slat_combinations=True,
                               per_layer_check=False,
@@ -171,6 +169,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     handle_dict, antihandle_dict = extract_handle_dicts(handle_array, slat_array)
 
     hamming_results = oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length)
+
 
     # calculate hamming distance in the case that we are only considering a partial area, which requires editing slat handles in non-considered regions to be "0"
     if partial_area_score:

@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
 
 ########## CONFIG
 experiment_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/exp2_handle_library_sunflowers/design_stuff/'

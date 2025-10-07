@@ -1,4 +1,4 @@
-from crisscross.assembly_handle_optimization.torch_dqn_prototyping.dqn_optimization_v2 import HDQN, read_value_cache, calculate_array_metrics
+from crisscross.slat_handle_match_evolver.torch_dqn_prototyping.dqn_optimization_v2 import HDQN, read_value_cache, calculate_array_metrics
 import random
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -11,7 +11,7 @@ import torch
 from tqdm import tqdm
 
 from crisscross.core_functions.slat_design import generate_standard_square_slats
-from crisscross.assembly_handle_optimization import generate_random_slat_handles
+from crisscross.slat_handle_match_evolver import generate_random_slat_handles
 
 
 if __name__ == '__main__':

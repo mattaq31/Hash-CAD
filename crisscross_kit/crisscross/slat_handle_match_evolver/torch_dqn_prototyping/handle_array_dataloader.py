@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 from python_calamine import CalamineWorkbook
-from crisscross.assembly_handle_optimization.hamming_compute import oneshot_hamming_compute, extract_handle_dicts
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import oneshot_hamming_compute, extract_handle_dicts
 
 
 class HandleArrayDataset(Dataset):

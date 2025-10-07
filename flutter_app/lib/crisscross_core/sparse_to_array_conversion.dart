@@ -8,12 +8,7 @@ import 'slats.dart';
   double maxY = double.negativeInfinity;
 
   for (var slat in slats.values) {
-    var positions = [
-      slat.slatPositionToCoordinate[1]!,
-      slat.slatPositionToCoordinate[32]!,
-      // TODO: parameterize if slat length changes
-    ];
-    for (var pos in positions) {
+    for (var pos in slat.slatPositionToCoordinate.values) {
       minX = pos.dx < minX ? pos.dx : minX;
       minY = pos.dy < minY ? pos.dy : minY;
       maxX = pos.dx > maxX ? pos.dx : maxX;

@@ -3,7 +3,7 @@ import os
 
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
 from crisscross.core_functions.slats import Slat
 from crisscross.helper_functions import create_dir_if_empty
 from crisscross.plate_mapping.plate_constants import plate96_center_pattern

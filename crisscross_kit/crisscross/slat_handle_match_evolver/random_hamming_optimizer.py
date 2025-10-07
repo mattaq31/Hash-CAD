@@ -1,9 +1,9 @@
 import numpy as np
 from tqdm import tqdm
 
-from crisscross.assembly_handle_optimization import generate_layer_split_handles, generate_random_slat_handles, \
+from crisscross.slat_handle_match_evolver import generate_layer_split_handles, generate_random_slat_handles, \
     update_split_slat_handles, update_random_slat_handles
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_precise_hamming
 
 
 def generate_handle_set_and_optimize(base_array, unique_sequences=32, slat_length=32, max_rounds=30,

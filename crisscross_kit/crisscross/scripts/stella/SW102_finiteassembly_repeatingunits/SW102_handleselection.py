@@ -3,8 +3,8 @@ import os
 import numpy as np
 
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_precise_hamming
-from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_precise_hamming
+from crisscross.slat_handle_match_evolver.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.plate_mapping import get_standard_plates
 
 DesignFolder = "/Users/stellawang/HMS Dropbox/Siyuan Wang/crisscross_team/Crisscross Designs/SW102_SW103_repeatingunitsfiniteassembly_zigzagkinetics"

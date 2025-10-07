@@ -242,7 +242,7 @@ class SlatPainter extends CustomPainter {
 
     // if distance between extremities is much less than that expected of a straight line, then the slat must be a double barrel
     // (this is a bit of a hack but should work for now, other solutions will be much more complicated)
-    if (slatType == 'double-barrel') {
+    if (slatType == 'double-barrel-A') {
       // select offsets to match normal slat system, with some tweaks to improve visualization
       // of course, if different sizes DBs are introduced, the 15/16 hardcoding will need to be changed...
 

@@ -2,7 +2,7 @@ import numpy as np
 
 # For generating handles
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
+from crisscross.slat_handle_match_evolver.random_hamming_optimizer import generate_handle_set_and_optimize
 
 
 def extract_min_max_slat_coords(slat_dict):

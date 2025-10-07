@@ -1,6 +1,6 @@
 # very quick cost calculations used for a presentation to estimate how much a new handle library would cost to purchase
 
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.plate_mapping import get_standard_plates
 from collections import defaultdict

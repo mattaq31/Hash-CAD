@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from colorama import Fore
 import numpy as np
 
@@ -32,7 +32,7 @@ class Slat:
     """
     Wrapper class to hold all of a slat's handles and related details.
     """
-    def __init__(self, ID, layer, slat_coordinates, non_assembly_slat=False, unique_color=None, layer_color=None):
+    def __init__(self, ID, layer, slat_coordinates, non_assembly_slat=False, unique_color=None, layer_color=None, slat_type='tube'):
         """
         :param ID: Slat unique ID (string)
         :param layer: Layer position for slat (normally 1 and above, but can set to 0 for special slats such as crossbars)
@@ -46,13 +46,15 @@ class Slat:
         self.non_assembly_slat = non_assembly_slat
         self.unique_color = unique_color
         self.layer_color = layer_color
+        self.slat_type = slat_type
 
         # converts coordinates on a 2d array to the handle number on the slat, and vice-versa
-        self.slat_position_to_coordinate = {}
-        self.slat_coordinate_to_position = {}
+        self.slat_position_to_coordinate = OrderedDict()
+        self.slat_coordinate_to_position = OrderedDict()
         if slat_coordinates != 'N/A':
             if isinstance(slat_coordinates, dict):
-                for key, coord in slat_coordinates.items():
+                for key in sorted(slat_coordinates.keys()):
+                    coord = slat_coordinates[key]
                     self.slat_position_to_coordinate[key] = tuple(coord)
                     self.slat_coordinate_to_position[tuple(coord)] = key
             else:
@@ -64,6 +66,30 @@ class Slat:
 
         self.H2_handles = defaultdict(dict)
         self.H5_handles = defaultdict(dict)
+
+        # this is kind of redundant now that we have explicit slat types...
+        self.one_dimensional_slat = self.check_if_1D()
+
+    def check_if_1D(self):
+
+        coords = list(self.slat_position_to_coordinate.values())
+
+        ys = [y for y, x in coords]  # row
+        xs = [x for y, x in coords]
+
+        if len(set(xs)) == 1:  # vertical
+            return True
+        if len(set(ys)) == 1:  # horizontal
+            return True
+
+        # check if all points are collinear (same slope)
+        (x0, y0) = coords[0]
+        (x1, y1) = coords[1]
+        for (x, y) in coords[2:]:
+            if (y1 - y0) * (x - x0) != (y - y0) * (x1 - x0):
+                return False
+        # if we reach this point, the slat must be 1D
+        return True
 
     def reverse_direction(self):
         """

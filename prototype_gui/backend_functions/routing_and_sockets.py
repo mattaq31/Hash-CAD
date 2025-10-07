@@ -11,8 +11,8 @@ from prototype_gui.backend_functions.server_helper_functions import (positional_
                                                                      convert_dict_handle_orientations_to_string,
                                                                      convert_design_dictionaries_into_arrays,
                                                                      combine_megastructure_arrays)
-from crisscross.assembly_handle_optimization.hamming_compute import multirule_oneshot_hamming
-from crisscross.assembly_handle_optimization.random_hamming_optimizer import generate_handle_set_and_optimize
+from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
+from crisscross.slat_handle_match_evolver.random_hamming_optimizer import generate_handle_set_and_optimize
 from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.megastructures import Megastructure
 from crisscross.helper_functions import clear_folder_contents, convert_np_to_py, zip_folder_to_disk
