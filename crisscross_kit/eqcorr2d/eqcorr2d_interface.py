@@ -58,10 +58,13 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, con
                                              mode='triangle_grid' if connection_angle == '60' else 'square_grid')
     similarity_score = get_worst_match(similarity_results)
 
-    return {'worst_match_score': worst_match, 'mean_log_score': mean_log_score,
-            'similarity_score': similarity_score,
-            'match_histogram': full_results['hist_total']}
+    data_dict = {'worst_match_score': worst_match, 'mean_log_score': mean_log_score,
+                 'similarity_score': similarity_score,
+                 'match_histogram': full_results['hist_total']}
+    if do_worst:
+        data_dict['worst_slat_combos'] = full_results['worst_keys_combos']
 
+    return data_dict
 
 def wrap_eqcorr2d(handle_dict, antihandle_dict,
                   mode='classic', hist=True, report_full=False,

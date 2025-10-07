@@ -103,6 +103,7 @@ class Megastructure:
             self.hashcad_canvas_metadata = hashcad_canvas_metadata
             self.slats = slats
             self.slat_grid_coords = slat_grid_coords
+            self.original_slat_array = self.generate_slat_occupancy_grid()
         else:
             if slat_array is None:
                 raise RuntimeError('A slat array must be provided to initialize the megastructure (either imported or directly).')
@@ -122,6 +123,7 @@ class Megastructure:
                 layer_interface_orientations = [2] + [(5, 2)] * (num_layers - 1) + [5]
 
             self.layer_palette = create_default_layer_palette(layer_interface_orientations)
+            self.original_slat_array = slat_array
 
         if connection_angle not in ['60', '90']:
             raise NotImplementedError('Only 90 and 60 degree connection angles are supported.')
@@ -139,7 +141,6 @@ class Megastructure:
         if len(cargo_dict) > 0:
             self.assign_cargo_handles_with_dict(cargo_dict)
 
-        self.original_slat_array = slat_array
 
     def assign_colormap_for_cargo(self, colormap='Dark2'):
         color_list = mpl.colormaps[colormap].colors

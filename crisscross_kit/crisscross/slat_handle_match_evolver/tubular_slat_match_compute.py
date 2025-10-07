@@ -123,7 +123,6 @@ def oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length):
 
     return hamming_results
 
-
 def multirule_oneshot_hamming(slat_array, handle_array,
                               report_worst_slat_combinations=True,
                               per_layer_check=False,

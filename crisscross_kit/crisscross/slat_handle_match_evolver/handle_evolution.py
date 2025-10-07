@@ -8,25 +8,25 @@ import multiprocessing
 import time
 import matplotlib.ticker as ticker
 from colorama import Fore
+import re
 
-from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
 from crisscross.slat_handle_match_evolver.handle_mutation import mutate_handle_arrays
 from crisscross.slat_handle_match_evolver import generate_random_slat_handles, generate_layer_split_handles
 from crisscross.helper_functions import save_list_dict_to_file, create_dir_if_empty
+from eqcorr2d.eqcorr2d_interface import comprehensive_score_analysis
 
 
 class EvolveManager:
-    def __init__(self, slat_array, seed_handle_array=None, slat_length=32, random_seed=8, generational_survivors=3,
+    def __init__(self, megastructure, slat_length=32, random_seed=8, generational_survivors=3,
                  mutation_rate=5, mutation_type_probabilities=(0.425, 0.425, 0.15), unique_handle_sequences=32,
                  evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
-                 process_count=None, early_hamming_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
+                 process_count=None, early_worst_match_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
                  mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None):
         """
         Prepares an evolution manager to optimize a handle array for the provided slat array.
         WARNING: Make sure to use the "if __name__ == '__main__':" block to run this class in a script.
         Otherwise, the spawned processes will cause a recursion error.
-        :param slat_array: The basis slat array for which a handle set needs to be found
-        :param seed_handle_array: The initial handle array to use for the evolution (can be None)
+        :param megastructure: Megastructure object containing slat array and optionally a seed handle array for starting evolution
         :param slat_length: Slat length in terms of number of handles
         :param random_seed: Random seed to use to ensure consistency
         :param generational_survivors: Number of surviving candidate arrays that persist through each generation
@@ -39,7 +39,7 @@ class EvolveManager:
         :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
         :param sequence_split_factor: Factor by which to split the handle sequences between layers (default is 2, which means that if handles are split, the first layer will have 1/2 of the handles, etc.)
         :param process_count: Number of threads to use for hamming multiprocessing (if set to default, will use 67% of available cores)
-        :param early_hamming_stop: If this hamming distance is achieved, the evolution will stop early
+        :param early_worst_match_stop: If this worst match score  is achieved, the evolution will stop early
         :param log_tracking_directory: Set to a directory to export plots and metrics during the optimization process (optional)
         :param progress_bar_update_iterations: Number of iterations before progress bar is updated
         - useful for server output files, but does not seem to work consistently on every system (optional)
@@ -53,9 +53,18 @@ class EvolveManager:
         self.seed = int(random_seed)
         self.metrics = defaultdict(list)
         self.mismatch_histograms = []
-        self.slat_array = slat_array
+
+        # creates Megastructure objects to help compute arrays required for compensating match calculation histograms
+        self.dummy_megastructure = megastructure
+        self.slat_array = megastructure.generate_slat_occupancy_grid()
         self.repeating_unit_constraints = {} if repeating_unit_constraints is None else repeating_unit_constraints
-        self.handle_array = seed_handle_array # this variable holds the current best handle array in the system (updated throughout evolution)
+
+        seed_handle_array = megastructure.generate_assembly_handle_grid()
+        if np.sum(seed_handle_array) == 0:
+            self.handle_array = None
+        else:
+            self.handle_array = seed_handle_array # this variable holds the current best handle array in the system (updated throughout evolution)
+
         self.slat_length = slat_length
         self.generational_survivors = int(generational_survivors)
         self.mutation_rate = mutation_rate
@@ -73,11 +82,10 @@ class EvolveManager:
         self.hall_of_shame_memory = memory_length
 
         # converters for alternative parameter definitions
-
-        if early_hamming_stop is None:
-            self.early_hamming_stop = None
+        if early_worst_match_stop is None:
+            self.early_worst_match_stop = None
         else:
-            self.early_hamming_stop = int(early_hamming_stop)
+            self.early_worst_match_stop = int(early_worst_match_stop)
 
         if isinstance(mutation_type_probabilities, str):
             self.mutation_type_probabilities = tuple(map(float, mutation_type_probabilities.split(', ')))
@@ -100,6 +108,10 @@ class EvolveManager:
 
         self.next_candidates = self.initialize_evolution()
         self.initial_candidates = self.next_candidates.copy()
+        if self.handle_array is None:
+            self.dummy_megastructure.assign_assembly_handles(self.next_candidates[0])
+
+        self.slat_compensation_match_counts, self.slat_connection_graph = self.dummy_megastructure.get_slat_match_counts(use_original_slat_array=True)
 
         self.memory_hallofshame = defaultdict(list)
         self.memory_best_parent_hallofshame = defaultdict(list)
@@ -111,6 +123,7 @@ class EvolveManager:
                                              'mid_color': "#FFEB84",  # Yellow
                                              'max_color': "#F8696B",  # Red
                                              'value': 0}
+
 
     def initialize_evolution(self):
         """
@@ -145,35 +158,41 @@ class EvolveManager:
         # and the bad handles of each
         # multiprocessing will be used to speed up overall computation and parallelize the hamming distance calculations
         # refer to the multirule_oneshot_hamming function for details on input arguments
-
         multiprocess_start = time.time()
         with multiprocessing.Pool(processes=self.num_processes) as pool:
-            results = pool.starmap(multirule_oneshot_hamming,
-                                   [(self.slat_array, self.next_candidates[j], True, True, None, True, self.slat_length, False, True)
-                                    for j in range(self.evolution_population)])
+            analysis_inputs = []
+            for j in range(self.evolution_population):
+                handles, antihandles = self.dummy_megastructure.get_bag_of_slat_handles(use_original_slat_array=True,
+                                                                                        use_external_handle_array = self.next_candidates[j],
+                                                                                        remove_blank_slats=True)
+                analysis_inputs.append((handles, antihandles, self.slat_compensation_match_counts, self.slat_connection_graph, self.dummy_megastructure.connection_angle, True))
+            results = pool.starmap(comprehensive_score_analysis, analysis_inputs)
+
         multiprocess_time = time.time() - multiprocess_start
 
         # Unpack and store results from multiprocessing
         for index, res in enumerate(results):
-            physical_scores[index] = res['Physics-Informed Partition Score']
-            hammings[index] = res['Universal']
-            duplicate_risk_scores[index] = res['Substitute Risk']
-            hallofshame['handles'].append(res['Worst combinations handle IDs'])
-            hallofshame['antihandles'].append(res['Worst combinations antihandle IDs'])
+            physical_scores[index] = res['mean_log_score']
+            hammings[index] = res['worst_match_score']
+            duplicate_risk_scores[index] = res['similarity_score']
+            worst_handle_combos = [tuple(map(int, re.findall(r'\d+', r[0]))) for r in res['worst_slat_combos']]
+            worst_antihandle_combos = [tuple(map(int, re.findall(r'\d+', r[1]))) for r in res['worst_slat_combos']]
+            hallofshame['handles'].append(worst_handle_combos)
+            hallofshame['antihandles'].append(worst_antihandle_combos)
             if self.current_generation == 1:
-                self.initial_hallofshame['handles'].append(res['Worst combinations handle IDs'])
-                self.initial_hallofshame['antihandles'].append(res['Worst combinations antihandle IDs'])
+                self.initial_hallofshame['handles'].append(worst_handle_combos)
+                self.initial_hallofshame['antihandles'].append(worst_antihandle_combos)
 
         # compare and find the individual with the best hamming distance i.e. the largest one. Note: there might be several
-        max_physics_score_of_population = -np.max(physical_scores)
+        max_physics_score_of_population = np.min(physical_scores)
         # Get the indices of the top 'survivors' largest elements
-        indices_of_largest_scores = np.argpartition(physical_scores, -self.generational_survivors)[-self.generational_survivors:]
+        indices_of_largest_scores = np.argpartition(physical_scores, self.generational_survivors)[:self.generational_survivors]
 
         # Get the largest elements using the sorted indices
-        self.metrics['Best (Log) Physics-Based Score'].append(np.log(max_physics_score_of_population))
-        self.metrics['Corresponding Hamming Distance'].append(hammings[np.argmax(physical_scores)])
+        self.metrics['Best (Log) Physics-Based Score'].append(max_physics_score_of_population)
+        self.metrics['Corresponding Worst Match Score'].append(hammings[np.argmin(physical_scores)])
         # All other metrics should match the specific handle array that has the best physics score
-        self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmax(physical_scores)])
+        self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmin(physical_scores)])
         self.metrics['Hamming Compute Time'].append(multiprocess_time)
 
         similarity_scores = []
@@ -184,12 +203,13 @@ class EvolveManager:
         self.metrics['Similarity Score'].append(sum(similarity_scores) / len(similarity_scores))
 
         # Select and store the current best handle array
-        best_idx = int(np.argmax(physical_scores))
+        best_idx = int(np.argmin(physical_scores))
         self.handle_array = self.next_candidates[best_idx]
 
         # Extracts precomputed match histogram from multirule_oneshot_hamming for the best candidate
-        uniq, counts = results[best_idx]['match_histogram']
-        self.mismatch_histograms.append(dict(zip(uniq, counts)))
+        # uniq, counts = results[best_idx]['match_histogram']
+        # self.mismatch_histograms.append(dict(zip(uniq, counts)))
+        self.mismatch_histograms.append(results[best_idx]['match_histogram'])
 
         candidate_handle_arrays, _ = mutate_handle_arrays(self.slat_array, self.next_candidates,
                                                          hallofshame=hallofshame,
@@ -231,13 +251,13 @@ class EvolveManager:
 
         fig, ax = plt.subplots(5, 1, figsize=(10, 10))
 
-        for ind, (name, data) in enumerate(zip(['Candidate with Best Log Physics-Based Partition Score',
-                                                'Corresponding Hamming Distance',
+        for ind, (name, data) in enumerate(zip(['Candidate with Best Log Mean Score',
+                                                'Corresponding Worst Mismatch Score',
                                                 'Corresponding Duplication Risk Score',
                                                 'Similarity of Population to Initial Candidates',
                                                 'Hamming Compute Time (s)'],
                                                [self.metrics['Best (Log) Physics-Based Score'],
-                                                self.metrics['Corresponding Hamming Distance'],
+                                                self.metrics['Corresponding Worst Match Score'],
                                                 self.metrics['Corresponding Duplicate Risk Score'],
                                                 self.metrics['Similarity Score'],
                                                 self.metrics['Hamming Compute Time']])):
@@ -316,10 +336,11 @@ class EvolveManager:
                     self.export_results()
 
                 pbar.update(1)
-                pbar.set_postfix({f'Latest hamming score': self.metrics['Corresponding Hamming Distance'][-1],
+                pbar.set_postfix({f'Latest hamming score': self.metrics['Corresponding Worst Match Score'][-1],
                                   'Time for hamming calculation': self.metrics['Hamming Compute Time'][-1],
                                   'Latest log physics partition score': self.metrics['Best (Log) Physics-Based Score'][-1]}, refresh=False)
 
-                if self.early_hamming_stop and max(self.metrics['Corresponding Hamming Distance']) >= self.early_hamming_stop:
+                if self.early_worst_match_stop and min(self.metrics['Corresponding Worst Match Score']) <= self.early_worst_match_stop:
+                    print('Early stopping criteria met, ending evolution process.')
                     break
 
