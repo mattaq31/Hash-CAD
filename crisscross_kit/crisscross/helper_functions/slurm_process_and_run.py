@@ -26,7 +26,7 @@ def create_o2_slurm_file(command,
 #SBATCH --mail-type=FAIL            
 #SBATCH --mail-user={user_email}
 
-module load miniconda3
+module load conda/miniforge3/24.11.3-0
 source activate crisscross
  
 {command}

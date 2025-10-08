@@ -166,6 +166,7 @@ class EvolveManager:
                 handles, antihandles = self.dummy_megastructure.get_bag_of_slat_handles(use_original_slat_array=True,
                                                                                         use_external_handle_array = self.next_candidates[j],
                                                                                         remove_blank_slats=True)
+
                 analysis_inputs.append((handles, antihandles, self.slat_compensation_match_counts, self.slat_connection_graph, self.dummy_megastructure.connection_angle, True))
             results = pool.starmap(comprehensive_score_analysis, analysis_inputs)
 
@@ -195,6 +196,7 @@ class EvolveManager:
         # All other metrics should match the specific handle array that has the best physics score
         self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmin(physical_scores)])
         self.metrics['Hamming Compute Time'].append(multiprocess_time)
+        self.metrics['Generation'].append(self.current_generation)
 
         similarity_scores = []
         for candidate in self.next_candidates:
@@ -208,8 +210,6 @@ class EvolveManager:
         self.handle_array = self.next_candidates[best_idx]
 
         # Extracts precomputed match histogram from multirule_oneshot_hamming for the best candidate
-        # uniq, counts = results[best_idx]['match_histogram']
-        # self.mismatch_histograms.append(dict(zip(uniq, counts)))
         self.mismatch_histograms.append(results[best_idx]['match_histogram'])
 
         candidate_handle_arrays, _ = mutate_handle_arrays(self.slat_array, self.next_candidates,
@@ -297,8 +297,9 @@ class EvolveManager:
         ax.set_title('Handle Match Tracking')
         ax.set_yscale('log')
         ax.set_xscale('log')
-        ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+        ax.xaxis.set_major_locator(ticker.LogLocator(base=10.0, numticks=10))
+        ax.xaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs='auto', numticks=10))
+        ax.xaxis.set_major_formatter(ticker.LogFormatter())
 
         ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
@@ -306,7 +307,7 @@ class EvolveManager:
         plt.close(fig)
 
         # save all other generic metrics to csv file
-        save_list_dict_to_file(output_folder, 'metrics.csv', self.metrics, append=False)
+        save_list_dict_to_file(output_folder, 'metrics.csv', self.metrics, append=False, index_column='Generation')
 
         # prepare a checkpoint of the current best handle array
         writer = pd.ExcelWriter(
