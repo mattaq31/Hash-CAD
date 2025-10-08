@@ -40,9 +40,33 @@ if __name__ == "__main__":
         res_c = wrap_eqcorr2d(
             A_dict, B_dict,
             mode='classic',
-            hist=True, report_full=False, report_worst=True,do_smart=False
+            hist=True, report_full=True, do_smart=False, local_histogram=True
         )
-    print("C time:", round(time.time() - t0, 4), "s")
+    print("C time nothing:", round(time.time() - t0, 4), "s")
+    hist_c = res_c['hist_total']
+
+
+
+    # --- C extension (hist only) ---
+    runs = 3  # increse for better average times
+    t0 = time.time()
+    for i in range(runs):
+        res_c = wrap_eqcorr2d(
+            A_dict, B_dict,
+            mode='classic',
+            hist=True, report_full=False, do_smart=False, local_histogram=False
+        )
+    print("C time hist:", round(time.time() - t0, 4), "s")
+    hist_c = res_c['hist_total']
+
+    t0 = time.time()
+    for i in range(runs):
+        res_c = wrap_eqcorr2d(
+            A_dict, B_dict,
+            mode='classic',
+            hist=True, report_full=False, do_smart=False, local_histogram=True
+        )
+    print("C time hist and local hist:", round(time.time() - t0, 4), "s")
     hist_c = res_c['hist_total']
 
     # --- C extension (hist with arrays ) ---
@@ -51,9 +75,9 @@ if __name__ == "__main__":
         res_c_arrays = wrap_eqcorr2d(
             A_dict, B_dict,
             mode='classic',
-            hist=True, report_full=True, report_worst=True
+            hist=True, report_full=True, local_histogram=False
         )
-    print("C time with arrays:", round(time.time() - t0, 4), "s")
+    print("C time nfull", round(time.time() - t0, 4), "s")
     r0 = res_c_arrays['rotations'].get(0, {}).get('full')
     r90 = res_c_arrays['rotations'].get(90, {}).get('full')
     r180 = res_c_arrays['rotations'].get(180, {}).get('full')
@@ -65,7 +89,7 @@ if __name__ == "__main__":
         res_allrot = wrap_eqcorr2d(
             A_dict, B_dict,
             mode='square_grid',
-            hist=True, report_full=False, report_worst=True
+            hist=True, report_full=False
         )
     print("C time hist and rotations:", round(time.time() - t0, 4), "s")
     hist_c_allrot = res_allrot['hist_total']
@@ -76,7 +100,7 @@ if __name__ == "__main__":
         res_allrot_smart = wrap_eqcorr2d(
             A_dict, B_dict,
             mode='square_grid',
-            hist=True, report_full=False, report_worst=True, do_smart=True
+            hist=True, report_full=False, do_smart=True
         )
     print("C time hist and rotations with dosmart:", round(time.time() - t0, 4), "s")
     hist_c_allrot_smart = res_allrot_smart['hist_total']
@@ -88,7 +112,7 @@ if __name__ == "__main__":
     for i in range(runs):
         res_allflags = wrap_eqcorr2d(
             A_dict, B_dict,
-            hist=True,mode="square_grid", report_full=True, report_worst=True, do_smart=False
+            hist=True, mode="square_grid", report_full=True, do_smart=False, local_histogram=True
         )
     print("C time all flags no smart:", round(time.time() - t0, 4), "s")
     hist_c_allrot = res_allflags['hist_total']
@@ -146,7 +170,7 @@ if __name__ == "__main__":
     res_2D = wrap_eqcorr2d(
         A_2D_dict, B_2D_dict,
         mode='square_grid',
-        hist=True, report_full=True, report_worst=True, do_smart=True
+        hist=True, report_full=True, do_smart=True, local_histogram=True
     )
 
     r0_2D   = res_2D['rotations'].get(0, {}).get('full')
@@ -181,7 +205,7 @@ if __name__ == "__main__":
         worst_paris_2D_recomp = sorted(worst_paris_2D_recomp)
     else:
         worst_paris_2D_recomp = []
-    worst_paris_2D = sorted(res_2D['worst_keys_combos'] or [])
+    worst_paris_2D = get_worst_keys_combos(res_2D)
 
     print("C function reported worst:", worst_paris_2D)
     print("Recomputed worst:", worst_paris_2D_recomp)
@@ -205,7 +229,7 @@ if __name__ == "__main__":
     res_2D_tri = wrap_eqcorr2d(
         A_2D_dict, B_2D_dict,
         mode='triangle_grid',
-        hist=True, report_full=True, report_worst=True, do_smart=True
+        hist=True, report_full=True, do_smart=True, local_histogram=True
     )
 
     rt0    = res_2D_tri['rotations'].get(0,   {}).get('full')
@@ -239,7 +263,7 @@ if __name__ == "__main__":
         worst_pairs_2D_tri_recomp = sorted(worst_pairs_2D_tri_recomp)
     else:
         worst_pairs_2D_tri_recomp = []
-    worst_pairs_2D_tri = sorted(res_2D_tri['worst_keys_combos'] or [])
+    worst_pairs_2D_tri = get_worst_keys_combos(res_2D_tri)
 
     print("C function reported worst (triangle):", worst_pairs_2D_tri)
     print("Recomputed worst (triangle):", worst_pairs_2D_tri_recomp)

@@ -34,7 +34,9 @@ extern "C" {
 // Small helpful typedefs for readability and easy tuning
 typedef unsigned char u8;
 typedef int32_t out_t;   // per-offset output element type
-typedef long long hist_t; // histogram bin type
+typedef uint64_t hist_t; // histogram bin type (global histogram uses uint64)
+#include <stdint.h>
+typedef uint32_t local_hist_t; // local histogram bin type (per-pair) uses uint32
 
 // Track (iA, iB) pairs achieving the global maximum match value.
 typedef struct {
@@ -53,8 +55,9 @@ void loop_rot0_mode(
     const u8 *EQ_RESTRICT A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
     const u8 *EQ_RESTRICT B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
     hist_t *EQ_RESTRICT hist, npy_intp hist_len,
+    local_hist_t *EQ_RESTRICT local_hist, npy_intp local_hist_len,
     out_t *EQ_RESTRICT out, npy_intp Ho, npy_intp Wo,
-    int DO_HIST, int DO_FULL,
+    int DO_HIST, int DO_LOCAL, int DO_FULL,
     int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t *WT);
 
 #ifdef __cplusplus

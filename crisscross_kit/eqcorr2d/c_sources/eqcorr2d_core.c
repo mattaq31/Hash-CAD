@@ -66,11 +66,12 @@ void loop_rot0_mode(
     const u8* EQ_RESTRICT A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
     const u8* EQ_RESTRICT B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
     hist_t* EQ_RESTRICT hist, npy_intp hist_len,
+    local_hist_t* EQ_RESTRICT local_hist, npy_intp local_hist_len,
     out_t* EQ_RESTRICT out, npy_intp Ho, npy_intp Wo,
-    int DO_HIST, int DO_FULL,
+    int DO_HIST, int DO_LOCAL, int DO_FULL,
     int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT)
 {
-    const int contiguous = (As1==1) & (Bs1==1);
+    const int contiguous = (As1==1) && (Bs1==1);
     for (npy_intp oy = 0; oy < Ho; ++oy) {
         const npy_intp by0 = (Hb-1) - oy < 0 ? 0 : (Hb-1) - oy;
         const npy_intp by1 = (Ha+Hb-2 - oy) > (Hb-1) ? (Hb-1) : (Ha+Hb-2 - oy);
@@ -117,6 +118,10 @@ void loop_rot0_mode(
                 if (bin < 0) bin = 0;
                 if (bin >= hist_len) bin = (int)(hist_len - 1);
                 hist[bin] += 1;
+            }
+            if (DO_LOCAL) {
+                // Local histogram uses fixed hdim chosen in bindings; acc is within [0, hdim-1]
+                local_hist[acc] += 1u;
             }
             if (DO_FULL) out[oy*Wo + ox] = acc;
         }

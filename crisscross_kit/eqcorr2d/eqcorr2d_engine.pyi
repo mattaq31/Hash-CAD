@@ -10,8 +10,10 @@ def compute(
     do_hist: int,
     do_full: int,
     report_worst: int,
+    local_histogram: int = 0,
 ) -> Tuple[
     Optional[np.ndarray],
     Optional[List[List[np.ndarray]]],
-    Optional[np.ndarray],  # worst-count matrix of shape (nA, nB), dtype uint32
+    Optional[np.ndarray],  # worst-count matrix (deprecated, always None)
+    Optional[np.ndarray],  # local hist per pair as 3D ndarray (nA,nB,hdim), uint32
 ]: ...

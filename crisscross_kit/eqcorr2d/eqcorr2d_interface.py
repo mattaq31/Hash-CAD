@@ -35,40 +35,97 @@ modified by this interface.
 import numpy as np
 from eqcorr2d import eqcorr2d_engine
 from eqcorr2d.rot60 import rotate_array_tri60
+from collections import Counter
 
 
-def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle, do_worst=False):
+def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts,   connection_graph, connection_angle, do_worst=False):
     # runs the match comparison computation using our eqcorr2D C function
-    full_results = wrap_eqcorr2d(handle_dict, antihandle_dict, do_smart=True, hist=True, report_worst=do_worst,
+
+
+    if do_worst:
+        local_histogram = True
+    else:
+        local_histogram = False
+
+    full_results = wrap_eqcorr2d(handle_dict, antihandle_dict, do_smart=True, hist=True, local_histogram=local_histogram,
                                  mode='triangle_grid' if connection_angle == '60' else 'square_grid')
 
-    # compensates for matches in the design that are expected based on slat overlaps
-    for handle_count, number_of_repeats in match_counts.items():
-        full_results['hist_total'][handle_count] -= number_of_repeats
+    # compensates for matches in the design that are expected based on slat connections
+    con_hist = make_connection_histogram(connection_graph)
+    hist = full_results['hist_total']
+    comp_hist = compensate_histogram(hist, con_hist)
+    full_results['hist_total'] = comp_hist
 
-    # extracts the worst match score
+
+
+    # extracts the worst match score, alreqady compensated for connections. so from here on only true worsts can be computed
     worst_match = get_worst_match(full_results)
 
-    # truncates the histogram to prevent numerical instability in sum score analysis
+    # truncates the histogram to prevent numerical instability in sum score analysis. should no longer be necessary
     full_results['hist_total'] = full_results['hist_total'][:worst_match + 1]
     mean_log_score = np.log(get_sum_score(full_results) / (len(handle_dict) * len(antihandle_dict)))
 
-    # runs a separate similarity analysis to check for slats that are too similar to each other
+    # runs a separate similarity analysis to check for slats that are too similar to each other.
     similarity_results = get_similarity_hist(handle_dict, antihandle_dict,
                                              mode='triangle_grid' if connection_angle == '60' else 'square_grid')
     similarity_score = get_worst_match(similarity_results)
-
     data_dict = {'worst_match_score': worst_match, 'mean_log_score': mean_log_score,
                  'similarity_score': similarity_score,
-                 'match_histogram': full_results['hist_total']}
+                 'match_histogram': full_results['hist_total'],
+                 'uncompensated_match_histogram': hist}
+
     if do_worst:
-        data_dict['worst_slat_combos'] = full_results['worst_keys_combos']
+        # still some stuff for debugging here
+        to_eliminate = connection_graph.get(worst_match)
+        uncompensate = get_worst_keys_combos(full_results)
+        data_dict['worst_slat_combos'] = get_compensated_worst_keys_combos(full_results, connection_graph)
+        compensated = get_compensated_worst_keys_combos(full_results, connection_graph)
+
+
 
     return data_dict
 
+def compensate_histogram(hist, connection_hist):
+    """Subtract the connection occupancy from the total histogram safely.
+    Handles unequal lengths by padding the shorter array with zeros.
+    """
+    hist = np.asarray(hist, dtype=int)
+    connection_hist = np.asarray(connection_hist, dtype=int)
+
+    # zero out the entry for key=1 (ignored in smart mode)
+    if connection_hist.size > 1:
+        connection_hist[1] = 0
+
+    # pad shorter array so shapes match
+    max_len = max(len(hist), len(connection_hist))
+    hist_padded = np.zeros(max_len, dtype=int)
+    conn_padded = np.zeros(max_len, dtype=int)
+
+    hist_padded[:len(hist)] = hist
+    conn_padded[:len(connection_hist)] = connection_hist
+
+    # compute compensated histogram
+    comphist = hist_padded - conn_padded
+    if np.any(comphist < 0):
+        raise ValueError("Negative values detected in comphist — possible over-subtraction.")
+
+    return comphist
+
+def make_connection_histogram(connection_graph):
+    """Return a histogram where each index corresponds to a key in connection_graph,
+    and the value is the number of connections (list length) for that key."""
+
+    max_key = max(connection_graph.keys())
+    con_hist = np.zeros(max_key + 1, dtype=int)
+
+    for key, connections in connection_graph.items():
+        con_hist[key] = len(connections)
+
+    return con_hist
+
 def wrap_eqcorr2d(handle_dict, antihandle_dict,
-                  mode='classic', hist=True, report_full=False,
-                  report_worst=True, do_smart=False):
+                  mode='classic', hist=True, local_histogram=False, report_full=False,
+                   do_smart=False):
     """Run eqcorr2d on all handle/antihandle pairs, optionally across rotations.
 
     This function is the preferred high-level entry point. It accepts two
@@ -199,9 +256,6 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
     for angle in angles:
         if mode in ('classic', 'square_grid'):
             k = {0: 0, 90: 1, 180: 2, 270: 3}.get(angle, None)
-            if k is None:
-                # shouldn't happen in these modes
-                raise ValueError(f"Unsupported angle {angle} for mode {mode}")
             B_rot[angle] = [rot90_py(b, k) for b in B_list]
         else:
             # triangle_grid uses 60° steps; currently only 0 and 180 (k60=0 or 3) are implemented
@@ -221,115 +275,63 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
     results_by_rot = {}
     per_rotation = {}
     # Perform calls per selected rotation
+
+    agg_loc_hist= None
+    agg_glob_hist = None
     for angle in angles:
         if angle in (0, 180):
             mask = ones_mask
         else:
             # 90/270: if do_smart enabled, use selective mask; else full ones
             mask = quarter_mask if do_smart else ones_mask
-        res = eqcorr2d_engine.compute(A_list, B_rot[angle], mask, int(hist), int(report_full), int(report_worst))
-        results_by_rot[angle] = res
-        # Prepare per-rotation entry with both index and key-wise worst pairs
-        hist_a = res[0] if hist else None
-        full_a = res[1] if report_full else None
-        worst_counts = res[2] if report_worst else None  # shape (nA, nB) uint32 counts
-        per_rotation[angle] = {
-            'hist': hist_a,
-            'full': full_a,
-            'worst_counts': worst_counts,
-        }
+        # Call engine with backward-compatibility: prefer 7 args (with local_histogram), fallback to 6 args
 
-    # Aggregate histogram across angles (if requested)
-    agg_hist = None
-    if hist:
-        for angle in angles:
-            res = results_by_rot.get(angle)
-            if not res:
-                continue
-            h = res[0]
-            if h is None:
-                continue
-            if agg_hist is None:
-                agg_hist = np.array(h, dtype=np.int64, copy=True)
+        res = eqcorr2d_engine.compute(A_list, B_rot[angle], mask, int(hist), int(report_full), int(False), int(local_histogram))
+
+        # build aggregated histograms over rotations if needed
+        if hist:
+            if agg_glob_hist is None:
+                agg_glob_hist = res[0]
             else:
-                L = max(len(agg_hist), len(h))
-                if len(agg_hist) < L:
-                    tmp = np.zeros(L, dtype=np.int64)
-                    tmp[:len(agg_hist)] = agg_hist
-                    agg_hist = tmp
-                if len(h) < L:
-                    hh = np.zeros(L, dtype=np.int64)
-                    hh[:len(h)] = h
-                else:
-                    hh = h
-                agg_hist[:L] += hh[:L]
+                agg_glob_hist = agg_glob_hist + res[0]
+        if local_histogram:
+            if agg_loc_hist is None:
+                agg_loc_hist = res[3]
+            else:
+                agg_loc_hist = agg_loc_hist + res[3]
 
-    # Determine the true global worst across all rotations and collect all worst pairs
+
+
+        # Prepare per-rotation entry save if full report is requested
+        if report_full:
+            hist_a = res[0]
+            full_a = res[1]
+            loc_hist = res[3]
+            per_rotation[angle] = {
+                'hist': hist_a,
+                'full': full_a,
+                'local_hist': loc_hist,
+            }
+
+
+
+
+
+
+
+
+
+    # Worst reporting deprecated: set to None
     worst_keys_combos = None
     worst_keys_multiplicity = None
-    if report_worst:
-        # We require hist=True to reliably identify the worst match value across rotations
-        if hist:
-            worst_per_rot = {}
-            for angle in angles:
-                res = results_by_rot.get(angle)
-                if not res:
-                    continue
-                h = res[0]
-                if h is None:
-                    continue
-                # worst index = highest bin with nonzero count
-                worst = None
-                for matchtype, count in enumerate(h):
-                    if count != 0:
-                        worst = matchtype
-                if worst is not None:
-                    worst_per_rot[angle] = worst
-
-            if worst_per_rot:
-                global_worst = max(worst_per_rot.values())
-                # Sum worst-count matrices from rotations that achieve the global worst
-                summed = None
-                for angle, widx in worst_per_rot.items():
-                    if widx != global_worst:
-                        continue
-                    wc = results_by_rot.get(angle, (None, None, None))[2]
-                    if wc is None:
-                        continue
-                    wc = np.asarray(wc)
-                    if summed is None:
-                        summed = wc.astype(np.int64, copy=True)
-                    else:
-                        if summed.shape != wc.shape:
-                            raise ValueError("worst-count matrix shape mismatch across rotations")
-                        summed += wc
-                if summed is None:
-                    worst_keys_combos = []
-                    worst_keys_multiplicity = []
-                else:
-                    # Extract all indices with positive counts and map to keys
-                    idxs = np.argwhere(summed > 0)
-                    pairs = []
-                    mults = []
-                    for ia, ib in idxs:
-                        pairs.append((handle_keys[int(ia)], antihandle_keys[int(ib)]))
-                        mults.append((handle_keys[int(ia)], antihandle_keys[int(ib)], int(summed[ia, ib])))
-                    # stable order for tests
-                    worst_keys_combos = sorted(pairs)
-                    worst_keys_multiplicity = sorted(mults)
-            else:
-                worst_keys_combos = []
-                worst_keys_multiplicity = []
-        else:
-            worst_keys_combos = None
-            worst_keys_multiplicity = None
 
     return {
         'angles': angles,
-        'hist_total': agg_hist,
+        'hist_total': agg_glob_hist,
         'rotations': per_rotation,
-        'worst_keys_combos': worst_keys_combos,
-                'worst_keys_multiplicity': worst_keys_multiplicity,
+        'handle_keys': handle_keys,
+        'anti_handle_keys': antihandle_keys,
+        'local_hist_total': agg_loc_hist,
     }
 
 
@@ -337,16 +339,15 @@ def get_worst_match(c_results):
     """Return the worst (highest non-zero) matchtype from a result.
     Supports both the new dict return from wrap_eqcorr2d and the legacy tuple.
     """
-    if isinstance(c_results, dict):
-        hist = c_results.get('hist_total')
-    else:
-        hist = c_results[0]
-    if hist is None:
-        return None
+
+    hist = c_results.get('hist_total')
     worst = None
+
     for matchtype, count in enumerate(hist):
         if count != 0:
             worst = matchtype
+    if worst is None:
+        print('Warning: no histogram found, returning worst=None')
     return worst
 
 
@@ -371,20 +372,95 @@ def get_seperate_worst_lists(c_results):
     Accepts both new dict and legacy tuple results.
     For the new dict, worst_keys_combos are already keys, not indices.
     """
-    if isinstance(c_results, dict):
-        worst = c_results.get('worst_keys_combos') or []
-        handle_list = [h for (h, _a) in worst]
-        antihandle_list = [a for (_h, a) in worst]
-        return (handle_list, antihandle_list)
-    else:
-        worst = c_results[5]
-        handle_list = []
-        antihandle_list = []
-        for tuble in worst:
-            handle_list.append(tuble[0])
-            antihandle_list.append(tuble[1])
-        return (handle_list, antihandle_list)
+    worst = get_worst_match(c_results)
+    handle_keys = c_results.get('handle_keys')
+    antihandle_keys = c_results.get('anti_handle_keys')
+    local_hist_total = c_results.get('local_hist_total')
+    if worst is None:
+        print("Warning: global histogram needed to compute worst list, returning (None,None)")
+        return ( None, None)
 
+    if local_hist_total is None:
+        print ("Warning: local histogram needet to compute worst list , returning (None,None)")
+        return( None, None)
+
+    worst_slice = local_hist_total[:, :, worst]
+    ii, jj = np.where(worst_slice > 0)
+    handle_list = [handle_keys[i] for i in ii]
+    antihandle_list = [antihandle_keys[j] for j in jj]
+    return (handle_list, antihandle_list)
+
+def get_worst_keys_combos(c_results):
+    """
+    Return a list of (handle_key, antihandle_key) tuples that contributed
+    to the global worst histogram bin.
+
+    Relies only on the Python-side 'local_hist_total' 3D array
+    of shape (nA, nB, L) and the key lists.
+    """
+    worst = get_worst_match(c_results)
+    handle_keys = c_results.get('handle_keys')
+    antihandle_keys = c_results.get('anti_handle_keys')
+    local_hist_total = c_results.get('local_hist_total')
+
+    if worst is None:
+        print("Warning: global histogram needed to compute worst list, returning None")
+        return None
+    if local_hist_total is None:
+        print("Warning: local histogram needed to compute worst list, returning None")
+        return None
+
+    worst_slice = np.asarray(local_hist_total)[:, :, worst]
+    ii, jj = np.where(worst_slice > 0)
+
+    combos = [(handle_keys[i], antihandle_keys[j],1) for i, j in zip(ii, jj)]
+    return combos
+
+
+
+
+
+def get_compensated_worst_keys_combos(c_results, connection_graph):
+    worst = get_worst_match(c_results)
+    handle_keys = c_results['handle_keys']
+    anti_keys   = c_results['anti_handle_keys']
+    loc = np.asarray(c_results['local_hist_total'])# ja ja chat gpt ensure that data types are always correct
+
+    worst_slice = loc[:, :, worst]  # counts per (i,j) in the worst bin
+
+    # we wont skip anything if its about matches of 1 or less since they are somehow convoluted in the do smart scheme.
+    if worst <=1:
+        expected_skips = []
+    else:
+        expected_skips = connection_graph.get(worst, []) # if its not in there skip nothing
+    skip_counts = Counter(expected_skips)  # multiplicities to skip in this bin. not sure if couter is needed they could be unique already. who knows
+
+    combos = []
+    skipped = []
+    for i, j in zip(*np.where(worst_slice > 0)):
+
+        pair = (handle_keys[i], anti_keys[j])
+        count_hist = int(worst_slice[i, j])
+        count_skip = skip_counts.get(pair, 0) # its eigther 1 or 0 since connection graph should not have duplicates
+
+        if count_skip > 0:
+            skipped.append(pair)
+
+        # Skip only when the skip list covers all occurrences (==), else keep full count
+        if count_skip == count_hist: # if both are 1, skip this pair entirely. count_hist might actually be larger than 1.
+
+            continue
+        combos.append((pair[0], pair[1], count_hist-count_skip))# record the difference for bookeeping
+        if count_skip > count_hist:
+            raise ValueError(f"Over-subtraction detected for pair {pair}: We have a deeply routed bug if this happens.")
+    # sanity check to verify all expected skips were found
+
+    if len(skipped) != len(expected_skips):
+        print("Warning: some expected skips were not found in the worst pairs. There might be a bug.")
+        print("Skipped pairs:", skipped)
+        print("Expected skips from connection graph:", expected_skips)
+
+    return combos
 
 # Do not use this. It would only work if all 1D slats are fully occupied with handles and antihandles
 def compensate_do_smart(hist, handle_dict, antihandle_dict, standart_slat_lenght=32, libraray_length=64):
@@ -465,20 +541,20 @@ def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid', do_sma
     # Compute pairwise stats within the handle set
     res_hh = wrap_eqcorr2d(handle_dict, handle_dict,
                            mode=mode, do_smart=do_smart,
-                           hist=True, report_full=False, report_worst=False)
+                           hist=True, report_full=False)
     hist_hh = res_hh['hist_total']
 
     # Compute pairwise stats within the antihandle set
     res_ahah = wrap_eqcorr2d(antihandle_dict, antihandle_dict,
                              mode=mode, do_smart=do_smart,
-                             hist=True, report_full=False, report_worst=True)
+                             hist=True, report_full=False)
     hist_ahah = res_ahah['hist_total']
 
     # Sum with safe length alignment
     length = max(len(hist_hh), len(hist_ahah))
     hist_combined = np.zeros(length, dtype=np.int64)
-    hist_combined[:len(hist_hh)] += hist_hh
-    hist_combined[:len(hist_ahah)] += hist_ahah
+    hist_combined[:len(hist_hh)] += np.asarray(hist_hh, dtype=np.int64)
+    hist_combined[:len(hist_ahah)] += np.asarray(hist_ahah, dtype=np.int64)
 
     # Build self-match correction vector and subtract
     correction = np.zeros(length, dtype=np.int64)

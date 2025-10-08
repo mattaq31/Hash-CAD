@@ -2,39 +2,13 @@
 #include "eqcorr2d.h"
 #include <stddef.h>
 #include <limits.h>
+#include <stdint.h>
 // Forward declare module methods
 static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args);
 
 // We only use the 0° core kernel and pre-rotate B into contiguous buffers.
 // The core declaration is provided by eqcorr2d.h, so no redundant declaration here.
 
-static inline void loop_rot0_hist(
-    const u8* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
-    const u8* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
-    hist_t* hist, npy_intp hist_len, out_t* out, npy_intp Ho, npy_intp Wo,
-    int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT) {
-    loop_rot0_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1,
-                   hist, hist_len, NULL, Ho,Wo,
-                   1, 0, DO_WORST, IA,IB, WT);
-}
-static inline void loop_rot0_full(
-    const u8* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
-    const u8* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
-    hist_t* hist, npy_intp hist_len, out_t* out, npy_intp Ho, npy_intp Wo,
-    int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT) {
-    loop_rot0_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1,
-                   NULL, 0, out, Ho,Wo,
-                   0, 1, DO_WORST, IA,IB, WT);
-}
-static inline void loop_rot0_both(
-    const u8* A, npy_intp Ha, npy_intp Wa, npy_intp As0, npy_intp As1,
-    const u8* B, npy_intp Hb, npy_intp Wb, npy_intp Bs0, npy_intp Bs1,
-    hist_t* hist, npy_intp hist_len, out_t* out, npy_intp Ho, npy_intp Wo,
-    int DO_WORST, npy_intp IA, npy_intp IB, worst_tracker_t* WT) {
-    loop_rot0_mode(A,Ha,Wa,As0,As1, B,Hb,Wb,Bs0,Bs1,
-                   hist, hist_len, out, Ho,Wo,
-                   1, 1, DO_WORST, IA,IB, WT);
-}
 
 // ---------------- Pack B into contiguous row‑major buffers (no rotation ----------------
 static void pack_to_contig_u8(const unsigned char* src, npy_intp H, npy_intp W,
@@ -89,10 +63,11 @@ static void pack_to_contig_u8(const unsigned char* src, npy_intp H, npy_intp W,
 static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
 {
     PyObject *seqA_obj, *seqB_obj, *mask_obj;
-    int do_hist, do_full, do_worst;
-    if (!PyArg_ParseTuple(args, "OOOppp",
+    int do_hist, do_full, do_worst, do_local;
+    do_worst = 0;  // deprecated, keep variable for compatibility
+    if (!PyArg_ParseTuple(args, "OOOppp|p",
                           &seqA_obj, &seqB_obj, &mask_obj,
-                          &do_hist, &do_full, &do_worst)) {
+                          &do_hist, &do_full, &do_worst, &do_local)) {
         return NULL;
     }
 
@@ -106,7 +81,7 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
     PyObject **A_items = PySequence_Fast_ITEMS(A_fast);
     PyObject **B_items = PySequence_Fast_ITEMS(B_fast);
 
-    // Validate arrays and compute histogram length (max Hb*Wb + 1)
+    // Validate arrays and compute histogram length (max Ha*Wa + 1) based on A
     npy_intp max_prod = 0;
     for (Py_ssize_t i = 0; i < nA; ++i) {
         PyArrayObject* A = (PyArrayObject*)A_items[i];
@@ -114,6 +89,9 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
             PyErr_SetString(PyExc_TypeError, "A_list items must be 2D uint8 arrays");
             goto fail;
         }
+        npy_intp Ha = PyArray_DIM(A,0), Wa = PyArray_DIM(A,1);
+        npy_intp prod = Ha * Wa;
+        if (prod > max_prod) max_prod = prod;
     }
     for (Py_ssize_t j=0; j<nB; ++j) {
         PyArrayObject* B = (PyArrayObject*)B_items[j];
@@ -121,9 +99,6 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
             PyErr_SetString(PyExc_TypeError, "B_list items must be 2D uint8 arrays");
             goto fail;
         }
-        npy_intp Hb = PyArray_DIM(B,0), Wb = PyArray_DIM(B,1);
-        npy_intp prod = Hb * Wb;
-        if (prod > max_prod) max_prod = prod;
     }
     if (max_prod < 1) max_prod = 1;
     npy_intp hdim = max_prod + 1;
@@ -139,11 +114,11 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
     npy_intp m_s0 = PyArray_STRIDE(Mask,0);
     npy_intp m_s1 = PyArray_STRIDE(Mask,1);
 
-    PyArrayObject* Hist = NULL;   long long* hist = NULL;
+    PyArrayObject* Hist = NULL;   uint64_t* hist = NULL;
     if (do_hist) {
-        Hist = (PyArrayObject*)PyArray_Zeros(1, &hdim, PyArray_DescrFromType(NPY_INT64), 0);
+        Hist = (PyArrayObject*)PyArray_Zeros(1, &hdim, PyArray_DescrFromType(NPY_UINT64), 0);
         if (!Hist) { Py_DECREF(A_fast); Py_DECREF(B_fast); Py_DECREF(Mask); return NULL; }
-        hist = (long long*)PyArray_DATA(Hist);
+        hist = (uint64_t*)PyArray_DATA(Hist);
     }
 
     worst_tracker_t WT_local; worst_tracker_t* WT = NULL;
@@ -154,13 +129,19 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
         if (!WT->counts) { Py_DECREF(A_fast); Py_DECREF(B_fast); Py_XDECREF(Hist); Py_DECREF(Mask); return PyErr_NoMemory(); }
     }
 
-    // Only r0 is produced; other rotation outputs are None in the return tuple
+    // Prepare containers for outputs
     PyObject *L0 = Py_None;
     if (do_full) {
         L0 = PyList_New(nA); if (!L0) goto fail;
         for (Py_ssize_t i=0; i<nA; ++i) {
             PyObject* row = PyList_New(nB); if (!row) goto fail; PyList_SET_ITEM(L0, i, row);
         }
+    }
+    PyArrayObject *Lh3 = NULL;   // 3D local-hist array (nA, nB, hdim)
+    if (do_local) {
+        npy_intp dims3[3] = { nA, nB, hdim };
+        Lh3 = (PyArrayObject*)PyArray_Zeros(3, dims3, PyArray_DescrFromType(NPY_UINT32), 0);
+        if (!Lh3) goto fail;
     }
 
     // Pack B into contiguous buffers for fast kernel
@@ -179,44 +160,65 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
         pack_to_contig_u8(Bp, Hb, Wb, Bs0, Bs1, packs[j].p0);
     }
 
-    const int DO_WORST = do_worst ? 1 : 0;
+    const int DO_WORST = 0; // worst tracking deprecated; disabled
+    const int DO_LOCAL = do_local ? 1 : 0;
     for (Py_ssize_t i=0; i<nA; ++i) {
         PyArrayObject* A = (PyArrayObject*)A_items[i];
         const unsigned char* Ap = (const unsigned char*)PyArray_DATA(A);
         const npy_intp Ha = PyArray_DIM(A,0), Wa = PyArray_DIM(A,1);
         const npy_intp As0 = PyArray_STRIDE(A,0), As1 = PyArray_STRIDE(A,1);
         for (Py_ssize_t j=0; j<nB; ++j) {
-            // mask check: skip pair if mask[i,j]==0
-            const u8 mj = *(const u8*)((const char*)maskp + i*m_s0 + j*m_s1);
-            if (!mj) {
-                if (do_full) {
-                    PyObject* row = PyList_GET_ITEM(L0, i);
-                    Py_INCREF(Py_None); PyList_SET_ITEM(row, j, Py_None);
-                }
-                continue;
-            }
+// mask check: skip pair if mask[i,j]==0
+			const u8 mj = *(const u8*)((const char*)maskp + i*m_s0 + j*m_s1);
+    if (!mj) {
+                         if (do_full) {
+                             PyObject* row = PyList_GET_ITEM(L0, i);
+                             Py_INCREF(Py_None); PyList_SET_ITEM(row, j, Py_None);
+                         }
+                         // do_local: nothing to do; the (i,j,:) slice in Lh3 stays zero
+                         continue;
+                        }
             PyArrayObject* B = (PyArrayObject*)B_items[j];
             const npy_intp Hb = PyArray_DIM(B,0), Wb = PyArray_DIM(B,1);
             const npy_intp Ho0 = Ha + Hb - 1, Wo0 = Wa + Wb - 1;
 
-            PyArrayObject *O0=NULL; int32_t *o0=NULL;
-            if (do_full) { npy_intp dims[2] = {Ho0, Wo0}; O0=(PyArrayObject*)PyArray_Zeros(2,dims,PyArray_DescrFromType(NPY_INT32),0); if (!O0) goto fail; o0=(int32_t*)PyArray_DATA(O0); }
+            // Effective full-output flag: only when report_full is requested
+            int do_full_eff = do_full ? 1 : 0;
 
-            if (do_hist && !do_full) {
-                loop_rot0_hist(Ap,Ha,Wa,As0,As1, packs[j].p0, packs[j].H0, packs[j].W0, packs[j].W0, 1,
-                               hist, hdim, NULL, Ho0, Wo0, DO_WORST, i,j, WT);
-            } else if (!do_hist && do_full) {
-                loop_rot0_full(Ap,Ha,Wa,As0,As1, packs[j].p0, packs[j].H0, packs[j].W0, packs[j].W0, 1,
-                               NULL, 0, o0, Ho0, Wo0, DO_WORST, i,j, WT);
-            } else if (do_hist && do_full) {
-                loop_rot0_both(Ap,Ha,Wa,As0,As1, packs[j].p0, packs[j].H0, packs[j].W0, packs[j].W0, 1,
-                               hist, hdim, o0, Ho0, Wo0, DO_WORST, i,j, WT);
+            // Prepare full output buffer (only if report_full)
+            PyArrayObject *O0=NULL; int32_t *o0=NULL;
+            if (do_full) {
+                npy_intp dims[2] = {Ho0, Wo0};
+                O0=(PyArrayObject*)PyArray_SimpleNew(2,dims,NPY_INT32);
+                if (!O0) goto fail;
+                o0=(int32_t*)PyArray_DATA(O0);
             }
+
+            // Pointer to the (i,j,:) slice in Lh3 (last axis contiguous)
+            local_hist_t *lhp = NULL;
+            if (do_local) {
+                char *base = (char*)PyArray_DATA(Lh3);
+                const npy_intp sA = PyArray_STRIDE(Lh3, 0);
+                const npy_intp sB = PyArray_STRIDE(Lh3, 1);
+                lhp = (local_hist_t*)(base + i*sA + j*sB);
+            }
+
+            // Call kernel once with appropriate flags
+            loop_rot0_mode(
+                Ap,Ha,Wa,As0,As1,
+                packs[j].p0, packs[j].H0, packs[j].W0, packs[j].W0, 1,
+                do_hist ? hist : NULL, hdim,
+                lhp, hdim,
+                o0, Ho0, Wo0,
+                do_hist ? 1 : 0, DO_LOCAL, do_full_eff ? 1 : 0,
+                DO_WORST, i,j, WT);
+
 
             if (do_full) {
                 PyObject* row = PyList_GET_ITEM(L0, i);
                 PyList_SET_ITEM(row, j, (PyObject*)O0);
             }
+            // do_local: nothing to assign; data already accumulated into Lh3 slice
         }
     }
 
@@ -228,25 +230,20 @@ static PyObject* eqcorr2d_compute(PyObject* self, PyObject* args)
         free(packs); packs = NULL;
     }
 
-    PyArrayObject* WorstCounts = NULL; 
-    if (do_worst) {
-        npy_intp dims_wc[2] = { (npy_intp)nA, (npy_intp)nB };
-        WorstCounts = (PyArrayObject*)PyArray_Zeros(2, dims_wc, PyArray_DescrFromType(NPY_UINT32), 0);
-        if (!WorstCounts) goto fail;
-        // Copy counts into NumPy array
-        memcpy(PyArray_DATA(WorstCounts), WT->counts, (size_t)(nA * nB * sizeof(uint32_t)));
-    }
+    PyArrayObject* WorstCounts = NULL;
+    // worst tracking deprecated; always return None
 
     Py_DECREF(A_fast); Py_DECREF(B_fast); Py_DECREF(Mask);
-    if (do_worst) { free(WT->counts); }
+    if (do_worst && WT && WT->counts) { free(WT->counts); }
 
-    PyObject* ret = Py_BuildValue("OOO",
+    PyObject* ret = Py_BuildValue("OOOO",
         do_hist ? (PyObject*)Hist : Py_None,
         do_full ? L0 : Py_None,
-        do_worst ? (PyObject*)WorstCounts : Py_None);
+        Py_None,
+        do_local ? (PyObject*)Lh3 : Py_None);
 
     Py_XDECREF(Hist);
-    Py_XDECREF(WorstCounts);
+    Py_XDECREF(Lh3);
     return ret;
 
 fail_packs:

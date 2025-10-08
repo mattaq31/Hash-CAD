@@ -159,6 +159,7 @@ class EvolveManager:
         # multiprocessing will be used to speed up overall computation and parallelize the hamming distance calculations
         # refer to the multirule_oneshot_hamming function for details on input arguments
         multiprocess_start = time.time()
+
         with multiprocessing.Pool(processes=self.num_processes) as pool:
             analysis_inputs = []
             for j in range(self.evolution_population):
