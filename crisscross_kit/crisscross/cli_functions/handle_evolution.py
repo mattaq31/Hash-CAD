@@ -13,6 +13,7 @@ def handle_evolve(config_file):
     evolution_params = toml.load(config_file)
 
     megastructure = Megastructure(import_design_file=evolution_params['slat_array'])
+    del evolution_params['slat_array']
 
     if 'logging_interval' in evolution_params:
         logging_interval = evolution_params['logging_interval']
