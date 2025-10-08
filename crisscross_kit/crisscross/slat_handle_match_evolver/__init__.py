@@ -46,15 +46,16 @@ def generate_random_slat_handles(base_array, unique_sequences=32, transplant_han
     :param unique_sequences: Number of possible handle sequences
     :return: 2D array with handle IDs
     """
-    base_array = apply_handle_transplants(base_array, transplant_handles)
+    base_array = apply_handle_transplants(base_array, transplant_handles) # transplants move slat coordinates to new locations so that an assembly handle can be generated for that location
 
     handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1))
     handle_array = np.random.randint(1, unique_sequences + 1, size=handle_array.shape, dtype=np.uint16)
     for i in range(handle_array.shape[2]):
         handle_array[np.any(base_array[..., i:i + 2] == 0, axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
 
-    apply_handle_links(handle_array, link_handles) #TODO: I think these can be combined into just one function!
-    duplicate_handle_transplants(handle_array, transplant_handles)
+    # TODO: I think these can be combined into just one function! + need better documentation
+    apply_handle_links(handle_array, link_handles)  # this one simply ensures that two handles are the same if they are linked
+    duplicate_handle_transplants(handle_array, transplant_handles) # once the assembly handles have been generated, need to ensure the original slat gets a copy of the transplanted handle
 
     return handle_array
 
