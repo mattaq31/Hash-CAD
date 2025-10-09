@@ -171,43 +171,48 @@ class SlatGlyphPainter extends CustomPainter {
 
 class DoubleBarrelGlyphPainter extends CustomPainter {
   final Color color;
-  DoubleBarrelGlyphPainter({required this.color});
+  final String dBType;
+
+  DoubleBarrelGlyphPainter(this.dBType, {required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
     final double padding = 6;
-    final double barHeight = 6;
+    final double barHeight = 8;
     final double spacing = 6;
     final totalHeight = barHeight * 2 + spacing;
     final top = (size.height - totalHeight) / 2;
 
-    final r1 = Rect.fromLTWH(
-      - padding * 7,
-      top,
-      size.width + 6 * padding,
-      barHeight,
-    );
-    final r2 = Rect.fromLTWH(
-      - padding * 7,
-      top + barHeight + spacing,
-      size.width + 6 * padding,
-      barHeight,
-    );
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = barHeight;
 
-    final r3 = Rect.fromLTWH(
-      - padding * 7,
-      top,
-      10,
-      barHeight * 3,
-    );
+    Path path;
 
-    canvas.drawRect(r1, paint);
-    canvas.drawRect(r2, paint);
-    canvas.drawRect(r3, paint);
+    if (dBType == 'double-barrel-B') {
+      path = Path()
+        ..moveTo(-padding * 9 + size.width + 6 * padding + 2 * padding, top + barHeight / 2)
+        ..lineTo(-padding * 9 + 2 * padding, top + barHeight / 2)
+        ..lineTo(-padding * 9, top + barHeight * 2.5)
+        ..lineTo(-padding * 9 + size.width + 6 * padding, top + barHeight * 2.5);
+    }
+    else if (dBType == 'double-barrel'){
+      path = Path()
+        ..moveTo(-padding * 7 + size.width + 6 * padding, top + barHeight / 2)
+        ..lineTo(-padding * 7, top + barHeight / 2)
+        ..lineTo(-padding * 7, top + barHeight * 2.5)
+        ..lineTo(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
+    }
+    else {
+      path = Path()
+        ..moveTo(-padding * 7 + size.width + 6 * padding - 2 * padding, top + barHeight / 2)
+        ..lineTo(-padding * 7 - 2 * padding, top + barHeight / 2)
+        ..lineTo(-padding * 7, top + barHeight * 2.5)
+        ..lineTo(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
+    }
+
+    canvas.drawPath(path, paint);
   }
 
   @override
@@ -412,7 +417,7 @@ class _SlatDesignTools extends State<SlatDesignTools>
         //   border: Border.all(color: Colors.grey.shade400, width: 1),
         //   borderRadius: BorderRadius.circular(8),
         // ),
-        width: (40 + 4) * 5 + 12,
+        width: (40 + 4) * 6 + 12,
         padding: const EdgeInsets.all(6),
         child: Column(
           children: [
@@ -423,14 +428,40 @@ class _SlatDesignTools extends State<SlatDesignTools>
               painterBuilder: (color) => SlatGlyphPainter(color: color),
               onTap: () => appState.setSlatAdditionType('tube'),
             ),
-            SizedBox(height: 6),
-            SlatOption(
-              label: 'Double-Barrel-A',
-              isSelected: appState.slatAdditionType == 'double-barrel-A',
-              color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
-              painterBuilder: (color) => DoubleBarrelGlyphPainter(color: color),
-              onTap: () => appState.setSlatAdditionType('double-barrel-A'),
-            ),
+            if (appState.gridMode == '90') ...[
+              SizedBox(height: 6),
+              SlatOption(
+                label: 'Double-Barrel',
+                isSelected: appState.slatAdditionType == 'double-barrel',
+                color: appState.layerMap[appState.selectedLayerKey]?['color'] ??
+                    Colors.grey,
+                painterBuilder: (color) =>
+                    DoubleBarrelGlyphPainter('double-barrel', color: color),
+                onTap: () => appState.setSlatAdditionType('double-barrel'),
+              ),
+            ],
+            if (appState.gridMode == '60') ...[
+              SizedBox(height: 6),
+              SlatOption(
+                label: 'Double-Barrel-A',
+                isSelected: appState.slatAdditionType == 'double-barrel-A',
+                color: appState.layerMap[appState.selectedLayerKey]?['color'] ??
+                    Colors.grey,
+                painterBuilder: (color) =>
+                    DoubleBarrelGlyphPainter('double-barrel-A', color: color),
+                onTap: () => appState.setSlatAdditionType('double-barrel-A'),
+              ),
+              SizedBox(height: 6),
+              SlatOption(
+                label: 'Double-Barrel-B',
+                isSelected: appState.slatAdditionType == 'double-barrel-B',
+                color: appState.layerMap[appState.selectedLayerKey]?['color'] ??
+                    Colors.grey,
+                painterBuilder: (color) =>
+                    DoubleBarrelGlyphPainter('double-barrel-B', color: color),
+                onTap: () => appState.setSlatAdditionType('double-barrel-B'),
+              ),
+            ]
           ],
         ),
       ),

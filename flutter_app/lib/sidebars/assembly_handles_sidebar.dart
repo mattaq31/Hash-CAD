@@ -216,7 +216,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       ),
       SizedBox(height: 5),
       Divider(thickness: 2, color: Colors.grey.shade300),
-      Text("Mismatch Score Calculation", textAlign: TextAlign.center,
+      Text("Assembly Scores", textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.bold)),
       SizedBox(height: 20),
@@ -228,7 +228,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
             children: [
               Column(
                 children: [
-                  Text("Worst Mismatch Score",
+                  Text("Max Pairwise Interactions",
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   Text(

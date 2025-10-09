@@ -242,10 +242,9 @@ class SlatPainter extends CustomPainter {
 
     // if distance between extremities is much less than that expected of a straight line, then the slat must be a double barrel
     // (this is a bit of a hack but should work for now, other solutions will be much more complicated)
-    if (slatType == 'double-barrel-A') {
+    if (slatType == 'double-barrel-A' || slatType == 'double-barrel') {
       // select offsets to match normal slat system, with some tweaks to improve visualization
-      // of course, if different sizes DBs are introduced, the 15/16 hardcoding will need to be changed...
-
+      // of course, if different sized DBs are introduced, the 15/16 hardcoding will need to be changed...
       if (gridMode == '60') {
         slatP2A = coords[15] + slatExtend * 0.7 - flippedSlatExtend;
         slatP2B = coords[16] + slatExtend * 1.6 + flippedSlatExtend;
@@ -254,6 +253,20 @@ class SlatPainter extends CustomPainter {
         slatP2A = coords[15] + slatExtend * 1.3 - flippedSlatExtend;
         slatP2B = coords[16] + slatExtend * 1.3 + flippedSlatExtend;
       }
+
+      if (slatTipExtended){ // only one side of the DB is extended with tip extenders...
+        slatP1A = coords.last - slatExtend * 1.6 + flippedSlatExtend;
+        slatP1B = coords.first - slatExtend * 1.6 - flippedSlatExtend;
+      }
+      else {
+        slatP1A = coords.last - slatExtend * 0.6 + flippedSlatExtend;
+        slatP1B = coords.first - slatExtend * 0.6 - flippedSlatExtend;
+      }
+    }
+    else if (slatType == 'double-barrel-B') {
+
+      slatP2A = coords[15] + slatExtend * 1.6 - flippedSlatExtend;
+      slatP2B = coords[16] + slatExtend * 0.7 + flippedSlatExtend;
 
       if (slatTipExtended){ // only one side of the DB is extended with tip extenders...
         slatP1A = coords.last - slatExtend * 1.6 + flippedSlatExtend;

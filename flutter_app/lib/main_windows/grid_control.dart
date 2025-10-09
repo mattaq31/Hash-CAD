@@ -43,6 +43,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
 
   Offset? hoverPosition; // Stores the snapped position of the hovering slat
   bool hoverValid = true;  // Flag to indicate if the hovering slat is in a valid position
+  Map<int, Map<int, Offset>> hoverSlatMap = {}; // transient map of hovering slats
 
   bool dragActive = false;  // currently in slat drag mode (panning turned off)
   Offset slatMoveAnchor = Offset.zero; // the anchor point of the slats being moved
@@ -58,6 +59,19 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   bool dragBoxActive = false;
   Offset? dragBoxStart;
   Offset? dragBoxEnd;
+
+  /// updates the coordinates for the hover slat preview
+  void setHoverCoordinates(DesignState appState){
+    hoverSlatMap = generateSlatPositions(hoverPosition!, true, appState); // REAL space
+    final paths = hoverSlatMap.values
+        .map((inner) => inner.values.toList())
+        .toList();
+    appState.setHoverPreview(HoverPreview(
+      kind: 'Slat-Add',
+      isValid: hoverValid,
+      slatPaths: paths,
+    ));
+  }
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
@@ -306,13 +320,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       slatMultiJump = slatMultiJump * transposeDirection;
       slatInnerJump = slatInnerJump * transposeDirection;
     }
-    else{
-      // for DB slats in 60degree mode, slats can have a different 'shear' value too
-      // this is controlled by the T keyboard shortcut
-
-      if (appState.gridMode == '60' && transposeDirection == -1){
-        shearOffset = 1;
-      }
+    // for DB slats in 60degree mode, slats can have a different 'shear' value too, which we refer to as 'A' and 'B' types
+    else if (appState.slatAdditionType == 'double-barrel-A'){
+      shearOffset = 1;
     }
 
     for (int j = 0; j < appState.slatAddCount; j++) {
@@ -627,10 +637,16 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 else {
                   appState.rotateLayerDirection(appState.selectedLayerKey);
                 }
+                if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
+                  setHoverCoordinates(appState);
+                }
               },
               // flip shortcut for 60deg layers
               SingleActivator(LogicalKeyboardKey.keyF): () {
                 appState.flipMultiSlatGenerator();
+                if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
+                  setHoverCoordinates(appState);
+                }
               },
               // flip shortcut for 60deg layers
               SingleActivator(LogicalKeyboardKey.keyT): () {
@@ -639,6 +655,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 }
                 else {
                   appState.flipSlatAddDirection();
+                }
+                if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
+                  setHoverCoordinates(appState);
                 }
               },
               // delete shortcut (when in move mode)
@@ -760,12 +779,28 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                       var (localHoverPosition, localHoverValid) = hoverCalculator(event.position, appState, actionState, false);
                       hoverPosition = localHoverPosition;
                       hoverValid = localHoverValid;
+
+                      // Publish preview to shared state, which can also be used in the 3D painter
+                      if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
+                        setHoverCoordinates(appState);
+                      } else if (getActionMode(actionState) == 'Cargo-Add' && hoverPosition != null) {
+                        final pts = (appState.cargoAdditionType == 'SEED')
+                            ? generateSeedPositions(hoverPosition!, true, appState).values.toList()
+                            : generateCargoPositions(hoverPosition!, true, appState).values.toList();
+                        appState.setHoverPreview(HoverPreview(
+                          kind: 'Cargo-Add',
+                          isValid: hoverValid,
+                          cargoOrSeedPoints: pts,
+                        ));
+                      }
                     });
                   }
                 },
                 onExit: (event) {
                   setState(() {
                     hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
+                    hoverSlatMap = {};
+                    context.read<DesignState>().setHoverPreview(null);
                   });
                 },
                 // this handles A) scaling applied via a multi-touch operation and B) the actual placement of a slat on the grid
@@ -897,7 +932,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                             offset,
                             appState.layerMap[appState.selectedLayerKey]?['color'],
                             hoverValid,
-                            (hoverPosition != null  && getActionMode(actionState) == 'Slat-Add') ? generateSlatPositions(hoverPosition!, true, appState): {},
+                            hoverSlatMap,
                             hoverPosition,
                             !dragActive,
                             appState.selectedSlats.map((e) => appState.slats[e]!).toList(),

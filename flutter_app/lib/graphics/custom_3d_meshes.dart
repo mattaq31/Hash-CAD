@@ -44,9 +44,9 @@ List<three.BufferGeometry> drawTube(List<Vector3> pathPoints, double tubeRadius,
 
 
 three.BufferGeometry createDBSlat(double radius, double slatLength, double gridSize,
-    double x60jump, double y60jump, bool tipExtensions,
-    bool hexaTilt, {List<List<double>>? helixBundlePositions,
-      bool honeyCombVariant = false}) {
+    double x60jump, double y60jump, bool tipExtensions, bool hexaTilt,
+    {List<List<double>>? helixBundlePositions, bool honeyCombVariant = false,
+      bool drawBVariant = false}) {
 
   List<Vector3> pathPoints;
   List<three.BufferGeometry> geometries = [];
@@ -57,18 +57,21 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
       pathPoints = [
         // start
         if (tipExtensions)
-          tmath.Vector3(0, -gridSize * 0.5, 0)
+          tmath.Vector3(0, -gridSize, 0)
         else
           tmath.Vector3(0, 0, 0),
         // go up
         tmath.Vector3(0, slatLength, 0),
         // across (now towards negative Z)
-        tmath.Vector3(0, slatLength + y60jump, -x60jump),
-        // down to end
-        if (tipExtensions)
-          tmath.Vector3(0, y60jump - gridSize * 0.5, -x60jump)
+        if (drawBVariant)
+          tmath.Vector3(0, slatLength - y60jump, -x60jump)
         else
-          tmath.Vector3(0, y60jump, -x60jump),
+          tmath.Vector3(0, slatLength + y60jump, -x60jump),
+        // down to end
+        if (drawBVariant)
+          tmath.Vector3(0, -y60jump - (tipExtensions ? gridSize : 0), -x60jump)
+        else
+          tmath.Vector3(0, y60jump - (tipExtensions ? gridSize : 0), -x60jump),
       ];
     }
     // standard 90deg variant
@@ -94,39 +97,46 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
   }
   else {
     for (final pos in helixBundlePositions!) {
-
       List<three.BufferGeometry> localGeometries = [];
       if (pos[0] != 0){
         // do not connect tubes together for side helices
         if (hexaTilt) {
-
           // Construct two vertical legs (up and down) with proper offset so they don't overlap
           // Up leg: from startY to slatLength
-          final double startY1 = tipExtensions ? -gridSize * 0.5 : 0.0;
-          final double endY1 = slatLength;
+
+          // Down leg: from (slatLength + y60jump - offset) down to endY2
+          double bOffset = (pos[0] < 0 && drawBVariant) ? radius * 2.0 : 0.0;
+          final double startY1 = tipExtensions ? -gridSize : 0.0;
+          final double endY1 = slatLength - bOffset;
           final double height1 = (endY1 - startY1).abs();
+
           var c1 = CylinderGeometry(radius, radius, height1, 20);
+
           // place at midpoint between start and end (the geometry's placement origin is at its center)
           c1.translate(0, (startY1 + endY1) / 2.0, 0);
           localGeometries.add(c1);
 
           // Down leg: from (slatLength + y60jump - offset) down to endY2
-          final double offset = pos[0] > 0 ? radius * 2.0 : 0.0;
-          final double startY2 = slatLength + y60jump - offset; // higher Y
-          final double endY2 = tipExtensions ? (y60jump - gridSize * 0.5) : y60jump; // lower Y
+          double offset = (pos[0] > 0 && !drawBVariant) ? radius * 2.0 : 0.0;
+
+          final double startY2 = slatLength + (drawBVariant? -y60jump : y60jump) - offset; // higher or lower Y
+          double endY2 = tipExtensions ? (y60jump - gridSize) : y60jump; // lower Y
+          if (drawBVariant){ // B variant goes further down
+            endY2 -= 2*y60jump;
+          }
+
           final double height2 = (startY2 - endY2);
 
           var c2 = CylinderGeometry(radius, radius, height2, 20);
           c2.translate(0, (startY2 + endY2) / 2.0, -x60jump); // the x60jump moves it to the other leg
           localGeometries.add(c2);
         }
-
         // standard 90deg variant (same system as above)
         else {
           // Construct two vertical legs (up and down) with proper offset so they don't overlap
 
           // Up leg: from startY to slatLength
-          final double startY1 = tipExtensions ? -gridSize * 0.5 : 0.0;
+          final double startY1 = tipExtensions ? -gridSize : 0.0;
           final double endY1 = slatLength;
           final double height1 = (endY1 - startY1).abs();
 
@@ -137,14 +147,13 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
 
           // Down leg
           final double startY2 = slatLength; // higher Y
-          final double endY2 = tipExtensions ? - gridSize * 0.5 : 0; // lower Y
+          final double endY2 = tipExtensions ? - gridSize : 0; // lower Y
           final double height2 = (startY2 - endY2);
 
           var c2 = CylinderGeometry(radius, radius, height2, 20);
           c2.translate(0, (startY2 + endY2) / 2.0, -gridSize);
           localGeometries.add(c2);
         }
-
       }
       else {
         // run the normal u-connection pathing for the top/bottom helices
@@ -153,18 +162,21 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
           pathPoints = [
             // start
             if (tipExtensions)
-              tmath.Vector3(0, -gridSize * 0.5, 0)
+              tmath.Vector3(0, -gridSize, 0)
             else
               tmath.Vector3(0, 0, 0),
             // go up
             tmath.Vector3(0, slatLength, 0),
             // across (now towards negative Z)
-            tmath.Vector3(0, slatLength + y60jump, -x60jump),
-            // down to end
-            if (tipExtensions)
-              tmath.Vector3(0, y60jump - gridSize * 0.5, -x60jump)
+            if (drawBVariant)
+              tmath.Vector3(0, slatLength - y60jump, -x60jump)
             else
-              tmath.Vector3(0, y60jump, -x60jump),
+              tmath.Vector3(0, slatLength + y60jump, -x60jump),
+            // down to end
+            if (drawBVariant)
+            tmath.Vector3(0, -y60jump - (tipExtensions ? gridSize : 0), -x60jump)
+            else
+            tmath.Vector3(0, y60jump - (tipExtensions ? gridSize : 0), -x60jump),
           ];
         }
         // standard 90deg variant
@@ -172,7 +184,7 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
           pathPoints = [
             // start
             if (tipExtensions)
-              tmath.Vector3(0, -gridSize * 0.5, 0)
+              tmath.Vector3(0, -gridSize, 0)
             else
               tmath.Vector3(0, 0, 0),
             // go up
@@ -181,7 +193,7 @@ three.BufferGeometry createDBSlat(double radius, double slatLength, double gridS
             tmath.Vector3(0, slatLength, -gridSize),
             // down to end
             if (tipExtensions)
-              tmath.Vector3(0, -gridSize * 0.5, -gridSize)
+              tmath.Vector3(0, -gridSize, -gridSize)
             else
               tmath.Vector3(0, 0, -gridSize),
           ];

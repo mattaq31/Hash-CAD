@@ -41,6 +41,27 @@ String nextCapitalLetter(String current) {
   return 'A${String.fromCharCodes(chars.map((e) => 'A'.codeUnitAt(0) + e))}';
 }
 
+// encapsulates all info necessary to describe a transient set of moving slats
+// TODO: should also add ability to visualize moving slats and cargo too...
+class HoverPreview {
+
+  final String kind; // 'Slat-Add' | 'Slat-Move' | 'Cargo-Add' | 'Cargo-Move'
+  final bool isValid;
+
+  // For slats: a list of 32-pt paths (one per slat in multi-add), in REAL space
+  final List<List<Offset>> slatPaths;
+
+  // For cargo/seed: points in REAL space (e.g., handle locations)
+  final List<Offset> cargoOrSeedPoints;
+
+  const HoverPreview({
+    required this.kind,
+    required this.isValid,
+    this.slatPaths = const [],
+    this.cargoOrSeedPoints = const [],
+  });
+}
+
 /// State management for the design of the current megastructure
 class DesignState extends ChangeNotifier {
 
@@ -49,6 +70,8 @@ class DesignState extends ChangeNotifier {
   late final double x60Jump = sqrt(pow(gridSize, 2) - pow(y60Jump, 2));
   String gridMode = '60';
   bool standardTilt = true; // just a toggle between the two different tilt types
+
+  HoverPreview? hoverPreview; // current transient set of slats
 
   Map<(String, int), Offset> slatDirectionGenerators = {
     ('90', 90): Offset(1, 0),
@@ -189,6 +212,11 @@ class DesignState extends ChangeNotifier {
   PlateLibrary plateStack = PlateLibrary();
 
   // GENERAL OPERATIONS //
+
+  void setHoverPreview(HoverPreview? preview) {
+    hoverPreview = preview;
+    notifyListeners();
+  }
 
   void initializeUndoStack() {
     saveUndoState();
