@@ -338,8 +338,8 @@ class EvolveManager:
                     self.export_results()
 
                 pbar.update(1)
-                pbar.set_postfix({f'Latest hamming score': self.metrics['Corresponding Worst Match Score'][-1],
-                                  'Time for hamming calculation': self.metrics['Hamming Compute Time'][-1],
+                pbar.set_postfix({f'Latest worst match score': self.metrics['Corresponding Worst Match Score'][-1],
+                                  'Time for mismatch calculations': self.metrics['Hamming Compute Time'][-1],
                                   'Latest log physics partition score': self.metrics['Best (Log) Physics-Based Score'][-1]}, refresh=False)
 
                 if self.early_worst_match_stop and min(self.metrics['Corresponding Worst Match Score']) <= self.early_worst_match_stop:

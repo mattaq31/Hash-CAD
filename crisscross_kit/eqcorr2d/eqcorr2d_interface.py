@@ -38,10 +38,19 @@ from eqcorr2d.rot60 import rotate_array_tri60
 from collections import Counter
 
 
-def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts,   connection_graph, connection_angle, do_worst=False):
+def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle, do_worst=False):
+    """
+    When provided with a megastructure's slat handles/antihandles and connection graphs, this function computes
+    all relevant match count metrics including worst match, mean log score, similarity score, and a compensated match histogram.
+    :param handle_dict: Dictionary of slat handle arrays (can be 1D or 2D).
+    :param antihandle_dict: Dictionary of slat antihandle arrays (can be 1D or 2D).
+    :param match_counts: Dictionary with counts of expected matches due to connections between slats.
+    :param connection_graph: Dictionary mapping match types to lists of (handle_key, antihandle_key) pairs that are expected to match due to connections.
+    :param connection_angle: Either '60' or '90' indicating the connection geometry.
+    :param do_worst: Set to true to return which slat pairs contributed to the worst match score.
+    :return: Dictionary with all data.
+    """
     # runs the match comparison computation using our eqcorr2D C function
-
-
     if do_worst:
         local_histogram = True
     else:
@@ -51,14 +60,16 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts,   c
                                  mode='triangle_grid' if connection_angle == '60' else 'square_grid')
 
     # compensates for matches in the design that are expected based on slat connections
-    con_hist = make_connection_histogram(connection_graph)
     hist = full_results['hist_total']
-    comp_hist = compensate_histogram(hist, con_hist)
+    match_counts_histogram = np.zeros_like(hist)
+    for match, count in match_counts.items():
+        if match > 1:
+            match_counts_histogram[match] += count
+
+    comp_hist = compensate_histogram(hist, match_counts_histogram)
     full_results['hist_total'] = comp_hist
 
-
-
-    # extracts the worst match score, alreqady compensated for connections. so from here on only true worsts can be computed
+    # extracts the worst match score, already compensated for connections. so from here on only true worsts can be computed
     worst_match = get_worst_match(full_results)
 
     # truncates the histogram to prevent numerical instability in sum score analysis. should no longer be necessary
@@ -75,13 +86,7 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts,   c
                  'uncompensated_match_histogram': hist}
 
     if do_worst:
-        # still some stuff for debugging here
-        to_eliminate = connection_graph.get(worst_match)
-        uncompensate = get_worst_keys_combos(full_results)
         data_dict['worst_slat_combos'] = get_compensated_worst_keys_combos(full_results, connection_graph)
-        compensated = get_compensated_worst_keys_combos(full_results, connection_graph)
-
-
 
     return data_dict
 
@@ -272,10 +277,8 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
     pair_need_quarter = np.logical_or(A_is2D[:, None], B_is2D[None, :])
     quarter_mask = pair_need_quarter.astype(np.uint8)
 
-    results_by_rot = {}
-    per_rotation = {}
     # Perform calls per selected rotation
-
+    per_rotation = {}
     agg_loc_hist= None
     agg_glob_hist = None
     for angle in angles:
@@ -300,8 +303,6 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
             else:
                 agg_loc_hist = agg_loc_hist + res[3]
 
-
-
         # Prepare per-rotation entry save if full report is requested
         if report_full:
             hist_a = res[0]
@@ -313,18 +314,6 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
                 'local_hist': loc_hist,
             }
 
-
-
-
-
-
-
-
-
-    # Worst reporting deprecated: set to None
-    worst_keys_combos = None
-    worst_keys_multiplicity = None
-
     return {
         'angles': angles,
         'hist_total': agg_glob_hist,
@@ -333,7 +322,6 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
         'anti_handle_keys': antihandle_keys,
         'local_hist_total': agg_loc_hist,
     }
-
 
 def get_worst_match(c_results):
     """Return the worst (highest non-zero) matchtype from a result.
@@ -350,7 +338,6 @@ def get_worst_match(c_results):
         print('Warning: no histogram found, returning worst=None')
     return worst
 
-
 def get_sum_score(c_results, fudge_dg=-10):
     """Compute a weighted sum score from histogram.
     Accepts both the new dict return and the legacy tuple.
@@ -365,7 +352,6 @@ def get_sum_score(c_results, fudge_dg=-10):
     for matchtype, count in enumerate(hist):
         summe = summe + count * np.exp(-fudge_dg * matchtype)
     return summe
-
 
 def get_seperate_worst_lists(c_results):
     """Return separate lists of worst handle and antihandle identifiers.
@@ -416,10 +402,6 @@ def get_worst_keys_combos(c_results):
     combos = [(handle_keys[i], antihandle_keys[j],1) for i, j in zip(ii, jj)]
     return combos
 
-
-
-
-
 def get_compensated_worst_keys_combos(c_results, connection_graph):
     worst = get_worst_match(c_results)
     handle_keys = c_results['handle_keys']
@@ -428,12 +410,12 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
 
     worst_slice = loc[:, :, worst]  # counts per (i,j) in the worst bin
 
-    # we wont skip anything if its about matches of 1 or less since they are somehow convoluted in the do smart scheme.
+    # we won't skip anything if its about matches of 1 or less since they are somehow convoluted in the do smart scheme.
     if worst <=1:
         expected_skips = []
     else:
         expected_skips = connection_graph.get(worst, []) # if its not in there skip nothing
-    skip_counts = Counter(expected_skips)  # multiplicities to skip in this bin. not sure if couter is needed they could be unique already. who knows
+    skip_counts = Counter(expected_skips)  # multiplicities to skip in this bin. not sure if counter is needed they could be unique already. who knows
 
     combos = []
     skipped = []
@@ -441,16 +423,16 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
 
         pair = (handle_keys[i], anti_keys[j])
         count_hist = int(worst_slice[i, j])
-        count_skip = skip_counts.get(pair, 0) # its eigther 1 or 0 since connection graph should not have duplicates
+        count_skip = skip_counts.get(pair, 0) # it's either 1 or 0 since connection graph should not have duplicates
 
         if count_skip > 0:
             skipped.append(pair)
 
         # Skip only when the skip list covers all occurrences (==), else keep full count
         if count_skip == count_hist: # if both are 1, skip this pair entirely. count_hist might actually be larger than 1.
-
             continue
-        combos.append((pair[0], pair[1], count_hist-count_skip))# record the difference for bookeeping
+
+        combos.append((pair[0], pair[1], count_hist-count_skip)) # record the difference for bookkeeping
         if count_skip > count_hist:
             raise ValueError(f"Over-subtraction detected for pair {pair}: We have a deeply routed bug if this happens.")
     # sanity check to verify all expected skips were found
@@ -461,67 +443,6 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
         print("Expected skips from connection graph:", expected_skips)
 
     return combos
-
-# Do not use this. It would only work if all 1D slats are fully occupied with handles and antihandles
-def compensate_do_smart(hist, handle_dict, antihandle_dict, standart_slat_lenght=32, libraray_length=64):
-    """Attempt to post-correct histograms when do_smart skipped 90°/270° cases.
-
-    WARNING: This correction only makes sense under very restrictive assumptions
-    and is disabled in normal workflows. It assumes all involved 1D slats are
-    fully occupied across a fixed standard length and then injects an expected
-    distribution for the left-out orientations based on a simple library-size
-    probability model. If your slats are sparse or lengths vary, this will be
-    inaccurate. Prefer computing the full rotation set if you need exact stats.
-
-    Parameters
-    - hist: np.ndarray
-        Aggregated histogram to be adjusted.
-    - handle_dict / antihandle_dict: dict
-        Used only to estimate how many 1D×1D pairs were skipped.
-    - standart_slat_lenght: int
-        Assumed length for 1D slats when estimating left-out entries.
-    - libraray_length: int
-        Size of the handle library used to estimate p0 = 1/library_length.
-
-    Returns
-    - corrected_hist: np.ndarray with the estimated counts added to bins 0 and 1.
-    """
-    # extract values from dicts
-    handles = list(handle_dict.values())
-    antihandles = list(antihandle_dict.values())
-    # count 1D and 2D handles in a loop
-    count_1D_handles = 0
-    count_2D_handles = 0
-    for handle in handles:
-        if handle.shape[0] == 1:
-            count_1D_handles = count_1D_handles + 1
-        else:
-            count_2D_handles = count_2D_handles + 1
-    # count 1D and 2D antihandles in a loop
-    count_1D_antihandles = 0
-    count_2D_antihandles = 0
-    for antihandle in antihandles:
-        if antihandle.shape[0] == 1:
-            count_1D_antihandles = count_1D_antihandles + 1
-        else:
-            count_2D_antihandles = count_2D_antihandles + 1
-    # calculate number of combinations not tested by do_smart
-    not_tested_combinations = count_1D_handles * count_1D_antihandles * 2  # times 2 for 90 and 270
-    left_out_array_lenght = (standart_slat_lenght + 1 - 1) * (
-                standart_slat_lenght + 1 - 1)  # this is number of entries of the result arrays not computed
-    all_left_out_entries = not_tested_combinations * left_out_array_lenght
-    # now calculate expected distribution of these combinations. since the dimension is only 1D of each we can eighter have a matchtype 1 ore 0.
-    # the probability for a matchtype 0 is 1/libraray_length
-    p0 = 1 / libraray_length
-    hit1 = all_left_out_entries * p0
-    hit0 = all_left_out_entries * (1 - p0)
-    # now add these to the histogram
-    corrected_hist = hist.copy()
-    corrected_hist[0] = corrected_hist[0] + int(hit0)
-    corrected_hist[1] = corrected_hist[1] + int(hit1)
-
-    return corrected_hist
-
 
 def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid', do_smart=True):
     """Build a library-level similarity histogram (handles+antihandles).
