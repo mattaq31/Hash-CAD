@@ -332,6 +332,7 @@ class _SlatDesignTools extends State<SlatDesignTools>
                         ));
                 if (result == true) {
                   appState.setGridMode('90');
+                  slatAddTextController.text = '1';
                 }
               }
             },
@@ -371,6 +372,7 @@ class _SlatDesignTools extends State<SlatDesignTools>
                         ));
                 if (result == true) {
                   appState.setGridMode('60');
+                  slatAddTextController.text = '1';
                 }
               }
             },
@@ -485,9 +487,7 @@ class _SlatDesignTools extends State<SlatDesignTools>
                 labelText: 'Manual Input',
               ),
               textInputAction: TextInputAction.done,
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.digitsOnly
-              ],
+              inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
               onSubmitted: (value) {
                 _updateSlatAddCount(appState);
               },
