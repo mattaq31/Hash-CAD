@@ -1,57 +1,44 @@
 import 'package:flutter/material.dart';
 
-class HammingIndicator extends StatelessWidget {
-  final double value; // Value from 0 to 32
-
-  const HammingIndicator({super.key, required this.value});
+class ValencyIndicator extends StatelessWidget {
+  final int value; // Score: 1 = best, higher = worse (unbounded)
+  const ValencyIndicator({super.key, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    final color = _getColor(value);
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.9),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.5),
+            blurRadius: 6,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
       alignment: Alignment.center,
-      children: [
-        SizedBox(
-          width: 60,
-          height: 60,
-          child: CircularProgressIndicator(
-            value: 1.0,
-            strokeWidth: 8,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade300),
-          ),
+      child: Text(
+        value.toString(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
         ),
-
-        SizedBox(
-          width: 60,
-          height: 60,
-          child: CircularProgressIndicator(
-            value: value / 32,
-            strokeWidth: 8,
-            valueColor: AlwaysStoppedAnimation<Color>(_getColor(value)),
-            backgroundColor: Colors.transparent,
-          ),
-        ),
-
-        // Rating text in center
-        Text(
-          "${(32-value).toInt()}", // Convert double to integer for cleaner display
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  // Function to determine color based on rating value
-  Color _getColor(double rating) {
-    if (rating < 25) {
-      return Colors.red;
-    } else if (rating < 28) {
-      return Colors.orange;
-    } else {
-      return Colors.green;
-    }
+  /// Color transitions from green → orange → red
+  Color _getColor(int v) {
+    if (v <= 3) return Colors.green;
+    if (v <= 5) return Colors.orange;
+    if (v <= 7) return Colors.deepOrange;
+    return Colors.red;
   }
 }

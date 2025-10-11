@@ -38,7 +38,8 @@ from eqcorr2d.rot60 import rotate_array_tri60
 from collections import Counter
 
 
-def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle, do_worst=False):
+def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle, do_worst=False,
+                                 fudge_dg=10):
     """
     When provided with a megastructure's slat handles/antihandles and connection graphs, this function computes
     all relevant match count metrics including worst match, mean log score, similarity score, and a compensated match histogram.
@@ -48,6 +49,7 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, con
     :param connection_graph: Dictionary mapping match types to lists of (handle_key, antihandle_key) pairs that are expected to match due to connections.
     :param connection_angle: Either '60' or '90' indicating the connection geometry.
     :param do_worst: Set to true to return which slat pairs contributed to the worst match score.
+    :param fudge_dg: Fudge factor for mean log score computation.
     :return: Dictionary with all data.
     """
     # runs the match comparison computation using our eqcorr2D C function
@@ -74,7 +76,7 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, con
 
     # truncates the histogram to prevent numerical instability in sum score analysis. should no longer be necessary
     full_results['hist_total'] = full_results['hist_total'][:worst_match + 1]
-    mean_log_score = np.log(get_sum_score(full_results) / (len(handle_dict) * len(antihandle_dict)))
+    mean_log_score = np.log(get_sum_score(full_results, fudge_dg=fudge_dg) / (len(handle_dict) * len(antihandle_dict)))/fudge_dg
 
     # runs a separate similarity analysis to check for slats that are too similar to each other.
     similarity_results = get_similarity_hist(handle_dict, antihandle_dict,
@@ -338,7 +340,7 @@ def get_worst_match(c_results):
         print('Warning: no histogram found, returning worst=None')
     return worst
 
-def get_sum_score(c_results, fudge_dg=-10):
+def get_sum_score(c_results, fudge_dg=10):
     """Compute a weighted sum score from histogram.
     Accepts both the new dict return and the legacy tuple.
     """
@@ -350,7 +352,7 @@ def get_sum_score(c_results, fudge_dg=-10):
         return 0.0
     summe = 0.0
     for matchtype, count in enumerate(hist):
-        summe = summe + count * np.exp(-fudge_dg * matchtype)
+        summe = summe + count * np.exp(fudge_dg * matchtype)
     return summe
 
 def get_seperate_worst_lists(c_results):

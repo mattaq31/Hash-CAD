@@ -37,7 +37,7 @@ class OptunaEvolveManager(EvolveManager):
             for index, generation in enumerate(range(self.current_generation, self.max_evolution_generations)):
 
                 self.single_evolution_step()
-                self.optuna_trial.report(self.metrics['Best (Log) Physics-Based Score'][-1], generation)
+                self.optuna_trial.report(self.metrics['Best Mean Parasitic Valency'][-1], generation)
 
                 if index % logging_interval == 0:
                     self.export_results()
@@ -45,7 +45,7 @@ class OptunaEvolveManager(EvolveManager):
                 pbar.update(1)
                 pbar.set_postfix({f'Latest hamming score': self.metrics['Corresponding Hamming Distance'][-1],
                                   'Time for hamming calculation': self.metrics['Hamming Compute Time'][-1],
-                                  'Latest log physics partition score': self.metrics['Best (Log) Physics-Based Score'][-1]}, refresh=False)
+                                  'Latest log physics partition score': self.metrics['Best Mean Parasitic Valency'][-1]}, refresh=False)
 
                 if self.early_hamming_stop and max(self.metrics['Corresponding Hamming Distance']) >= self.early_hamming_stop:
                     break

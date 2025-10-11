@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     evolve_manager = EvolveManager(megastructure,
                                    unique_handle_sequences=64,
-                                   early_worst_match_stop=1, evolution_population=50,
+                                   early_max_valency_stop=1, evolution_population=50,
                                    generational_survivors=3,
                                    mutation_rate=2,
                                    process_count=4,

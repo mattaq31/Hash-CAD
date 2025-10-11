@@ -89,7 +89,12 @@ class CrisscrossClient {
   }
 
 
-  Future<void> initiateEvolve(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray, Map<String, String> evoParams) async {
+  Future<void> initiateEvolve(
+      List<List<List<int>>> slatArray,
+      List<List<List<int>>> handleArray,
+      Map<String, String> evoParams,
+      Map<String, String> slatTypes,
+      String connectionAngle) async {
     List<Layer3D> grpcSlatArray = convertToLayer3D(slatArray);
     List<Layer3D> grpcHandleArray = convertToLayer3D(handleArray);
 
@@ -98,11 +103,16 @@ class CrisscrossClient {
     final callOptions = CallOptions(timeout: deadline);
 
     // Define request parameters
-    var request = EvolveRequest(slatArray: grpcSlatArray, handleArray: grpcHandleArray, parameters: evoParams);
+    var request = EvolveRequest(
+        slatArray: grpcSlatArray,
+        handleArray: grpcHandleArray,
+        parameters: evoParams,
+        slatTypes: slatTypes,
+        connectionAngle: connectionAngle);
 
     stub.evolveQuery(request, options: callOptions).listen((update) {
       if (kDebugMode) {
-        print("Received: Hamming=${update.hamming}, Physics=${update.physics}");
+        print("Received: Max Valency=${update.hamming}, Eff. Valency=${update.physics}");
       }
       _controller.add(update);
     }, onError: (error) {

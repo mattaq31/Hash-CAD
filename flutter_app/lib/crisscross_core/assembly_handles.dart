@@ -85,6 +85,7 @@ int hammingInnerCompute(HammingInnerArgs args) {
   final handleKeys = handleDict.keys.toList();
   final antihandleKeys = antihandleDict.keys.toList();
 
+  // TODO: this needs to be updated when db logic included
   int minValue = 50;
 
   for (int i = 0; i < handleKeys.length; i++) {
@@ -113,7 +114,8 @@ int hammingInnerCompute(HammingInnerArgs args) {
       }
     }
   }
-  return minValue;
+  // TODO: this needs to be updated when db logic included
+  return 32 - minValue;
 }
 
 

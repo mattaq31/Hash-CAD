@@ -928,6 +928,7 @@ class DesignState extends ChangeNotifier {
       currentHamming = 0;
     } else {
       currentHamming = await hammingCompute(slats, layerMap, 32);
+      // TODO: this needs to be updated when db logic included
       if (currentHamming == 50 || currentHamming == 32) { // 50 (calculation never attempted) or 32 (no handle overlap) are exception values
         currentHamming = 0;
       }
@@ -987,6 +988,17 @@ class DesignState extends ChangeNotifier {
     Offset maxPos;
     (minPos, maxPos) = extractGridBoundary(slats);
     return extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
+  }
+
+  Map<String, String> getSlatTypes(){
+    Map<String, String> slatTypes = {};
+    for (var slat in slats.values) {
+
+      var layerNumber = layerMap[slat.layer]!['order'] + 1;
+      // replace the layer ID with the layer number
+      slatTypes[slat.id.replaceFirst(slat.layer, layerNumber.toString())] = slat.slatType;
+    }
+    return slatTypes;
   }
 
   void clearAssemblyHandles(){
@@ -1547,7 +1559,7 @@ class ServerState extends ChangeNotifier {
     'generational_survivors': '3',
     'random_seed': '8',
     'unique_handle_sequences': '64',
-    'early_hamming_stop': '30',
+    'early_max_valency_stop': '1',
     'split_sequence_handles': 'true'
   };
 
@@ -1562,6 +1574,7 @@ class ServerState extends ChangeNotifier {
     'random_seed': 'Random Seed',
     'number_unique_handles': 'Unique Handle Count',
     'split_sequence_handles': 'Split Sequence Handles',
+    'early_max_valency_stop': 'Early Stop Target'
   };
 
   bool evoActive = false;
@@ -1569,11 +1582,15 @@ class ServerState extends ChangeNotifier {
 
   ServerState();
 
-  void evolveAssemblyHandles(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray) {
-    hammingClient?.initiateEvolve(slatArray, handleArray, evoParams);
+  void evolveAssemblyHandles(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray, Map<String, String> slatTypes, String connectionAngle) {
+    hammingClient?.initiateEvolve(slatArray, handleArray, evoParams, slatTypes, connectionAngle);
     evoActive = true;
     statusIndicator = 'RUNNING';
     notifyListeners();
+  }
+
+  void exportParameters(){
+    exportEvolutionParameters(evoParams);
   }
 
   void pauseEvolve(){
@@ -1615,7 +1632,7 @@ class ServerState extends ChangeNotifier {
         hammingMetrics.add(update.hamming);
         physicsMetrics.add(update.physics);
         if(update.isComplete){
-          statusIndicator = 'EVOLUTION COMPLETE - MAKE SURE TO SAVE RESULT';
+          statusIndicator = 'EVOLUTION COMPLETE - SAVE RESULTS!';
           evoActive = false;
         }
         notifyListeners(); // Notify UI elements

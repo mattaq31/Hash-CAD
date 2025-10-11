@@ -13,10 +13,10 @@ if __name__ == '__main__':
     megastructure.assign_assembly_handles(handle_array)
 
     print('Original Results:')
-    print(megastructure.get_match_strength_score())
+    print(megastructure.get_parasitic_interactions())
 
     evolve_manager =  EvolveManager(megastructure, unique_handle_sequences=64,
-                                    early_worst_match_stop=2, evolution_population=50,
+                                    early_max_valency_stop=2, evolution_population=50,
                                     generational_survivors=3,
                                     mutation_rate=2,
                                     process_count=8,
@@ -29,4 +29,4 @@ if __name__ == '__main__':
     megastructure.assign_assembly_handles(evolve_manager.handle_array)
 
     print('New Results:')
-    print(megastructure.get_match_strength_score())
+    print(megastructure.get_parasitic_interactions())

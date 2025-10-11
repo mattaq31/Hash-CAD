@@ -20,8 +20,10 @@ const EvolveRequest$json = {
     {'1': 'slatArray', '3': 1, '4': 3, '5': 11, '6': '.evoService.Layer3D', '10': 'slatArray'},
     {'1': 'handleArray', '3': 2, '4': 3, '5': 11, '6': '.evoService.Layer3D', '10': 'handleArray'},
     {'1': 'parameters', '3': 3, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.ParametersEntry', '10': 'parameters'},
+    {'1': 'slatTypes', '3': 4, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.SlatTypesEntry', '10': 'slatTypes'},
+    {'1': 'connectionAngle', '3': 5, '4': 1, '5': 9, '10': 'connectionAngle'},
   ],
-  '3': [EvolveRequest_ParametersEntry$json],
+  '3': [EvolveRequest_ParametersEntry$json, EvolveRequest_SlatTypesEntry$json],
 };
 
 @$core.Deprecated('Use evolveRequestDescriptor instead')
@@ -34,13 +36,26 @@ const EvolveRequest_ParametersEntry$json = {
   '7': {'7': true},
 };
 
+@$core.Deprecated('Use evolveRequestDescriptor instead')
+const EvolveRequest_SlatTypesEntry$json = {
+  '1': 'SlatTypesEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
 /// Descriptor for `EvolveRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List evolveRequestDescriptor = $convert.base64Decode(
     'Cg1Fdm9sdmVSZXF1ZXN0EjEKCXNsYXRBcnJheRgBIAMoCzITLmV2b1NlcnZpY2UuTGF5ZXIzRF'
     'IJc2xhdEFycmF5EjUKC2hhbmRsZUFycmF5GAIgAygLMhMuZXZvU2VydmljZS5MYXllcjNEUgto'
     'YW5kbGVBcnJheRJJCgpwYXJhbWV0ZXJzGAMgAygLMikuZXZvU2VydmljZS5Fdm9sdmVSZXF1ZX'
-    'N0LlBhcmFtZXRlcnNFbnRyeVIKcGFyYW1ldGVycxo9Cg9QYXJhbWV0ZXJzRW50cnkSEAoDa2V5'
-    'GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlSBXZhbHVlOgI4AQ==');
+    'N0LlBhcmFtZXRlcnNFbnRyeVIKcGFyYW1ldGVycxJGCglzbGF0VHlwZXMYBCADKAsyKC5ldm9T'
+    'ZXJ2aWNlLkV2b2x2ZVJlcXVlc3QuU2xhdFR5cGVzRW50cnlSCXNsYXRUeXBlcxIoCg9jb25uZW'
+    'N0aW9uQW5nbGUYBSABKAlSD2Nvbm5lY3Rpb25BbmdsZRo9Cg9QYXJhbWV0ZXJzRW50cnkSEAoD'
+    'a2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlSBXZhbHVlOgI4ARo8Cg5TbGF0VHlwZXNFbn'
+    'RyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
 
 @$core.Deprecated('Use layer3DDescriptor instead')
 const Layer3D$json = {

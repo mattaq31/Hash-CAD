@@ -5,6 +5,8 @@ import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:hash_cad/crisscross_core/handle_plates.dart';
 import 'package:path/path.dart';
+import 'package:toml/toml.dart';
+
 import 'dart:math';
 import 'dart:io';
 
@@ -832,6 +834,62 @@ Future <void> importPlatesFromFile(PlateLibrary plateLibrary) async{
     }
   }
   plateLibrary.readPlates(fileBytes, plateNames);
+}
+
+/// Exports evolution parameters to a TOML file
+Future<void> exportEvolutionParameters(Map<String, String> parameters) async {
+  String? filePath = await FilePicker.platform.saveFile(
+    dialogTitle: 'Save As',
+    fileName: 'evolution_config.toml',
+    type: FileType.custom,
+    allowedExtensions: ['toml'],
+    initialDirectory: kIsWeb ? null : _lastOpenDirectory,
+  );
+
+  // if filepath is null, return
+  if (filePath == null) {
+    return;
+  }
+
+  final convertedParams = parameters.map((key, value) {
+    final lower = value.toLowerCase().trim();
+
+    // --- Handle booleans ---
+    if (lower == 'true') return MapEntry(key, true);
+    if (lower == 'false') return MapEntry(key, false);
+
+    // --- Handle comma-separated numeric lists ---
+    if (value.contains(',')) {
+      final parts = value.split(',').map((s) => s.trim()).toList();
+
+      // Check if all parts are numeric
+      final allNumeric = parts.every((p) => num.tryParse(p) != null);
+      if (allNumeric) {
+        final list = parts.map((p) => double.parse(p)).toList();
+        return MapEntry(key, list);
+      }
+    }
+
+    // --- Handle numeric values ---
+    final numValue = num.tryParse(value);
+    if (numValue != null) {
+      if (numValue == numValue.roundToDouble()) {
+        return MapEntry(key, numValue.toInt());
+      } else {
+        return MapEntry(key, numValue.toDouble());
+      }
+    }
+
+    // --- Default: keep as string ---
+    return MapEntry(key, value);
+  });
+
+  // Encode to TOML
+  final tomlString = TomlDocument.fromMap(convertedParams).toString();
+
+  // Save to a file
+  final file = File(filePath);
+  await file.writeAsString(tomlString);
 }
 
 

@@ -26,6 +26,66 @@ void showWarning(BuildContext context, String title, String message){
           ));
 }
 
+void showKeyboardShortcutsDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          "Keyboard Shortcuts",
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _shortcutItem("'R'", "Rotate slat draw direction"),
+              _shortcutItem("'F'", "Flip multi-slat draw direction"),
+              _shortcutItem("'T'", "Transpose slat draw direction"),
+              _shortcutItem("'Up/Down arrow keys'", "Change layer"),
+              _shortcutItem("'A'", "Add new layer"),
+              _shortcutItem("'1'", "Switch to 'Add' mode"),
+              _shortcutItem("'2'", "Switch to 'Delete' mode"),
+              _shortcutItem("'3'", "Switch to 'Edit' mode"),
+              _shortcutItem("'CMD/Ctrl-Z'", "Undo last action"),
+              _shortcutItem("'CMD-Shift-Z/Ctrl-Y'", "Redo last action"),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text("Close"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Widget _shortcutItem(String key, String description) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4.0),
+    child: Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: "$key ",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          ),
+          TextSpan(
+            text: description,
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
+        ],
+      ),
+      style: TextStyle(fontSize: 14),
+    ),
+  );
+}
+
+
 void displayPlateInfo(BuildContext context, String plateName, HashCadPlate plate) {
   showDialog(
     context: context,

@@ -15,21 +15,23 @@ if __name__ == '__main__':
     megastructure.assign_assembly_handles(handle_array)
 
     # megastructure = Megastructure(import_design_file="/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/bird/bird_design_hashcad_seed.xlsx")
+    # megastructure = Megastructure(import_design_file="/Users/matt/Desktop/Tiny Hexagon Optim.xlsx")
+    # megastructure = Megastructure(import_design_file="/Users/matt/Desktop/TEST_PLUS.xlsx")
 
-   #  megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Temporary files\Tiny Hexagon Optim.xlsx")
+    # megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Temporary files\Tiny Hexagon Optim.xlsx")
     print('------')
     t1 = time.time()
     print(multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(),megastructure.generate_assembly_handle_grid(),per_layer_check=True, report_worst_slat_combinations=False,request_substitute_risk_score=True))
     t2 = time.time()
     print('------')
     t3 = time.time()
-    print(megastructure.get_match_strength_score())
+    print(megastructure.get_parasitic_interactions())
     t4 = time.time()
     print('old time:', t2 - t1)
     print('new time:', t4 - t3)
 
     evolve_manager =  EvolveManager(megastructure, unique_handle_sequences=64,
-                                    early_worst_match_stop=0, evolution_population=50,
+                                    early_max_valency_stop=0, evolution_population=50,
                                     generational_survivors=3,
                                     mutation_rate=2,
                                     process_count=4,

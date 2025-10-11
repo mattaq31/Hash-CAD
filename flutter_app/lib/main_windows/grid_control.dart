@@ -75,7 +75,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
-  (double, Offset) scrollZoomCalculator(PointerScrollEvent event, {double zoomFactor = 0.1}) {
+  (double, Offset) scrollZoomCalculator(PointerScrollEvent event, {double zoomFactor = 0.2}) {
 
     double newScale = scale;
 
@@ -674,9 +674,11 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               // Navigation shortcuts
               SingleActivator(LogicalKeyboardKey.arrowUp): () {
                   appState.cycleActiveLayer(true);
+                  setHoverCoordinates(appState);
               },
               SingleActivator(LogicalKeyboardKey.arrowDown): () {
                   appState.cycleActiveLayer(false);
+                  setHoverCoordinates(appState);
               },
               // Action shortcuts
               SingleActivator(LogicalKeyboardKey.keyA): () {

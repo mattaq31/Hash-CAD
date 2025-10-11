@@ -9,6 +9,7 @@ import time
 import matplotlib.ticker as ticker
 from colorama import Fore
 import re
+import toml
 
 from crisscross.slat_handle_match_evolver.handle_mutation import mutate_handle_arrays
 from crisscross.slat_handle_match_evolver import generate_random_slat_handles, generate_layer_split_handles
@@ -17,17 +18,16 @@ from eqcorr2d.eqcorr2d_interface import comprehensive_score_analysis
 
 
 class EvolveManager:
-    def __init__(self, megastructure, slat_length=32, random_seed=8, generational_survivors=3,
+    def __init__(self, megastructure, random_seed=8, generational_survivors=3,
                  mutation_rate=5, mutation_type_probabilities=(0.425, 0.425, 0.15), unique_handle_sequences=32,
                  evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
-                 process_count=None, early_worst_match_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
+                 process_count=None, early_max_valency_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
                  mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None):
         """
         Prepares an evolution manager to optimize a handle array for the provided slat array.
         WARNING: Make sure to use the "if __name__ == '__main__':" block to run this class in a script.
         Otherwise, the spawned processes will cause a recursion error.
         :param megastructure: Megastructure object containing slat array and optionally a seed handle array for starting evolution
-        :param slat_length: Slat length in terms of number of handles
         :param random_seed: Random seed to use to ensure consistency
         :param generational_survivors: Number of surviving candidate arrays that persist through each generation
         :param mutation_rate: The expected number of mutations per iteration
@@ -39,7 +39,7 @@ class EvolveManager:
         :param split_sequence_handles: Set to true to enforce the splitting of handle sequences between subsequent layers
         :param sequence_split_factor: Factor by which to split the handle sequences between layers (default is 2, which means that if handles are split, the first layer will have 1/2 of the handles, etc.)
         :param process_count: Number of threads to use for hamming multiprocessing (if set to default, will use 67% of available cores)
-        :param early_worst_match_stop: If this worst match score  is achieved, the evolution will stop early
+        :param early_max_valency_stop: If this worst match score  is achieved, the evolution will stop early
         :param log_tracking_directory: Set to a directory to export plots and metrics during the optimization process (optional)
         :param progress_bar_update_iterations: Number of iterations before progress bar is updated
         - useful for server output files, but does not seem to work consistently on every system (optional)
@@ -60,12 +60,12 @@ class EvolveManager:
         self.repeating_unit_constraints = {} if repeating_unit_constraints is None else repeating_unit_constraints
 
         seed_handle_array = megastructure.generate_assembly_handle_grid()
+
         if np.sum(seed_handle_array) == 0:
             self.handle_array = None
         else:
             self.handle_array = seed_handle_array # this variable holds the current best handle array in the system (updated throughout evolution)
 
-        self.slat_length = slat_length
         self.generational_survivors = int(generational_survivors)
         self.mutation_rate = mutation_rate
         self.max_evolution_generations = int(evolution_generations)
@@ -82,10 +82,10 @@ class EvolveManager:
         self.hall_of_shame_memory = memory_length
 
         # converters for alternative parameter definitions
-        if early_worst_match_stop is None:
-            self.early_worst_match_stop = None
+        if early_max_valency_stop is None:
+            self.early_max_valency_stop = None
         else:
-            self.early_worst_match_stop = int(early_worst_match_stop)
+            self.early_max_valency_stop = int(early_max_valency_stop)
 
         if isinstance(mutation_type_probabilities, str):
             self.mutation_type_probabilities = tuple(map(float, mutation_type_probabilities.split(', ')))
@@ -148,8 +148,8 @@ class EvolveManager:
         :return:
         """
         self.current_generation += 1
-        physical_scores = np.zeros(self.evolution_population)  # initialize the score variable which will be used as the phenotype for the selection.
-        hammings = np.zeros(self.evolution_population)
+        mean_parasitic_valency = np.zeros(self.evolution_population)  # initialize the score variable which will be used as the phenotype for the selection.
+        max_parasitic_valency = np.zeros(self.evolution_population)
         duplicate_risk_scores = np.zeros(self.evolution_population)
 
         hallofshame = defaultdict(list)
@@ -174,8 +174,8 @@ class EvolveManager:
 
         # Unpack and store results from multiprocessing
         for index, res in enumerate(results):
-            physical_scores[index] = res['mean_log_score']
-            hammings[index] = res['worst_match_score']
+            mean_parasitic_valency[index] = res['mean_log_score']
+            max_parasitic_valency[index] = res['worst_match_score']
             duplicate_risk_scores[index] = res['similarity_score']
             worst_handle_combos = [tuple(map(int, re.findall(r'\d+', r[0]))) for r in res['worst_slat_combos']]
             worst_antihandle_combos = [tuple(map(int, re.findall(r'\d+', r[1]))) for r in res['worst_slat_combos']]
@@ -186,16 +186,16 @@ class EvolveManager:
                 self.initial_hallofshame['antihandles'].append(worst_antihandle_combos)
 
         # compare and find the individual with the best hamming distance i.e. the largest one. Note: there might be several
-        max_physics_score_of_population = np.min(physical_scores)
+        max_physics_score_of_population = np.min(mean_parasitic_valency)
         # Get the indices of the top 'survivors' largest elements
-        indices_of_largest_scores = np.argpartition(physical_scores, self.generational_survivors)[:self.generational_survivors]
+        indices_of_largest_scores = np.argpartition(mean_parasitic_valency, self.generational_survivors)[:self.generational_survivors]
 
         # Get the largest elements using the sorted indices
-        self.metrics['Best (Log) Physics-Based Score'].append(max_physics_score_of_population)
-        self.metrics['Corresponding Worst Match Score'].append(hammings[np.argmin(physical_scores)])
+        self.metrics['Best Effective Parasitic Valency'].append(max_physics_score_of_population)
+        self.metrics['Corresponding Max Parasitic Valency'].append(max_parasitic_valency[np.argmin(mean_parasitic_valency)])
         # All other metrics should match the specific handle array that has the best physics score
-        self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmin(physical_scores)])
-        self.metrics['Hamming Compute Time'].append(multiprocess_time)
+        self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmin(mean_parasitic_valency)])
+        self.metrics['Compute Time'].append(multiprocess_time)
         self.metrics['Generation'].append(self.current_generation)
 
         similarity_scores = []
@@ -206,7 +206,7 @@ class EvolveManager:
         self.metrics['Similarity Score'].append(sum(similarity_scores) / len(similarity_scores))
 
         # Select and store the current best handle array
-        best_idx = int(np.argmin(physical_scores))
+        best_idx = int(np.argmin(mean_parasitic_valency))
         self.handle_array = self.next_candidates[best_idx]
 
         # Extracts precomputed match histogram from multirule_oneshot_hamming for the best candidate
@@ -238,7 +238,7 @@ class EvolveManager:
         self.next_candidates = candidate_handle_arrays
 
 
-    def export_results(self, main_folder_path=None, generate_unique_folder_name=True):
+    def export_results(self, main_folder_path=None, generate_unique_folder_name=True, parameter_export=False):
 
         if main_folder_path:
             if generate_unique_folder_name:
@@ -252,16 +252,16 @@ class EvolveManager:
 
         fig, ax = plt.subplots(5, 1, figsize=(10, 10))
 
-        for ind, (name, data) in enumerate(zip(['Candidate with Best Log Mean Score',
-                                                'Corresponding Worst Mismatch Score',
+        for ind, (name, data) in enumerate(zip(['Candidate with Best Effective Parasitic Valency',
+                                                'Corresponding Max Parasitic Valency',
                                                 'Corresponding Duplication Risk Score',
                                                 'Similarity of Population to Initial Candidates',
-                                                'Hamming Compute Time (s)'],
-                                               [self.metrics['Best (Log) Physics-Based Score'],
-                                                self.metrics['Corresponding Worst Match Score'],
+                                                'Compute Time (s)'],
+                                               [self.metrics['Best Effective Parasitic Valency'],
+                                                self.metrics['Corresponding Max Parasitic Valency'],
                                                 self.metrics['Corresponding Duplicate Risk Score'],
                                                 self.metrics['Similarity Score'],
-                                                self.metrics['Hamming Compute Time']])):
+                                                self.metrics['Compute Time']])):
 
             if len(data) > 5000:
                 # turn off markers if too many data points
@@ -324,6 +324,26 @@ class EvolveManager:
                                                                                     self.excel_conditional_formatting)
         writer.close()
 
+        if parameter_export:
+            full_parameter_set = {
+                'random_seed': self.seed,
+                'generational_survivors': self.generational_survivors,
+                'mutation_rate': self.mutation_rate,
+                'mutation_type_probabilities': self.mutation_type_probabilities,
+                'unique_handle_sequences': self.number_unique_handles,
+                'evolution_generations': self.max_evolution_generations,
+                'evolution_population': self.evolution_population,
+                'split_sequence_handles': self.split_sequence_handles,
+                'sequence_split_factor': self.sequence_split_factor,
+                'process_count': self.num_processes,
+                'early_max_valency_stop': self.early_max_valency_stop,
+                'progress_bar_update_iterations': self.progress_bar_update_iterations,
+                'mutation_memory_system': self.mutation_memory_system,
+                'memory_length': self.hall_of_shame_memory,
+            }
+
+            toml.dump(full_parameter_set, open(os.path.join(output_folder, 'evolution_config.toml'), 'w'))
+
     def run_full_experiment(self, logging_interval=10):
         """
         Runs a full evolution experiment.
@@ -338,11 +358,11 @@ class EvolveManager:
                     self.export_results()
 
                 pbar.update(1)
-                pbar.set_postfix({f'Latest worst match score': self.metrics['Corresponding Worst Match Score'][-1],
-                                  'Time for mismatch calculations': self.metrics['Hamming Compute Time'][-1],
-                                  'Latest log physics partition score': self.metrics['Best (Log) Physics-Based Score'][-1]}, refresh=False)
+                pbar.set_postfix({f'Latest max parasitic valency': self.metrics['Corresponding Max Parasitic Valency'][-1],
+                                  'Time for calculations': self.metrics['Compute Time'][-1],
+                                  'Latest effective parasitic valency': self.metrics['Best Effective Parasitic Valency'][-1]}, refresh=False)
 
-                if self.early_worst_match_stop and min(self.metrics['Corresponding Worst Match Score']) <= self.early_worst_match_stop:
+                if self.early_max_valency_stop and min(self.metrics['Corresponding Max Parasitic Valency']) <= self.early_max_valency_stop:
                     print('Early stopping criteria met, ending evolution process.')
                     break
 

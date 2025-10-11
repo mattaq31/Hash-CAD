@@ -1,6 +1,8 @@
 import numpy as np
 from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
 from server_architecture import hamming_evolve_communication_pb2_grpc, hamming_evolve_communication_pb2
+from crisscross.core_functions.megastructures import Megastructure
+
 
 def proto_to_numpy(proto_layers):
     """Convert gRPC response into a 3D NumPy array"""
@@ -13,6 +15,7 @@ def proto_to_numpy(proto_layers):
         array_3d.append(array_2d)
 
     return np.array(array_3d, dtype=np.int32)  # Convert to NumPy array
+
 
 def convert_string_to_float_if_numeric(value):
     try:
@@ -27,7 +30,7 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
         self.evolve_manager = None
 
     def evolveQuery(self, request, context):
-        print('INITIATING HAMMING EVOLUTION')
+        print('INITIATING ASSEMBLY HANDLE EVOLUTION')
         self.pause_signal = False
         is_complete = False
         if self.evolve_manager is None:
@@ -36,32 +39,44 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
             initial_handle_array = np.transpose(proto_to_numpy(request.handleArray), (1, 0, 2))
             if np.sum(initial_handle_array) == 0:
                 initial_handle_array = None
+
             converted_dict = {key: convert_string_to_float_if_numeric(value) for key, value in dict(request.parameters).items()}
-            self.evolve_manager = EvolveManager(slat_array, seed_handle_array=initial_handle_array, **converted_dict)
+
+            # I probably should have used a consistent naming scheme everywhere....
+            slat_types_dart = dict(request.slatTypes)
+            slat_types_python = {}
+            for s_key, s_value in slat_types_dart.items():
+                layer, slat_int_id = s_key.split('-I')
+                slat_types_python[(int(layer), int(slat_int_id))] = s_value
+
+            main_megastructure = Megastructure(slat_array, slat_type_dict=slat_types_python, connection_angle=request.connectionAngle)
+            if initial_handle_array is not None:
+                main_megastructure.assign_assembly_handles(initial_handle_array)
+
+            self.evolve_manager = EvolveManager(main_megastructure, **converted_dict)
 
         for generation in range(self.evolve_manager.current_generation, self.evolve_manager.max_evolution_generations):
             if self.pause_signal:
                 break
             self.evolve_manager.single_evolution_step()
-            print(f"Yielding generation {generation} - Hamming: {self.evolve_manager.metrics['Corresponding Hamming Distance'][-1]}")
+
+            print(f"Yielding generation {generation} - Max Valency: {self.evolve_manager.metrics['Corresponding Max Parasitic Valency'][-1]}")
 
             if len(self.evolve_manager.metrics) > 0:
-                if max(self.evolve_manager.metrics['Corresponding Hamming Distance']) >= self.evolve_manager.early_hamming_stop:
+                if max(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
                     is_complete = True
 
             if generation == self.evolve_manager.max_evolution_generations-1:
                 is_complete = True
 
-            yield hamming_evolve_communication_pb2.ProgressUpdate(hamming=self.evolve_manager.metrics['Corresponding Hamming Distance'][-1],
-                                                                  physics=np.log(self.evolve_manager.metrics['Best (Log) Physics-Based Score'][-1]),
+            yield hamming_evolve_communication_pb2.ProgressUpdate(hamming=self.evolve_manager.metrics['Corresponding Max Parasitic Valency'][-1],
+                                                                  physics=self.evolve_manager.metrics['Best Effective Parasitic Valency'][-1],
                                                                   isComplete=is_complete)
 
 
             if len(self.evolve_manager.metrics) > 0:
-                if max(self.evolve_manager.metrics['Corresponding Hamming Distance']) >= self.evolve_manager.early_hamming_stop:
+                if max(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
                     break
-
-# TODO: need to implement script export system
 
     def PauseProcessing(self, request, context):
         self.pause_signal = True
@@ -85,5 +100,5 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
 
     def requestExport(self, request, context):
         print('RECEIVED EXPORT REQUEST')
-        self.evolve_manager.export_results(request.folderPath)
+        self.evolve_manager.export_results(request.folderPath, parameter_export=True)
         return hamming_evolve_communication_pb2.ExportResponse()

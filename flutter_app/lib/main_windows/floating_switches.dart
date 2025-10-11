@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_management/shared_app_state.dart';
+import 'alert_window.dart';
 
 
 class TogglePanel extends StatefulWidget {
@@ -46,6 +47,7 @@ class _TogglePanelState extends State<TogglePanel> {
           FloatingActionButton.small(
             foregroundColor: colorScheme.onPrimary,
             backgroundColor: colorScheme.primary,
+            tooltip: showPanel ? 'Close Settings' : 'Open Settings',
             child: Icon(showPanel ? Icons.close : Icons.tune),
             onPressed: () => setState(() => showPanel = !showPanel),
           ),
@@ -146,6 +148,15 @@ class _TogglePanelState extends State<TogglePanel> {
             )
                 : const SizedBox.shrink(),
           ),
+          // Always-visible keyboard shortcuts button
+          FloatingActionButton.small(
+            foregroundColor: colorScheme.onPrimary,
+            backgroundColor: colorScheme.primary,
+            onPressed: () => showKeyboardShortcutsDialog(context),
+            tooltip: 'Keyboard Shortcuts',
+            child: Icon(Icons.keyboard),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
     );

@@ -9,15 +9,10 @@ import pandas as pd
 import platform
 import ast
 
-from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
-from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
 from crisscross.core_functions.slats import get_slat_key, convert_slat_array_into_slat_objects, Slat
 from crisscross.helper_functions import create_dir_if_empty, natural_sort_key
-from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
 from crisscross.helper_functions.slat_salient_quantities import connection_angles
 from crisscross.graphics.static_plots import create_graphical_slat_view, create_graphical_assembly_handle_view
-from crisscross.graphics.pyvista_3d import create_graphical_3D_view
-from crisscross.graphics.blender_3d import create_graphical_3D_view_bpy
 from eqcorr2d.slat_standardized_mapping import generate_standardized_slat_handle_array
 from eqcorr2d.eqcorr2d_interface import comprehensive_score_analysis
 
@@ -85,7 +80,8 @@ class Megastructure:
     Convenience class that bundles the entire details of a megastructure including slat positions, seed handles and cargo.
     """
 
-    def __init__(self, slat_array=None, layer_interface_orientations=None, connection_angle='90', import_design_file=None):
+    def __init__(self, slat_array=None, layer_interface_orientations=None,
+                 connection_angle='90', slat_type_dict=None, import_design_file=None):
         """
         :param slat_array: Array of slat positions (3D - X,Y, layer ID) containing the positions of all slats in the design.
         :param layer_interface_orientations: The direction each slat will be facing in the design.
@@ -114,6 +110,16 @@ class Megastructure:
             self.hashcad_canvas_metadata = {'canvas_offset_min': (0.0, 0.0), 'canvas_offset_max':(0.0, 0.0)}
             num_layers = slat_array.shape[2]
             self.slats = convert_slat_array_into_slat_objects(slat_array)
+
+            if slat_type_dict is not None:
+                for s_key, s_type in slat_type_dict.items():
+                    if isinstance(s_key, str):
+                        # direct slat name
+                        self.slats[s_key].slat_type = s_type
+                    else:
+                        # tuple (layer, slat ID) format
+                        self.slats[get_slat_key(*s_key)].slat_type = s_type
+
             self.slat_grid_coords = (slat_array.shape[0], slat_array.shape[1])
 
             # if no custom interface supplied, assuming alternating H2/H5 handles,
@@ -637,7 +643,7 @@ class Megastructure:
 
         return handle_dict, antihandle_dict
 
-    def get_match_strength_score(self):
+    def get_parasitic_interactions(self):
         """
         Computes the match strength score of the megastructure design based on the assembly handles present.
         4 items are provided in a dictionary:
@@ -728,6 +734,7 @@ class Megastructure:
         :param cargo_colormap: Colormap to extract cargo colors from
         :return: N/A
         """
+        from crisscross.graphics.pyvista_3d import create_graphical_3D_view
 
         slat_array = self.generate_slat_occupancy_grid()
         if cargo_colormap is not None:
@@ -766,6 +773,9 @@ class Megastructure:
         :param filename_prepend: String to prepend to the filename of the Blender file.
         :return: N/A
         """
+
+        from crisscross.graphics.blender_3d import create_graphical_3D_view_bpy
+
         if animate_assembly:
             if custom_assembly_groups:
                 assembly_groups = custom_assembly_groups
@@ -1149,34 +1159,3 @@ class Megastructure:
             slat.layer_color = layer_palette[slat.layer]['color']
 
         return slats, handle_array, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords
-
-
-if __name__ == '__main__':
-    # testing a typical megastructure import
-    design_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/lily/lily_design_hashcad_seed.xlsx'
-    design_file = '/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/bird/bird_design_hashcad_seed.xlsx'
-    design_file = '/Users/matt/Desktop/T2.xlsx'
-
-    megastructure = Megastructure(import_design_file=design_file)
-
-    from crisscross.plate_mapping import *
-
-    main_plates = get_cutting_edge_plates()
-    cargo_plates = get_cargo_plates()
-    all_plates = main_plates + cargo_plates
-    megastructure.patch_placeholder_handles(all_plates)
-    megastructure.patch_flat_staples(main_plates[0])
-
-    echo_sheet_1 = convert_slats_into_echo_commands(slat_dict=megastructure.slats,
-                                                    destination_plate_name='TEST',
-                                                    reference_transfer_volume_nl=50,
-                                                    output_folder='/Users/matt/Desktop',
-                                                    center_only_well_pattern=False,
-                                                    plate_viz_type='barcode',
-                                                    output_filename=f'TST_echo_commands.csv')
-
-    # hamming_results = multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(), megastructure.generate_assembly_handle_grid(), request_substitute_risk_score=True)
-    # print('Hamming distance from imported array: %s, Duplication Risk: %s' % (hamming_results['Universal'], hamming_results['Substitute Risk']))
-    # megastructure.create_standard_graphical_report('/Users/matt/Desktop/test_graphics')
-    # megastructure.create_blender_3D_view('/Users/matt/Desktop', camera_spin=False, correct_slat_entrance_direction=True, include_bottom_light=False)
-    # megastructure.export_design('TEST.xlsx', '/Users/matt/Desktop')

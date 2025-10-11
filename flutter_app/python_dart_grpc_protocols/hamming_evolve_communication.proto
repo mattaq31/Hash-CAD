@@ -18,6 +18,8 @@ message EvolveRequest {
   repeated Layer3D slatArray = 1;
   repeated Layer3D handleArray = 2; // Optional, to allow an initial seed array to be set
   map<string, string> parameters = 3;  // Allows flexible future expansion
+  map<string, string> slatTypes = 4;   // Mapping from slat identifier (e.g., "slat2-layer1" or "(2,1)") to slat type (e.g., "double-barrel")
+  string connectionAngle = 5; // "60" or "90"
 }
 
 message Layer3D {

@@ -18,6 +18,8 @@ class EvolveRequest extends $pb.GeneratedMessage {
     $core.Iterable<Layer3D>? slatArray,
     $core.Iterable<Layer3D>? handleArray,
     $core.Map<$core.String, $core.String>? parameters,
+    $core.Map<$core.String, $core.String>? slatTypes,
+    $core.String? connectionAngle,
   }) {
     final $result = create();
     if (slatArray != null) {
@@ -29,6 +31,12 @@ class EvolveRequest extends $pb.GeneratedMessage {
     if (parameters != null) {
       $result.parameters.addAll(parameters);
     }
+    if (slatTypes != null) {
+      $result.slatTypes.addAll(slatTypes);
+    }
+    if (connectionAngle != null) {
+      $result.connectionAngle = connectionAngle;
+    }
     return $result;
   }
   EvolveRequest._() : super();
@@ -39,6 +47,8 @@ class EvolveRequest extends $pb.GeneratedMessage {
     ..pc<Layer3D>(1, _omitFieldNames ? '' : 'slatArray', $pb.PbFieldType.PM, protoName: 'slatArray', subBuilder: Layer3D.create)
     ..pc<Layer3D>(2, _omitFieldNames ? '' : 'handleArray', $pb.PbFieldType.PM, protoName: 'handleArray', subBuilder: Layer3D.create)
     ..m<$core.String, $core.String>(3, _omitFieldNames ? '' : 'parameters', entryClassName: 'EvolveRequest.ParametersEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('evoService'))
+    ..m<$core.String, $core.String>(4, _omitFieldNames ? '' : 'slatTypes', protoName: 'slatTypes', entryClassName: 'EvolveRequest.SlatTypesEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('evoService'))
+    ..aOS(5, _omitFieldNames ? '' : 'connectionAngle', protoName: 'connectionAngle')
     ..hasRequiredFields = false
   ;
 
@@ -71,6 +81,18 @@ class EvolveRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(3)
   $core.Map<$core.String, $core.String> get parameters => $_getMap(2);
+
+  @$pb.TagNumber(4)
+  $core.Map<$core.String, $core.String> get slatTypes => $_getMap(3);
+
+  @$pb.TagNumber(5)
+  $core.String get connectionAngle => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set connectionAngle($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasConnectionAngle() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearConnectionAngle() => clearField(5);
 }
 
 class Layer3D extends $pb.GeneratedMessage {

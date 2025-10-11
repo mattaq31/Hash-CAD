@@ -6,9 +6,16 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 
 import '../app_management/shared_app_state.dart';
-import '../graphics/rating_indicator.dart';
 import 'layer_manager.dart';
 import '../main_windows/alert_window.dart';
+
+
+Color getValencyColor(int valency) {
+  if (valency >= 8) return Colors.redAccent;
+  if (valency >= 5) return Colors.orangeAccent;
+  if (valency >= 3) return Colors.yellowAccent;
+  return Colors.greenAccent;
+}
 
 
 class AssemblyHandleDesignTools extends StatefulWidget {
@@ -216,56 +223,96 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       ),
       SizedBox(height: 5),
       Divider(thickness: 2, color: Colors.grey.shade300),
-      Text("Assembly Scores", textAlign: TextAlign.center,
+      Text("Parasitic Interactions", textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.bold)),
-      SizedBox(height: 20),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Column(
-                children: [
-                  Text("Max Pairwise Interactions",
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  Text(
-                    appState.currentlyComputingHamming
-                        ? 'Computing...'
-                        : appState.hammingValueValid
-                            ? "Up-to-date"
-                            : "Out-of-date",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 16,
-                        color: appState.currentlyComputingHamming
-                            ? Colors.yellow
-                            : appState.hammingValueValid
-                                ? Colors.green
-                                : Colors.red),
-                  ),
-                ],
-              ),
-
-              SizedBox(width: 20),
-              HammingIndicator(value: appState.currentHamming.toDouble()),
-            ],
+      SizedBox(height: 10),
+      Container(
+        width: 300,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: getValencyColor(appState.currentHamming), // depends on max valency
+            width: 6,
           ),
-          SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: appState.hammingValueValid || appState.currentlyComputingHamming ? null : () {
-              appState.updateDesignHammingValue();
-            },
-            label: Text("Recalculate Score"),
-            style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
-              textStyle: TextStyle(fontSize: 16),
+          boxShadow: [
+            BoxShadow(
+              color: getValencyColor(appState.currentHamming).withValues(alpha: 0.6),
+              blurRadius: 8,
+              spreadRadius: 2,
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end, // right-align text
+                  children: const [
+                    Text(
+                      "Maximum Valency",
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 14),
+                    Text(
+                      "Effective Valency",
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                // const SizedBox(width: 2), // smaller gap between labels and numbers
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appState.currentHamming.toString(),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      appState.currentHamming.toString(),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              appState.currentlyComputingHamming
+                  ? 'Computing...'
+                  : appState.hammingValueValid
+                  ? "Up-to-date"
+                  : "Out-of-date",
+              style: TextStyle(
+                fontSize: 16,
+                color: appState.currentlyComputingHamming
+                    ? Colors.yellow
+                    : appState.hammingValueValid
+                    ? Colors.green
+                    : Colors.red,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 10),
+      ElevatedButton.icon(
+        onPressed: appState.hammingValueValid || appState.currentlyComputingHamming
+            ? null
+            : () => appState.updateDesignHammingValue(),
+        label: const Text("Recalculate Score"),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: const TextStyle(fontSize: 16),
+        ),
       ),
       SizedBox(height: 10),
       Divider(thickness: 2, color: Colors.grey.shade300),

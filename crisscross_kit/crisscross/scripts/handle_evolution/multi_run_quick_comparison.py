@@ -45,7 +45,7 @@ for ind, (exp, name) in enumerate(zip(experiments, names)):
         for ax in plot_axs:
             # Adding plots for each dataset with different markers and colors
             sns.lineplot(data=metrics, x='Generation',
-                         y='Best (Log) Physics-Based Score', color=qual_map.colors[ind],
+                         y='Best Mean Parasitic Valency', color=qual_map.colors[ind],
                          ax=ax[0],
                          label=name)
             ax[0].set_yscale('log')
