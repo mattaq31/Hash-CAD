@@ -63,7 +63,7 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
             print(f"Yielding generation {generation} - Max Valency: {self.evolve_manager.metrics['Corresponding Max Parasitic Valency'][-1]}")
 
             if len(self.evolve_manager.metrics) > 0:
-                if max(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
+                if min(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
                     is_complete = True
 
             if generation == self.evolve_manager.max_evolution_generations-1:

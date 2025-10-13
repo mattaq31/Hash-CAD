@@ -235,7 +235,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: getValencyColor(appState.currentHamming), // depends on max valency
-            width: 6,
+            width: 3,
           ),
           boxShadow: [
             BoxShadow(

@@ -21,9 +21,11 @@ class HammingEvolveWindow extends StatefulWidget {
 class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
   bool isCollapsed = false;
   bool isHovered = false;
-  bool animationComplete =
-      true; // only enables item visibility when the animation is complete i.e. box is fully extended
+  bool animationComplete = true; // only enables item visibility when the animation is complete i.e. box is fully extended
   bool advancedExpanded = false;
+
+  bool _progressHovering = false;
+  double _progressHoverX = 0.0;
 
   final Map<int, String> defaultParams = {
     2: 'mutation_rate',
@@ -223,21 +225,61 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                         const SizedBox(height: 4),
                         Center(
                           child: SizedBox(
-                            width: 400,
+                            width: 600,
                             child: Column(
                               crossAxisAlignment:
                               CrossAxisAlignment.stretch,
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: LinearProgressIndicator(
-                                    value: progress,
-                                    minHeight: 12,
-                                    backgroundColor: Colors.grey.shade300,
-                                    valueColor:
-                                    AlwaysStoppedAnimation<Color>(
-                                        Colors.blueAccent),
-                                  ),
+
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final width = constraints.maxWidth;
+                                    return MouseRegion(
+                                      onEnter: (_) => setState(() => _progressHovering = true),
+                                      onExit: (_) => setState(() => _progressHovering = false),
+                                      onHover: (event) =>
+                                          setState(() => _progressHoverX = event.localPosition.dx.clamp(0.0, width)),
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(10),
+                                            child: LinearProgressIndicator(
+                                              value: progress,
+                                              minHeight: 12,
+                                              backgroundColor: Colors.grey.shade300,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                serverState.hammingMetrics.isNotEmpty
+                                                    ? getValencyColor(serverState.hammingMetrics.last.toInt())
+                                                    : Colors.redAccent,
+                                              ),
+                                            ),
+                                          ),
+                                          if (_progressHovering)
+                                            Positioned(
+                                              left: (_progressHoverX - 36).clamp(0.0, width - 72),
+                                              top: -38,
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                elevation: 2,
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black87,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    // compute generation from hover fraction and total (uses `total` from surrounding scope)
+                                                    'Currently at Generation $current',
+                                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
                                 Row(
                                   mainAxisAlignment:
@@ -257,31 +299,39 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                                child: StandardLineChart(
+                        child: Center(
+                          child: Transform.translate(
+                            offset: const Offset(-18, 0), // shift both charts left slightly
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 330,
+                                  child: StandardLineChart(
                                     'Generation',
                                     'Max. Valency',
                                     List.generate(
-                                        serverState.hammingMetrics.length,
-                                        (index) => FlSpot(
-                                            index.toDouble(),
-                                            32 -
-                                                serverState
-                                                    .hammingMetrics[index])))),
-                            const SizedBox(width: 16),
-                            Expanded(
-                                child: StandardLineChart(
+                                      serverState.hammingMetrics.length,
+                                          (index) => FlSpot(index.toDouble(), serverState.hammingMetrics[index]),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                SizedBox(
+                                  width: 330,
+                                  child: StandardLineChart(
                                     'Generation',
                                     'Eff. Valency',
                                     List.generate(
-                                        serverState.physicsMetrics.length,
-                                        (index) => FlSpot(
-                                            index.toDouble(),
-                                            serverState
-                                                .physicsMetrics[index])))),
-                          ],
+                                      serverState.physicsMetrics.length,
+                                          (index) => FlSpot(index.toDouble(), double.parse(serverState.physicsMetrics[index].toStringAsFixed(3))),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),

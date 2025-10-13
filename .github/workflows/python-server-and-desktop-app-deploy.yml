@@ -90,6 +90,7 @@ jobs:
           script-name: main_server.py
           mode: onefile
           include-module: matplotlib.backends.backend_pdf
+          include-package: numpy._core
           onefile-tempdir-spec: '{HOME}/.nuitka_cache'
           enable-plugins: no-qt
           working-directory: ./flutter_app/python_server

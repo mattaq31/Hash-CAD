@@ -1211,8 +1211,16 @@ class DesignState extends ChangeNotifier {
     Set<String> attachmentSlats = {};
     for (var coord in coordinates.values) {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
-      attachmentSlats.add(slat.id);
+      var slatID = slat.id;
+      if (slat.slatType != 'tube'){
+        slatID = slat.id + (slat.slatCoordinateToPosition[coord]! < 17 ? '-first-half' : 'second-half');
+      }
+      else{
+        slatID = slat.id;
+      }
+      attachmentSlats.add(slatID);
     }
+
     if (attachmentSlats.length < 16){
       // not enough slats to place a seed - it's likely seed was placed in parallel to slats rather than at an angle
       showWarning(context, 'Invalid Seed Placement', 'A seed needs to anchor 16 slats to be able to properly initiate crisscross growth.  Rotate your seed and try again.');
@@ -1553,7 +1561,7 @@ class ServerState extends ChangeNotifier {
   Map<String, String> evoParams = {
     'mutation_rate': '5',
     'mutation_type_probabilities': '0.425, 0.425, 0.15',
-    'evolution_generations': '200',
+    'evolution_generations': '2000',
     'evolution_population': '30',
     'process_count': 'DEFAULT',
     'generational_survivors': '3',

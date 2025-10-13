@@ -454,11 +454,14 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     controls.target.setValues(-21.87, -8, 3.73);
 
     controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-    controls.dampingFactor = 0.05;
+    controls.enableKeys = false;
+    controls.keyPanSpeed = 0; // neutralises arrow-key panning
+
+    controls.dampingFactor = 0.07;
 
     controls.screenSpacePanning = false;
 
-    controls.minDistance = 100;
+    controls.minDistance = 30;
     // controls.maxDistance = 1000;
 
     if (gridView){
@@ -1154,7 +1157,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   message: 'Center View',
                   child: ElevatedButton(
                     onPressed: () {
-                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('double-barrel-A')]!]);
+                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('double-barrel-A')]!, instanceManager[selectSlatVisualStyle('double-barrel-B')]!]);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
