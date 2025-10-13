@@ -12,7 +12,7 @@ def convert_to_triangular(coord):
     """
     Equation applied: x(new) = (x+y)/2, y(new) = -x
     """
-    return -int(coord[1]), int((coord[0] + coord[1])/2)
+    return -int(coord[1]), int((coord[0] + coord[1]) / 2)
 
 
 def convert_triangular_coords_to_array(coords):
@@ -40,6 +40,7 @@ def convert_triangular_coords_to_array(coords):
 
     return arr
 
+
 def generate_standardized_slat_handle_array(slat_1D_array, slat_type):
     """
     Given a list of slat handles in order, assign handles to their corresponding standardized slat shape, which can then
@@ -50,20 +51,86 @@ def generate_standardized_slat_handle_array(slat_1D_array, slat_type):
     """
     standardized_handle_array = standardized_slat_mappings[slat_type].copy()
     for position, value in enumerate(slat_1D_array):
-        standardized_handle_array[standardized_slat_mappings[slat_type]==position+1] = value
+        standardized_handle_array[standardized_slat_mappings[slat_type] == position + 1] = value
     return standardized_handle_array
 
 
-# this reads the basic positional mappings for special slat types,
+# this sets up the basic positional mappings for special slat types,
 # which makes it easy to convert them to a standardized shape, which in turn
 # helps simplify our handle match comparison algorithms
-all_slat_maps = pd.read_excel(os.path.join(this_folder, slat_database_file), sheet_name=None, header=None)
+all_slat_maps = {}
 standardized_slat_mappings = {}
 triangular_coordinate_slat_mappings = {}
 
-for sheet_name, df in all_slat_maps.items():
-    base_array = df.to_numpy()
+# to add new slat types, export to excel, read in as a pandas dataframe, convert to numpy array, and then print and add to the dictionary here.
+all_slat_maps['double-barrel-A'] = np.array([[0, 0],
+                                             [0, 1],
+                                             [32, 0],
+                                             [0, 2],
+                                             [31, 0],
+                                             [0, 3],
+                                             [30, 0],
+                                             [0, 4],
+                                             [29, 0],
+                                             [0, 5],
+                                             [28, 0],
+                                             [0, 6],
+                                             [27, 0],
+                                             [0, 7],
+                                             [26, 0],
+                                             [0, 8],
+                                             [25, 0],
+                                             [0, 9],
+                                             [24, 0],
+                                             [0, 10],
+                                             [23, 0],
+                                             [0, 11],
+                                             [22, 0],
+                                             [0, 12],
+                                             [21, 0],
+                                             [0, 13],
+                                             [20, 0],
+                                             [0, 14],
+                                             [19, 0],
+                                             [0, 15],
+                                             [18, 0],
+                                             [0, 16],
+                                             [17, 0]])
 
+all_slat_maps['double-barrel-B'] = np.array([[32, 0],
+                                             [0, 1],
+                                             [31, 0],
+                                             [0, 2],
+                                             [30, 0],
+                                             [0, 3],
+                                             [29, 0],
+                                             [0, 4],
+                                             [28, 0],
+                                             [0, 5],
+                                             [27, 0],
+                                             [0, 6],
+                                             [26, 0],
+                                             [0, 7],
+                                             [25, 0],
+                                             [0, 8],
+                                             [24, 0],
+                                             [0, 9],
+                                             [23, 0],
+                                             [0, 10],
+                                             [22, 0],
+                                             [0, 11],
+                                             [21, 0],
+                                             [0, 12],
+                                             [20, 0],
+                                             [0, 13],
+                                             [19, 0],
+                                             [0, 14],
+                                             [18, 0],
+                                             [0, 15],
+                                             [17, 0],
+                                             [0, 16]])
+
+for sheet_name, base_array in all_slat_maps.items():
     # extracts coordinates
     coords = [tuple(coord) for coord in np.argwhere(base_array > 0)[np.argsort(base_array[base_array > 0])]]
 

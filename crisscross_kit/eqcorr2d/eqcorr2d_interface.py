@@ -366,11 +366,11 @@ def get_seperate_worst_lists(c_results):
     local_hist_total = c_results.get('local_hist_total')
     if worst is None:
         print("Warning: global histogram needed to compute worst list, returning (None,None)")
-        return ( None, None)
+        return None, None
 
     if local_hist_total is None:
         print ("Warning: local histogram needet to compute worst list , returning (None,None)")
-        return( None, None)
+        return None, None
 
     worst_slice = local_hist_total[:, :, worst]
     ii, jj = np.where(worst_slice > 0)
@@ -412,11 +412,11 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
 
     worst_slice = loc[:, :, worst]  # counts per (i,j) in the worst bin
 
-    # we won't skip anything if its about matches of 1 or less since they are somehow convoluted in the do smart scheme.
+    # we won't skip anything if it's about matches of 1 or less since they are somehow convoluted in the do smart scheme.
     if worst <=1:
         expected_skips = []
     else:
-        expected_skips = connection_graph.get(worst, []) # if its not in there skip nothing
+        expected_skips = connection_graph.get(worst, []) # if it's not in there skip nothing
     skip_counts = Counter(expected_skips)  # multiplicities to skip in this bin. not sure if counter is needed they could be unique already. who knows
 
     combos = []
@@ -440,9 +440,11 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
     # sanity check to verify all expected skips were found
 
     if len(skipped) != len(expected_skips):
-        print("Warning: some expected skips were not found in the worst pairs. There might be a bug.")
-        print("Skipped pairs:", skipped)
-        print("Expected skips from connection graph:", expected_skips)
+        raise RuntimeError(
+            f"Warning: some expected skips were not found in the worst pairs. There might be a bug.\n"
+            f"Skipped pairs: {skipped}\n"
+            f"Expected skips from connection graph: {expected_skips}"
+        )
 
     return combos
 

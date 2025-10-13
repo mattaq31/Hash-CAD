@@ -961,8 +961,6 @@ class DesignState extends ChangeNotifier {
 
   Future<bool> updateAssemblyHandlesFromFile(BuildContext context) async {
     /// Reads assembly handles from a file and applies them to the slats (e.g. generated after evolution)
-    ///
-
 
     bool readStatus = await importAssemblyHandlesFromFileIntoSlatArray(slats, layerMap, gridSize);
     if (!readStatus) {
@@ -981,6 +979,26 @@ class DesignState extends ChangeNotifier {
     (minPos, maxPos) = extractGridBoundary(slats);
     List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
     return slatArray;
+  }
+
+  Map<String, List<(int, int)>> getSlatCoords(){
+    Offset minPos;
+    Offset maxPos;
+    (minPos, maxPos) = extractGridBoundary(slats);
+
+    Map<String, List<(int, int)>> slatCoords = {};
+
+    for (var slat in slats.values) {
+      var layerNumber = layerMap[slat.layer]!['order'] + 1;
+      var pythonSlatId = slat.id.replaceFirst(slat.layer, layerNumber.toString());
+      for (var i = 0; i < slat.maxLength; i++) {
+        var pos = slat.slatPositionToCoordinate[i + 1]!;
+        int x = (pos.dx - minPos.dx).toInt();
+        int y = (pos.dy - minPos.dy).toInt();
+        slatCoords.putIfAbsent(pythonSlatId, () => []).add((x, y));
+      }
+    }
+    return slatCoords;
   }
 
   List<List<List<int>>> getHandleArray(){
@@ -1590,8 +1608,8 @@ class ServerState extends ChangeNotifier {
 
   ServerState();
 
-  void evolveAssemblyHandles(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray, Map<String, String> slatTypes, String connectionAngle) {
-    hammingClient?.initiateEvolve(slatArray, handleArray, evoParams, slatTypes, connectionAngle);
+  void evolveAssemblyHandles(List<List<List<int>>> slatArray, Map<String, List<(int, int)>> slatCoords, List<List<List<int>>> handleArray, Map<String, String> slatTypes, String connectionAngle) {
+    hammingClient?.initiateEvolve(slatArray, slatCoords, handleArray, evoParams, slatTypes, connectionAngle);
     evoActive = true;
     statusIndicator = 'RUNNING';
     notifyListeners();

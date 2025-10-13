@@ -20,6 +20,7 @@ class EvolveRequest extends $pb.GeneratedMessage {
     $core.Map<$core.String, $core.String>? parameters,
     $core.Map<$core.String, $core.String>? slatTypes,
     $core.String? connectionAngle,
+    $core.Map<$core.String, CoordinateList>? coordinateMap,
   }) {
     final $result = create();
     if (slatArray != null) {
@@ -37,6 +38,9 @@ class EvolveRequest extends $pb.GeneratedMessage {
     if (connectionAngle != null) {
       $result.connectionAngle = connectionAngle;
     }
+    if (coordinateMap != null) {
+      $result.coordinateMap.addAll(coordinateMap);
+    }
     return $result;
   }
   EvolveRequest._() : super();
@@ -49,6 +53,7 @@ class EvolveRequest extends $pb.GeneratedMessage {
     ..m<$core.String, $core.String>(3, _omitFieldNames ? '' : 'parameters', entryClassName: 'EvolveRequest.ParametersEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('evoService'))
     ..m<$core.String, $core.String>(4, _omitFieldNames ? '' : 'slatTypes', protoName: 'slatTypes', entryClassName: 'EvolveRequest.SlatTypesEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('evoService'))
     ..aOS(5, _omitFieldNames ? '' : 'connectionAngle', protoName: 'connectionAngle')
+    ..m<$core.String, CoordinateList>(6, _omitFieldNames ? '' : 'coordinateMap', protoName: 'coordinateMap', entryClassName: 'EvolveRequest.CoordinateMapEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OM, valueCreator: CoordinateList.create, valueDefaultOrMaker: CoordinateList.getDefault, packageName: const $pb.PackageName('evoService'))
     ..hasRequiredFields = false
   ;
 
@@ -93,6 +98,9 @@ class EvolveRequest extends $pb.GeneratedMessage {
   $core.bool hasConnectionAngle() => $_has(4);
   @$pb.TagNumber(5)
   void clearConnectionAngle() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.Map<$core.String, CoordinateList> get coordinateMap => $_getMap(5);
 }
 
 class Layer3D extends $pb.GeneratedMessage {
@@ -494,6 +502,114 @@ class FinalResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(1)
   $core.List<Layer3D> get handleArray => $_getList(0);
+}
+
+class CoordinateList extends $pb.GeneratedMessage {
+  factory CoordinateList({
+    $core.Iterable<Coordinate>? coords,
+  }) {
+    final $result = create();
+    if (coords != null) {
+      $result.coords.addAll(coords);
+    }
+    return $result;
+  }
+  CoordinateList._() : super();
+  factory CoordinateList.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory CoordinateList.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'CoordinateList', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
+    ..pc<Coordinate>(1, _omitFieldNames ? '' : 'coords', $pb.PbFieldType.PM, subBuilder: Coordinate.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  CoordinateList clone() => CoordinateList()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  CoordinateList copyWith(void Function(CoordinateList) updates) => super.copyWith((message) => updates(message as CoordinateList)) as CoordinateList;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CoordinateList create() => CoordinateList._();
+  CoordinateList createEmptyInstance() => create();
+  static $pb.PbList<CoordinateList> createRepeated() => $pb.PbList<CoordinateList>();
+  @$core.pragma('dart2js:noInline')
+  static CoordinateList getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<CoordinateList>(create);
+  static CoordinateList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<Coordinate> get coords => $_getList(0);
+}
+
+class Coordinate extends $pb.GeneratedMessage {
+  factory Coordinate({
+    $core.int? x,
+    $core.int? y,
+  }) {
+    final $result = create();
+    if (x != null) {
+      $result.x = x;
+    }
+    if (y != null) {
+      $result.y = y;
+    }
+    return $result;
+  }
+  Coordinate._() : super();
+  factory Coordinate.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory Coordinate.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Coordinate', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
+    ..a<$core.int>(1, _omitFieldNames ? '' : 'x', $pb.PbFieldType.O3)
+    ..a<$core.int>(2, _omitFieldNames ? '' : 'y', $pb.PbFieldType.O3)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  Coordinate clone() => Coordinate()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  Coordinate copyWith(void Function(Coordinate) updates) => super.copyWith((message) => updates(message as Coordinate)) as Coordinate;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Coordinate create() => Coordinate._();
+  Coordinate createEmptyInstance() => create();
+  static $pb.PbList<Coordinate> createRepeated() => $pb.PbList<Coordinate>();
+  @$core.pragma('dart2js:noInline')
+  static Coordinate getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Coordinate>(create);
+  static Coordinate? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get x => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set x($core.int v) { $_setSignedInt32(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasX() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearX() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get y => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set y($core.int v) { $_setSignedInt32(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasY() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearY() => clearField(2);
 }
 
 

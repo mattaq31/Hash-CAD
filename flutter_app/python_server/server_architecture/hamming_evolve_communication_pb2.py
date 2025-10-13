@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"hamming_evolve_communication.proto\x12\nevoService\"\xdb\x02\n\rEvolveRequest\x12&\n\tslatArray\x18\x01 \x03(\x0b\x32\x13.evoService.Layer3D\x12(\n\x0bhandleArray\x18\x02 \x03(\x0b\x32\x13.evoService.Layer3D\x12=\n\nparameters\x18\x03 \x03(\x0b\x32).evoService.EvolveRequest.ParametersEntry\x12;\n\tslatTypes\x18\x04 \x03(\x0b\x32(.evoService.EvolveRequest.SlatTypesEntry\x12\x17\n\x0f\x63onnectionAngle\x18\x05 \x01(\t\x1a\x31\n\x0fParametersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a\x30\n\x0eSlatTypesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\".\n\x07Layer3D\x12#\n\x06layers\x18\x01 \x03(\x0b\x32\x13.evoService.Layer2D\",\n\x07Layer2D\x12!\n\x04rows\x18\x01 \x03(\x0b\x32\x13.evoService.Layer1D\"\x19\n\x07Layer1D\x12\x0e\n\x06values\x18\x01 \x03(\x05\"F\n\x0eProgressUpdate\x12\x0f\n\x07hamming\x18\x01 \x01(\x01\x12\x0f\n\x07physics\x18\x02 \x01(\x01\x12\x12\n\nisComplete\x18\x03 \x01(\x08\"\r\n\x0bStopRequest\"\x0e\n\x0cPauseRequest\"\x10\n\x0e\x45xportResponse\"#\n\rExportRequest\x12\x12\n\nfolderPath\x18\x01 \x01(\t\"9\n\rFinalResponse\x12(\n\x0bhandleArray\x18\x01 \x03(\x0b\x32\x13.evoService.Layer3D2\xab\x02\n\x0cHandleEvolve\x12\x46\n\x0b\x65volveQuery\x12\x19.evoService.EvolveRequest\x1a\x1a.evoService.ProgressUpdate0\x01\x12\x45\n\x0fPauseProcessing\x12\x18.evoService.PauseRequest\x1a\x18.evoService.PauseRequest\x12\x44\n\x0eStopProcessing\x12\x17.evoService.StopRequest\x1a\x19.evoService.FinalResponse\x12\x46\n\rrequestExport\x12\x19.evoService.ExportRequest\x1a\x1a.evoService.ExportResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"hamming_evolve_communication.proto\x12\nevoService\"\xf2\x03\n\rEvolveRequest\x12&\n\tslatArray\x18\x01 \x03(\x0b\x32\x13.evoService.Layer3D\x12(\n\x0bhandleArray\x18\x02 \x03(\x0b\x32\x13.evoService.Layer3D\x12=\n\nparameters\x18\x03 \x03(\x0b\x32).evoService.EvolveRequest.ParametersEntry\x12;\n\tslatTypes\x18\x04 \x03(\x0b\x32(.evoService.EvolveRequest.SlatTypesEntry\x12\x17\n\x0f\x63onnectionAngle\x18\x05 \x01(\t\x12\x43\n\rcoordinateMap\x18\x06 \x03(\x0b\x32,.evoService.EvolveRequest.CoordinateMapEntry\x1a\x31\n\x0fParametersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a\x30\n\x0eSlatTypesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1aP\n\x12\x43oordinateMapEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12)\n\x05value\x18\x02 \x01(\x0b\x32\x1a.evoService.CoordinateList:\x02\x38\x01\".\n\x07Layer3D\x12#\n\x06layers\x18\x01 \x03(\x0b\x32\x13.evoService.Layer2D\",\n\x07Layer2D\x12!\n\x04rows\x18\x01 \x03(\x0b\x32\x13.evoService.Layer1D\"\x19\n\x07Layer1D\x12\x0e\n\x06values\x18\x01 \x03(\x05\"F\n\x0eProgressUpdate\x12\x0f\n\x07hamming\x18\x01 \x01(\x01\x12\x0f\n\x07physics\x18\x02 \x01(\x01\x12\x12\n\nisComplete\x18\x03 \x01(\x08\"\r\n\x0bStopRequest\"\x0e\n\x0cPauseRequest\"\x10\n\x0e\x45xportResponse\"#\n\rExportRequest\x12\x12\n\nfolderPath\x18\x01 \x01(\t\"9\n\rFinalResponse\x12(\n\x0bhandleArray\x18\x01 \x03(\x0b\x32\x13.evoService.Layer3D\"8\n\x0e\x43oordinateList\x12&\n\x06\x63oords\x18\x01 \x03(\x0b\x32\x16.evoService.Coordinate\"\"\n\nCoordinate\x12\t\n\x01x\x18\x01 \x01(\x05\x12\t\n\x01y\x18\x02 \x01(\x05\x32\xab\x02\n\x0cHandleEvolve\x12\x46\n\x0b\x65volveQuery\x12\x19.evoService.EvolveRequest\x1a\x1a.evoService.ProgressUpdate0\x01\x12\x45\n\x0fPauseProcessing\x12\x18.evoService.PauseRequest\x1a\x18.evoService.PauseRequest\x12\x44\n\x0eStopProcessing\x12\x17.evoService.StopRequest\x1a\x19.evoService.FinalResponse\x12\x46\n\rrequestExport\x12\x19.evoService.ExportRequest\x1a\x1a.evoService.ExportResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,30 +35,38 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_EVOLVEREQUEST_PARAMETERSENTRY']._serialized_options = b'8\001'
   _globals['_EVOLVEREQUEST_SLATTYPESENTRY']._loaded_options = None
   _globals['_EVOLVEREQUEST_SLATTYPESENTRY']._serialized_options = b'8\001'
+  _globals['_EVOLVEREQUEST_COORDINATEMAPENTRY']._loaded_options = None
+  _globals['_EVOLVEREQUEST_COORDINATEMAPENTRY']._serialized_options = b'8\001'
   _globals['_EVOLVEREQUEST']._serialized_start=51
-  _globals['_EVOLVEREQUEST']._serialized_end=398
-  _globals['_EVOLVEREQUEST_PARAMETERSENTRY']._serialized_start=299
-  _globals['_EVOLVEREQUEST_PARAMETERSENTRY']._serialized_end=348
-  _globals['_EVOLVEREQUEST_SLATTYPESENTRY']._serialized_start=350
-  _globals['_EVOLVEREQUEST_SLATTYPESENTRY']._serialized_end=398
-  _globals['_LAYER3D']._serialized_start=400
-  _globals['_LAYER3D']._serialized_end=446
-  _globals['_LAYER2D']._serialized_start=448
-  _globals['_LAYER2D']._serialized_end=492
-  _globals['_LAYER1D']._serialized_start=494
-  _globals['_LAYER1D']._serialized_end=519
-  _globals['_PROGRESSUPDATE']._serialized_start=521
-  _globals['_PROGRESSUPDATE']._serialized_end=591
-  _globals['_STOPREQUEST']._serialized_start=593
-  _globals['_STOPREQUEST']._serialized_end=606
-  _globals['_PAUSEREQUEST']._serialized_start=608
-  _globals['_PAUSEREQUEST']._serialized_end=622
-  _globals['_EXPORTRESPONSE']._serialized_start=624
-  _globals['_EXPORTRESPONSE']._serialized_end=640
-  _globals['_EXPORTREQUEST']._serialized_start=642
-  _globals['_EXPORTREQUEST']._serialized_end=677
-  _globals['_FINALRESPONSE']._serialized_start=679
-  _globals['_FINALRESPONSE']._serialized_end=736
-  _globals['_HANDLEEVOLVE']._serialized_start=739
-  _globals['_HANDLEEVOLVE']._serialized_end=1038
+  _globals['_EVOLVEREQUEST']._serialized_end=549
+  _globals['_EVOLVEREQUEST_PARAMETERSENTRY']._serialized_start=368
+  _globals['_EVOLVEREQUEST_PARAMETERSENTRY']._serialized_end=417
+  _globals['_EVOLVEREQUEST_SLATTYPESENTRY']._serialized_start=419
+  _globals['_EVOLVEREQUEST_SLATTYPESENTRY']._serialized_end=467
+  _globals['_EVOLVEREQUEST_COORDINATEMAPENTRY']._serialized_start=469
+  _globals['_EVOLVEREQUEST_COORDINATEMAPENTRY']._serialized_end=549
+  _globals['_LAYER3D']._serialized_start=551
+  _globals['_LAYER3D']._serialized_end=597
+  _globals['_LAYER2D']._serialized_start=599
+  _globals['_LAYER2D']._serialized_end=643
+  _globals['_LAYER1D']._serialized_start=645
+  _globals['_LAYER1D']._serialized_end=670
+  _globals['_PROGRESSUPDATE']._serialized_start=672
+  _globals['_PROGRESSUPDATE']._serialized_end=742
+  _globals['_STOPREQUEST']._serialized_start=744
+  _globals['_STOPREQUEST']._serialized_end=757
+  _globals['_PAUSEREQUEST']._serialized_start=759
+  _globals['_PAUSEREQUEST']._serialized_end=773
+  _globals['_EXPORTRESPONSE']._serialized_start=775
+  _globals['_EXPORTRESPONSE']._serialized_end=791
+  _globals['_EXPORTREQUEST']._serialized_start=793
+  _globals['_EXPORTREQUEST']._serialized_end=828
+  _globals['_FINALRESPONSE']._serialized_start=830
+  _globals['_FINALRESPONSE']._serialized_end=887
+  _globals['_COORDINATELIST']._serialized_start=889
+  _globals['_COORDINATELIST']._serialized_end=945
+  _globals['_COORDINATE']._serialized_start=947
+  _globals['_COORDINATE']._serialized_end=981
+  _globals['_HANDLEEVOLVE']._serialized_start=984
+  _globals['_HANDLEEVOLVE']._serialized_end=1283
 # @@protoc_insertion_point(module_scope)

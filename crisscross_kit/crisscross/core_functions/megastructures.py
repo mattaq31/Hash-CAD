@@ -80,16 +80,23 @@ class Megastructure:
     Convenience class that bundles the entire details of a megastructure including slat positions, seed handles and cargo.
     """
 
-    def __init__(self, slat_array=None, layer_interface_orientations=None,
+    def __init__(self, slat_array=None, slat_coordinate_dict=None, layer_interface_orientations=None,
                  connection_angle='90', slat_type_dict=None, import_design_file=None):
         """
         :param slat_array: Array of slat positions (3D - X,Y, layer ID) containing the positions of all slats in the design.
-        :param layer_interface_orientations: The direction each slat will be facing in the design.
+        :param slat_coordinate_dict: Dictionary of slat coordinates (key = (layer, slat ID), value = list of (y,x) coordinates).
+        This is optional, but required to properly adjust positions of double-barrel slats.
+        :param layer_interface_orientations: The direction each slat will be facing in the design. E.g. for a 2 layer design,
+        [2, 5, 2] implies that the bottom layer will have H2 handles sticking out, the connecting interface will have H5 handles
+        and the top layer will have H2 handles again.
         :param connection_angle: The angle at which the slats will be connected.  For now, only 90 and 60 grids are supported.
-        E.g. for a 2 layer design, [2, 5, 2] implies that the bottom layer will have H2 handles sticking out,
-        the connecting interface will have H5 handles and the top layer will have H2 handles again.
+        :param slat_type_dict: Dictionary of slat types (key = (layer, slat ID), value = slat type string)
+        :param import_design_file: If provided, the design will be imported from the specified file instead of being built from scratch.
         TODO: how do we consider the additional 12nm/6nm on either end of the slat?
         """
+
+        if slat_coordinate_dict is None:
+            slat_coordinate_dict = {}
 
         # reads in all design details from file if available
         if import_design_file is not None:
@@ -109,7 +116,18 @@ class Megastructure:
             self.cargo_palette = {}
             self.hashcad_canvas_metadata = {'canvas_offset_min': (0.0, 0.0), 'canvas_offset_max':(0.0, 0.0)}
             num_layers = slat_array.shape[2]
-            self.slats = convert_slat_array_into_slat_objects(slat_array)
+
+            if len(slat_coordinate_dict) == 0:
+                self.slats = convert_slat_array_into_slat_objects(slat_array)
+            else:
+                self.slats = {}
+                for s_key, s_coords in slat_coordinate_dict.items():
+                    if isinstance(s_key, str):
+                        # direct slat name
+                        self.slats[s_key] = Slat(s_key, int(s_key.split('-slat')[0].split('layer')[-1]), s_coords)
+                    else:
+                        # tuple (layer, slat ID) format
+                        self.slats[get_slat_key(*s_key)] = Slat(get_slat_key(*s_key), s_key[0], s_coords)
 
             if slat_type_dict is not None:
                 for s_key, s_type in slat_type_dict.items():
@@ -580,7 +598,15 @@ class Megastructure:
                 # enumerates all matches found and updates the overall count
                 for k, v in matches_with_other_slats.items():
                     megastructure_match_count[v] += 1
-                    connection_graph[v].append((s_key, k))
+
+                    # due to the way the eqcorr2d slat connection compensation is computed, the handles (lower layer) should always come first
+                    # in the connection graph dictionary, with the antihandles coming in second
+                    main_key_layer = slat.layer
+                    incoming_key_layer = self.slats[k].layer
+                    if main_key_layer < incoming_key_layer:
+                        connection_graph[v].append((s_key, k))
+                    else:
+                        connection_graph[v].append((k, s_key))
 
                 # prevents other slats from matching with this slat again
                 completed_slats.add(s_key)
@@ -663,7 +689,7 @@ class Megastructure:
         # these will be removed from the final histogram
         match_counts, connection_graph = self.get_slat_match_counts()
 
-        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle)
+        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle, do_worst=True)
 
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,

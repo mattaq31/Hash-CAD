@@ -75,6 +75,22 @@ class CrisscrossClient {
     return result;
   }
 
+// Helper to convert Dart record coords into proto CoordinateList
+  Map<String, CoordinateList> convertSlatCoords(Map<String, List<(int, int)>> slatCoords) {
+    final result = <String, CoordinateList>{};
+    slatCoords.forEach((key, list) {
+      final coordList = CoordinateList();
+      for (final rec in list) {
+        final x = rec.$1;
+        final y = rec.$2;
+        coordList.coords.add(Coordinate()..x = x..y = y);
+      }
+      result[key] = coordList;
+    });
+    return result;
+  }
+
+
   Future<void> pauseEvolve(){
     return stub.pauseProcessing(PauseRequest());
   }
@@ -91,10 +107,12 @@ class CrisscrossClient {
 
   Future<void> initiateEvolve(
       List<List<List<int>>> slatArray,
+      Map<String, List<(int, int)>> slatCoords,
       List<List<List<int>>> handleArray,
       Map<String, String> evoParams,
       Map<String, String> slatTypes,
       String connectionAngle) async {
+
     List<Layer3D> grpcSlatArray = convertToLayer3D(slatArray);
     List<Layer3D> grpcHandleArray = convertToLayer3D(handleArray);
 
@@ -107,6 +125,7 @@ class CrisscrossClient {
         slatArray: grpcSlatArray,
         handleArray: grpcHandleArray,
         parameters: evoParams,
+        coordinateMap: convertSlatCoords(slatCoords),
         slatTypes: slatTypes,
         connectionAngle: connectionAngle);
 

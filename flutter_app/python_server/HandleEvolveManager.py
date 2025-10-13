@@ -24,6 +24,18 @@ def convert_string_to_float_if_numeric(value):
         return value
 
 
+def coordinate_map_to_tuples(proto_coordinate_map):
+    """
+    Convert proto map<string, CoordinateList> to dict[string, list[tuple[int,int]]]
+    """
+
+    # x/y flipped for numpy indexing system
+    return {
+        key: [(coord.y, coord.x) for coord in coord_list.coords]
+        for key, coord_list in proto_coordinate_map.items()
+    }
+
+
 class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServicer):
     def __init__(self):
         self.pause_signal = False
@@ -44,12 +56,23 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
 
             # I probably should have used a consistent naming scheme everywhere....
             slat_types_dart = dict(request.slatTypes)
+            slat_coordinates_dart = coordinate_map_to_tuples(request.coordinateMap)
+
             slat_types_python = {}
+            slat_coordinates_python = {}
             for s_key, s_value in slat_types_dart.items():
                 layer, slat_int_id = s_key.split('-I')
                 slat_types_python[(int(layer), int(slat_int_id))] = s_value
 
-            main_megastructure = Megastructure(slat_array, slat_type_dict=slat_types_python, connection_angle=request.connectionAngle)
+            for s_key, s_value in slat_coordinates_dart.items():
+                layer, slat_int_id = s_key.split('-I')
+                slat_coordinates_python[(int(layer), int(slat_int_id))] = s_value
+
+            main_megastructure = Megastructure(slat_array=slat_array,
+                                               slat_coordinate_dict=slat_coordinates_python,
+                                               slat_type_dict=slat_types_python,
+                                               connection_angle=request.connectionAngle)
+
             if initial_handle_array is not None:
                 main_megastructure.assign_assembly_handles(initial_handle_array)
 

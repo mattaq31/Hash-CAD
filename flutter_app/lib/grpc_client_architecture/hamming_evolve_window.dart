@@ -527,6 +527,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                   : () {
                                       serverState.evolveAssemblyHandles(
                                           appState.getSlatArray(),
+                                          appState.getSlatCoords(),
                                           appState.getHandleArray(),
                                           appState.getSlatTypes(),
                                           appState.gridMode);

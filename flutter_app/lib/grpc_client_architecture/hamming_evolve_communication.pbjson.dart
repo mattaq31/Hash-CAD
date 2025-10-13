@@ -22,8 +22,9 @@ const EvolveRequest$json = {
     {'1': 'parameters', '3': 3, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.ParametersEntry', '10': 'parameters'},
     {'1': 'slatTypes', '3': 4, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.SlatTypesEntry', '10': 'slatTypes'},
     {'1': 'connectionAngle', '3': 5, '4': 1, '5': 9, '10': 'connectionAngle'},
+    {'1': 'coordinateMap', '3': 6, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.CoordinateMapEntry', '10': 'coordinateMap'},
   ],
-  '3': [EvolveRequest_ParametersEntry$json, EvolveRequest_SlatTypesEntry$json],
+  '3': [EvolveRequest_ParametersEntry$json, EvolveRequest_SlatTypesEntry$json, EvolveRequest_CoordinateMapEntry$json],
 };
 
 @$core.Deprecated('Use evolveRequestDescriptor instead')
@@ -46,6 +47,16 @@ const EvolveRequest_SlatTypesEntry$json = {
   '7': {'7': true},
 };
 
+@$core.Deprecated('Use evolveRequestDescriptor instead')
+const EvolveRequest_CoordinateMapEntry$json = {
+  '1': 'CoordinateMapEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 11, '6': '.evoService.CoordinateList', '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
 /// Descriptor for `EvolveRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List evolveRequestDescriptor = $convert.base64Decode(
     'Cg1Fdm9sdmVSZXF1ZXN0EjEKCXNsYXRBcnJheRgBIAMoCzITLmV2b1NlcnZpY2UuTGF5ZXIzRF'
@@ -53,9 +64,13 @@ final $typed_data.Uint8List evolveRequestDescriptor = $convert.base64Decode(
     'YW5kbGVBcnJheRJJCgpwYXJhbWV0ZXJzGAMgAygLMikuZXZvU2VydmljZS5Fdm9sdmVSZXF1ZX'
     'N0LlBhcmFtZXRlcnNFbnRyeVIKcGFyYW1ldGVycxJGCglzbGF0VHlwZXMYBCADKAsyKC5ldm9T'
     'ZXJ2aWNlLkV2b2x2ZVJlcXVlc3QuU2xhdFR5cGVzRW50cnlSCXNsYXRUeXBlcxIoCg9jb25uZW'
-    'N0aW9uQW5nbGUYBSABKAlSD2Nvbm5lY3Rpb25BbmdsZRo9Cg9QYXJhbWV0ZXJzRW50cnkSEAoD'
-    'a2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlSBXZhbHVlOgI4ARo8Cg5TbGF0VHlwZXNFbn'
-    'RyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+    'N0aW9uQW5nbGUYBSABKAlSD2Nvbm5lY3Rpb25BbmdsZRJSCg1jb29yZGluYXRlTWFwGAYgAygL'
+    'MiwuZXZvU2VydmljZS5Fdm9sdmVSZXF1ZXN0LkNvb3JkaW5hdGVNYXBFbnRyeVINY29vcmRpbm'
+    'F0ZU1hcBo9Cg9QYXJhbWV0ZXJzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiAB'
+    'KAlSBXZhbHVlOgI4ARo8Cg5TbGF0VHlwZXNFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YW'
+    'x1ZRgCIAEoCVIFdmFsdWU6AjgBGlwKEkNvb3JkaW5hdGVNYXBFbnRyeRIQCgNrZXkYASABKAlS'
+    'A2tleRIwCgV2YWx1ZRgCIAEoCzIaLmV2b1NlcnZpY2UuQ29vcmRpbmF0ZUxpc3RSBXZhbHVlOg'
+    'I4AQ==');
 
 @$core.Deprecated('Use layer3DDescriptor instead')
 const Layer3D$json = {
@@ -159,4 +174,30 @@ const FinalResponse$json = {
 final $typed_data.Uint8List finalResponseDescriptor = $convert.base64Decode(
     'Cg1GaW5hbFJlc3BvbnNlEjUKC2hhbmRsZUFycmF5GAEgAygLMhMuZXZvU2VydmljZS5MYXllcj'
     'NEUgtoYW5kbGVBcnJheQ==');
+
+@$core.Deprecated('Use coordinateListDescriptor instead')
+const CoordinateList$json = {
+  '1': 'CoordinateList',
+  '2': [
+    {'1': 'coords', '3': 1, '4': 3, '5': 11, '6': '.evoService.Coordinate', '10': 'coords'},
+  ],
+};
+
+/// Descriptor for `CoordinateList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List coordinateListDescriptor = $convert.base64Decode(
+    'Cg5Db29yZGluYXRlTGlzdBIuCgZjb29yZHMYASADKAsyFi5ldm9TZXJ2aWNlLkNvb3JkaW5hdG'
+    'VSBmNvb3Jkcw==');
+
+@$core.Deprecated('Use coordinateDescriptor instead')
+const Coordinate$json = {
+  '1': 'Coordinate',
+  '2': [
+    {'1': 'x', '3': 1, '4': 1, '5': 5, '10': 'x'},
+    {'1': 'y', '3': 2, '4': 1, '5': 5, '10': 'y'},
+  ],
+};
+
+/// Descriptor for `Coordinate`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List coordinateDescriptor = $convert.base64Decode(
+    'CgpDb29yZGluYXRlEgwKAXgYASABKAVSAXgSDAoBeRgCIAEoBVIBeQ==');
 
