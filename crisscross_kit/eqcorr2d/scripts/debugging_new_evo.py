@@ -15,13 +15,15 @@ if __name__ == '__main__':
     megastructure.assign_assembly_handles(handle_array)
 
     # megastructure = Megastructure(import_design_file="/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/bird/bird_design_hashcad_seed.xlsx")
-    megastructure = Megastructure(import_design_file="/Users/matt/Desktop/Tiny Hexagon Optim.xlsx")
+
+    megastructure = Megastructure(import_design_file='/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Crisscross Designs/YXZ006_Nelson_Quimby_Mats/colsquareNQ.xlsx')
+
     # megastructure = Megastructure(import_design_file="/Users/matt/Desktop/TEST_PLUS.xlsx")
 
     # megastructure = Megastructure(import_design_file="C:/Users\Flori\Dropbox\CrissCross\Temporary files\Tiny Hexagon Optim.xlsx")
     print('------')
     t1 = time.time()
-    print(multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(),megastructure.generate_assembly_handle_grid(),per_layer_check=True, report_worst_slat_combinations=False,request_substitute_risk_score=True))
+    # print(multirule_oneshot_hamming(megastructure.generate_slat_occupancy_grid(),megastructure.generate_assembly_handle_grid(),per_layer_check=True, report_worst_slat_combinations=False,request_substitute_risk_score=True))
     t2 = time.time()
     print('------')
     t3 = time.time()

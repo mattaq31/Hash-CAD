@@ -689,7 +689,7 @@ class Megastructure:
         # these will be removed from the final histogram
         match_counts, connection_graph = self.get_slat_match_counts()
 
-        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle, do_worst=True)
+        return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle)
 
 
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,

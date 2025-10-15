@@ -217,14 +217,19 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
         return out
 
     def rot60_py(b, k60):
-        """Placeholder for 60-degree rotations used by triangle_grid mode.
-        k60 in {0,1,2,3,4,5} corresponds to angles 0,60,120,180,240,300.
-        Only 0 (k60=0) and 180 (k60=3) are supported right now; others raise.
+        """60° rotations for triangle_grid.
+        For 1D arrays, use dense mapping at 180° so the footprint stays 1×L
+        (matches 0°) and yields 63 offsets at that angle.
         """
         if k60 == 0:
             out = b
         else:
-            out = rotate_array_tri60(b, k60, map_only_nonzero=True, return_shift=False)
+            # b is already 2D here (ensure_2d_uint8); consider it effectively 1D if any dim is 1
+            is_effectively_1d = (b.shape[0] == 1) or (b.shape[1] == 1)
+            map_only_nonzero = True
+            if is_effectively_1d and k60 == 3:  # 180° in {0,60,120,180,240,300} → k60=3
+                map_only_nonzero = False
+            out = rotate_array_tri60(b, k60, map_only_nonzero=map_only_nonzero, return_shift=False)
         if not out.flags['C_CONTIGUOUS'] or out.dtype != np.uint8:
             out = np.ascontiguousarray(out, dtype=np.uint8)
         return out

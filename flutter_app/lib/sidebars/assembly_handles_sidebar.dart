@@ -234,12 +234,12 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: getValencyColor(appState.currentHamming), // depends on max valency
+            color: getValencyColor(appState.currentMaxValency), // depends on max valency
             width: 3,
           ),
           boxShadow: [
             BoxShadow(
-              color: getValencyColor(appState.currentHamming).withValues(alpha: 0.6),
+              color: getValencyColor(appState.currentMaxValency).withValues(alpha: 0.6),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -272,12 +272,13 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      appState.currentHamming.toString(),
+                      appState.currentMaxValency.toString(),
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      appState.currentHamming.toString(),
+                      // set to 3dp
+                      appState.currentEffValency.toStringAsFixed(3),
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                     ),
                   ],

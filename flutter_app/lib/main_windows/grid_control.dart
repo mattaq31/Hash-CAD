@@ -62,6 +62,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
 
   /// updates the coordinates for the hover slat preview
   void setHoverCoordinates(DesignState appState){
+    if (hoverPosition == null) return;
     hoverSlatMap = generateSlatPositions(hoverPosition!, true, appState); // REAL space
     final paths = hoverSlatMap.values
         .map((inner) => inner.values.toList())
@@ -71,6 +72,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
       isValid: hoverValid,
       slatPaths: paths,
     ));
+
   }
 
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.

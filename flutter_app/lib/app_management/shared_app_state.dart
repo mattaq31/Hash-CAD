@@ -187,7 +187,8 @@ class DesignState extends ChangeNotifier {
   int slatAddCount = 1;
   String slatAddDirection = 'down';
   Color uniqueSlatColor = Colors.blue;
-  int currentHamming = 0;
+  int currentMaxValency = 0;
+  double currentEffValency = 0.0;
   bool hammingValueValid = true;
   int cargoAddCount = 1;
   String? cargoAdditionType;
@@ -252,7 +253,8 @@ class DesignState extends ChangeNotifier {
     nextSeedID = 'A';
     nextColorIndex = 2;
     slatAddCount = 1;
-    currentHamming = 0;
+    currentMaxValency = 0;
+    currentEffValency = 0.0;
     hammingValueValid = true;
     cargoAddCount = 1;
     cargoAdditionType = null;
@@ -925,13 +927,19 @@ class DesignState extends ChangeNotifier {
     currentlyComputingHamming = true;
     notifyListeners();
     if (slats.isEmpty) {
-      currentHamming = 0;
+      currentMaxValency = 0;
+      currentEffValency = 0.0;
     } else {
-      currentHamming = await hammingCompute(slats, layerMap, 32);
-      // TODO: this needs to be updated when db logic included
-      if (currentHamming == 50 || currentHamming == 32) { // 50 (calculation never attempted) or 32 (no handle overlap) are exception values
-        currentHamming = 0;
-      }
+
+      Offset minPos;
+      Offset maxPos;
+      (minPos, maxPos) = extractGridBoundary(slats);
+      var handleArray = extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
+      List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
+      var valencyResults = await parasiticInteractionsCompute(slats, slatArray, handleArray, layerMap, minPos, gridMode);
+
+      currentMaxValency = valencyResults['worst_match'];
+      currentEffValency = valencyResults['mean_log_score'];
     }
     hammingValueValid = true;
     currentlyComputingHamming = false;
@@ -943,6 +951,11 @@ class DesignState extends ChangeNotifier {
     Offset minPos;
     Offset maxPos;
     (minPos, maxPos) = extractGridBoundary(slats);
+
+    if (minPos == Offset.infinite || maxPos == Offset.zero){
+      return;  // i.e. no slats present
+    }
+
     List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
     List<List<List<int>>> handleArray;
 
