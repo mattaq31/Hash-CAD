@@ -22,7 +22,7 @@ class EvolveManager:
                  mutation_rate=5, mutation_type_probabilities=(0.425, 0.425, 0.15), unique_handle_sequences=32,
                  evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
                  process_count=None, early_max_valency_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
-                 mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None):
+                 mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None, similarity_score_calculation_frequency=10):
         """
         Prepares an evolution manager to optimize a handle array for the provided slat array.
         WARNING: Make sure to use the "if __name__ == '__main__':" block to run this class in a script.
@@ -46,6 +46,8 @@ class EvolveManager:
         :param mutation_memory_system: The type of memory system to use for the handle mutation process. Options are 'all', 'best', 'special', or 'off'.
         :param memory_length: Memory of previous 'worst' handle combinations to retain when selecting positions to mutate.
         :param repeating_unit_constraints: Two dictionaries containing 'link_handles' and 'transplant_handles' that define constraints on handle mutations (mainly for use with repeating unit designs).
+        :param similarity_score_calculation_frequency: The duplication risk score will be calculated every x generations.
+        This helps speed up the evolution process, since it isn't used for deciding on the best generations to retain.
         """
 
         # initial parameter setup
@@ -71,6 +73,7 @@ class EvolveManager:
         self.max_evolution_generations = int(evolution_generations)
         self.number_unique_handles = int(unique_handle_sequences)
         self.evolution_population = int(evolution_population)
+        self.similarity_score_calculation_frequency = int(similarity_score_calculation_frequency)
         self.current_generation = 0
 
         self.log_tracking_directory = log_tracking_directory
@@ -148,6 +151,9 @@ class EvolveManager:
         :return:
         """
         self.current_generation += 1
+
+        request_sim_score = (self.current_generation % self.similarity_score_calculation_frequency == 0) or (self.current_generation == 1)
+
         mean_parasitic_valency = np.zeros(self.evolution_population)  # initialize the score variable which will be used as the phenotype for the selection.
         max_parasitic_valency = np.zeros(self.evolution_population)
         duplicate_risk_scores = np.zeros(self.evolution_population)
@@ -167,7 +173,7 @@ class EvolveManager:
                                                                                         use_external_handle_array = self.next_candidates[j],
                                                                                         remove_blank_slats=True)
 
-                analysis_inputs.append((handles, antihandles, self.slat_compensation_match_counts, self.slat_connection_graph, self.dummy_megastructure.connection_angle, True))
+                analysis_inputs.append((handles, antihandles, self.slat_compensation_match_counts, self.slat_connection_graph, self.dummy_megastructure.connection_angle, True, 10, request_sim_score))
             results = pool.starmap(comprehensive_score_analysis, analysis_inputs)
 
         multiprocess_time = time.time() - multiprocess_start
@@ -176,7 +182,9 @@ class EvolveManager:
         for index, res in enumerate(results):
             mean_parasitic_valency[index] = res['mean_log_score']
             max_parasitic_valency[index] = res['worst_match_score']
-            duplicate_risk_scores[index] = res['similarity_score']
+            if request_sim_score:
+                duplicate_risk_scores[index] = res['similarity_score']
+
             worst_handle_combos = [tuple(map(int, re.findall(r'\d+', r[0]))) for r in res['worst_slat_combos']]
             worst_antihandle_combos = [tuple(map(int, re.findall(r'\d+', r[1]))) for r in res['worst_slat_combos']]
             hallofshame['handles'].append(worst_handle_combos)
@@ -194,7 +202,11 @@ class EvolveManager:
         self.metrics['Best Effective Parasitic Valency'].append(max_physics_score_of_population)
         self.metrics['Corresponding Max Parasitic Valency'].append(max_parasitic_valency[np.argmin(mean_parasitic_valency)])
         # All other metrics should match the specific handle array that has the best physics score
-        self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmin(mean_parasitic_valency)])
+        if request_sim_score:
+            self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmin(mean_parasitic_valency)])
+        else:
+            self.metrics['Corresponding Duplicate Risk Score'].append(np.nan) # not computed
+
         self.metrics['Compute Time'].append(multiprocess_time)
         self.metrics['Generation'].append(self.current_generation)
 
@@ -203,7 +215,7 @@ class EvolveManager:
             for initial_candidate in self.initial_candidates:
                 similarity_scores.append(np.sum(candidate == initial_candidate))
 
-        self.metrics['Similarity Score'].append(sum(similarity_scores) / len(similarity_scores))
+        self.metrics['Similarity of Array to Initial Population'].append(sum(similarity_scores) / len(similarity_scores))
 
         # Select and store the current best handle array
         best_idx = int(np.argmin(mean_parasitic_valency))
@@ -260,7 +272,7 @@ class EvolveManager:
                                                [self.metrics['Best Effective Parasitic Valency'],
                                                 self.metrics['Corresponding Max Parasitic Valency'],
                                                 self.metrics['Corresponding Duplicate Risk Score'],
-                                                self.metrics['Similarity Score'],
+                                                self.metrics['Similarity of Array to Initial Population'],
                                                 self.metrics['Compute Time']])):
 
             if len(data) > 5000:

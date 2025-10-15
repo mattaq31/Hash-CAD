@@ -38,8 +38,8 @@ from eqcorr2d.rot60 import rotate_array_tri60
 from collections import Counter
 
 
-def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle, do_worst=False,
-                                 fudge_dg=10):
+def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle,
+                                 do_worst=False, fudge_dg=10, request_similarity_score=True):
     """
     When provided with a megastructure's slat handles/antihandles and connection graphs, this function computes
     all relevant match count metrics including worst match, mean log score, similarity score, and a compensated match histogram.
@@ -50,6 +50,7 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, con
     :param connection_angle: Either '60' or '90' indicating the connection geometry.
     :param do_worst: Set to true to return which slat pairs contributed to the worst match score.
     :param fudge_dg: Fudge factor for mean log score computation.
+    :param request_similarity_score: If True, computes a similarity score to check for slat duplication risk.
     :return: Dictionary with all data.
     """
     # runs the match comparison computation using our eqcorr2D C function
@@ -78,14 +79,15 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, con
     full_results['hist_total'] = full_results['hist_total'][:worst_match + 1]
     mean_log_score = np.log(get_sum_score(full_results, fudge_dg=fudge_dg) / (len(handle_dict) * len(antihandle_dict)))/fudge_dg
 
-    # runs a separate similarity analysis to check for slats that are too similar to each other.
-    similarity_results = get_similarity_hist(handle_dict, antihandle_dict,
-                                             mode='triangle_grid' if connection_angle == '60' else 'square_grid')
-    similarity_score = get_worst_match(similarity_results)
     data_dict = {'worst_match_score': worst_match, 'mean_log_score': mean_log_score,
-                 'similarity_score': similarity_score,
                  'match_histogram': full_results['hist_total'],
                  'uncompensated_match_histogram': hist}
+
+    if request_similarity_score:
+        # runs a separate similarity analysis to check for slats that are too similar to each other.
+        similarity_results = get_similarity_hist(handle_dict, antihandle_dict, mode='triangle_grid' if connection_angle == '60' else 'square_grid')
+        similarity_score = get_worst_match(similarity_results)
+        data_dict['similarity_score'] = similarity_score
 
     if do_worst:
         data_dict['worst_slat_combos'] = get_compensated_worst_keys_combos(full_results, connection_graph)

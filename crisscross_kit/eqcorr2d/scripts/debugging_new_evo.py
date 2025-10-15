@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     # megastructure = Megastructure(import_design_file="/Users/matt/Documents/Shih_Lab_Postdoc/research_projects/hash_cad_validation_designs/bird/bird_design_hashcad_seed.xlsx")
 
-    megastructure = Megastructure(import_design_file='/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Crisscross Designs/YXZ006_Nelson_Quimby_Mats/colsquareNQ.xlsx')
+    # megastructure = Megastructure(import_design_file='/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Crisscross Designs/YXZ006_Nelson_Quimby_Mats/colsquareNQ.xlsx')
 
     # megastructure = Megastructure(import_design_file="/Users/matt/Desktop/TEST_PLUS.xlsx")
 
@@ -32,14 +32,15 @@ if __name__ == '__main__':
     print('old time:', t2 - t1)
     print('new time:', t4 - t3)
 
-    # evolve_manager =  EvolveManager(megastructure, unique_handle_sequences=64,
-    #                                 early_max_valency_stop=0, evolution_population=50,
-    #                                 generational_survivors=3,
-    #                                 mutation_rate=2,
-    #                                 process_count=4,
-    #                                 evolution_generations=2000,
-    #                                 split_sequence_handles=False,
-    #                                 progress_bar_update_iterations=1,
-    #                                 log_tracking_directory='/Users/matt/Desktop/delete_me')
-    #
-    # evolve_manager.run_full_experiment(logging_interval=2)
+    evolve_manager =  EvolveManager(megastructure, unique_handle_sequences=64,
+                                    early_max_valency_stop=0, evolution_population=5,
+                                    generational_survivors=3,
+                                    mutation_rate=2,
+                                    process_count=4,
+                                    evolution_generations=2000,
+                                    split_sequence_handles=False,
+                                    progress_bar_update_iterations=1,
+                                    similarity_score_calculation_frequency=1,
+                                    log_tracking_directory='/Users/matt/Desktop/delete_me')
+
+    evolve_manager.run_full_experiment(logging_interval=2)
