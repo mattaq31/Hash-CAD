@@ -311,7 +311,7 @@ if __name__ == "__main__":
     pkl_path1 = Path(r"D:\Wyss_experiments\Evolution_analysis/evo_run_hexagon_2/evolution_results2.pkl")
     results1 = load_results_pkl(pkl_path1)
 
-    pkl_path2 = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\katzi_long_term_hexa_evo_renamed2\evolution_results24000_onwards.pkl")
+    pkl_path2 = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\katzi_long_term_hexa_evo_renamed1\evolution_results24000_onwards.pkl")
     results2 = load_results_pkl(pkl_path2)
     results = results1 + results2
     # use your own color anchors
@@ -330,13 +330,14 @@ if __name__ == "__main__":
     # stored
     plot_stored_score(
         results,
+        logscalex=True,
         savepath=r"D:\Wyss_experiments\Evolution_analysis/stored_score_hexagon.pdf",
         color="crimson",
         yrange=(1.7, 5.2),
     )
 
     # alt (same scale)
-    fudge_dGs = [-15]  # <- same value used when saving the original scores
+    fudge_dGs = [-10]  # <- same value used when saving the original scores
 
     for fudge_dG in fudge_dGs:
         plot_alt_score(

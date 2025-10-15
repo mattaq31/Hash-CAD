@@ -3,9 +3,9 @@ from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import mult
 from crisscross.slat_handle_match_evolver import generate_random_slat_handles
 from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
 from crisscross.core_functions.megastructures import Megastructure
-from crisscross.scripts.evolution_analysis.analyse_evo import read_handle_log as rhl
+from crisscross.scripts.katzi.evolution_analysis.analyse_evo import read_handle_log as rhl
 import numpy as np
-from crisscross.scripts.evolution_analysis.analyse_evo import intuitive_score as in_sc
+from crisscross.scripts.katzi.evolution_analysis.analyse_evo import intuitive_score as in_sc
 import matplotlib.pyplot as plt
 from math import factorial
 
@@ -166,14 +166,14 @@ def plot_match_type_counts(match_types, counts, savepath=None, yrange=(0.5, 1e5)
 
 if __name__ == '__main__':
     slat_len =32
-    file1="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports/full_designH24.xlsx"
+    file1="C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports/full_designH27.xlsx"
     r_table= get_counts_in_dict(file1)
     r_1= r_table[0]
     counts = r_1['counts']
     match_types = r_1['match_type']
-    plot_match_type_counts(match_types, counts)
+    plot_match_type_counts(match_types, counts, savepath='C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_4/test_fig.svg')
 
-    l, s, n = 32, 32, 32
+    l, s, n = 32, 32, 64# n seems to be the library size. l and s the slat lenght but of slat x and y
     x_slats, y_slats = 32, 32
 
     # Example: pass your color array from earlier plots
