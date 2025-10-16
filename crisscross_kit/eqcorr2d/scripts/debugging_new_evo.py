@@ -33,14 +33,14 @@ if __name__ == '__main__':
     print('new time:', t4 - t3)
 
     evolve_manager =  EvolveManager(megastructure, unique_handle_sequences=64,
-                                    early_max_valency_stop=0, evolution_population=5,
+                                    early_max_valency_stop=0, evolution_population=50,
                                     generational_survivors=3,
                                     mutation_rate=2,
                                     process_count=4,
-                                    evolution_generations=2000,
+                                    evolution_generations=1000,
                                     split_sequence_handles=False,
                                     progress_bar_update_iterations=1,
                                     similarity_score_calculation_frequency=1,
-                                    log_tracking_directory='/Users/matt/Desktop/delete_me')
+                                    log_tracking_directory='/Users/matt/Desktop/delete_me_3')
 
     evolve_manager.run_full_experiment(logging_interval=2)

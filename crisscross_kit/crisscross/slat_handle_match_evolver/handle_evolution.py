@@ -10,6 +10,8 @@ import matplotlib.ticker as ticker
 from colorama import Fore
 import re
 import toml
+import platform
+from multiprocessing.pool import RUN
 
 from crisscross.slat_handle_match_evolver.handle_mutation import mutate_handle_arrays
 from crisscross.slat_handle_match_evolver import generate_random_slat_handles, generate_layer_split_handles
@@ -127,6 +129,13 @@ class EvolveManager:
                                              'max_color': "#F8696B",  # Red
                                              'value': 0}
 
+        # finally, prepares multiprocessing pool to speed up computation
+        if platform.system() == "Linux":
+            self._mp_ctx = multiprocessing.get_context("spawn") # in an attempt to reduce memory leaks on linux systems
+        else:
+            self._mp_ctx = multiprocessing
+
+        self.pool = self._mp_ctx.Pool(processes=self.num_processes)
 
     def initialize_evolution(self):
         """
@@ -150,6 +159,9 @@ class EvolveManager:
         Performs a single evolution step, evaluating all candidate arrays and preparing new mutations for the next generation.
         :return:
         """
+
+        self.ensure_pool() # recreates the pool if it's dead
+
         self.current_generation += 1
 
         request_sim_score = (self.current_generation % self.similarity_score_calculation_frequency == 0) or (self.current_generation == 1)
@@ -160,22 +172,21 @@ class EvolveManager:
 
         hallofshame = defaultdict(list)
 
-        #### first step: analyze handle array population individual by individual and gather reports of the scores
+        # first step: analyze handle array population individual by individual and gather reports of the scores
         # and the bad handles of each
         # multiprocessing will be used to speed up overall computation and parallelize the hamming distance calculations
         # refer to the multirule_oneshot_hamming function for details on input arguments
         multiprocess_start = time.time()
 
-        with multiprocessing.Pool(processes=self.num_processes) as pool:
-            analysis_inputs = []
-            for j in range(self.evolution_population):
-                handles, antihandles = self.dummy_megastructure.get_bag_of_slat_handles(use_original_slat_array=True,
-                                                                                        use_external_handle_array = self.next_candidates[j],
-                                                                                        remove_blank_slats=True)
+        analysis_inputs = []
+        for j in range(self.evolution_population):
+            handles, antihandles = self.dummy_megastructure.get_bag_of_slat_handles(use_original_slat_array=True,
+                                                                                    use_external_handle_array = self.next_candidates[j],
+                                                                                    remove_blank_slats=True)
 
-                analysis_inputs.append((handles, antihandles, self.slat_compensation_match_counts, self.slat_connection_graph, self.dummy_megastructure.connection_angle, True, 10, request_sim_score))
-            results = pool.starmap(comprehensive_score_analysis, analysis_inputs)
+            analysis_inputs.append((handles, antihandles, self.slat_compensation_match_counts, self.slat_connection_graph, self.dummy_megastructure.connection_angle, True, 10, request_sim_score))
 
+        results = self.pool.starmap(comprehensive_score_analysis, analysis_inputs)
         multiprocess_time = time.time() - multiprocess_start
 
         # Unpack and store results from multiprocessing
@@ -184,7 +195,6 @@ class EvolveManager:
             max_parasitic_valency[index] = res['worst_match_score']
             if request_sim_score:
                 duplicate_risk_scores[index] = res['similarity_score']
-
             worst_handle_combos = [tuple(map(int, re.findall(r'\d+', r[0]))) for r in res['worst_slat_combos']]
             worst_antihandle_combos = [tuple(map(int, re.findall(r'\d+', r[1]))) for r in res['worst_slat_combos']]
             hallofshame['handles'].append(worst_handle_combos)
@@ -193,6 +203,8 @@ class EvolveManager:
                 self.initial_hallofshame['handles'].append(worst_handle_combos)
                 self.initial_hallofshame['antihandles'].append(worst_antihandle_combos)
 
+        best_idx = int(np.argmin(mean_parasitic_valency))
+
         # compare and find the individual with the best hamming distance i.e. the largest one. Note: there might be several
         max_physics_score_of_population = np.min(mean_parasitic_valency)
         # Get the indices of the top 'survivors' largest elements
@@ -200,10 +212,10 @@ class EvolveManager:
 
         # Get the largest elements using the sorted indices
         self.metrics['Best Effective Parasitic Valency'].append(max_physics_score_of_population)
-        self.metrics['Corresponding Max Parasitic Valency'].append(max_parasitic_valency[np.argmin(mean_parasitic_valency)])
+        self.metrics['Corresponding Max Parasitic Valency'].append(max_parasitic_valency[best_idx])
         # All other metrics should match the specific handle array that has the best physics score
         if request_sim_score:
-            self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[np.argmin(mean_parasitic_valency)])
+            self.metrics['Corresponding Duplicate Risk Score'].append(duplicate_risk_scores[best_idx])
         else:
             self.metrics['Corresponding Duplicate Risk Score'].append(np.nan) # not computed
 
@@ -218,14 +230,15 @@ class EvolveManager:
         self.metrics['Similarity of Array to Initial Population'].append(sum(similarity_scores) / len(similarity_scores))
 
         # Select and store the current best handle array
-        best_idx = int(np.argmin(mean_parasitic_valency))
+
         self.handle_array = self.next_candidates[best_idx]
 
         # Extracts precomputed match histogram from multirule_oneshot_hamming for the best candidate
         self.mismatch_histograms.append(results[best_idx]['match_histogram'])
 
+        # apply mutations and select the next generation of candidates
         candidate_handle_arrays, _ = mutate_handle_arrays(self.slat_array, self.next_candidates,
-                                                         hallofshame=hallofshame,
+                                                          hallofshame=hallofshame,
                                                           memory_hallofshame=self.memory_hallofshame,
                                                           memory_best_parent_hallofshame=self.memory_best_parent_hallofshame,
                                                           best_score_indices=indices_of_largest_scores,
@@ -361,20 +374,66 @@ class EvolveManager:
         Runs a full evolution experiment.
         :param logging_interval: The frequency at which logs should be written to file (including the best hamming array file).
         """
+
         if self.log_tracking_directory is None:
             raise ValueError('Log tracking directory must be specified to run an automatic full experiment.')
-        with tqdm(total=self.max_evolution_generations - self.current_generation, desc='Evolution Progress', miniters=self.progress_bar_update_iterations) as pbar:
-            for index, generation in enumerate(range(self.current_generation, self.max_evolution_generations)):
-                self.single_evolution_step()
-                if (index+1) % logging_interval == 0:
-                    self.export_results()
 
-                pbar.update(1)
-                pbar.set_postfix({f'Latest max parasitic valency': self.metrics['Corresponding Max Parasitic Valency'][-1],
-                                  'Time for calculations': self.metrics['Compute Time'][-1],
-                                  'Latest effective parasitic valency': self.metrics['Best Effective Parasitic Valency'][-1]}, refresh=False)
+        try:
+            with tqdm(total=self.max_evolution_generations - self.current_generation, desc='Evolution Progress', miniters=self.progress_bar_update_iterations) as pbar:
+                for index, generation in enumerate(range(self.current_generation, self.max_evolution_generations)):
+                    self.single_evolution_step()
+                    if (index+1) % logging_interval == 0:
+                        self.export_results()
 
-                if self.early_max_valency_stop and min(self.metrics['Corresponding Max Parasitic Valency']) <= self.early_max_valency_stop:
-                    print('Early stopping criteria met, ending evolution process.')
-                    break
+                    pbar.update(1)
+                    pbar.set_postfix({f'Latest max parasitic valency': self.metrics['Corresponding Max Parasitic Valency'][-1],
+                                      'Time for calculations': self.metrics['Compute Time'][-1],
+                                      'Latest effective parasitic valency': self.metrics['Best Effective Parasitic Valency'][-1]}, refresh=False)
 
+                    if self.early_max_valency_stop and min(self.metrics['Corresponding Max Parasitic Valency']) <= self.early_max_valency_stop:
+                        print('Early stopping criteria met, ending evolution process.')
+                        break
+            self.close_pool()
+        except KeyboardInterrupt:
+            # Optional: more friendly message/logging
+            pass
+        finally:
+            # Ensure workers are cleaned up even on exceptions
+            self.terminate_pool()
+
+    def is_pool_alive(self) -> bool:
+        try:
+            return (self.pool is not None) and (getattr(self.pool, "_state", None) == RUN)
+        except Exception:
+            return False
+
+    def ensure_pool(self):
+        """Create a new Pool if none exists or it is not RUN.
+        Safe to call at the beginning of each generation or on resume.
+        """
+        if not self.is_pool_alive():
+            # Recreate with the same spawn-aware context decided in __init__
+            self.pool = self._mp_ctx.Pool(processes=self.num_processes)
+
+    def close_pool(self):
+        if getattr(self, "pool", None) is not None:
+            try:
+                self.pool.close()
+                self.pool.join()
+            finally:
+                self.pool = None
+
+    def terminate_pool(self):
+        if getattr(self, "pool", None) is not None:
+            try:
+                self.pool.terminate()
+                self.pool.join()
+            finally:
+                self.pool = None
+
+    def __del__(self):
+        # Best-effort cleanup if object is GC’d
+        try:
+            self.terminate_pool()
+        except Exception:
+            pass
