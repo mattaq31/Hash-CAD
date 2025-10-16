@@ -723,7 +723,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   String fileName;
 
   if (inputFileBytes != null && inputFileName != null){
-    fileName = inputFileName;
+    fileName = basenameWithoutExtension(inputFileName);
     fileBytes = inputFileBytes;
   }
   else {
