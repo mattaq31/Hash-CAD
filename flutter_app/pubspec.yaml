@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.8+598
+version: 0.2.8+601
 
 environment:
   sdk: ^3.6.1
@@ -46,8 +46,8 @@ dependencies:
   built_collection: ^5.1.1
   intl: ^0.19.0
   excel: ^4.0.6
-  file_picker: ^9.0.2
-  fl_chart: ^0.70.2
+  file_picker: ^10.3.3
+  fl_chart: ^1.1.1
   dotted_border: ^2.1.0
   crypto: ^3.0.6
   url_launcher: ^6.3.1
@@ -57,6 +57,8 @@ dependencies:
   xml: ^6.5.0
   web: ^1.1.1
   toml: ^0.16.0
+  desktop_drop: ^0.6.1
+  flutter_dropzone: ^4.2.1
 
 
 dependency_overrides:
@@ -75,7 +77,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   msix: ^3.16.8
   flutter_launcher_icons: "^0.14.4"
 
@@ -116,7 +118,7 @@ flutter:
 
 msix_config:
   display_name: Hash-CAD
-  msix_version: 0.2.8+598
+  msix_version: 0.2.8+601
   architecture: x64
   identity_name: dfci.harvard.edu.hashcad
   sign_msix: false

@@ -304,12 +304,12 @@ class DesignState extends ChangeNotifier {
     exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, gridSize, gridMode, designName);
   }
 
-  void importNewDesign() async{
+  void importNewDesign({String? fileName, Uint8List? fileBytes}) async{
 
     currentlyLoadingDesign = true;
     notifyListeners();
 
-    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster, newDesignName) = await importDesign();
+    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster, newDesignName) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
     // check if the maps are empty
     if (newSlats.isEmpty || newLayerMap.isEmpty) {
       currentlyLoadingDesign = false;
@@ -1593,7 +1593,7 @@ class ServerState extends ChangeNotifier {
     'mutation_rate': '5',
     'mutation_type_probabilities': '0.425, 0.425, 0.15',
     'evolution_generations': '2000',
-    'evolution_population': '30',
+    'evolution_population': '50',
     'process_count': 'DEFAULT',
     'generational_survivors': '3',
     'random_seed': '8',

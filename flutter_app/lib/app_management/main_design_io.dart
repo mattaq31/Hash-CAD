@@ -709,7 +709,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, String)> importDesign() async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, String)> importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
   // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
 
@@ -720,36 +720,44 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   String filePath;
   Uint8List fileBytes;
-
-  // main user dialog box for file selection
-  FilePickerResult? result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['xlsx'],
-    initialDirectory: kIsWeb ? null : _lastOpenDirectory,
-  );
-
   String fileName;
 
-  if (result != null) {
-    // web has a different file-opening procedure to the desktop app
-    if (kIsWeb) {
-      fileBytes = result.files.first.bytes!;
-    }
-    else {
-      filePath = result.files.single.path!;
-      fileBytes = File(filePath).readAsBytesSync();
-      // Remember directory for next time
-      try { _lastOpenDirectory = dirname(filePath); } catch (_) {}
-    }
-    fileName = basenameWithoutExtension(result.files.first.name);
-
-  } else { // if nothing picked, return empty maps
-    return (slats, layerMap, '', cargoPalette, seedRoster, '');
+  if (inputFileBytes != null && inputFileName != null){
+    fileName = inputFileName;
+    fileBytes = inputFileBytes;
   }
+  else {
+    // main user dialog box for file selection
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+      initialDirectory: kIsWeb ? null : _lastOpenDirectory,
+    );
+    if (result != null) {
+      // web has a different file-opening procedure to the desktop app
+      if (kIsWeb) {
+        fileBytes = result.files.first.bytes!;
+      }
+      else {
+        filePath = result.files.single.path!;
+        fileBytes = File(filePath).readAsBytesSync();
+        // Remember directory for next time
+        try {
+          _lastOpenDirectory = dirname(filePath);
+        } catch (_) {}
+      }
+      fileName = basenameWithoutExtension(result.files.first.name);
+    } else { // if nothing picked, return empty maps
+      return (slats, layerMap, '', cargoPalette, seedRoster, '');
+    }
+  }
+
   // run isolate function
   final (slatsOut, layerMapOut, layerName, cargoOut, seedOut) = await compute(parseDesignInIsolate, fileBytes);
   return (slatsOut, layerMapOut, layerName, cargoOut, seedOut, fileName);
+
 }
+
 
 Future <bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize) async{
 

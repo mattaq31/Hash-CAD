@@ -133,7 +133,7 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
     def PauseProcessing(self, request, context):
         self.pause_signal = True
         print('PAUSE TOGGLED')
-        self._schedule_pause_timeout(5.0)
+        self._schedule_pause_timeout(120.0)
         return hamming_evolve_communication_pb2.PauseRequest()
 
     def StopProcessing(self, request, context):

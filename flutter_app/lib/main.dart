@@ -4,9 +4,11 @@ import 'main_windows/split_screen.dart';
 import 'app_management/shared_app_state.dart';
 import 'main_windows/window_manager.dart'
     if (dart.library.js_interop) 'main_windows/web_window_manager.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  DesktopDrop.instance.init();
   await initializeWindow();
   runApp(MultiProvider(
     providers: [

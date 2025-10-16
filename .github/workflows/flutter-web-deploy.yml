@@ -37,7 +37,7 @@ jobs:
         working-directory: flutter_app
 
       - name: Build Flutter Web
-        run: flutter build web --release --wasm --base-href="/"
+        run: flutter build web --release --base-href="/"
         working-directory: flutter_app
         
       - name: Deploy to GitHub Pages

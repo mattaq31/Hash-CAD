@@ -91,13 +91,14 @@ class StandardLineChart extends StatelessWidget {
         .toList();
 
     return LineChart(
-      duration: const Duration(milliseconds: 500), // Increase animation duration
+      duration: const Duration(milliseconds: 100), // Increase animation duration
       curve: Curves.easeInOut,
       LineChartData(
           minX: safeData.isEmpty ? 0 : safeData.first.x,
           maxX: safeData.isEmpty ? 1 : safeData.last.x + kLogTickStep,
           minY: 0,
           maxY: safeData.isEmpty ? 5 : safeData.map((spot) => spot.y).reduce(math.max) + 1,
+          clipData: FlClipData.all(),
           gridData: FlGridData(
             show: false,
             drawVerticalLine: true,
