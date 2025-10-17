@@ -204,12 +204,15 @@ class DoubleBarrelGlyphPainter extends CustomPainter {
         ..lineTo(-padding * 7, top + barHeight * 2.5)
         ..lineTo(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
     }
-    else {
+    else if (dBType == 'double-barrel-A') {
       path = Path()
         ..moveTo(-padding * 7 + size.width + 6 * padding - 2 * padding, top + barHeight / 2)
         ..lineTo(-padding * 7 - 2 * padding, top + barHeight / 2)
         ..lineTo(-padding * 7, top + barHeight * 2.5)
         ..lineTo(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
+    }
+    else{
+      path = Path();
     }
 
     canvas.drawPath(path, paint);
@@ -268,38 +271,6 @@ class _SlatDesignTools extends State<SlatDesignTools>
       Text("Slat Design",
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
       SizedBox(height: 5),
-      Text(
-        "Slat Edit Mode", // Title above the segmented button
-        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-      ),
-      SizedBox(height: 5),
-      SegmentedButton<String>(
-        segments: <ButtonSegment<String>>[
-          ButtonSegment<String>(
-              value: "Add",
-              label: Text('Add'),
-              icon: Icon(Icons.add_circle_outline,
-                  color: Theme.of(context).colorScheme.primary)),
-          ButtonSegment<String>(
-              value: "Delete",
-              label: Text('Delete'),
-              icon: Icon(Icons.delete_outline,
-                  color: Theme.of(context).colorScheme.primary)),
-          ButtonSegment<String>(
-              value: 'Move',
-              label: Text('Edit'),
-              icon: Icon(Icons.pan_tool,
-                  color: Theme.of(context).colorScheme.primary)),
-        ],
-        selected: <String>{actionState.slatMode},
-        onSelectionChanged: (Set<String> newSelection) {
-          setState(() {
-            actionState.updateSlatMode(newSelection.first);
-          });
-        },
-      ),
-      SizedBox(height: 5),
-      Divider(thickness: 1, color: Colors.grey.shade200),
       Text(
         "Setup", // Title above the segmented button
         style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
@@ -408,6 +379,39 @@ class _SlatDesignTools extends State<SlatDesignTools>
           ),
         ),
       ),
+      Divider(thickness: 1, color: Colors.grey.shade200),
+      SizedBox(height: 5),
+      Text(
+        "Slat Edit Mode", // Title above the segmented button
+        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      ),
+      SizedBox(height: 5),
+      SegmentedButton<String>(
+        segments: <ButtonSegment<String>>[
+          ButtonSegment<String>(
+              value: "Add",
+              label: Text('Add'),
+              icon: Icon(Icons.add_circle_outline,
+                  color: Theme.of(context).colorScheme.primary)),
+          ButtonSegment<String>(
+              value: "Delete",
+              label: Text('Delete'),
+              icon: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.primary)),
+          ButtonSegment<String>(
+              value: 'Move',
+              label: Text('Edit'),
+              icon: Icon(Icons.pan_tool,
+                  color: Theme.of(context).colorScheme.primary)),
+        ],
+        selected: <String>{actionState.slatMode},
+        onSelectionChanged: (Set<String> newSelection) {
+          setState(() {
+            actionState.updateSlatMode(newSelection.first);
+          });
+        },
+      ),
+      SizedBox(height: 5),
       // Buttons
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(

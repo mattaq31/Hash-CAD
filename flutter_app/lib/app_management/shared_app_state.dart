@@ -304,12 +304,43 @@ class DesignState extends ChangeNotifier {
     exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, gridSize, gridMode, designName);
   }
 
-  void importNewDesign({String? fileName, Uint8List? fileBytes}) async{
+  void importNewDesign(BuildContext context, {String? fileName, Uint8List? fileBytes}) async{
 
     currentlyLoadingDesign = true;
     notifyListeners();
 
-    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster, newDesignName) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
+    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster, newDesignName, errorCode) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
+
+    String messageFor(String code) {
+      switch (code) {
+        case 'ERR_SLAT_SHEETS': return 'There seems to be a problem with the slat layer sheets in the selected file - can you check the formatting?';
+        case 'ERR_ASSEMBLY_SHEETS': return 'There seems to be a problem with the assembly handle sheets in the selected file - can you check the formatting?';
+        case 'ERR_SEED_SHEETS': return 'There seems to be a problem with the seed sheets in the selected file - can you check the formatting?';
+        case 'ERR_CARGO_SHEETS': return 'There seems to be a problem with the cargo sheets in the selected file - can you check the formatting?';
+        case 'ERR_GENERAL': return 'The file could not be imported - are you sure this is a standard design file?';
+        default: return '';
+      }
+    }
+
+    if (errorCode.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Import failed'),
+          content: Text(messageFor(errorCode)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Close"),
+            ),
+          ],
+        ),
+      );
+      currentlyLoadingDesign = false;
+      notifyListeners();
+      return;
+    }
+
     // check if the maps are empty
     if (newSlats.isEmpty || newLayerMap.isEmpty) {
       currentlyLoadingDesign = false;

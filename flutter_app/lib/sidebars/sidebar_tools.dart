@@ -53,7 +53,7 @@ class _SideBarToolsState extends State<SideBarTools> {
                     children: [
                       FilledButton.icon(
                         onPressed: () {
-                          appState.importNewDesign();
+                          appState.importNewDesign(context);
                         },
                         icon: Icon(Icons.upload, size: 18),
                         label: Text("Import"),

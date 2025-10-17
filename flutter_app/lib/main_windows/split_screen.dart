@@ -95,7 +95,7 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                     DesignDropTarget(
                       acceptExtensions: const ['xlsx'],
                       onDrop: (bytes, name) async {
-                        appState.importNewDesign(fileName: name, fileBytes: bytes);
+                        appState.importNewDesign(context, fileName: name, fileBytes: bytes);
                       },
                       child: Stack(
                         fit: StackFit.expand,

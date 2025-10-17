@@ -427,7 +427,7 @@ bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slat
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>)> parseDesignInIsolate(Uint8List fileBytes) async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, String)> parseDesignInIsolate(Uint8List fileBytes) async {
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
@@ -436,6 +436,11 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // read in file with Excel package
   var excel = Excel.decodeBytes(fileBytes);
+
+  // Metadata must exist
+  if (!excel.tables.containsKey('metadata')) {
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_GENERAL');
+  }
 
   // Read metadata
   var metadataSheet = excel.tables['metadata']!;
@@ -454,7 +459,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // if no layers found, return empty maps
   if (numLayers == 0) {
-    return (slats, layerMap, '', cargoPalette, seedRoster);
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SLAT_SHEETS');
   }
 
   int layerReadStart = 8;
@@ -504,93 +509,117 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   // Read slat type metadata, if available
   Map <(int, int), String> slatTypeMap = {};
 
-  if (excel.tables.containsKey('slat_types')) {
-    var slatTypeSheet = excel.tables['slat_types']!;
-    if (slatTypeSheet.rows.isNotEmpty) {
-      // First row is headers
-      List<String> headers = slatTypeSheet.rows.first
-          .map((cell) => cell?.value.toString() ?? "")
-          .toList();
+  try {
+    if (excel.tables.containsKey('slat_types')) {
+      var slatTypeSheet = excel.tables['slat_types']!;
+      if (slatTypeSheet.rows.isNotEmpty) {
+        // First row is headers
+        List<String> headers = slatTypeSheet.rows.first
+            .map((cell) => cell?.value.toString() ?? "")
+            .toList();
 
-      int layerIndex = headers.indexOf("Layer");
-      int slatIdIndex = headers.indexOf("Slat ID");
-      int typeIndex = headers.indexOf("Type");
+        int layerIndex = headers.indexOf("Layer");
+        int slatIdIndex = headers.indexOf("Slat ID");
+        int typeIndex = headers.indexOf("Type");
 
-      if (layerIndex == -1 || slatIdIndex == -1 || typeIndex == -1) {
-        throw Exception("Missing required columns in slat_types sheet");
-      }
+        if (layerIndex == -1 || slatIdIndex == -1 || typeIndex == -1) {
+          throw Exception("Missing required columns in slat_types sheet");
+        }
 
-      // Iterate over remaining rows
-      for (int i = 1; i < slatTypeSheet.rows.length; i++) {
-        var row = slatTypeSheet.rows[i];
-        if (row.isEmpty) continue;
+        // Iterate over remaining rows
+        for (int i = 1; i < slatTypeSheet.rows.length; i++) {
+          var row = slatTypeSheet.rows[i];
+          if (row.isEmpty) continue;
 
-        var layerStr = row[layerIndex]?.value?.toString();
-        var slatIdStr = row[slatIdIndex]?.value?.toString();
-        var typeStr = row[typeIndex]?.value?.toString();
+          var layerStr = row[layerIndex]?.value?.toString();
+          var slatIdStr = row[slatIdIndex]?.value?.toString();
+          var typeStr = row[typeIndex]?.value?.toString();
 
-        if (layerStr != null && slatIdStr != null && typeStr != null) {
-          var layer = int.tryParse(layerStr);
-          var slatId = int.tryParse(slatIdStr);
-          if (layer != null && slatId != null) {
-            slatTypeMap[(layer, slatId)] = typeStr;
+          if (layerStr != null && slatIdStr != null && typeStr != null) {
+            var layer = int.tryParse(layerStr);
+            var slatId = int.tryParse(slatIdStr);
+            if (layer != null && slatId != null) {
+              slatTypeMap[(layer, slatId)] = typeStr;
+            }
           }
         }
       }
     }
   }
+  catch (_){
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_GENERAL');
+  }
 
   // prepares slat array from metadata information
-  List<List<List<int>>> slatArray = List.generate(
-      excel.tables['slat_layer_1']!.maxRows, (_) =>
-      List.generate(excel.tables['slat_layer_1']!.maxColumns, (_) =>
-          List.filled(numLayers, 0)));
+  List<List<List<int>>> slatArray;
+  try {
+    slatArray = List.generate(
+        excel.tables['slat_layer_1']!.maxRows,
+        (_) => List.generate(excel.tables['slat_layer_1']!.maxColumns,
+            (_) => List.filled(numLayers, 0)));
+  } catch (_) {
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SLAT_SHEETS');
+  }
 
   // extracts slat positional data into array
-  for (var table in excel.tables.keys.where((key) => key.startsWith('slat_layer_'))) {
-    var layerIndex = int.parse(table.split('_').last) - 1;
-    String layer = layerMap.entries.firstWhere((element) => element.value['order'] == layerIndex).key;
-    Map<int, Map<int, Offset>> slatCoordinates = {};
+  try {
+    for (var table
+        in excel.tables.keys.where((key) => key.startsWith('slat_layer_'))) {
+      var layerIndex = int.parse(table.split('_').last) - 1;
+      String layer = layerMap.entries
+          .firstWhere((element) => element.value['order'] == layerIndex)
+          .key;
+      Map<int, Map<int, Offset>> slatCoordinates = {};
 
-    var sheet = excel.tables[table]!;
-    for (var row = 0; row < sheet.maxRows; row++) {
-      for (var col = 0; col < sheet.maxColumns; col++) {
-        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
-        String value = (cell is TextCellValue) ? cell.value.text ?? '' : '';
-        if (value != '' && value != '0') {
-          int slatID = int.parse(value.split('-')[0]);
-          int slatPosition = int.parse(value.split('-')[1]);
-          slatCoordinates.putIfAbsent(slatID, () => {});
+      var sheet = excel.tables[table]!;
+      for (var row = 0; row < sheet.maxRows; row++) {
+        for (var col = 0; col < sheet.maxColumns; col++) {
+          var cell = sheet
+              .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
+              .value;
+          String value = (cell is TextCellValue) ? cell.value.text ?? '' : '';
+          if (value != '' && value != '0') {
+            int slatID = int.parse(value.split('-')[0]);
+            int slatPosition = int.parse(value.split('-')[1]);
+            slatCoordinates.putIfAbsent(slatID, () => {});
 
-          slatCoordinates[slatID]![slatPosition] = Offset(col + minX, row + minY);
-          slatArray[row][col][layerIndex] = slatID;
-        }
-        else if (cell is IntCellValue && cell.value != 0) { // backwards compatibility for old files
+            slatCoordinates[slatID]![slatPosition] =
+                Offset(col + minX, row + minY);
+            slatArray[row][col][layerIndex] = slatID;
+          } else if (cell is IntCellValue && cell.value != 0) {
+            // backwards compatibility for old files
 
-          int slatID = cell.value; // slat value extracted directly from the cell
-          slatCoordinates.putIfAbsent(slatID, () => {});
+            int slatID =
+                cell.value; // slat value extracted directly from the cell
+            slatCoordinates.putIfAbsent(slatID, () => {});
 
-          int nextPosition = slatCoordinates[slatID]!.length + 1; // no information on position provided, so just assume its the next available position
-          slatCoordinates[slatID]![nextPosition] = Offset(col + minX, row + minY);
-          slatArray[row][col][layerIndex] = slatID;
+            int nextPosition = slatCoordinates[slatID]!.length +
+                1; // no information on position provided, so just assume its the next available position
+            slatCoordinates[slatID]![nextPosition] =
+                Offset(col + minX, row + minY);
+            slatArray[row][col][layerIndex] = slatID;
+          }
         }
       }
-    }
 
-    for (var slatBundle in slatCoordinates.entries) {
-      var category = 'tube';
+      for (var slatBundle in slatCoordinates.entries) {
+        var category = 'tube';
+        // get layer number from layer map
+        if (slatTypeMap.containsKey((layerIndex + 1, slatBundle.key))) {
+          category = slatTypeMap[(layerIndex + 1, slatBundle.key)]!;
+        }
 
-      // get layer number from layer map
-      if (slatTypeMap.containsKey((layerIndex + 1, slatBundle.key))){
-        category = slatTypeMap[(layerIndex + 1, slatBundle.key)]!;
+        slats["$layer-I${slatBundle.key}"] = Slat(slatBundle.key,
+            "$layer-I${slatBundle.key}", layer, slatBundle.value,
+            slatType: category);
       }
-
-      slats["$layer-I${slatBundle.key}"] = Slat(
-          slatBundle.key, "$layer-I${slatBundle.key}", layer,
-          slatBundle.value, slatType: category);
+      layerMap[layer]!['slat_count'] = slatCoordinates.length;
     }
-    layerMap[layer]!['slat_count'] = slatCoordinates.length;
   }
+  catch (_){
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SLAT_SHEETS');
+  }
+
 
   // applies unique colors to slats, if available
   for (var slat in slats.values){
@@ -600,52 +629,65 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   }
 
   // assembly handle extraction
-  // TODO: can use errors here to cancel entire function import
-  extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minX, minY, false);
+  final okHandles = extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minX, minY, false);
+  if (!okHandles) {
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_ASSEMBLY_SHEETS');
+  }
 
   // extracts cargo handles and assigns them to slats
-  // TODO: as before, need to handle errors and problematic cases more gracefully...
-  for (var table in excel.tables.keys.where((key) => key.startsWith('cargo'))) {
-    // runs through each handle layer sheet
-    int cargoLayerIndex = int.parse(table.split('_')[2])-1;
-    int cargoLayerSide = int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
-    var sheet = excel.tables[table]!;
+  try {
+    for (var table
+        in excel.tables.keys.where((key) => key.startsWith('cargo'))) {
+      // runs through each handle layer sheet
+      int cargoLayerIndex = int.parse(table.split('_')[2]) - 1;
+      int cargoLayerSide =
+          int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
+      var sheet = excel.tables[table]!;
 
-    // extract layerID
-    String layerID = layerMap.entries
-        .firstWhere((element) => element.value['order'] == cargoLayerIndex)
-        .key;
+      // extract layerID
+      String layerID = layerMap.entries
+          .firstWhere((element) => element.value['order'] == cargoLayerIndex)
+          .key;
 
-    // loop through the whole array
-    for (var row = 0; row < sheet.maxRows; row++) {
-      for (var col = 0; col < sheet.maxColumns; col++) {
-        // extract cell handle data
-        var cellValue = sheet
-            .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
-            .value;
-        String value = (cellValue is TextCellValue)
-            ? cellValue.value.text ?? ''
-            : '';
-        if (value == '0' || value == '') {
-          continue;
+      // loop through the whole array
+      for (var row = 0; row < sheet.maxRows; row++) {
+        for (var col = 0; col < sheet.maxColumns; col++) {
+          // extract cell handle data
+          var cellValue = sheet
+              .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
+              .value;
+          String value =
+              (cellValue is TextCellValue) ? cellValue.value.text ?? '' : '';
+          if (value == '0' || value == '') {
+            continue;
+          }
+
+          // this is the case where old design files are used, which didn't have a specific metadata system for cargo
+          if (!cargoPalette.containsKey(value)) {
+            // choose a random color
+            cargoPalette[value] = Cargo(
+                name: value,
+                shortName: generateShortName(value),
+                color: qualitativeCargoColors[
+                    _rand.nextInt(qualitativeCargoColors.length)]);
+          }
+
+          String slatID = "$layerID-I${slatArray[row][col][cargoLayerIndex]}";
+          // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
+          Offset positionCoord = Offset(col + minX, row + minY);
+
+          // assign the exact handle to the slat
+          slats[slatID]?.setPlaceholderHandle(
+              slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
+              cargoLayerSide,
+              value,
+              'CARGO');
         }
-
-        // this is the case where old design files are used, which didn't have a specific metadata system for cargo
-        if (!cargoPalette.containsKey(value)){
-          // choose a random color
-          cargoPalette[value] = Cargo(name: value, shortName: generateShortName(value), color: qualitativeCargoColors[_rand.nextInt(qualitativeCargoColors.length)]);
-        }
-
-        String slatID = "$layerID-I${slatArray[row][col][cargoLayerIndex]}";
-        // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
-        Offset positionCoord = Offset(col + minX, row + minY);
-
-        // assign the exact handle to the slat
-        slats[slatID]?.setPlaceholderHandle(
-            slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
-            cargoLayerSide, value, 'CARGO');
       }
     }
+  }
+  catch (_){
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_CARGO_SHEETS');
   }
 
   // legacy compatibility with files that didn't contain seed info
@@ -656,62 +698,76 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   Map <(String, String, String), Map<int, Offset>> partialSeedArrays = {};
 
   // extracts seed handles and assigns them to slats
-  // TODO: as before, need to handle errors and problematic cases more gracefully...
-  for (var table in excel.tables.keys.where((key) => key.startsWith('seed'))) {
-    // runs through each handle layer sheet
-    int seedLayerIndex = int.parse(table.split('_')[2])-1;
-    int seedLayerSide = int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
-    String sideString = table.split('_')[3] == 'upper' ? 'top' : 'bottom';
+   try {
+    for (var table
+        in excel.tables.keys.where((key) => key.startsWith('seed'))) {
+      // runs through each handle layer sheet
+      int seedLayerIndex = int.parse(table.split('_')[2]) - 1;
+      int seedLayerSide =
+          int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
+      String sideString = table.split('_')[3] == 'upper' ? 'top' : 'bottom';
 
-    var sheet = excel.tables[table]!;
+      var sheet = excel.tables[table]!;
 
-    // extract layerID
-    String layerID = layerMap.entries
-        .firstWhere((element) => element.value['order'] == seedLayerIndex)
-        .key;
+      // extract layerID
+      String layerID = layerMap.entries
+          .firstWhere((element) => element.value['order'] == seedLayerIndex)
+          .key;
 
-    // loop through the whole array
-    for (var row = 0; row < sheet.maxRows; row++) {
-      for (var col = 0; col < sheet.maxColumns; col++) {
+      // loop through the whole array
+      for (var row = 0; row < sheet.maxRows; row++) {
+        for (var col = 0; col < sheet.maxColumns; col++) {
+          // extract cell handle data
+          var cellValue = sheet
+              .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
+              .value;
+          String value =
+              (cellValue is TextCellValue) ? cellValue.value.text ?? '' : '';
+          if (value == '0' || value == '') {
+            continue;
+          }
 
-        // extract cell handle data
-        var cellValue = sheet
-            .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
-            .value;
-        String value = (cellValue is TextCellValue)
-            ? cellValue.value.text ?? ''
-            : '';
-        if (value == '0' || value == '') {
-          continue;
+          String slatID = "$layerID-I${slatArray[row][col][seedLayerIndex]}";
+          // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
+          Offset positionCoord = Offset(col + minX, row + minY);
+
+          // assign the exact handle to the slat
+          slats[slatID]?.setPlaceholderHandle(
+              slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
+              seedLayerSide,
+              value,
+              'Seed');
+
+          partialSeedArrays.putIfAbsent(
+              (value.split('-')[0], layerID, sideString), () => {});
+
+          partialSeedArrays[(value.split('-')[0], layerID, sideString)]![
+              getIndexFromSeedText(value)] = positionCoord;
         }
-
-        String slatID = "$layerID-I${slatArray[row][col][seedLayerIndex]}";
-        // convert the array index into the exact grid position using the grid size and minima extracted from the metadata file
-        Offset positionCoord = Offset(col + minX, row + minY);
-
-        // assign the exact handle to the slat
-        slats[slatID]?.setPlaceholderHandle(
-            slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
-            seedLayerSide, value, 'Seed');
-
-        partialSeedArrays.putIfAbsent((value.split('-')[0],layerID, sideString), () => {});
-
-        partialSeedArrays[(value.split('-')[0],layerID, sideString)]![getIndexFromSeedText(value)] = positionCoord;
       }
     }
+  }
+  catch (_){
+    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SEED_SHEETS');
   }
 
   for (var partialSeed in partialSeedArrays.entries){
     seedRoster[(partialSeed.key.$2, partialSeed.key.$3, partialSeed.value[1]!)] = Seed(ID: partialSeed.key.$1, coordinates: partialSeed.value);
   }
 
-  return (slats, layerMap, gridMode, cargoPalette, seedRoster);
+  return (slats, layerMap, gridMode, cargoPalette, seedRoster, '');
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, String)> importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
+Future<(Map<String, Slat>,
+      Map<String, Map<String, dynamic>>,
+      String,
+      Map<String, Cargo>,
+      Map<(String, String, Offset), Seed>,
+      String,
+      String
+    )> importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
-  // TODO: there could obviously be many errors here due to an incorrect file type.  Need to catch them and present useful error messages.
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
@@ -722,11 +778,10 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   Uint8List fileBytes;
   String fileName;
 
-  if (inputFileBytes != null && inputFileName != null){
+  if (inputFileBytes != null && inputFileName != null) {
     fileName = basenameWithoutExtension(inputFileName);
     fileBytes = inputFileBytes;
-  }
-  else {
+  } else {
     // main user dialog box for file selection
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -737,8 +792,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       // web has a different file-opening procedure to the desktop app
       if (kIsWeb) {
         fileBytes = result.files.first.bytes!;
-      }
-      else {
+      } else {
         filePath = result.files.single.path!;
         fileBytes = File(filePath).readAsBytesSync();
         // Remember directory for next time
@@ -747,17 +801,28 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
         } catch (_) {}
       }
       fileName = basenameWithoutExtension(result.files.first.name);
-    } else { // if nothing picked, return empty maps
-      return (slats, layerMap, '', cargoPalette, seedRoster, '');
+    } else {
+      // if nothing picked, return empty maps
+      return (slats, layerMap, '', cargoPalette, seedRoster, '', '');
     }
   }
-
   // run isolate function
-  final (slatsOut, layerMapOut, layerName, cargoOut, seedOut) = await compute(parseDesignInIsolate, fileBytes);
-  return (slatsOut, layerMapOut, layerName, cargoOut, seedOut, fileName);
-
+  try {
+    final (slatsOut, layerMapOut, layerName, cargoOut, seedOut, errorCode) =
+        await compute(parseDesignInIsolate, fileBytes);
+    return (
+      slatsOut,
+      layerMapOut,
+      layerName,
+      cargoOut,
+      seedOut,
+      fileName,
+      errorCode
+    );
+  } catch (_) {
+    return (slats, layerMap, '', cargoPalette, seedRoster, '', 'ERR_GENERAL');
+  }
 }
-
 
 Future <bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double gridSize) async{
 
