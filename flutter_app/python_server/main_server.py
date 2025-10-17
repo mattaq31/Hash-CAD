@@ -1,17 +1,4 @@
-# attempts to ensure matplotlib remains headless
-import matplotlib
-matplotlib.use('Agg')
-import os
-os.environ["MPLBACKEND"] = "Agg"
 
-import sys
-from concurrent import futures
-import grpc
-from grpc_health.v1 import health_pb2_grpc
-from grpc_health.v1 import health
-
-from server_architecture import hamming_evolve_communication_pb2_grpc
-from HandleEvolveManager import HandleEvolveService
 
 def serve():
 
@@ -37,4 +24,24 @@ def serve():
     server.wait_for_termination()
 
 if __name__ == '__main__':
+    # attempts to ensure matplotlib remains headless
+    import matplotlib
+
+    matplotlib.use('Agg')
+    import os
+    import multiprocessing as mp
+
+    os.environ["MPLBACKEND"] = "Agg"
+
+    import sys
+    from concurrent import futures
+    import grpc
+    from grpc_health.v1 import health_pb2_grpc
+    from grpc_health.v1 import health
+
+    from server_architecture import hamming_evolve_communication_pb2_grpc
+    from HandleEvolveManager import HandleEvolveService
+
+
+    mp.freeze_support()  # needed for PyInstaller/Nuitka on Windows
     serve()

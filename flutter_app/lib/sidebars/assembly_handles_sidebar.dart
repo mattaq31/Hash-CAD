@@ -278,7 +278,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                     const SizedBox(height: 10),
                     Text(
                       // set to 3dp
-                      appState.currentEffValency.toStringAsFixed(3),
+                      appState.currentEffValency.toStringAsFixed(2),
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                     ),
                   ],

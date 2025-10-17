@@ -2,6 +2,8 @@ import numpy as np
 from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
 from server_architecture import hamming_evolve_communication_pb2_grpc, hamming_evolve_communication_pb2
 from crisscross.core_functions.megastructures import Megastructure
+import threading
+import time
 
 
 def proto_to_numpy(proto_layers):
@@ -40,6 +42,8 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
     def __init__(self):
         self.pause_signal = False
         self.evolve_manager = None
+        self._pause_deadline = None
+        self._pause_timer = None
 
     def evolveQuery(self, request, context):
         print('INITIATING ASSEMBLY HANDLE EVOLUTION')
@@ -98,12 +102,38 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
 
 
             if len(self.evolve_manager.metrics) > 0:
-                if max(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
+                if min(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
                     break
+
+    def _schedule_pause_timeout(self, seconds = 120.0):
+        # Cancel any previous timer
+        if self._pause_timer is not None:
+            try:
+                self._pause_timer.cancel()
+            except Exception:
+                pass
+            self._pause_timer = None
+
+        self._pause_deadline = time.monotonic() + seconds
+
+        def _on_timeout():
+            # Only kill the pool if we are still paused at the deadline
+            if self.pause_signal and self.evolve_manager is not None:
+                try:
+                    self.evolve_manager.terminate_pool()
+                    print('TERMINATED SPAWN POOL DUE TO LONG PAUSE')
+                except Exception:
+                    pass
+
+        t = threading.Timer(seconds, _on_timeout)
+        t.daemon = True
+        t.start()
+        self._pause_timer = t
 
     def PauseProcessing(self, request, context):
         self.pause_signal = True
         print('PAUSE TOGGLED')
+        self._schedule_pause_timeout(120.0)
         return hamming_evolve_communication_pb2.PauseRequest()
 
     def StopProcessing(self, request, context):
@@ -118,6 +148,7 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
                 ])
             ]) for layer in np.transpose(self.evolve_manager.handle_array, (1, 0, 2))
         ]
+        self.evolve_manager.terminate_pool()
         self.evolve_manager = None
         return hamming_evolve_communication_pb2.FinalResponse(handleArray=handleArray)
 

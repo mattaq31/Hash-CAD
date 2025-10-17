@@ -362,20 +362,20 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     instanceManager['tube-honey'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, true), threeJs: threeJs, maxIndex: 50);
     instanceManager['tube-honey-short'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, false), threeJs: threeJs, maxIndex: 50);
 
-    instanceManager['double-barrel'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, false), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, false), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, false), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, false), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
 
-    instanceManager['double-barrel-A'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-A-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-A-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-A-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-120'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-120-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-120-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-120-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
 
-    instanceManager['double-barrel-B'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-B-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-B-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['double-barrel-B-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-60'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-60-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-60-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-60-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
 
     instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 1000);
     instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 1000);
@@ -386,18 +386,18 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       'tube-short',
       'tube-honey',
       'tube-honey-short',
-      'double-barrel',
-      'double-barrel-short',
-      'double-barrel-honey',
-      'double-barrel-honey-short',
-      'double-barrel-A',
-      'double-barrel-A-short',
-      'double-barrel-A-honey',
-      'double-barrel-A-honey-short',
-      'double-barrel-B',
-      'double-barrel-B-short',
-      'double-barrel-B-honey',
-      'double-barrel-B-honey-short',
+      'DB-L',
+      'DB-L-short',
+      'DB-L-honey',
+      'DB-L-honey-short',
+      'DB-L-120',
+      'DB-L-120-short',
+      'DB-L-120-honey',
+      'DB-L-120-honey-short',
+      'DB-L-60',
+      'DB-L-60-short',
+      'DB-L-60-honey',
+      'DB-L-60-honey-short',
     ]);
   }
 
@@ -528,6 +528,20 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   String selectSlatVisualStyle(String slatType){
     String slatTypeClean = slatType;
+
+    // this is an easy hack to visualize flipped DB slats - simply replace the R-60 with L-120 and vice versa
+    if (slatTypeClean.contains('DB-R')){
+      slatTypeClean = slatTypeClean.replaceAll('DB-R', 'DB-L');
+      if (gridMode == '60'){
+        if (slatTypeClean.contains('60')) {
+          slatTypeClean = slatTypeClean.replaceAll('60', '120');
+        }
+        else{
+          slatTypeClean = slatTypeClean.replaceAll('120', '60');
+        }
+      }
+    }
+
     if (helixBundleView){
       slatTypeClean = '$slatTypeClean-honey';
     }
@@ -745,7 +759,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
       String slatVisualStyle = selectSlatVisualStyle(slat.slatType);
 
-      // if the slat has changed type (e.g. tube <-> double-barrel), remove the old instances
+      // if the slat has changed type (e.g. tube <-> DB-L), remove the old instances
       for (String alternateSlatType in slatInstanceNames){
         if (alternateSlatType != slatVisualStyle && instanceManager[alternateSlatType]?.getIndex(slat.id) != null){
           removeSlat(slat.id);
@@ -1157,7 +1171,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   message: 'Center View',
                   child: ElevatedButton(
                     onPressed: () {
-                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('double-barrel-A')]!, instanceManager[selectSlatVisualStyle('double-barrel-B')]!]);
+                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('DB-L-120')]!, instanceManager[selectSlatVisualStyle('DB-L-60')]!]);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,

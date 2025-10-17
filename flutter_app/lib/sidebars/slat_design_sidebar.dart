@@ -1,11 +1,12 @@
-import 'dart:collection';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
-import '../app_management/shared_app_state.dart';
 import 'package:flutter/material.dart';
+import 'dart:math';
+
+
 import 'layer_manager.dart';
+import '../app_management/shared_app_state.dart';
 
 List<String> getOrderedKeys(Map<String, Map<String, dynamic>> layerMap) {
   return layerMap.keys.toList()
@@ -44,10 +45,10 @@ Widget slatIcon(DesignState appState) {
 
 
 Widget dBSlatIcon(DesignState appState) {
-  bool isSelected = appState.slatAdditionType == 'double-barrel-A';
+  bool isSelected = appState.slatAdditionType == 'DB-L-120';
   return GestureDetector(
     onTap: () {
-      appState.setSlatAdditionType('double-barrel-A');
+      appState.setSlatAdditionType('DB-L-120');
     },
     child: Container(
       width: 40, // Shrunk size
@@ -135,6 +136,7 @@ class SlatOption extends StatelessWidget {
                 painter: painterBuilder(color),
               ),
             ),
+            SizedBox(width: 10)
           ],
         ),
       ),
@@ -188,31 +190,102 @@ class DoubleBarrelGlyphPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = barHeight;
 
-    Path path;
+    // Compute the four points used by the path so we can derive direction for arrow
+    late Offset p1, p2, p3, p4;
+    Path path = Path();
 
-    if (dBType == 'double-barrel-B') {
-      path = Path()
-        ..moveTo(-padding * 9 + size.width + 6 * padding + 2 * padding, top + barHeight / 2)
-        ..lineTo(-padding * 9 + 2 * padding, top + barHeight / 2)
-        ..lineTo(-padding * 9, top + barHeight * 2.5)
-        ..lineTo(-padding * 9 + size.width + 6 * padding, top + barHeight * 2.5);
+    if (dBType == 'DB-L-60') {
+      p3 = Offset(-padding * 9 + size.width + 6 * padding, top + barHeight * 2.5);
+      p4 = Offset(-padding * 9, top + barHeight * 2.5);
+      p1 = Offset(-padding * 9 + 2 * padding, top + barHeight / 2);
+      p2 = Offset(-padding * 9 + size.width + 6 * padding + 2 * padding, top + barHeight / 2);
     }
-    else if (dBType == 'double-barrel'){
-      path = Path()
-        ..moveTo(-padding * 7 + size.width + 6 * padding, top + barHeight / 2)
-        ..lineTo(-padding * 7, top + barHeight / 2)
-        ..lineTo(-padding * 7, top + barHeight * 2.5)
-        ..lineTo(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
+    else if (dBType == 'DB-R-60') {
+      p3 = Offset(-padding * 9 + size.width + 6 * padding, top + barHeight / 2);
+      p4 = Offset(-padding * 9, top + barHeight / 2);
+      p1 = Offset(-padding * 9 + 2 * padding, top + barHeight * 2.5);
+      p2 = Offset(-padding * 9 + size.width + 6 * padding + 2 * padding, top + barHeight * 2.5);
+    }
+    else if (dBType == 'DB-L-120') {
+      p3 = Offset(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
+      p4 = Offset(-padding * 7, top + barHeight * 2.5);
+      p1 = Offset(-padding * 7 - 2 * padding, top + barHeight / 2);
+      p2 = Offset(-padding * 7 + size.width + 6 * padding - 2 * padding, top + barHeight / 2);
+    }
+    else if (dBType == 'DB-R-120') {
+      p3 = Offset(-padding * 7 + size.width + 6 * padding,top + barHeight / 2);
+      p4 = Offset(-padding * 7, top + barHeight / 2);
+      p1 = Offset(-padding * 7 - 2 * padding, top + barHeight * 2.5);
+      p2 = Offset(-padding * 7 + size.width + 6 * padding - 2 * padding, top + barHeight * 2.5);
+    }
+    else if (dBType == 'DB-L') {
+      p3 = Offset(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
+      p4 = Offset(-padding * 7, top + barHeight * 2.5);
+      p1 = Offset(-padding * 7, top + barHeight / 2);
+      p2 = Offset(-padding * 7 + size.width + 6 * padding, top + barHeight / 2);
+    }
+    else if (dBType == 'DB-R') {
+      p3 = Offset(-padding * 7 + size.width + 6 * padding, top + barHeight / 2);
+      p4 = Offset(-padding * 7, top + barHeight / 2);
+      p1 = Offset(-padding * 7, top + barHeight * 2.5);
+      p2 = Offset(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
     }
     else {
-      path = Path()
-        ..moveTo(-padding * 7 + size.width + 6 * padding - 2 * padding, top + barHeight / 2)
-        ..lineTo(-padding * 7 - 2 * padding, top + barHeight / 2)
-        ..lineTo(-padding * 7, top + barHeight * 2.5)
-        ..lineTo(-padding * 7 + size.width + 6 * padding, top + barHeight * 2.5);
+      // nothing to draw
+      return;
     }
 
+    // Draw the stroked path
+    path.moveTo(p1.dx, p1.dy);
+    path.lineTo(p2.dx, p2.dy);
+    path.lineTo(p3.dx, p3.dy);
+    path.lineTo(p4.dx, p4.dy);
     canvas.drawPath(path, paint);
+
+    // Arrowhead (at p4) and tail (near p1), styled to match SlatPainter aids
+    final Offset endDir = p4 - p3;
+    final Offset startDir = p2 - p1;
+
+    if (endDir.distance > 0.001 && startDir.distance > 0.001) {
+      final Offset vEnd = endDir / endDir.distance;   // normalized
+      final Offset vStart = startDir / startDir.distance;
+
+      // Arrowhead — filled triangle pointing along vEnd
+      final double arrowSize = barHeight * 1.8;          // modest size for sidebar glyph
+      final double arrowAngle = pi / 4.5; // ~40° wings
+      final Offset tip = p4 - Offset(5,0); // added offset for beauty
+      final double theta = vEnd.direction;
+      final Offset left  = tip - Offset.fromDirection(theta - arrowAngle, arrowSize);
+      final Offset right = tip - Offset.fromDirection(theta + arrowAngle, arrowSize);
+
+      final Path arrowPath = Path()
+        ..moveTo(tip.dx, tip.dy)
+        ..lineTo(left.dx, left.dy)
+        ..lineTo(right.dx, right.dy)
+        ..close();
+
+      final Paint fillPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.fill;
+
+      canvas.drawPath(arrowPath, fillPaint);
+
+      // Tail — short transverse line near the start
+      final double tailHalfLen = barHeight * 0.6; // length each side from center
+      final double phi = vStart.direction;
+      final Offset tailCenter = p1 - vStart * (barHeight * 0.4); // pull slightly "behind" start
+      final Offset tailA = tailCenter + Offset.fromDirection(phi - pi / 2, tailHalfLen);
+      final Offset tailB = tailCenter + Offset.fromDirection(phi + pi / 2, tailHalfLen);
+
+      final Paint tailPaint = Paint()
+        ..color = color
+        ..strokeWidth = barHeight / 2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      canvas.drawLine(tailA, tailB, tailPaint);
+    }
+
   }
 
   @override
@@ -230,10 +303,15 @@ class _SlatDesignTools extends State<SlatDesignTools>
     with WidgetsBindingObserver {
   FocusNode slatAddFocusNode = FocusNode();
   TextEditingController slatAddTextController = TextEditingController();
+  late final ScrollController _slatPaletteCtrl;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _slatPaletteCtrl = ScrollController();
+    _scrollController = ScrollController();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       var appState = context.read<DesignState>(); // Use read instead of watch
       slatAddTextController.text = appState.slatAddCount.toString();
@@ -262,44 +340,66 @@ class _SlatDesignTools extends State<SlatDesignTools>
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
     final colorScheme = Theme.of(context).colorScheme;
-    final ScrollController _scrollController = ScrollController();
+
+    final List<Widget> slatTiles = [
+      SlatOption(
+        label: 'Standard Slat',
+        isSelected: appState.slatAdditionType == 'tube',
+        color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+        painterBuilder: (color) => SlatGlyphPainter(color: color),
+        onTap: () => appState.setSlatAdditionType('tube'),
+      ),
+      if (appState.gridMode == '90') ...[
+        SlatOption(
+          label: 'DB-L',
+          isSelected: appState.slatAdditionType == 'DB-L',
+          color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+          painterBuilder: (color) => DoubleBarrelGlyphPainter('DB-L', color: color),
+          onTap: () => appState.setSlatAdditionType('DB-L'),
+        ),
+        SlatOption(
+          label: 'DB-R',
+          isSelected: appState.slatAdditionType == 'DB-R',
+          color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+          painterBuilder: (color) => DoubleBarrelGlyphPainter('DB-R', color: color),
+          onTap: () => appState.setSlatAdditionType('DB-R'),
+        ),
+      ] else ...[
+        SlatOption(
+          label: 'DB-L-60',
+          isSelected: appState.slatAdditionType == 'DB-L-60',
+          color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+          painterBuilder: (color) => DoubleBarrelGlyphPainter('DB-L-60', color: color),
+          onTap: () => appState.setSlatAdditionType('DB-L-60'),
+        ),
+        SlatOption(
+          label: 'DB-L-120',
+          isSelected: appState.slatAdditionType == 'DB-L-120',
+          color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+          painterBuilder: (color) => DoubleBarrelGlyphPainter('DB-L-120', color: color),
+          onTap: () => appState.setSlatAdditionType('DB-L-120'),
+        ),
+        SlatOption(
+          label: 'DB-R-60',
+          isSelected: appState.slatAdditionType == 'DB-R-60',
+          color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+          painterBuilder: (color) => DoubleBarrelGlyphPainter('DB-R-60', color: color),
+          onTap: () => appState.setSlatAdditionType('DB-R-60'),
+        ),
+        SlatOption(
+          label: 'DB-R-120',
+          isSelected: appState.slatAdditionType == 'DB-R-120',
+          color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
+          painterBuilder: (color) => DoubleBarrelGlyphPainter('DB-R-120', color: color),
+          onTap: () => appState.setSlatAdditionType('DB-R-120'),
+        ),
+      ],
+    ];
 
     return Column(children: [
       Text("Slat Design",
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
       SizedBox(height: 5),
-      Text(
-        "Slat Edit Mode", // Title above the segmented button
-        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-      ),
-      SizedBox(height: 5),
-      SegmentedButton<String>(
-        segments: <ButtonSegment<String>>[
-          ButtonSegment<String>(
-              value: "Add",
-              label: Text('Add'),
-              icon: Icon(Icons.add_circle_outline,
-                  color: Theme.of(context).colorScheme.primary)),
-          ButtonSegment<String>(
-              value: "Delete",
-              label: Text('Delete'),
-              icon: Icon(Icons.delete_outline,
-                  color: Theme.of(context).colorScheme.primary)),
-          ButtonSegment<String>(
-              value: 'Move',
-              label: Text('Edit'),
-              icon: Icon(Icons.pan_tool,
-                  color: Theme.of(context).colorScheme.primary)),
-        ],
-        selected: <String>{actionState.slatMode},
-        onSelectionChanged: (Set<String> newSelection) {
-          setState(() {
-            actionState.updateSlatMode(newSelection.first);
-          });
-        },
-      ),
-      SizedBox(height: 5),
-      Divider(thickness: 1, color: Colors.grey.shade200),
       Text(
         "Setup", // Title above the segmented button
         style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
@@ -408,6 +508,38 @@ class _SlatDesignTools extends State<SlatDesignTools>
           ),
         ),
       ),
+      Divider(thickness: 1, color: Colors.grey.shade200),
+      Text(
+        "Slat Edit Mode", // Title above the segmented button
+        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      ),
+      SizedBox(height: 5),
+      SegmentedButton<String>(
+        segments: <ButtonSegment<String>>[
+          ButtonSegment<String>(
+              value: "Add",
+              label: Text('Add'),
+              icon: Icon(Icons.add_circle_outline,
+                  color: Theme.of(context).colorScheme.primary)),
+          ButtonSegment<String>(
+              value: "Delete",
+              label: Text('Delete'),
+              icon: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.primary)),
+          ButtonSegment<String>(
+              value: 'Move',
+              label: Text('Edit'),
+              icon: Icon(Icons.pan_tool,
+                  color: Theme.of(context).colorScheme.primary)),
+        ],
+        selected: <String>{actionState.slatMode},
+        onSelectionChanged: (Set<String> newSelection) {
+          setState(() {
+            actionState.updateSlatMode(newSelection.first);
+          });
+        },
+      ),
+      SizedBox(height: 5),
       // Buttons
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(
@@ -415,56 +547,20 @@ class _SlatDesignTools extends State<SlatDesignTools>
         style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
       ),
       Container(
-        // decoration: BoxDecoration(
-        //   border: Border.all(color: Colors.grey.shade400, width: 1),
-        //   borderRadius: BorderRadius.circular(8),
-        // ),
         width: (40 + 4) * 6 + 12,
         padding: const EdgeInsets.all(6),
-        child: Column(
-          children: [
-            SlatOption(
-              label: 'CC6HB',
-              isSelected: appState.slatAdditionType == 'tube',
-              color: appState.layerMap[appState.selectedLayerKey]?['color'] ?? Colors.grey,
-              painterBuilder: (color) => SlatGlyphPainter(color: color),
-              onTap: () => appState.setSlatAdditionType('tube'),
+        child: SizedBox(
+          height: 180, // ~3 tiles visible
+          child: Scrollbar(
+            thumbVisibility: true,
+            controller: _slatPaletteCtrl,
+            child: ListView.separated(
+              controller: _slatPaletteCtrl,
+              itemCount: slatTiles.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              itemBuilder: (_, i) => slatTiles[i],
             ),
-            if (appState.gridMode == '90') ...[
-              SizedBox(height: 6),
-              SlatOption(
-                label: 'Double-Barrel',
-                isSelected: appState.slatAdditionType == 'double-barrel',
-                color: appState.layerMap[appState.selectedLayerKey]?['color'] ??
-                    Colors.grey,
-                painterBuilder: (color) =>
-                    DoubleBarrelGlyphPainter('double-barrel', color: color),
-                onTap: () => appState.setSlatAdditionType('double-barrel'),
-              ),
-            ],
-            if (appState.gridMode == '60') ...[
-              SizedBox(height: 6),
-              SlatOption(
-                label: 'Double-Barrel-A',
-                isSelected: appState.slatAdditionType == 'double-barrel-A',
-                color: appState.layerMap[appState.selectedLayerKey]?['color'] ??
-                    Colors.grey,
-                painterBuilder: (color) =>
-                    DoubleBarrelGlyphPainter('double-barrel-A', color: color),
-                onTap: () => appState.setSlatAdditionType('double-barrel-A'),
-              ),
-              SizedBox(height: 6),
-              SlatOption(
-                label: 'Double-Barrel-B',
-                isSelected: appState.slatAdditionType == 'double-barrel-B',
-                color: appState.layerMap[appState.selectedLayerKey]?['color'] ??
-                    Colors.grey,
-                painterBuilder: (color) =>
-                    DoubleBarrelGlyphPainter('double-barrel-B', color: color),
-                onTap: () => appState.setSlatAdditionType('double-barrel-B'),
-              ),
-            ]
-          ],
+          ),
         ),
       ),
       Divider(thickness: 1, color: Colors.grey.shade200),
@@ -809,6 +905,9 @@ class _SlatDesignTools extends State<SlatDesignTools>
   @override
   void dispose() {
     slatAddFocusNode.dispose();
+    _slatPaletteCtrl.dispose();
+    slatAddTextController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 }

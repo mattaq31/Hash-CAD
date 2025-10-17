@@ -12,6 +12,7 @@ import '../grpc_client_architecture/hamming_evolve_window.dart';
 import '../grpc_client_architecture/server_startup.dart';
 import '../app_management/version_tracker.dart';
 import 'floating_main_title.dart';
+import '../drag_and_drop/design_drop_target.dart';
 
 
 class SplitScreen extends StatefulWidget {
@@ -90,7 +91,19 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                   // Left half: the grid
                   SizedBox(
                     width: actionState.threeJSViewerActive ? leftPaneWidth: width,
-                    child: GridAndCanvas(),
+                    child:
+                    DesignDropTarget(
+                      acceptExtensions: const ['xlsx'],
+                      onDrop: (bytes, name) async {
+                        appState.importNewDesign(context, fileName: name, fileBytes: bytes);
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          GridAndCanvas()
+                        ],
+                      ),
+                    )
                   ),
                   if (actionState.threeJSViewerActive) ... [
                     // Divider: draggable center line
@@ -220,7 +233,6 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
           ),
 
           HammingEvolveWindow(),
-
 
           // Overlay spinner when loading
           if (appState.currentlyLoadingDesign)
