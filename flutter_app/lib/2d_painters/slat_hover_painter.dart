@@ -82,7 +82,10 @@ class SlatHoverPainter extends CustomPainter {
           final labelFin = labelPainters[index]!;
 
           labelBegin.paint(canvas, slatCoords[1]! - Offset(labelBegin.width / 2, labelBegin.height / 2));
-          labelFin.paint(canvas, slatCoords[slatCoords.length]! - Offset(labelFin.width / 2, labelFin.height / 2));
+          if (appState.slatAdditionType == 'tube') {
+            labelFin.paint(canvas, slatCoords[slatCoords.length]! -
+                Offset(labelFin.width / 2, labelFin.height / 2));
+          }
           index += 1;
         }
       }

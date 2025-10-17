@@ -318,13 +318,23 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     }
 
     int shearOffset = 0;
+    double dbSign = 1;
     if (appState.slatAdditionType == 'tube') {
       slatMultiJump = slatMultiJump * transposeDirection;
       slatInnerJump = slatInnerJump * transposeDirection;
     }
-    // for DB slats in 60degree mode, slats can have a different 'shear' value too, which we refer to as 'A' and 'B' types
-    else if (appState.slatAdditionType == 'double-barrel-A'){
+    else {
+      if (appState.slatAdditionType == 'DB-R-60' || appState.slatAdditionType == 'DB-R-120' || appState.slatAdditionType == 'DB-R'){
+        dbSign = -1;
+      }
+
+      // for DB slats in 60degree mode, slats can have a different 'shear' value too, which we refer to as '60' and '120' types (referring to the inner angle of the first kink)
+      if (appState.slatAdditionType == 'DB-L-120'){
       shearOffset = 1;
+      }
+      else if (appState.slatAdditionType == 'DB-R-60'){
+        shearOffset = -1;
+      }
     }
 
     for (int j = 0; j < appState.slatAddCount; j++) {
@@ -336,10 +346,10 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
         else{
           // double barrel slat generation
           if (i < 16){
-            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * j.toDouble() * 2) + (slatInnerJump * i.toDouble());
+            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * j.toDouble() * 2 * dbSign) + (slatInnerJump * i.toDouble());
           }
           else{
-            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * (1 + (j.toDouble() * 2))) + (slatInnerJump * (31 + shearOffset - i).toDouble());
+            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * (1 + (j.toDouble() * 2)) * dbSign) + (slatInnerJump * (31 + shearOffset - i).toDouble());
           }
         }
       }

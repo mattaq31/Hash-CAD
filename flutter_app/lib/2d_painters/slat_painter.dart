@@ -200,7 +200,7 @@ class SlatPainter extends CustomPainter {
   }
 
   /// draws a dotted border around a slat when selected
-  void drawBorder(Canvas canvas, List<Offset> coords, Color color, Offset slatExtend, bool slatTipExtended, String slatType, String gridMode) {
+  void drawBorder(Canvas canvas, List<Offset> coords, Color color, Offset slatExtend, bool slatTipExtended, String slatType) {
     final paint = Paint()
       ..color = color
       ..strokeWidth = appState.gridSize / 6
@@ -226,63 +226,100 @@ class SlatPainter extends CustomPainter {
       flippedSlatExtend = Offset(-slatExtend.dy, slatExtend.dx);
     }
 
-    // calculations for these are basically 1.5 extensions away from slat edge, and then 1 extension away in the 90 degree direction to create the border for a slat
-    // if tip extensions are off, then it's just 0.5 extensions away from the slat edge
-    double tipExtension;
-    if (slatTipExtended) {
-      tipExtension = 1.5;
-    } else {
-      tipExtension = 0.5;
-    }
+    // the below contain the calculations for precisely framing slats according to their shape.  If tip extensions are enabled, these also need to be included to add some extra space
+    // TODO: the below could probably be streamlined further but works well for now
+    Map<String, dynamic> coordinateBuilder = {};
+    coordinateBuilder['tube'] = {
+      '1a': 0,
+      '1b': 0,
+      '2a': 31,
+      '2b': 31,
+      'slatExtend1a': slatTipExtended? 1.5: 0.5,
+      'slatExtend1b': slatTipExtended? 1.5: 0.5,
+      'slatExtend2a': slatTipExtended? 1.5: 0.5,
+      'slatExtend2b': slatTipExtended? 1.5: 0.5,
+      'yFlip': 1.0,
+      'slatExtendX': 0.5,
+      'slatExtendXMax': 1.5,
+      'slatExtendY': 0.5,
+      'slatExtendYMax': 1.5
+    };
 
-    Offset slatP1A;
-    Offset slatP1B;
-    Offset slatP2A;
-    Offset slatP2B;
+    coordinateBuilder['DB-L'] = {
+      '1a': 31,
+      '1b': 0,
+      '2a': 15,
+      '2b': 16,
+      'slatExtend1a': slatTipExtended? 1.6: 0.6,
+      'slatExtend1b': slatTipExtended? 1.6: 0.6,
+      'slatExtend2a': 1.3,
+      'slatExtend2b': 1.3,
+      'yFlip': 1.0
+    };
+    coordinateBuilder['DB-R'] = {
+      '1a': 31,
+      '1b': 0,
+      '2a': 15,
+      '2b': 16,
+      'slatExtend1a': slatTipExtended? 1.6: 0.6,
+      'slatExtend1b': slatTipExtended? 1.6: 0.6,
+      'slatExtend2a': 1.3,
+      'slatExtend2b': 1.3,
+      'yFlip': -1.0
+    };
+    coordinateBuilder['DB-L-60'] = {
+      '1a': 31,
+      '1b': 0,
+      '2a': 15,
+      '2b': 16,
+      'slatExtend1a': slatTipExtended? 1.6: 0.6,
+      'slatExtend1b': slatTipExtended? 1.6: 0.6,
+      'slatExtend2a': 1.6,
+      'slatExtend2b': 0.7,
+      'yFlip': 1.0
+    };
+    coordinateBuilder['DB-L-120'] = {
+      '1a': 31,
+      '1b': 0,
+      '2a': 15,
+      '2b': 16,
+      'slatExtend1a': slatTipExtended? 1.6: 0.6,
+      'slatExtend1b': slatTipExtended? 1.6: 0.6,
+      'slatExtend2a': 0.7,
+      'slatExtend2b': 1.6,
+      'yFlip': 1.0
+    };
 
-    // if distance between extremities is much less than that expected of a straight line, then the slat must be a double barrel
-    // (this is a bit of a hack but should work for now, other solutions will be much more complicated)
-    if (slatType == 'double-barrel-A' || slatType == 'double-barrel') {
-      // select offsets to match normal slat system, with some tweaks to improve visualization
-      // of course, if different sized DBs are introduced, the 15/16 hardcoding will need to be changed...
-      if (gridMode == '60') {
-        slatP2A = coords[15] + slatExtend * 0.7 - flippedSlatExtend;
-        slatP2B = coords[16] + slatExtend * 1.6 + flippedSlatExtend;
-      }
-      else {
-        slatP2A = coords[15] + slatExtend * 1.3 - flippedSlatExtend;
-        slatP2B = coords[16] + slatExtend * 1.3 + flippedSlatExtend;
-      }
+    coordinateBuilder['DB-R-120'] = {
+      '1a': 31,
+      '1b': 0,
+      '2a': 15,
+      '2b': 16,
+      'slatExtend1a': slatTipExtended? 1.6: 0.6,
+      'slatExtend1b': slatTipExtended? 1.6: 0.6,
+      'slatExtend2a': 0.7,
+      'slatExtend2b': 1.6,
+      'yFlip': -1.0
+    };
 
-      if (slatTipExtended){ // only one side of the DB is extended with tip extenders...
-        slatP1A = coords.last - slatExtend * 1.6 + flippedSlatExtend;
-        slatP1B = coords.first - slatExtend * 1.6 - flippedSlatExtend;
-      }
-      else {
-        slatP1A = coords.last - slatExtend * 0.6 + flippedSlatExtend;
-        slatP1B = coords.first - slatExtend * 0.6 - flippedSlatExtend;
-      }
-    }
-    else if (slatType == 'double-barrel-B') {
+    coordinateBuilder['DB-R-60'] = {
+      '1a': 31,
+      '1b': 0,
+      '2a': 15,
+      '2b': 16,
+      'slatExtend1a': slatTipExtended? 1.6: 0.6,
+      'slatExtend1b': slatTipExtended? 1.6: 0.6,
+      'slatExtend2a': 1.6,
+      'slatExtend2b': 0.7,
+      'yFlip': -1.0
+    };
 
-      slatP2A = coords[15] + slatExtend * 1.6 - flippedSlatExtend;
-      slatP2B = coords[16] + slatExtend * 0.7 + flippedSlatExtend;
+    var pData = coordinateBuilder[slatType];
 
-      if (slatTipExtended){ // only one side of the DB is extended with tip extenders...
-        slatP1A = coords.last - slatExtend * 1.6 + flippedSlatExtend;
-        slatP1B = coords.first - slatExtend * 1.6 - flippedSlatExtend;
-      }
-      else {
-        slatP1A = coords.last - slatExtend * 0.6 + flippedSlatExtend;
-        slatP1B = coords.first - slatExtend * 0.6 - flippedSlatExtend;
-      }
-    }
-    else{
-      slatP1A = coords.first - slatExtend * tipExtension + flippedSlatExtend;
-      slatP1B = coords.first - slatExtend * tipExtension - flippedSlatExtend;
-      slatP2A = coords.last + slatExtend * tipExtension - flippedSlatExtend;
-      slatP2B = coords.last + slatExtend * tipExtension + flippedSlatExtend;
-    }
+    Offset slatP1A = coords[pData['1a']] - slatExtend * pData['slatExtend1a'] + flippedSlatExtend * pData['yFlip'];
+    Offset slatP1B = coords[pData['1b']] - slatExtend * pData['slatExtend1b'] - flippedSlatExtend * pData['yFlip'];
+    Offset slatP2A = coords[pData['2a']] + slatExtend * pData['slatExtend2a'] - flippedSlatExtend * pData['yFlip'];
+    Offset slatP2B = coords[pData['2b']] + slatExtend * pData['slatExtend2b'] + flippedSlatExtend * pData['yFlip'];
 
     // Function to generate spaced points between two given points
     List<Offset> generateDots(Offset start, Offset end) {
@@ -591,7 +628,7 @@ class SlatPainter extends CustomPainter {
       if (actionState.displaySlatIDs && slat.layer == selectedLayer){
         final textPainter = TextPainter(
           text: TextSpan(
-            text: slat.id.replaceFirst('-I', '-'),
+            text: slat.id.replaceFirst('-I', '-') + (slat.slatType != 'tube' ? ' (${slat.slatType})' : ''),
             style: TextStyle(
               color: Colors.white,
               fontFamily: 'Roboto',
@@ -635,7 +672,7 @@ class SlatPainter extends CustomPainter {
 
         final baseRect = Rect.fromCenter(
           center: Offset.zero,
-          width: appState.gridSize * 2,
+          width: slat.slatType == 'tube' ? appState.gridSize * 2 : appState.gridSize * 6,
           height: appState.gridSize * 0.85,
         );
 
@@ -655,7 +692,7 @@ class SlatPainter extends CustomPainter {
       }
 
       if (selectedSlats.contains(slat.id)) {
-        drawBorder(canvas, coords, mainColor, slatExtendFront, (actionState.drawingAids || actionState.extendSlatTips), slat.slatType, appState.gridMode);
+        drawBorder(canvas, coords, mainColor, slatExtendFront, (actionState.drawingAids || actionState.extendSlatTips), slat.slatType);
       }
     }
 
