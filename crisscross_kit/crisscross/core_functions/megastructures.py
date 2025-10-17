@@ -680,8 +680,6 @@ class Megastructure:
         - the full match histogram, which could be helpful for investigating designs with unexpected scores.
         """
         # TODO: this function also assumes the pattern handle -> antihandle -> handle -> antihandle etc.
-        # TODO: the below two functions both request the slat/handle arrays individually, is this a problem?
-
         # first extract all handles/antihandles in the design
         handle_dict, antihandle_dict = self.get_bag_of_slat_handles(remove_blank_slats=True)
 

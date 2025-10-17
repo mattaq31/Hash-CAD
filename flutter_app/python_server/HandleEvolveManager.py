@@ -102,7 +102,7 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
 
 
             if len(self.evolve_manager.metrics) > 0:
-                if max(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
+                if min(self.evolve_manager.metrics['Corresponding Max Parasitic Valency']) <= self.evolve_manager.early_max_valency_stop:
                     break
 
     def _schedule_pause_timeout(self, seconds = 120.0):
