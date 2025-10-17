@@ -12,7 +12,7 @@ def mm_to_in(mm): return mm / MM_PER_INCH
 def mm_to_pt(mm): return (mm / MM_PER_INCH) * 72.0
 
 # ====== style knobs (your updated values) ======
-BOX_W_MM    = 80.0   # scaled up
+BOX_W_MM    = 75   # scaled up
 BOX_H_MM    = 36.0   # scaled up
 
 LINE_MM     = 0.20   # keep line widths unchanged
@@ -61,7 +61,7 @@ def make_fig_ax(box_w_mm=BOX_W_MM, box_h_mm=BOX_H_MM):
         s.set_linewidth(lw_pt)
 
     ax.tick_params(which="both", direction="out", length=tick_len_pt, width=lw_pt)
-    ax.xaxis.labelpad = 0.5
+    ax.xaxis.labelpad = 0.8
     ax.yaxis.labelpad = 0.5
     ax.tick_params(axis="x", pad=1.4)
     ax.tick_params(axis="y", pad=1.2)
@@ -186,7 +186,7 @@ if __name__ == "__main__":
         x_max=110,
         xtick_step=10,
         box_width_data=2.5,
-        title=f"Yield vs Time at Loss = ",
+        title=f"Yield vs Time at Loss = 7.3",
     )
 
     # 2) Bird (example; change condition token accordingly)
@@ -198,5 +198,5 @@ if __name__ == "__main__":
         x_max=110,
         xtick_step=10,
         box_width_data=2.5,
-        title=f"Yield vs Time at Loss = ",
+        title=f"Yield vs Time at Loss = 2.6 ",
     )
