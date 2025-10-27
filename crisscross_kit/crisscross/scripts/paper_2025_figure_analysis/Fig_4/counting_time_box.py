@@ -29,6 +29,9 @@ MARGIN_B_MM = 5.0
 MARGIN_T_MM = 6.0
 
 PAD_INCHES  = 0.02
+mean_size = 1.0
+MEDIAN_COLOR     = "black"
+MEAN_COLOR       = "#9f241a"
 
 def make_fig_ax(box_w_mm=BOX_W_MM, box_h_mm=BOX_H_MM):
     lw_pt       = mm_to_pt(LINE_MM)
@@ -141,12 +144,24 @@ def plot_time_boxplot_for_condition(
     for b in bp['boxes']:     b.set(facecolor='lightblue', linewidth=lw_pt)
     for w in bp['whiskers']:  w.set(linewidth=lw_pt)
     for c in bp['caps']:      c.set(linewidth=lw_pt)
-    for m in bp['medians']:   m.set(color='green', linewidth=lw_pt)
+    for m in bp['medians']:   m.set(color='black', linewidth=lw_pt)
+
 
     # identical mean marker size everywhere
-    mean_size = 1
-    ax.scatter(times_sorted, means, color='red', marker='D', s=mean_size, zorder=3, label='Mean')
 
+    #ax.scatter(times_sorted, means, color=MEAN_COLOR, marker='s', s=mean_size, zorder=3, label='Mean')
+    '''
+    ax.plot(
+        times_sorted,
+        means,
+        linestyle='none',
+        marker='s',                 # square
+        markersize=mean_size,  # size scaled from area
+        markerfacecolor=MEAN_COLOR,
+        markeredgecolor=MEAN_COLOR,
+        zorder=4
+    )
+    '''
     # labels, ticks, limits
     if title:
         ax.set_title(title, pad=4)
@@ -159,13 +174,13 @@ def plot_time_boxplot_for_condition(
 
     # Legend in lower-right, including Outliers
     median_line = Line2D([], [], color='green', linewidth=lw_pt, label='Median')
-    mean_proxy  = Line2D([], [], color='red', marker='D', linestyle='none',
+    mean_proxy  = Line2D([], [], color=MEAN_COLOR, marker='s', linestyle='none',
                          markersize=math.sqrt(mean_size), label='Mean')
-
+    '''
     ax.legend([median_line, mean_proxy],
               ["Median", "Mean"],
               frameon=False, loc='lower right')
-
+    '''
     # Save
     out_path = Path(output_svg)
     out_path.parent.mkdir(parents=True, exist_ok=True)

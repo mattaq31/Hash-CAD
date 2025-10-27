@@ -174,13 +174,14 @@ def plot_loglog_matches_vs_index(
     ax.legend(
         title="Valency",
         frameon=False,
-        loc="best",
+        loc="upper left",
+        bbox_to_anchor=(0.67, 0.49),
         ncol=2,  # two columns
-        columnspacing=0.8,  # horizontal spacing between columns
+        columnspacing=0.7,  # horizontal spacing between columns
         handlelength=1.4,  # shorten line length
         handletextpad=0.4,  # space between line and label
         borderaxespad=0.5,  # move closer to plot
-        labelspacing=0.4
+        labelspacing=0.35
     )
 
     if output_svg:
@@ -300,14 +301,14 @@ if __name__ == "__main__":
 
 
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\bird_long\match_histograms.csv"
+    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\bird_long_fast\match_histograms.csv"
 
     name = "Bird"
     OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5/resources/" + name + "_valencies.svg"
 
     data, header = load_match_histogram(CSV_PATH)
     data_Bird = data
-    custom_colors = ["#600700", "#9f241a", "#dc482e", "#dd726f", "#f5bebd"]
+    custom_colors = ["#600700", "#9f241a", "#dc482e", "#f1968f", "#f4cac8"]
     scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
 
 
@@ -349,7 +350,7 @@ if __name__ == "__main__":
 
 
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\sunflower_long\match_histograms.csv"
+    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\sunflower_long_fast\match_histograms.csv"
 
     name = "Sunflower"
     OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5/resources/" + name + "_valencies.svg"
@@ -374,7 +375,7 @@ if __name__ == "__main__":
     )
     plt.show()
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\square_long\match_histograms.csv"
+    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\square_long_fast\match_histograms.csv"
 
     name = "Square"
     OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5/resources/" + name + "_valencies.svg"
@@ -405,7 +406,7 @@ if __name__ == "__main__":
 
 
     OUT_SCORES_SVG = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources/scores_overview.svg"
-    series_colors = ["#9f241a", "#d6a000" , "#0088AA"]
+    series_colors = ["#dc482e", "#fbbe00" , "#46bde2"]
 
     fig, ax = plot_scores_overview(
         all_scores,
