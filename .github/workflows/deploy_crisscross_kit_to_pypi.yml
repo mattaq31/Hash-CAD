@@ -50,7 +50,7 @@ jobs:
           cibuildwheel --output-dir wheelhouse ./crisscross_kit
 
       - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
@@ -81,7 +81,7 @@ jobs:
         working-directory: ./crisscross_kit
 
       - name: Upload sdist artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sdist
           path: crisscross_kit/dist/*.tar.gz
