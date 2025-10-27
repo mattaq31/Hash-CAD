@@ -141,6 +141,26 @@ class Slat:
         # placeholders are tracked here, for later replacement
         self.placeholder_list.append(f'handle|{handle_id}|h{slat_side}')
 
+
+    def remove_handle(self, handle_id, slat_side):
+        """
+        Removes a handle from the slat.
+        :param handle_id: Handle position on slat
+        :param slat_side: H2 or H5
+        :return: N/A
+        """
+        if slat_side == 2:
+            if handle_id in self.H2_handles:
+                del self.H2_handles[handle_id]
+        elif slat_side == 5:
+            if handle_id in self.H5_handles:
+                del self.H5_handles[handle_id]
+        else:
+            raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')
+        if f'handle|{handle_id}|h{slat_side}' in self.placeholder_list:
+            self.placeholder_list.remove(f'handle|{handle_id}|h{slat_side}')
+
+
     def update_placeholder_handle(self, handle_id, slat_side, sequence, well, plate_name, category, value, concentration, descriptor='No Desc.'):
         """
         Updates a placeholder handle with the actual handle.

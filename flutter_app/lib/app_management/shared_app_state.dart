@@ -1630,7 +1630,7 @@ class ServerState extends ChangeNotifier {
     'random_seed': '8',
     'unique_handle_sequences': '64',
     'early_max_valency_stop': '1',
-    'split_sequence_handles': 'true'
+    'split_sequence_handles': 'false'
   };
 
   // Human-readable labels for UI display

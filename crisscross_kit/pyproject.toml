@@ -23,7 +23,7 @@ classifiers = [
 
 dependencies = [
     "pandas>=2.3",
-    "numpy>=2.3",
+    "numpy>=2.2",
     "seaborn>=0.13",
     "matplotlib>=3.10",
     "openpyxl>=3.1",
@@ -37,7 +37,7 @@ dependencies = [
 
 [project.optional-dependencies]
 3d = ["pyvista", "imageio", "imageio-ffmpeg"]
-blender = ["bpy"]
+blender = ["bpy==4.2.0"]
 
 [project.urls]
 Homepage = "https://github.com/mattaq31/Hash-CAD"

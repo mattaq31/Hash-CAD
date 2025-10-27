@@ -103,7 +103,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       ),
       CheckboxListTile(
         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
-        title: const Text('Prevent self-complementary slats', textAlign: TextAlign.center),
+        title: const Text('Prevent slat self-binding', textAlign: TextAlign.center),
         value: serverState.evoParams['split_sequence_handles'] == 'true',
         onChanged: (bool? value) {
           setState(() {
@@ -112,6 +112,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           });
         },
       ),
+      SizedBox(height: 10),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

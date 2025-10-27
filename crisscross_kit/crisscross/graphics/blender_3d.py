@@ -29,6 +29,11 @@ def look_at(obj, target):
     rot_quat = direction.to_track_quat('-Z', 'Y')  # I am not entirely sure how this works, but the 'Z' and 'Y' are basically there to make the object point in the right direction
     obj.rotation_euler = rot_quat.to_euler()
 
+def srgb_to_linear(c):
+    """Convert an sRGB tuple (0–1) to linear RGB (0–1) for Blender."""
+    def convert_channel(v):
+        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+    return tuple(convert_channel(v) for v in c)
 
 def create_slat_material(color, mat_name, metallic_strength=0.8, alpha_animation=False):
     """
@@ -383,7 +388,7 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
                 # if color is a hexcode string, convert it to RGB tuple
                 if isinstance(color, str):
                     color = mpl.colors.to_rgb(color)
-
+                color = srgb_to_linear(color)
                 materials[dict_key] = create_slat_material(color + (1,), f'Material Group {value}, Layer{layer_id}', alpha_animation=True)
     else:
         num_materials = slat_array.shape[2] # TODO: this does not work with crossbars
@@ -391,6 +396,8 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
             color = layer_palette[i+1]['color']
             if isinstance(color, str):
                 color = mpl.colors.to_rgb(color)
+            color = srgb_to_linear(color)
+
             materials[i+1] = create_slat_material(color + (1,), f'Layer {i + 1}', alpha_animation=False)
 
 
@@ -400,6 +407,7 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
         color = cargo_val['color']
         if isinstance(color, str):
             color = mpl.colors.to_rgb(color)
+        color = srgb_to_linear(color)
         material = create_slat_material(color + (1,), f'{cargo_key} Material')
         cargo_materials[cargo_key] = material
 
@@ -454,7 +462,13 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
         bpy.context.object.name = slat_id
         bpy.ops.object.shade_smooth()
         if animation_type != 'translate' or animate_slat_group_dict is None:
-            bpy.context.object.data.materials.append(materials[layer])
+            if slat.unique_color is not None:
+                color = srgb_to_linear(mpl.colors.to_rgb(slat.unique_color))
+                unique_mat = create_slat_material(color + (1,), f"{slat_id}_unique")
+                bpy.context.object.data.materials.append(unique_mat)
+            else:
+                bpy.context.object.data.materials.append(materials[layer])
+
         elif animation_type == 'translate' and animate_slat_group_dict is not None:
             if force_slat_color_by_layer:
                 bpy.context.object.data.materials.append(materials[(slat.layer, animate_slat_group_dict[slat_id])])
@@ -501,7 +515,7 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
     bpy.ops.object.light_add(type='AREA', location=(design_widths[0]/2, design_widths[1]/2, design_height + 20))
     area_light = bpy.context.object
     area_light.name = "Main Crisscross Spotlight"
-    area_light.data.energy = 40000
+    area_light.data.energy = 100000
     area_light.data.size = max(design_widths) * 1.5
 
     # Point the area light at the center of the design
@@ -570,6 +584,11 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
     # setting up transparent background for quicker setup
     render_settings = bpy.context.scene.render
     render_settings.film_transparent = True
+
+    # set the render resolution to 4k+
+    render_settings.resolution_x = 4000
+    render_settings.resolution_y = 3000
+    render_settings.resolution_percentage = 100
 
     # Ensures the view mode is updated
     bpy.context.view_layer.update()

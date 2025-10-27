@@ -91,15 +91,19 @@ for design_file in base_design_import_files:
                         new_slat.H2_handles[handle_pos] = megastructure.slats[s_id].H2_handles[handle_extraction_id]
                     else:
                         new_slat.H5_handles[handle_pos] = megastructure.slats[s_id].H5_handles[handle_extraction_id]
+
                     placeholder_name = f'handle|{handle_pos}|h{side[-1]}'
                     if placeholder_name not in new_slat.placeholder_list:
                         new_slat.placeholder_list.append(placeholder_name)
+                    # new_slat.slat_position_to_coordinate[handle_pos] = megastructure.slats[s_id].slat_position_to_coordinate[handle_extraction_id]
 
                     handle_pos += 1
 
         megastructure.slats[new_slat_name] = new_slat
         for s_id in slats_to_delete:
             del(megastructure.slats[s_id])
+
+    # megastructure.export_design(design_name + '.xlsx', '/Users/matt/Desktop')
 
     megastructure.patch_placeholder_handles(main_plates)
     megastructure.patch_flat_staples(main_plates[0])
@@ -110,6 +114,8 @@ for design_file in base_design_import_files:
             slat.H5_handles[16]['category'] = 'SKIP'
             del(slat.H2_handles[16]['descriptor'])
             del(slat.H5_handles[16]['descriptor'])
+
+
 
     target_volume = 75 # nl per staple
     if generate_echo:
