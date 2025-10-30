@@ -24,7 +24,7 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
     Prepares a visualization of the output plates for the user to be able to verify the design
     (or print out and use in the lab).
     :param output_well_descriptor_dict: Dictionary where key = (plate_number, well), and the value is a list with:
-    [slat_name, [category for all 32 handles on H2 side e.g. 0 2 3 4 0], [same for H5 side]], where the categories are:
+    [slat_name, [category for all 32 handles on H2 side e.g. 0 2 3 4 0], [same for H5 side], slat_color, slat_type], where the categories are:
     0 = control, 1 = assembly, 2 = seed, 3 = cargo, 4 = undefined
     :param plate_size: Either 96 or 384
     :param save_folder: Output folder
@@ -88,8 +88,10 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
 
                     # adds identifying slat name
                     ax.text(x, y - 0.39, pool_details[0], ha='center', va='center', fontsize=8)
+                    # adds slat type identifier
+                    ax.text(x, y + 0.3, pool_details[4] if pool_details[4] != 'tube' else 'standard', ha='center', va='center', fontsize=6)
                 elif slat_display_format == 'barcode':
-                    for pool_ind, pool in enumerate(pool_details[::-1][1:3]):
+                    for pool_ind, pool in enumerate(pool_details[::-1][2:4]):
                         for handle_ind, handle in enumerate(pool):
                             # slat positions identified with barcode rectangles
                             # 0.3 = full width, 0.15 = half height, 0.01875 = 1/32 of width
@@ -107,8 +109,11 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
                     ax.text(x + 0.35, y - 0.075, '32', ha='center', va='center', fontsize=4)
                     # adds identifying slat name
                     ax.text(x, y - 0.37, pool_details[0], ha='center', va='center', fontsize=8)
+                    # adds slat type identifier
+                    ax.text(x, y + 0.3, pool_details[4] if pool_details[4] != 'tube' else 'standard', ha='center', va='center', fontsize=6)
+
                 elif slat_display_format == 'stacked_barcode':
-                    for pool_ind, pool in enumerate(pool_details[::-1][1:3]):
+                    for pool_ind, pool in enumerate(pool_details[::-1][2:4]):
                         for handle_ind, handle in enumerate(pool):
                             x_offset = handle_ind % 16
                             y_offset = (handle_ind // 16) + (2*pool_ind)
@@ -130,6 +135,9 @@ def visualize_output_plates(output_well_descriptor_dict, plate_size, save_folder
                     ax.text(x, y - 0.275, 'H5', ha='center', va='center', fontsize=6)
                     # adds identifying slat name
                     ax.text(x, y - 0.41, pool_details[0], ha='center', va='center', fontsize=8)
+                    # adds slat type identifier
+                    ax.text(x, y + 0.3, pool_details[4] if pool_details[4] != 'tube' else 'standard', ha='center', va='center', fontsize=6)
+
                 else:
                     raise RuntimeError('Invalid slat_display_format provided.')
 
@@ -242,7 +250,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     output_plate_num_list = []
     output_well_descriptor_dict = {}
     all_plates_needed = set()
-    handle_volume_roundup_alert = False
+    roundup_warning_fired = False
 
     if output_plate_size == '96':
         plate_format = plate96
@@ -322,9 +330,11 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
             # handle volume needs to be a multiple of 25nl for echo to be able to execute...
             if handle_specific_vol % 25 != 0:
-                print(f'WARNING: Handle volume selected for {handle_data} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). The transfer volume was rounded up.')
+                if not roundup_warning_fired:
+                    roundup_warning_fired = True
+                    print(Fore.CYAN + f'WARNING: Handle volume selected for {handle_data} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). The transfer volume was rounded up.')
+                    print('This message will be suppressed for future occurrences.' + Fore.RESET)
                 handle_specific_vol = ((handle_specific_vol // 25) + 1 ) * 25
-                #raise RuntimeError(f'Handle volume selected for {handle_data} ({handle_specific_vol}nl) is not a multiple of 25 (Echo cannot execute volumes that are not a multiple of 25nl). Please adjust nominal handle volume to fix.')
 
             if ',' in slat_name:
                 raise RuntimeError('Slat names cannot contain commas - this will cause issues with the echo csv  file.')
@@ -362,7 +372,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
         else:
             group_color = None
 
-        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [slat_name] + all_handle_types + [group_color]
+        output_well_descriptor_dict[(output_plate_num_list[index], output_well_list[index])] = [slat_name] + all_handle_types + [group_color] + [slat.slat_type]
 
     combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                              'Destination Well', 'Transfer Volume',

@@ -288,12 +288,14 @@ class Megastructure:
                             handle_layer = slat.layer - 1
                         else:
                             handle_layer = slat.layer - 2
-                        if handle_grid[y, x, handle_layer] != 0 and handle_grid[y, x, handle_layer] != int(handle_data['value']):
+                        # this still allows the export of designs with handles that aren't shared between two layers
+                        if handle_grid[y, x, handle_layer] != 0 and int(handle_data['value']) != 0 and handle_grid[y, x, handle_layer] != int(handle_data['value']):
                             raise RuntimeError('There is a handle conflict at position (%d, %d) on assembly handle layer %d. '
                                                'Handle %s conflicts with existing handle %s.' %
                                                (y, x, handle_layer, handle_data['value'], handle_grid[y, x, handle_layer]))
 
-                        handle_grid[y, x, handle_layer] = int(handle_data['value'])
+                        if int(handle_data['value']) != 0:
+                            handle_grid[y, x, handle_layer] = int(handle_data['value'])
 
         return handle_grid
 
@@ -879,14 +881,14 @@ class Megastructure:
 
         # prepares and writes out slat arrays
         for layer in range(len(self.layer_palette)):
-            slat_df = pd.DataFrame(np.zeros(shape=(slat_array.shape[0], slat_array.shape[1])))
+            slat_df = pd.DataFrame(np.zeros(shape=(slat_array.shape[0], slat_array.shape[1]), dtype=int), dtype=object)
             for key, slat in self.slats.items():
                 if not slat.non_assembly_slat and slat.layer == layer + 1:  # only writes out slats that are in the current layer
                     for posn in range(32):
                         y, x = slat.slat_position_to_coordinate[posn+1]
                         slat_df.iloc[y, x] = f"{slat.ID.split('slat')[-1]}-{posn+1}"
 
-            slat_df.to_excel(writer, sheet_name=f'slat_layer_{layer+1}', index=False,header=False)
+            slat_df.to_excel(writer, sheet_name=f'slat_layer_{layer+1}', index=False, header=False)
             # color all non-zero cells with the layer color
             worksheet = writer.sheets[f'slat_layer_{layer+1}']
             # Convert hex like '#FFCC00' to xlsxwriter format
@@ -909,9 +911,11 @@ class Megastructure:
         seed_dfs = {}
         for layer in range(len(self.layer_palette)):
             for orientation in [2, 5]:
-                desc_string = 'upper' if  self.layer_palette[layer+1]['top'] == orientation else 'lower'
-                cargo_dfs[f'cargo_layer_{layer+1}_{desc_string}_h{orientation}'] = pd.DataFrame(np.zeros(shape=(slat_array.shape[0], slat_array.shape[1])))
-                seed_dfs[f'seed_layer_{layer+1}_{desc_string}_h{orientation}'] = pd.DataFrame(np.zeros(shape=(slat_array.shape[0], slat_array.shape[1])))
+                desc_string = 'upper' if self.layer_palette[layer + 1]['top'] == orientation else 'lower'
+                shape = (slat_array.shape[0], slat_array.shape[1])
+                # Make frames object-dtyped but filled with numeric zeros
+                cargo_dfs[f'cargo_layer_{layer + 1}_{desc_string}_h{orientation}'] = pd.DataFrame(np.zeros(shape, dtype=int), dtype=object)
+                seed_dfs[f'seed_layer_{layer + 1}_{desc_string}_h{orientation}'] = pd.DataFrame(np.zeros(shape, dtype=int), dtype=object)
 
         for key, slat in self.slats.items():
             for side in [2, 5]:
