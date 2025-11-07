@@ -10,7 +10,7 @@ from matplotlib.lines import Line2D
 
 # ====== paths & config (edit these) ======
 DATA_FOLDER = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\counting_results")
-OUTPUT_DIR  = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_4\resources")
+OUTPUT_DIR  = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources")
 SELECTED_CONDITIONS = [24, 27, 29, 30]
 
 # scores (x positions)

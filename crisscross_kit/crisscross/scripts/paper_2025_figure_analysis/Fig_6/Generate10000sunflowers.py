@@ -24,9 +24,9 @@ scores = []
 # ---------------------
 # Main loop with tqdm
 # ---------------------
-for x in tqdm(range(10000), desc="Generating random handles"):
+for x in tqdm(range(100), desc="Generating random handles"):
     mega_working = copy.deepcopy(mega)
-    handle_array = generate_random_slat_handles(slat_array, unique_sequences=64)
+    handle_array = generate_random_slat_handles(slat_array, unique_sequences=32)
     mega_working.assign_assembly_handles(handle_array)
     parasitic_interactions = mega_working.get_parasitic_interactions()
     scores.append(parasitic_interactions.get('mean_log_score', None))
@@ -43,7 +43,7 @@ print(score_array.min())
 # Save results as pickle
 # ---------------------
 
-filename = "scores_random.pkl"
+filename = "scores_random_reduced32_100.pkl"
 
 with open(filename, "wb") as f:
     pickle.dump(score_array, f)

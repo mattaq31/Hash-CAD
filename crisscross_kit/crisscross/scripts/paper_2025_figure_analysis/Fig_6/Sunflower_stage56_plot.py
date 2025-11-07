@@ -11,11 +11,17 @@ import matplotlib as mpl
 import pickle
 
 filename = "scores_random.pkl"
+filename32 = "scores_random_reduced32.pkl"
 
 with open(filename, "rb") as f:
     score_array = pickle.load(f)
 
+# Load second dataset
+with open(filename32, "rb") as f:
+    score_array32 = pickle.load(f)
+
 min_rand_Loss= score_array.min()
+min_rand_Loss32= score_array32.min()
 
 
 # ====== SVG settings ======
@@ -24,7 +30,7 @@ mpl.rcParams['svg.hashsalt'] = ''
 
 # ====== paths ======
 PKL_PATH = Path(r"C:/Users/Flori/Dropbox/CrissCross/Papers/hash_cad/exp2_handle_library_sunflowers/counting/data4paper/Plots/hist_per_image.pkl")
-OUT_DIR = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources")
+OUT_DIR = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6\resources")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -176,6 +182,7 @@ ax.set_ylim(-3, 95)
 
 # Add gray shaded region starting at Loss = 4.2
 ax.axvspan(min_rand_Loss, ax.get_xlim()[1], color='black', alpha=0.17, zorder=0)
+ax.axvspan(min_rand_Loss32, ax.get_xlim()[1], color='black', alpha=0.17, zorder=0)
 # Legend (only median; optional — comment out if not needed)
 #median_proxy = Line2D([], [], color=MEDIAN_COLOR, linewidth=lw_pt, label='Median')
 #ax.legend([median_proxy], ["Median"], frameon=False, loc='best')
