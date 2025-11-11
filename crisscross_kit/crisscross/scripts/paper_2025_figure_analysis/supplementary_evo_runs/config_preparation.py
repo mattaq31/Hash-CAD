@@ -10,7 +10,7 @@ slurm_parameters = {
 }
 
 basic_evolution_parameters = {
-    'early_max_valency_stop': 31,
+    'early_max_valency_stop': 1,
     'evolution_generations': 10000,
     'evolution_population': 50,
     'process_count': 16,
@@ -23,7 +23,7 @@ basic_evolution_parameters = {
     'similarity_score_calculation_frequency': 10,
     'random_seed': 8,
     'suppress_handle_array_export': True,
-    'logging_interval': 1,
+    'logging_interval': 100,
     'mutation_memory_system': 'off',
 }
 
@@ -31,8 +31,8 @@ customized_population = [5, 50, 250, 500, 1000]
 customized_survivors = [1, 3, 5, 10]
 customized_mutation_rates = [1, 2, 3, 5, 7, 10]
 customized_probabilities = [
-    [0, 0, 1],
-    [0.5, 0.5, 0],
+    [0.0, 0.0, 1.0],
+    [0.5, 0.5, 0.0],
     [0.425, 0.425, 0.15],
     [0.075, 0.075, 0.85]
 ]
@@ -72,6 +72,10 @@ for design in designs:
 
                     with open(os.path.join(local_experiment_folder, f'evolution_config.toml'), "w") as f:
                         toml.dump(evolution_parameters, f)
+                    try:
+                        toml.load(os.path.join(local_experiment_folder, f'evolution_config.toml'))
+                    except:
+                        print(f'Error saving toml file for {design} {exp_name}')
                     slurm_batch = create_o2_slurm_file(**slurm_parameters, command=f'handle_evolve -c {evolution_config_file}')
                     slurm_file  = os.path.join(local_slurm_folder, f'{design}_{exp_name}_call.sh')
                     server_slurm_file = os.path.join(server_slurm_folder, f'{design}_{exp_name}_call.sh')
@@ -85,3 +89,4 @@ for design in designs:
 with open(os.path.join(local_output_folder, 'slurm_queue.sh'), 'w') as f:  # writes batch file out for use
     for line in all_sbatch_commands:
         f.write(line)
+
