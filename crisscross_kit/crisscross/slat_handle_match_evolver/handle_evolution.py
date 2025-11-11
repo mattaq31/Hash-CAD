@@ -386,7 +386,7 @@ class EvolveManager:
                 for index, generation in enumerate(range(self.current_generation, self.max_evolution_generations)):
                     self.single_evolution_step()
                     if (index+1) % logging_interval == 0:
-                        self.export_results(suppress_handle_array_export)
+                        self.export_results(suppress_handle_array_export=suppress_handle_array_export)
 
                     pbar.update(1)
                     pbar.set_postfix({f'Latest max parasitic valency': self.metrics['Corresponding Max Parasitic Valency'][-1],

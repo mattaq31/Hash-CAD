@@ -10,19 +10,20 @@ slurm_parameters = {
 }
 
 basic_evolution_parameters = {
-    'early_hamming_stop': 31,
+    'early_max_valency_stop': 31,
     'evolution_generations': 10000,
     'evolution_population': 50,
     'process_count': 16,
     'generational_survivors': 3,
     'mutation_rate': 2,
-    'slat_length': 32,
     'unique_handle_sequences': 64,
     'split_sequence_handles': False,
     'mutation_type_probabilities': [0.425, 0.425, 0.15],
     'progress_bar_update_iterations': 10,
+    'similarity_score_calculation_frequency': 10,
     'random_seed': 8,
     'suppress_handle_array_export': True,
+    'logging_interval': 1,
     'mutation_memory_system': 'off',
 }
 
