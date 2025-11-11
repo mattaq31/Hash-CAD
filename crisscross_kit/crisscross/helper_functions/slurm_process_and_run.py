@@ -13,7 +13,7 @@ def create_o2_slurm_file(command,
     :param user_email: The email to which failure notifications will be sent
     :return: The full slurm batch file script (string)
     """
-    if time_length < 12:
+    if time_length <= 12:
         partition = 'short'
     else:
         partition = 'medium'
@@ -27,7 +27,7 @@ def create_o2_slurm_file(command,
 #SBATCH --mail-user={user_email}
 
 module load conda/miniforge3/24.11.3-0
-source activate crisscross
+conda activate crisscross
  
 {command}
 """

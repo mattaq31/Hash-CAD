@@ -72,8 +72,14 @@ designs = {
         'crop_coords': (344, 111)
     },
     'hexagon':{
-        'zoom_im': 'hexa_low_conc/hexa_high_conc_6.tif',
-        'crop_coords': (843, 237)
+        # 'zoom_im': 'hexa_low_conc/hexa_high_conc_6.tif', # positive stain version
+        'zoom_im': 'hexa_capc_reimaging_by_yichen_oct_29_2025/ass hex 6.tif',
+        # 'crop_coords': (843, 237)
+        'crop_coords': (296, 243)
+    },
+    'rigid_square':{
+      'zoom_im': 'rigid Corey dilute neg stain ua 7.tif',
+      'crop_coords': (300, 1)
     },
     'lily':{
         'zoom_im': 'Lily 84h/Lily88h_06.tif',
@@ -100,7 +106,7 @@ designs = {
         'crop_coords': (800, 40)
     },
     'bird':{
-        # NEED TO GET A BETTER BIRD IMAGE!
+        # dealt with separately
     }
 }
 

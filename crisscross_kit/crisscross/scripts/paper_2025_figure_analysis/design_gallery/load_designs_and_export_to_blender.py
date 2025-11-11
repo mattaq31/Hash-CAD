@@ -5,7 +5,8 @@ from crisscross.helper_functions import create_dir_if_empty
 
 root_dir = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library'
 
-designs = ['Colored hexagon', 'daffodil', 'fox', 'glider', 'handaxe', 'hexagon', 'lily', 'megastar', 'recycling', 'shuriken', 'sunflower', 'turnstile']
+designs = ['Colored hexagon', 'daffodil', 'fox', 'glider', 'handaxe', 'hexagon', 'lily', 'megastar', 'recycling', 'shuriken', 'sunflower', 'turnstile', 'rigid_square']
+designs = ['rigid_square']
 
 color_library = {-1: '#2972EEFF', -2: '#C7CF00FF', -3: '#CF001AFF', -4: '#34FF17FF', -5: '#961313FF', -6: '#3B1BB1FF', -7: '#DF3AE6FF'}
 color_library = {-1: '#2C007DFF', -2: '#775B00FF', -3: '#0E6D00FF', -4: '#34FF17FF', -5: '#961313FF', -6: '#3B1BB1FF', -7: '#DF3AE6FF'}

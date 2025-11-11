@@ -6,8 +6,8 @@ from crisscross.plate_mapping import get_cutting_edge_plates
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import os
 
-from scripts.katzi.analyse_echo_plate_usage.test import plate_name
 
 ROWS_96 = list("ABCDEFGH")
 COLS_96 = list(range(1, 13))
@@ -33,11 +33,14 @@ def read_echo_folder(folder):
             # keep only real wells; this also drops the "Instrument ..." footer rows
             df = df[df["Source Well"].astype(str).str.match(WELL_RX)]
 
-            df = df[["Source Plate Name", "Source Well", "Current Fluid Volume"]].copy()
+            fluid_vol_column = 'Current Fluid Volume' if 'Current Fluid Volume' in df.columns else 'Survey Fluid Volume'
+            df = df[["Source Plate Name", "Source Well", fluid_vol_column]].copy()
+
             df["Plate"]  = df.pop("Source Plate Name")
             df["Letter"] = df["Source Well"].str[0].str.upper()
             df["Number"] = df["Source Well"].str[1:].astype(int)
-            df["Volumendata"] = df.pop("Current Fluid Volume")
+            df["Volumendata"] = df.pop(fluid_vol_column)
+
             rows.append(df[["Plate", "Letter", "Number", "Volumendata"]])
 
     if not rows:
@@ -236,11 +239,21 @@ def make_refill_excel_simple(low_df, outpath):
 
     with pd.ExcelWriter(outpath, engine="xlsxwriter") as writer:
         for plate_name, plate_df in low_df.groupby(level="Plate"):
+
+            if len(plate_df) > 96:
+                plate_type = '384'
+            else:
+                plate_type = '96'
+            
             # put Letter/Number back into columns (instead of index)
             plate_df = plate_df.reset_index()
 
             # assign destination positions on the 96-well refill plate
-            plate_df["WellPosition"] = POS_96[:len(plate_df)]
+            if plate_type == '96':
+                plate_df["WellPosition"] = POS_96[:len(plate_df)]
+            else:
+                # or simply do 1:1 with a 384-well plate
+                plate_df['WellPosition'] = plate_df['Letter'] + plate_df['Number'].astype(str)
 
             # label like "Refill C17"
             plate_df["Name"] ="Refill " + plate_df["Letter"] + plate_df["Number"].astype(str)
@@ -259,25 +272,89 @@ def make_refill_excel_simple(low_df, outpath):
 if __name__ == "__main__":
     # your volume df (already built earlier)
     folder= r"D:\Wyss_experiments\Echo_survery"
-    df_vol = read_echo_folder(folder)
+    main_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Shared Experiment Files/echo_assembly_handle_plate_survey_oct_2025/'
+    survey_folder = os.path.join(main_folder, 'echo_surveys_05_09_2025')
 
+    df_vol = read_echo_folder(survey_folder)
 
     main_plates = get_cutting_edge_plates(100)
     test = collect_sequences_all(main_plates)
     seq_s = seq_lookup_df(main_plates)
 
-
     df = df_vol.join(seq_s)  # adds a new 'Sequence' column (left join)
 
+    # we manually removed an addition 2ul from the below wells after the survey report was generated
+    additional_2ul_transfers = pd.DataFrame([
+        ["P3649_MA", "A1"],
+        ["P3649_MA", "A3"],
+        ["P3649_MA", "A5"],
+        ["P3649_MA", "E1"],
+        ["P3649_MA", "G1"],
+        ["P3649_MA", "I1"],
+        ["P3649_MA", "N16"],
+        ["P3649_MA", "N23"],
+        ["P3649_MA", "P1"],
+        ["P3649_MA", "P18"],
+        ["P3649_MA", "P22"],
+        ["P3649_MA", "P24"],
+        ["P3649_MA", "P3"],
+        ["P3650_MA", "A17"],
+        ["P3650_MA", "J24"],
+        ["P3650_MA", "N24"],
+        ["P3650_MA", "P22"],
+        ["P3650_MA", "P23"],
+        ["P3650_MA", "P24"],
+        ["P3651_MA", "A22"],
+        ["P3651_MA", "A23"],
+        ["P3651_MA", "C24"],
+        ["P3651_MA", "F1"],
+        ["P3651_MA", "F24"],
+        ["P3651_MA", "I1"],
+        ["P3651_MA", "I24"],
+        ["P3651_MA", "J21"],
+        ["P3651_MA", "J24"],
+        ["P3651_MA", "K1"],
+        ["P3652_MA", "A21"],
+        ["P3652_MA", "A24"],
+        ["P3652_MA", "C1"],
+        ["P3652_MA", "G1"],
+        ["P3652_MA", "N24"],
+        ["P3652_MA", "O14"],
+        ["P3652_MA", "O4"],
+        ["P3652_MA", "P20"],
+        ["P3652_MA", "P23"],
+        ["P3654_MA", "A24"],
+        ["P3655_MA", "P2"],
+        ["P3655_MA", "P24"],
+        ["P3656_MA", "H1"],
+        ["P3656_MA", "I1"],
+        ["P3656_MA", "J1"],
+        ["P3656_MA", "M1"],
+        ["P3656_MA", "N1"],
+        ["P3657_MA", "A21"],
+        ["P3657_MA", "A6"],
+        ["P3657_MA", "G24"],
+        ["P3659_MA", "L1"],
+    ], columns=["Plate", "Well"])
+
+
+    for plate, well in additional_2ul_transfers.itertuples(index=False):
+        letter = well[0]
+        number = int(well[1:])
+        idx = (plate, letter, number)
+        if idx in df.index:
+            df.loc[idx, "Volumendata"] = df.loc[idx, "Volumendata"] - 2.0
+        else:
+            print(f"Warning: {idx} not found in df index; cannot add 2 µL")
+
     # Set the threshold
-    t = 20
+    t = 28
 
     save_plate_report_pdf_from_df(
         df,
-        outpath=folder+"\plate_volume_report.pdf",
-        threshold_ul=t
-    )
+        outpath=os.path.join(main_folder, "plate_volume_report.pdf"),
+        threshold_ul=t)
 
     low_df = wells_below_threshold(df, threshold_ul=t)
-
-    make_refill_excel_simple(low_df, folder+"/refill.xlsx")
+    print('Total low volume cells:', len(low_df))
+    make_refill_excel_simple(low_df, os.path.join(main_folder, "refill.xlsx"))

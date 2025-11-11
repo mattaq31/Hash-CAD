@@ -263,7 +263,7 @@ class EvolveManager:
         self.next_candidates = candidate_handle_arrays
 
 
-    def export_results(self, main_folder_path=None, generate_unique_folder_name=True, parameter_export=False):
+    def export_results(self, main_folder_path=None, generate_unique_folder_name=True, parameter_export=False, suppress_handle_array_export=False):
 
         if main_folder_path:
             if generate_unique_folder_name:
@@ -334,20 +334,22 @@ class EvolveManager:
         # save all other generic metrics to csv file
         save_list_dict_to_file(output_folder, 'metrics.csv', self.metrics, append=False, index_column='Generation')
 
-        # prepare a checkpoint of the current best handle array
-        writer = pd.ExcelWriter(
-            os.path.join(output_folder, f'best_handle_array_generation_{self.current_generation}.xlsx'),
-            engine='xlsxwriter')
 
-        # prints out handle dataframes in standard format
-        for layer_index in range(self.handle_array.shape[-1]):
-            df = pd.DataFrame(self.handle_array[..., layer_index])
-            df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
-            # Apply conditional formatting for easy color-based identification
-            writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],
-                                                                                    df.shape[1] - 1,
-                                                                                    self.excel_conditional_formatting)
-        writer.close()
+        if not suppress_handle_array_export:
+            # prepare a checkpoint of the current best handle array
+            writer = pd.ExcelWriter(
+                os.path.join(output_folder, f'best_handle_array_generation_{self.current_generation}.xlsx'),
+                engine='xlsxwriter')
+
+            # prints out handle dataframes in standard format
+            for layer_index in range(self.handle_array.shape[-1]):
+                df = pd.DataFrame(self.handle_array[..., layer_index])
+                df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
+                # Apply conditional formatting for easy color-based identification
+                writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],
+                                                                                        df.shape[1] - 1,
+                                                                                        self.excel_conditional_formatting)
+            writer.close()
 
         if parameter_export:
             full_parameter_set = {
@@ -369,10 +371,11 @@ class EvolveManager:
 
             toml.dump(full_parameter_set, open(os.path.join(output_folder, 'evolution_config.toml'), 'w'))
 
-    def run_full_experiment(self, logging_interval=10):
+    def run_full_experiment(self, logging_interval=10, suppress_handle_array_export=False):
         """
         Runs a full evolution experiment.
         :param logging_interval: The frequency at which logs should be written to file (including the best hamming array file).
+        :param suppress_handle_array_export: If true, the best handle array will not be exported at each logging interval, saving space.
         """
 
         if self.log_tracking_directory is None:
@@ -383,7 +386,7 @@ class EvolveManager:
                 for index, generation in enumerate(range(self.current_generation, self.max_evolution_generations)):
                     self.single_evolution_step()
                     if (index+1) % logging_interval == 0:
-                        self.export_results()
+                        self.export_results(suppress_handle_array_export)
 
                     pbar.update(1)
                     pbar.set_postfix({f'Latest max parasitic valency': self.metrics['Corresponding Max Parasitic Valency'][-1],

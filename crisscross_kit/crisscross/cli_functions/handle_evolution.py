@@ -21,9 +21,15 @@ def handle_evolve(config_file):
     else:
         logging_interval = 10
 
+    if 'suppress_handle_array_export' in evolution_params:
+        suppress_handle_array_export = evolution_params['suppress_handle_array_export']
+        del evolution_params['suppress_handle_array_export']
+    else:
+        suppress_handle_array_export = False
+
     evolve_manager = EvolveManager(**evolution_params, megastructure=megastructure)
 
-    evolve_manager.run_full_experiment(logging_interval)
+    evolve_manager.run_full_experiment(logging_interval, suppress_handle_array_export=suppress_handle_array_export)
 
 
 if __name__ == '__main__':
