@@ -207,8 +207,14 @@ class EvolveManager:
 
         # compare and find the individual with the best hamming distance i.e. the largest one. Note: there might be several
         max_physics_score_of_population = np.min(mean_parasitic_valency)
+
         # Get the indices of the top 'survivors' largest elements
-        indices_of_largest_scores = np.argpartition(mean_parasitic_valency, self.generational_survivors)[:self.generational_survivors]
+        if self.generational_survivors == self.evolution_population:
+            # if evolution pop = generational survivor count, just take all indices
+            indices_of_largest_scores = np.arange(self.evolution_population)
+        else:
+            # give me the best generational survivors, in no particular order
+            indices_of_largest_scores = np.argpartition(mean_parasitic_valency, self.generational_survivors)[:self.generational_survivors]
 
         # Get the largest elements using the sorted indices
         self.metrics['Best Effective Parasitic Valency'].append(max_physics_score_of_population)

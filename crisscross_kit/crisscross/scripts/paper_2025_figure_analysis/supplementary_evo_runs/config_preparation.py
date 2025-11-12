@@ -76,6 +76,7 @@ for design in designs:
                         toml.load(os.path.join(local_experiment_folder, f'evolution_config.toml'))
                     except:
                         print(f'Error saving toml file for {design} {exp_name}')
+
                     slurm_batch = create_o2_slurm_file(**slurm_parameters, command=f'handle_evolve -c {evolution_config_file}')
                     slurm_file  = os.path.join(local_slurm_folder, f'{design}_{exp_name}_call.sh')
                     server_slurm_file = os.path.join(server_slurm_folder, f'{design}_{exp_name}_call.sh')
