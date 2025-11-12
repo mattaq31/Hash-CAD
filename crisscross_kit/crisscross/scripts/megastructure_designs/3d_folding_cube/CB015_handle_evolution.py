@@ -18,8 +18,7 @@ if __name__ == '__main__':
 
     # step 1: shave off top layer from megastructure
     # step 2: run through the slats that are 'long' and make a new slat combining the two
-
-
+    
     evolve_manager = EvolveManager(megastructure,
                                    unique_handle_sequences=64,
                                    early_max_valency_stop=1, evolution_population=50,

@@ -3,20 +3,36 @@ import numpy as np
 
 def apply_handle_links(handle_array,link_handles = {}):
 
-    # applies linking i.e. ensuring two handles are the same
-    for l1, l2 in link_handles.items():
+    def apply_link(l1, l2, force_l1_value=False):
         handle_layer_1 = l1[0] - (2 if l1[1] == 'bottom' else 1)
         handle_layer_2 = l2[0] - (2 if l2[1] == 'bottom' else 1)
 
         # set the two indices to the same value (but not zero)
         if handle_array[l1[2][0], l1[2][1], handle_layer_1] == 0 and handle_array[l2[2][0], l2[2][1], handle_layer_2] == 0:
             print("Warning: Attempting to link two handles that are both zero. Skipping.")
-            continue
+            return
 
+        # either force the whole linkage to be the same as position 1
+        if force_l1_value and handle_array[l2[2][0], l2[2][1], handle_layer_2] != 0:
+            handle_array[l2[2][0], l2[2][1], handle_layer_2] = handle_array[l1[2][0], l1[2][1], handle_layer_1]
+            return
+        # or just select the max value (an arbitrary selection)
         shared_handle = max(handle_array[l1[2][0], l1[2][1], handle_layer_1], handle_array[l2[2][0], l2[2][1], handle_layer_2])
         handle_array[l1[2][0], l1[2][1], handle_layer_1] = shared_handle
         handle_array[l2[2][0], l2[2][1], handle_layer_2] = shared_handle
 
+    # applies linking i.e. ensuring two handles are the same
+    for l1, l2 in link_handles.items():
+        if isinstance(l2, tuple):
+            apply_link(l1, l2)
+        elif isinstance(l2, list):
+            for l2_item in l2: # ensures they all have the same value - L1
+                apply_link(l1, l2_item, force_l1_value=True)
+        elif isinstance(l2, dict):
+            for l2_item in l2.values(): # ensures they all have the same value - L1
+                apply_link(l1, l2_item, force_l1_value=True)
+        else:
+            print("Warning: link_handles value is neither a tuple nor a list. Skipping.")
 
 def duplicate_handle_transplants(handle_array, transplant_handles = {}):
 
