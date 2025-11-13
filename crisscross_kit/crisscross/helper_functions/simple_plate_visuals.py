@@ -1,4 +1,5 @@
 import os
+import textwrap
 from crisscross.helper_functions import plate96, plate384
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Patch
@@ -49,7 +50,18 @@ def visualize_plate_with_color_labels(plate_size, well_color_dict,
         raise RuntimeError('Plate size can only be 96 or 384.')
 
 
-    fig, ax = plt.subplots(figsize=(total_row_letters * plate_display_aspect_ratio, total_row_letters))
+    # checks to see if title will cause the figure to be larger than expected
+    max_chars = 100
+    wrapped = textwrap.wrap(plate_title, width=max_chars) if plate_title else []
+    extra_lines = max(0, len(wrapped) - 1)
+    base_h = total_row_letters
+    fig_h = base_h + 0.4 * extra_lines  # add 0.4 in per extra line
+
+    # enable constrained layout
+    fig, ax = plt.subplots(
+        figsize=(total_row_letters * plate_display_aspect_ratio, fig_h),
+        constrained_layout=True,
+    )
 
     # Draws the rectangular box for the plate border
     rect = Rectangle((0, 0),
@@ -112,11 +124,13 @@ def visualize_plate_with_color_labels(plate_size, well_color_dict,
     ax.set_xlim(0, row_divider)
     ax.set_ylim(total_row_letters, -0.1)
 
+    ax.set_aspect('equal')
+
     if plate_title:
         # break up title if longer than a certain length
-        if len(plate_title) > 100:
-            plate_title = '\n'.join([plate_title[i:i + 100] for i in range(0, len(plate_title), 100)])
-        plt.suptitle(plate_title, y=0.99, fontsize=25)
+        if len(plate_title) > max_chars:
+            plate_title = '\n'.join([plate_title[i:i + max_chars] for i in range(0, len(plate_title), max_chars)])
+        fig.suptitle(plate_title, fontsize=25 if plate_size == '384' else 18)
 
     if color_label_dict:
         # legend creation
@@ -126,13 +140,12 @@ def visualize_plate_with_color_labels(plate_size, well_color_dict,
 
         ax.legend(wedges, labels,
                   loc='upper center',
-                  bbox_to_anchor=(0.5, 0.0), ncol=5,
+                  bbox_to_anchor=(0.5, 0.0), ncol=2,
                   fancybox=True, fontsize=18)
 
-
-    plt.tight_layout()
+    # plt.tight_layout()
     if save_file and save_folder:
-        plt.savefig(os.path.join(save_folder, f'{save_file}.pdf'))
+        plt.savefig(os.path.join(save_folder, f'{save_file}.pdf'), bbox_inches='tight')
     if direct_show:
         plt.show()
     plt.close()

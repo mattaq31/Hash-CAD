@@ -348,7 +348,7 @@ if __name__ == "__main__":
             print(f"Warning: {idx} not found in df index; cannot add 2 µL")
 
     # Set the threshold
-    t = 28
+    t = 28  # 10ul echo dead volume + 8ul per working stock (40ul/200uM) *2 + 2ul buffer
 
     save_plate_report_pdf_from_df(
         df,
