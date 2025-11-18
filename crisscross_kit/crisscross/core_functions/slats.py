@@ -116,7 +116,7 @@ class Slat:
         else:
             raise RuntimeError('Wrong side specified (only h2 or h5 available)')
 
-    def set_placeholder_handle(self, handle_id, slat_side, category, value, descriptor):
+    def set_placeholder_handle(self, handle_id, slat_side, category, value, descriptor, suppress_warnings=False):
         """
         Assigns a placeholder to the slat, instead of a full handle.
         :param handle_id: Handle position on slat
@@ -128,12 +128,12 @@ class Slat:
             raise RuntimeError('Handle ID out of range')
 
         if slat_side == 2:
-            if handle_id in self.H2_handles:
-                print(Fore.RED + 'WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID))
+            if handle_id in self.H2_handles and not suppress_warnings:
+                print(Fore.RED + 'WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID) + Fore.RESET)
             self.H2_handles[handle_id] = {'category': category, 'value': value, 'descriptor': descriptor}
         elif slat_side == 5:
-            if handle_id in self.H5_handles:
-                print(Fore.RED + 'WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID))
+            if handle_id in self.H5_handles and not suppress_warnings:
+                print(Fore.RED + 'WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID) + Fore.RESET)
             self.H5_handles[handle_id] = {'category': category, 'value': value,'descriptor': descriptor}
         else:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')

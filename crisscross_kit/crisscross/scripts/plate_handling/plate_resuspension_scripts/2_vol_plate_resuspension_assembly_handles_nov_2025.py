@@ -157,30 +157,39 @@ if conduct_step_3: # this prepares the echo commands to transfers the masters to
     _, antihandle_plates, handle_plates, _ = get_cutting_edge_plates()
 
     transfer_volume = 8000  # 8ul
-    master_command_list = []
+    master_command_list_A = []
+    master_command_list_B = []
 
     for group in [handle_plates, antihandle_plates]:
         for plate, plate_name in zip(group.plates, group.plate_names):
             source_plate = sanitize_plate_map(plate_name)
             dest_plates = [sanitize_plate_map(plate_name) + '_working_stock_%s' % pos for pos in ['A', 'B']]
-            for dest_plate in dest_plates:
+            for ind, dest_plate in enumerate(dest_plates):
                 output_command_list = []
                 for row in plate.iterrows():
                     if isinstance(row[1]['name'], str):
                         source_well = row[1]['well']
                         dest_well = row[1]['well']
-                        name = row[1]['name']
+                        name = row[1]['name'] +  f'_%s'  % ['A', 'B'][ind]
                         output_command_list.append([name, source_plate, source_well, dest_well, transfer_volume, dest_plate, '384PP_AQ_BP'])
-                        master_command_list.append([name, source_plate, source_well, dest_well, transfer_volume, dest_plate, '384PP_AQ_BP'])
+                        if ind == 0:
+                            master_command_list_A.append([name, source_plate, source_well, dest_well, transfer_volume, dest_plate, '384PP_AQ_BP'])
+                        else:
+                            master_command_list_B.append([name, source_plate, source_well, dest_well, transfer_volume, dest_plate, '384PP_AQ_BP'])
 
                 combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                                          'Destination Well', 'Transfer Volume',
                                                                          'Destination Plate Name', 'Source Plate Type'])
                 combined_df.to_csv(os.path.join(echo_working_stock_output_folder, f'{dest_plate}_echo_commands.csv'), index=False)
 
-    master_df = pd.DataFrame(master_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
-                                                             'Destination Well', 'Transfer Volume',
-                                                             'Destination Plate Name', 'Source Plate Type'])
+    master_df_A = pd.DataFrame(master_command_list_A, columns=['Component', 'Source Plate Name', 'Source Well',
+                                                               'Destination Well', 'Transfer Volume',
+                                                               'Destination Plate Name', 'Source Plate Type'])
 
-    master_df.to_csv(os.path.join(echo_working_stock_output_folder, f'all_echo_commands.csv'), index=False)
+    master_df_A.to_csv(os.path.join(echo_working_stock_output_folder, f'all_echo_commands_first_working_stocks.csv'), index=False)
 
+    master_df_B = pd.DataFrame(master_command_list_B, columns=['Component', 'Source Plate Name', 'Source Well',
+                                                               'Destination Well', 'Transfer Volume',
+                                                               'Destination Plate Name', 'Source Plate Type'])
+
+    master_df_B.to_csv(os.path.join(echo_working_stock_output_folder, f'all_echo_commands_second_working_stocks.csv'), index=False)

@@ -176,9 +176,9 @@ class Megastructure:
         for l in range(len(self.layer_palette)):
             self.layer_palette[l + 1]['color'] = color_list[l % len(color_list)]
 
-    def assign_handle_to_slat(self, slat, slat_position_index, slat_side, handle_val, category, descriptor, sel_plates, update=False):
+    def assign_handle_to_slat(self, slat, slat_position_index, slat_side, handle_val, category, descriptor, sel_plates, update=False, suppress_warnings=False):
         if sel_plates is None:
-            slat.set_placeholder_handle(slat_position_index, slat_side, category, handle_val, descriptor='Placeholder|%s' % descriptor)
+            slat.set_placeholder_handle(slat_position_index, slat_side, category, handle_val, descriptor='Placeholder|%s' % descriptor, suppress_warnings=suppress_warnings)
         else:
             sequence = sel_plates.get_sequence(category, slat_position_index, slat_side, handle_val)
             well = sel_plates.get_well(category, slat_position_index, slat_side, handle_val)
@@ -192,7 +192,7 @@ class Megastructure:
                 slat.set_handle(slat_position_index, slat_side, sequence, well, plate_name,
                                 category, handle_val, concentration, descriptor=descriptor)
 
-    def assign_assembly_handles(self, handle_arrays, crisscross_handle_plates=None, crisscross_antihandle_plates=None):
+    def assign_assembly_handles(self, handle_arrays, crisscross_handle_plates=None, crisscross_antihandle_plates=None, suppress_warnings=False):
         """
         Assigns crisscross handles to the slats based on the handle arrays provided.
         :param handle_arrays: 3D array of handle values (X, Y, layer) where each value corresponds to a handle ID.
@@ -227,7 +227,7 @@ class Megastructure:
                         sel_plates = crisscross_antihandle_plates
                         category = 'ANTIHANDLE'
                     if handle_val > 0:
-                        self.assign_handle_to_slat(slat, slat_position_index + 1, slat_side, str(handle_val), 'ASSEMBLY_%s' % category, 'Assembly|%s|%s' % (category.capitalize(), handle_val), sel_plates)
+                        self.assign_handle_to_slat(slat, slat_position_index + 1, slat_side, str(handle_val), 'ASSEMBLY_%s' % category, 'Assembly|%s|%s' % (category.capitalize(), handle_val), sel_plates, suppress_warnings=suppress_warnings)
 
     def assign_seed_handles(self, seed_dict, seed_plate=None):
         """
@@ -543,13 +543,15 @@ class Megastructure:
 
         return slat_id_animation_classification
 
-    def get_slat_match_counts(self, use_original_slat_array=False, use_external_handle_array=None):
+    def get_slat_match_counts(self, prepopulated_handle_dict=None, prepopulated_antihandle_dict=None,
+                              use_original_slat_array=False, use_external_handle_array=None):
         """
         Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
         Useful for computing the hamming distance of a design with variable slat types.
         :return: Dictionary of match counts (key = number of matches, value = number of slat pairs with that many matches),
          and a connection graph that lists all slat pairs with a certain number of matches.
         TODO: what to do in the case of slats with multiple layers e.g. the sierpinski slats?
+        TODO: as with other functions, this function also assumes handle -> antihandle -> handle -> antihandle pattern.
         """
 
         megastructure_match_count = defaultdict(int) # key = number of matches, value = number of slat pairs with that many matches
@@ -570,32 +572,40 @@ class Megastructure:
 
                 # checks slats in the layer above
                 if slat.layer != slat_array.shape[-1]:
-                    # runs through all the coordinates of a specific slat
-                    for coordinate in slat.slat_position_to_coordinate.values():
+                    # TODO: the prepopulated handle/antihandle dict logic needs to be updated with a better system!
+                    if prepopulated_handle_dict is None or s_key in prepopulated_handle_dict: # skips slats if they've been rejected previously
+                        # runs through all the coordinates of a specific slat
+                        for coordinate in slat.slat_position_to_coordinate.values():
+                            # checks if there's a handle match
+                            if handle_array[coordinate[0], coordinate[1], slat.layer-1] != 0:
+                                other_slat = slat_array[coordinate[0], coordinate[1], slat.layer]
+                                # ignores areas where there are actually no overlapping slats
+                                if other_slat == 0:
+                                    continue
+                                # records match
+                                other_slat_key = get_slat_key(slat.layer+1, other_slat)
 
-                        # checks if there's a handle match
-                        if handle_array[coordinate[0], coordinate[1], slat.layer-1] != 0:
+                                if prepopulated_antihandle_dict is not None and other_slat_key not in prepopulated_antihandle_dict:  # skips slats if they've been rejected previously
+                                    continue
 
-                            other_slat = slat_array[coordinate[0], coordinate[1], slat.layer]
-                            # ignores areas where there are actually no overlapping slats
-                            if other_slat == 0:
-                                continue
-
-                            # records match
-                            other_slat_key = get_slat_key(slat.layer+1, other_slat)
-                            if other_slat_key not in completed_slats:
-                                matches_with_other_slats[other_slat_key] += 1
+                                if other_slat_key not in completed_slats:
+                                    matches_with_other_slats[other_slat_key] += 1
 
                 # checks slats in the layer below - same logic as above
                 if slat.layer != 1:
-                    for coordinate in slat.slat_position_to_coordinate.values():
-                        if handle_array[coordinate[0], coordinate[1], slat.layer - 2] != 0:
-                            other_slat = slat_array[coordinate[0], coordinate[1], slat.layer - 2]
-                            if other_slat == 0:
-                                continue
-                            other_slat_key = get_slat_key(slat.layer - 1, other_slat)
-                            if other_slat_key not in completed_slats:
-                                matches_with_other_slats[other_slat_key] += 1
+                    if prepopulated_antihandle_dict is None or s_key in prepopulated_antihandle_dict: # skips slats if they've been rejected previously
+                        for coordinate in slat.slat_position_to_coordinate.values():
+                            if handle_array[coordinate[0], coordinate[1], slat.layer - 2] != 0:
+                                other_slat = slat_array[coordinate[0], coordinate[1], slat.layer - 2]
+                                if other_slat == 0:
+                                    continue
+                                other_slat_key = get_slat_key(slat.layer - 1, other_slat)
+
+                                if prepopulated_handle_dict is not None and other_slat_key not in prepopulated_handle_dict:  # skips slats if they've been rejected previously
+                                    continue
+
+                                if other_slat_key not in completed_slats:
+                                    matches_with_other_slats[other_slat_key] += 1
 
                 # enumerates all matches found and updates the overall count
                 for k, v in matches_with_other_slats.items():
@@ -615,7 +625,8 @@ class Megastructure:
 
         return megastructure_match_count, connection_graph
 
-    def get_bag_of_slat_handles(self, use_original_slat_array=False, use_external_handle_array=None, remove_blank_slats=False):
+    def get_bag_of_slat_handles(self, use_original_slat_array=False, use_external_handle_array=None, remove_blank_slats=False,
+                                remove_duplicates_in_layers=None):
         """
         Obtains two dictionaries - both containing the arrays corresponding to the handle positions of each slat in the
         megastructure (one for handles and one for antihandles).  The keys correspond to the slat ID while the values contain
@@ -669,9 +680,52 @@ class Megastructure:
             handle_dict = {k: v for k, v in handle_dict.items() if np.sum(v) > 0}
             antihandle_dict = {k: v for k, v in antihandle_dict.items() if np.sum(v) > 0}
 
+        # TODO: this is highly convoluted - it's supposed to delete duplicate slats that match other parallel slats for the sierpinski design - I would rather have those slats delegated to a specific type rather than corrected in this way
+        if remove_duplicates_in_layers is not None:
+            for layer, category in remove_duplicates_in_layers:
+                slats_in_layer = [s_key for s_key, slat in self.slats.items() if slat.layer == layer]
+                if category == 'handles':
+                    seen_handles = set()
+                    for s_key in slats_in_layer:
+                        if s_key in handle_dict:
+                            handle_tuple = tuple(handle_dict[s_key].tolist())
+                            if handle_tuple in seen_handles:
+                                del handle_dict[s_key]
+                                for coordinate in self.slats[s_key].slat_position_to_coordinate.values():
+                                    # checks if there's a handle match and also deletes that other matching slat
+                                    if handle_array[coordinate[0], coordinate[1], self.slats[s_key].layer - 1] != 0:
+                                        other_slat = slat_array[coordinate[0], coordinate[1], self.slats[s_key].layer]
+                                        if other_slat == 0:
+                                            continue
+                                        other_slat_key = get_slat_key(self.slats[s_key].layer + 1, other_slat)
+                                        if other_slat_key in antihandle_dict:
+                                            del antihandle_dict[other_slat_key]
+                            else:
+                                seen_handles.add(handle_tuple)
+                elif category == 'antihandles':
+                    seen_antihandles = set()
+                    for s_key in slats_in_layer:
+                        if s_key in antihandle_dict:
+                            antihandle_tuple = tuple(antihandle_dict[s_key].tolist())
+                            if antihandle_tuple in seen_antihandles:
+                                del antihandle_dict[s_key]
+                                for coordinate in self.slats[s_key].slat_position_to_coordinate.values():
+                                    # checks if there's a handle match and also deletes that other matching slat
+                                    if handle_array[coordinate[0], coordinate[1], self.slats[s_key].layer - 2] != 0:
+                                        other_slat = slat_array[coordinate[0], coordinate[1], self.slats[s_key].layer - 2]
+                                        if other_slat == 0:
+                                            continue
+                                        other_slat_key = get_slat_key(self.slats[s_key].layer - 1, other_slat)
+                                        if other_slat_key in handle_dict:
+                                            del handle_dict[other_slat_key]
+                            else:
+                                seen_antihandles.add(antihandle_tuple)
+                else:
+                    raise RuntimeError('Category for duplicate removal must be either HANDLE or ANTIHANDLE.')
+
         return handle_dict, antihandle_dict
 
-    def get_parasitic_interactions(self):
+    def get_parasitic_interactions(self, remove_duplicates_in_layers=False):
         """
         Computes the match strength score of the megastructure design based on the assembly handles present.
         4 items are provided in a dictionary:
@@ -683,11 +737,11 @@ class Megastructure:
         """
         # TODO: this function also assumes the pattern handle -> antihandle -> handle -> antihandle etc.
         # first extract all handles/antihandles in the design
-        handle_dict, antihandle_dict = self.get_bag_of_slat_handles(remove_blank_slats=True)
+        handle_dict, antihandle_dict = self.get_bag_of_slat_handles(remove_blank_slats=True, remove_duplicates_in_layers=remove_duplicates_in_layers)
 
         # gets the number of matches that are expected in the design based on slat overlaps,
         # these will be removed from the final histogram
-        match_counts, connection_graph = self.get_slat_match_counts()
+        match_counts, connection_graph = self.get_slat_match_counts(prepopulated_handle_dict=handle_dict, prepopulated_antihandle_dict=antihandle_dict)
 
         return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle)
 

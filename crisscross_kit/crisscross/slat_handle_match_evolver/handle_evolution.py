@@ -24,7 +24,8 @@ class EvolveManager:
                  mutation_rate=5, mutation_type_probabilities=(0.425, 0.425, 0.15), unique_handle_sequences=32,
                  evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
                  process_count=None, early_max_valency_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
-                 mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None, similarity_score_calculation_frequency=10):
+                 mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None,
+                 similarity_score_calculation_frequency=10, remove_duplicates_in_layers=None):
         """
         Prepares an evolution manager to optimize a handle array for the provided slat array.
         WARNING: Make sure to use the "if __name__ == '__main__':" block to run this class in a script.
@@ -116,7 +117,13 @@ class EvolveManager:
         if self.handle_array is None:
             self.dummy_megastructure.assign_assembly_handles(self.next_candidates[0])
 
-        self.slat_compensation_match_counts, self.slat_connection_graph = self.dummy_megastructure.get_slat_match_counts(use_original_slat_array=True)
+        if remove_duplicates_in_layers is not None: # compensating for the Sierpinski triangle design system TODO: REMOVE AND UPDATE WITH A BETTER SOLUTION
+            handle_dict, antihandle_dict = self.dummy_megastructure.get_bag_of_slat_handles(remove_blank_slats=True, use_original_slat_array=True, remove_duplicates_in_layers=remove_duplicates_in_layers)
+            self.slat_compensation_match_counts, self.slat_connection_graph = self.dummy_megastructure.get_slat_match_counts(use_original_slat_array=True,
+                                                                                                                             prepopulated_handle_dict=handle_dict, prepopulated_antihandle_dict=antihandle_dict)
+        else:
+            self.slat_compensation_match_counts, self.slat_connection_graph = self.dummy_megastructure.get_slat_match_counts(use_original_slat_array=True)
+        self.remove_duplicates_in_layers = remove_duplicates_in_layers
 
         self.memory_hallofshame = defaultdict(list)
         self.memory_best_parent_hallofshame = defaultdict(list)
@@ -182,6 +189,7 @@ class EvolveManager:
         for j in range(self.evolution_population):
             handles, antihandles = self.dummy_megastructure.get_bag_of_slat_handles(use_original_slat_array=True,
                                                                                     use_external_handle_array = self.next_candidates[j],
+                                                                                    remove_duplicates_in_layers=self.remove_duplicates_in_layers,
                                                                                     remove_blank_slats=True)
 
             analysis_inputs.append((handles, antihandles, self.slat_compensation_match_counts, self.slat_connection_graph, self.dummy_megastructure.connection_angle, True, 10, request_sim_score))
