@@ -725,7 +725,7 @@ class Megastructure:
 
         return handle_dict, antihandle_dict
 
-    def get_parasitic_interactions(self, remove_duplicates_in_layers=False):
+    def get_parasitic_interactions(self, remove_duplicates_in_layers=None):
         """
         Computes the match strength score of the megastructure design based on the assembly handles present.
         4 items are provided in a dictionary:

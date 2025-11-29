@@ -16,8 +16,8 @@ if __name__ == '__main__':
     print(megastructure.get_parasitic_interactions())
 
     evolve_manager =  EvolveManager(megastructure, unique_handle_sequences=64,
-                                    early_max_valency_stop=2, evolution_population=5,
-                                    generational_survivors=5,
+                                    early_max_valency_stop=2, evolution_population=50,
+                                    generational_survivors=1,
                                     mutation_rate=2,
                                     process_count=8,
                                     evolution_generations=2000,
