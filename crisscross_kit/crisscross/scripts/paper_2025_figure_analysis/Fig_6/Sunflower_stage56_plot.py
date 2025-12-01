@@ -174,6 +174,7 @@ for m in bp['medians']:
 # No mean markers (removed)
 
 # Axis labels & limits
+ax.invert_xaxis()
 ax.set_xlabel("Loss")
 ax.set_ylabel("Structures per Image")
 ax.set_xlim(2.4, 5.6)

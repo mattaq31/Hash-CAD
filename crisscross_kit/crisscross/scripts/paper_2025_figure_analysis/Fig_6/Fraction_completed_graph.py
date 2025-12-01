@@ -9,7 +9,7 @@ from scripts.paper_2025_figure_analysis.Fig_6.Sunflower_stage56_plot import mm_t
 
 # ----------------- paths -----------------
 PKL_PATH = Path(r"C:/Users/Flori/Dropbox/CrissCross/Papers/hash_cad/exp2_handle_library_sunflowers/counting/data4paper/Plots/hist_per_image.pkl")
-OUT_DIR = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources")
+OUT_DIR = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6\resources")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_SVG  = OUT_DIR / "fraction_complete.svg"
 
@@ -113,6 +113,8 @@ sum_by_group = df.groupby('Group')[[1,2,3,4,5,6]].sum()
 # Select groups that exist, are in LOSS, not excluded; order by LOSS
 groups_present = [g for g in sum_by_group.index if g in LOSS and g not in EXCLUDE]
 groups = sorted(groups_present, key=lambda g: (LOSS[g], g))  # stable tie-break
+groups = list(reversed(groups))
+
 
 # Sanity: require color for every plotted group
 missing = [g for g in groups if g not in GROUP_COLORS]
