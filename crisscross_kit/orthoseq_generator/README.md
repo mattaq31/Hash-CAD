@@ -228,7 +228,7 @@ The `legacy/` directory includes two self-contained scripts for finding orthogon
 1. **`precompute_energies.py`**  
    - Generates all 7-mer sequence pairs (with a 'TT' 5′ flank), filtering out any with four identical bases in a row.  
    - Selects all pairs whose on-target energies lie within a specified range.  
-   - c
+   - Computes off-target interaction energies for the selected subset.  
    - Saves the subset, their indices, and off-target energies to for example `subset_data_7mers96to101.pkl`. This is a separate saving routine and does not end up in the pre_compute_energies directory but in the legacy folder itself.
 
 2. **`legacy_sequence_search.py`**  
