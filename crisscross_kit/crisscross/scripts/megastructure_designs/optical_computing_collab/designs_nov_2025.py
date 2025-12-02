@@ -125,7 +125,7 @@ if generate_echo:
                                 slat_mixture_volume=50,
                                 peg_concentration=3,
                                 split_core_staple_pools=True,
-                                peg_groups_per_layer=2)
+                                peg_groups_per_layer=4)
 
     # hexstar sheets and commands
 
@@ -186,7 +186,7 @@ if generate_echo:
                                 slat_mixture_volume=50,
                                 peg_concentration=3,
                                 split_core_staple_pools=True,
-                                peg_groups_per_layer=2)
+                                peg_groups_per_layer=4)
 
 design_files_to_combine = [os.path.join(echo_folder, 'square_bottom_echo.csv'),
                            os.path.join(echo_folder, 'square_top_echo.csv'),
