@@ -45,7 +45,7 @@ seed_core = 'sw_src001_seedcore'  # this contains all the seed sequences, includ
 slat_core = 'sw_src002_slatcore'  # this contains all the slat sequences, including the control sequences (no handle)
 slat_core_latest = 'sw_src009_control_max'  # this contains the slat control sequences with 4 duplicates per staple to reduce echo errors
 
-seed_slat_purification_handles = "sw_src004_polyAgridiron" # this contains toehold-polyA extensions on gridiron seed staples for attachment to polyT beads and toehold-3letter code sequences for slat attachment to beads
+seed_slat_purification_handles = "sw_src004_checkpointhandles" # this contains checkpoint handles (aka secondary purification handles) for selective pulldown of structures at different stages of completion. the first two rows used to contain toehold-polyA extensions on gridiron seed staples for attachment to polyT beads and toehold-3letter code sequences for slat attachment to beads
 
 seed_plug_plate_center = 'P2854_CW_seed_plug_center'  # this contains the H2 plug sequences to bind to the seed at the center of the x-slats
 seed_plug_plate_corner = 'P3339_JL_seed_plug_corner'  # this contains another variation of H2 plug sequences - they go to the corner of a set of x-slats
