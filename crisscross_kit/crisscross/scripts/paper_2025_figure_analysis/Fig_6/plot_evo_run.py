@@ -14,7 +14,7 @@ def mm_to_in(mm): return mm / MM_PER_INCH
 def mm_to_pt(mm): return (mm / MM_PER_INCH) * 72.0
 
 # ====== global style knobs (from your file) ======
-BOX_W_MM    = 38.0   # <- use these exact values
+BOX_W_MM    = 30.0   # <- use these exact values
 BOX_H_MM    = 22.0
 
 LINE_MM_DATA = 0.33
@@ -153,16 +153,27 @@ def plot_loglog_matches_vs_index(
 
     for (name, idx, k), color in zip(sel, colors):
         y = data[:, idx].astype(float)
-        y = np.where(y <= 0, 1e-4, y)
+        y = np.where(y <= 0, 0.1, y)
         # label by k only (e.g., "1", "2", "3", ...)
         ax.loglog(x, y, label=str(k), color=color, linewidth=mm_to_pt(LINE_MM_DATA))
 
     ax.set_xlabel("Generation")
     ax.set_ylabel("Counts")
     ax.set_title(title, pad=2.7)
-    ax.grid(False)
+    # Grid: horizontal lines only, thinner
+    ax.grid(
+        True,  # enable grid
+        which="major",  # major ticks only
+        axis="x",  # only y-direction (horizontal lines)
+        linewidth=mm_to_pt(0.10),  # thinner than your default lines
+        color="black",  # or e.g. "#999999" for lighter gray
+        alpha=0.3  # transparency for softer appearance
+    )
     ax.minorticks_off()
-    ax.set_xlim(0.8, 1.5*10**5)
+    ax.set_xlim(1e0, 1e5)
+    ax.xaxis.set_major_locator(LogLocator(base=10, subs=(1.0,), numticks=6))
+    ax.xaxis.set_major_formatter(LogFormatterMathtext(base=10))
+    ax.xaxis.set_minor_locator(LogLocator(base=10, subs=()))
     ax.set_ylim(0.65, 3.0*10**6)
 
     ax.set_yscale("log")
@@ -174,13 +185,14 @@ def plot_loglog_matches_vs_index(
     ax.legend(
         title="Valency",
         frameon=False,
-        loc="best",
-        ncol=2,  # two columns
-        columnspacing=0.8,  # horizontal spacing between columns
+        loc="upper left",
+        bbox_to_anchor=(1., 0.89),
+        ncol=1,  # two columns
+        columnspacing=0.7,  # horizontal spacing between columns
         handlelength=1.4,  # shorten line length
         handletextpad=0.4,  # space between line and label
         borderaxespad=0.5,  # move closer to plot
-        labelspacing=0.4
+        labelspacing=0.35
     )
 
     if output_svg:
@@ -259,16 +271,28 @@ def plot_scores_overview(
     ax.set_xlabel("Generation")
     ax.set_ylabel("Loss")
     ax.set_title(title, pad=2.7)
-    ax.grid(False)
+    # Grid: horizontal lines only, thinner
+    ax.grid(
+        True,  # enable grid
+        which="major",  # major ticks only
+        axis="x",  # only y-direction (horizontal lines)
+        linewidth=mm_to_pt(0.10),  # thinner than your default lines
+        color="black",  # or e.g. "#999999" for lighter gray
+        alpha=0.3  # transparency for softer appearance
+    )
     ax.minorticks_off()
-    ax.set_xlim(0.8, 1.5*10**5)
+    ax.set_xlim(1e0, 1e5)
+    ax.xaxis.set_major_locator(LogLocator(base=10, subs=(1.0,), numticks=6))
+    ax.xaxis.set_major_formatter(LogFormatterMathtext(base=10))
+    ax.xaxis.set_minor_locator(LogLocator(base=10, subs=()))
 
 
 
     # Compact legend
     ax.legend(
         frameon=False,
-        loc="best",
+        loc="upper left",
+        bbox_to_anchor=(1., 0.89),
         ncol=1,
         columnspacing=0.8,
         handlelength=1.3,
@@ -300,14 +324,14 @@ if __name__ == "__main__":
 
 
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\bird_long\match_histograms.csv"
+    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\bird_long_fast\match_histograms.csv"
 
     name = "Bird"
-    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5/resources/" + name + "_valencies.svg"
+    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name + "_valencies.svg"
 
     data, header = load_match_histogram(CSV_PATH)
     data_Bird = data
-    custom_colors = ["#600700", "#9f241a", "#dc482e", "#dd726f", "#f5bebd"]
+    custom_colors = ["#600700", "#9f241a", "#dc482e", "#f1968f", "#f4cac8"]
     scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
 
 
@@ -349,10 +373,10 @@ if __name__ == "__main__":
 
 
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\sunflower_long\match_histograms.csv"
+    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\sunflower_long_fast\match_histograms.csv"
 
     name = "Sunflower"
-    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5/resources/" + name + "_valencies.svg"
+    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name + "_valencies.svg"
 
     data, header = load_match_histogram(CSV_PATH)
     data_sunflower = data
@@ -374,10 +398,10 @@ if __name__ == "__main__":
     )
     plt.show()
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\square_long\match_histograms.csv"
+    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\square_long_fast\match_histograms.csv"
 
     name = "Square"
-    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5/resources/" + name + "_valencies.svg"
+    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name + "_valencies.svg"
 
     data, header = load_match_histogram(CSV_PATH)
     data_square = data
@@ -404,8 +428,8 @@ if __name__ == "__main__":
 
 
 
-    OUT_SCORES_SVG = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources/scores_overview.svg"
-    series_colors = ["#9f241a", "#d6a000" , "#0088AA"]
+    OUT_SCORES_SVG = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6\resources/scores_overview.svg"
+    series_colors = ["#dc482e", "#fbbe00" , "#46bde2"]
 
     fig, ax = plot_scores_overview(
         all_scores,
@@ -432,7 +456,7 @@ if __name__ == "__main__":
     CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\hexagon_long\match_histograms.csv"
 
     name = "Hexagon"
-    OUT_SVG  = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5/resources/" + name +"_valencies.svg"
+    OUT_SVG  = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name +"_valencies.svg"
 
     data, header = load_match_histogram(CSV_PATH)
     data_hexagon = data

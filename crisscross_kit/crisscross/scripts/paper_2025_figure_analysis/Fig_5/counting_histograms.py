@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # ====== imports ======
 from pathlib import Path
 import os
@@ -9,7 +10,7 @@ from matplotlib.lines import Line2D
 
 # ====== paths & config (edit these) ======
 DATA_FOLDER = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\counting_results")
-OUTPUT_DIR  = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_4\resources")
+OUTPUT_DIR  = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources")
 SELECTED_CONDITIONS = [24, 27, 29, 30]
 
 # scores (x positions)
@@ -36,7 +37,7 @@ TICK_LEN_MM = 0.40
 FS_TICKS    = 5
 FS_LABELS   = 6
 FS_TITLE    = 6
-FS_LEGEND   = 5
+FS_LEGEND   = 6
 FONT_FAMILY = "Arial"
 
 # margins (matter only if you save WITHOUT bbox_inches='tight')
@@ -48,15 +49,17 @@ MARGIN_T_MM = 6.0
 # legend saving
 PAD_INCHES  = 0.02   # small pad to avoid clipping with tight bbox
 
-# ====== boxplot visual knobs ======
-BOX_WIDTH_DATA   = 0.35     # width of each box in x-axis data units
+# ====== colors / markers ======
+mean_marker = 's'
+BOX_WIDTH_DATA   = 0.4     # width of each box in x-axis data units
 BOX_COLOR        = "lightblue"
-MEDIAN_COLOR     = "green"
-MEAN_COLOR       = "red"
+EDGE_COLOR       = "black"
+MEDIAN_COLOR     = "black"
+MEAN_COLOR       = "#9f241a"
 FLIER_COLOR      = "black"
-FLIER_SIZE_PT    = 1.5      # outlier dot diameter (points)
-MEAN_AREA_PT2    = 2.0      # mean diamond area (pt^2) in the PLOT
-MEAN_LEGEND_PT   = 3.0      # mean diamond diameter (pt) in the LEGEND
+
+FLIER_SIZE_PT    = 0.6      # outlier dot diameter (points)
+MEAN_AREA_PT2    = 0.8     # mean diamond area (pt^2) in the PLOT
 
 # ====== figure factory (exact inner box size) ======
 def make_fig_ax(box_w_mm, box_h_mm):
@@ -88,8 +91,9 @@ def make_fig_ax(box_w_mm, box_h_mm):
 
     for s in ax.spines.values():
         s.set_linewidth(lw_pt)
+        s.set_edgecolor(EDGE_COLOR)
 
-    ax.tick_params(which="both", direction="out", length=tick_len_pt, width=lw_pt)
+    ax.tick_params(which="both", direction="out", length=tick_len_pt, width=lw_pt, colors=EDGE_COLOR)
     ax.xaxis.labelpad = 0.5
     ax.yaxis.labelpad = 0.5
     ax.tick_params(axis="x", pad=1.2)
@@ -126,6 +130,7 @@ def load_counts_dataframe(data_folder, selected_conditions):
 
 # ====== histograms (one svg per condition) ======
 def compute_global_hist_ymax(df_counts, bins):
+    """Return a shared y-limit for all histograms (10% headroom)."""
     ymax = 0.0
     for cond in df_counts.columns:
         counts, _ = np.histogram(df_counts[cond].dropna(), bins=bins)
@@ -134,6 +139,7 @@ def compute_global_hist_ymax(df_counts, bins):
     return ymax * 1.10
 
 def save_histograms_per_condition(df_counts, score_map, output_dir, bins=None):
+    """Save a histogram SVG per condition using global sizing & colors."""
     if bins is None:
         bins = np.arange(0, 160, 5)
     ymax = compute_global_hist_ymax(df_counts, bins)
@@ -143,12 +149,18 @@ def save_histograms_per_condition(df_counts, score_map, output_dir, bins=None):
         data = df_counts[cond].dropna().values
         fig, ax, lw_pt = make_fig_ax(BOX_W_MM, BOX_H_MM)
 
-        ax.hist(data, bins=bins, edgecolor="black", color="lightblue", linewidth=lw_pt)
+        ax.hist(
+            data,
+            bins=bins,
+            edgecolor=EDGE_COLOR,
+            color=BOX_COLOR,
+            linewidth=lw_pt
+        )
         ax.set_xlabel("Particles per Image")
         ax.set_ylabel("Counts")
         ax.set_title(f"Score = {score_map.get(int(cond), np.nan):.3f}", pad=6)
-        ax.set_xlim(0, 160)
-        ax.set_xticks(np.arange(0, 161, 20))
+        ax.set_xlim(bins[0], bins[-1])
+        ax.set_xticks(np.arange(bins[0], bins[-1] + 1, 20))
         ax.set_ylim(0, ymax)
 
         out_svg = output_dir / f"hist_{int(cond)}.svg"
@@ -162,55 +174,69 @@ def save_boxplot_svg(df_counts, score_map, output_dir):
     means  = [np.nanmean(d) for d in data]
 
     # figure
-    box_h_mm = BOX_H_MM*1.15
+    box_h_mm = BOX_H_MM * 1.15
     box_w_mm = (16 / 9) * box_h_mm
     fig, ax, lw_pt = make_fig_ax(box_w_mm, box_h_mm)
 
     bp = ax.boxplot(
         data,
         positions=scores,
-        widths=0.5,  # simple box width
+        widths=BOX_WIDTH_DATA,
         patch_artist=True,
         manage_ticks=False,
         flierprops=dict(
             marker='o',
-            markersize=1.0,
-            color='black',
-            markerfacecolor='black',
-            markeredgecolor='black',
+            markersize=FLIER_SIZE_PT,
+            color=FLIER_COLOR,
+            markerfacecolor=FLIER_COLOR,
+            markeredgecolor=FLIER_COLOR,
             linestyle='none'
         ),
     )
-
-    for b in bp['boxes']:     b.set(facecolor='lightblue', linewidth=lw_pt)
+    for m in bp['medians']:   m.set(color=MEDIAN_COLOR, linewidth=lw_pt)
+    for b in bp['boxes']:     b.set(facecolor=BOX_COLOR, linewidth=lw_pt)
     for w in bp['whiskers']:  w.set(linewidth=lw_pt)
     for c in bp['caps']:      c.set(linewidth=lw_pt)
-    for m in bp['medians']:   m.set(color='green', linewidth=lw_pt)
 
-    # identical mean marker size everywhere
-    mean_size = 1
-    ax.scatter(scores, means, color='red', marker='D', s=mean_size, zorder=3, label='Mean')
 
-    ax.set_xlabel("Effective Parasitic Interaction Valency")
+    # mean markers — stay square, editable in Inkscap
+    '''
+    ax.plot(
+        scores,
+        means,
+        linestyle='none',
+        marker=mean_marker,                 # square
+        markersize=MEAN_AREA_PT2,  # size scaled from area
+        markerfacecolor=MEAN_COLOR,
+        markeredgecolor=MEAN_COLOR,
+        zorder=4
+    )
+    '''
+    ax.set_xlabel("Loss")
     ax.set_ylabel("Structures per Image")
-    ax.set_xlim(1.35, max(scores) + 1)
+    ax.set_xlim(max(scores) + 1, 1.35)   # reversed x-axis
     max_tick = int(round(max(scores), 0))
     ax.set_xticks(range(2, max_tick + 2))
     ax.set_xticklabels(range(2, max_tick + 2))
-
     ax.set_ylim(0, 170)
 
-
-    # clean legend — same marker size, no border
-    median_line = Line2D([], [], color='green', linewidth=lw_pt, label='Median')
-    mean_proxy  = Line2D([], [], color='red', marker='D', linestyle='none',
-                         markersize=math.sqrt(mean_size), label='Mean')
-    leg = ax.legend([median_line, mean_proxy], ["Median", "Mean"],
-                    frameon=False, loc='best')
+    mean_proxy = Line2D(
+        [], [], marker=mean_marker,
+        markersize=MEAN_AREA_PT2,
+        markerfacecolor=MEAN_COLOR,
+        markeredgecolor=MEAN_COLOR,
+        linestyle='none',
+        label='Mean'
+    )
+    median_proxy = Line2D(
+        [], [], color=MEDIAN_COLOR,
+        linewidth=lw_pt,
+        label='Median'
+    )
+    #ax.legend([median_proxy, mean_proxy], ["Median", "Mean"], frameon=False, loc='best')
 
     out_svg = output_dir / "boxplot_score_with_mean_median.svg"
     fig.savefig(out_svg, format="svg", bbox_inches="tight", pad_inches=0.07)
-    print(ax.xaxis.label.get_size())
     plt.close(fig)
 
 
@@ -221,4 +247,3 @@ if __name__ == "__main__":
 
     save_histograms_per_condition(df_counts, SCORE_MAP, OUTPUT_DIR)
     save_boxplot_svg(df_counts, SCORE_MAP, OUTPUT_DIR)
-
