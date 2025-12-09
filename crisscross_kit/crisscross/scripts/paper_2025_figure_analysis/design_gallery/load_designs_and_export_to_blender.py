@@ -5,8 +5,8 @@ from crisscross.helper_functions import create_dir_if_empty
 
 root_dir = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library'
 
-designs = ['Colored hexagon', 'daffodil', 'fox', 'glider', 'handaxe', 'hexagon', 'lily', 'megastar', 'recycling', 'shuriken', 'sunflower', 'turnstile', 'rigid_square']
-designs = ['rigid_square']
+designs = ['Colored hexagon', 'daffodil', 'fox', 'glider', 'handaxe', 'hexagon', 'lily', 'megastar', 'recycling', 'shuriken', 'sunflower', 'turnstile', 'rigid_square', 'hexagon_w_ncube']
+designs = ['hexagon_w_ncube']
 
 color_library = {-1: '#2972EEFF', -2: '#C7CF00FF', -3: '#CF001AFF', -4: '#34FF17FF', -5: '#961313FF', -6: '#3B1BB1FF', -7: '#DF3AE6FF'}
 color_library = {-1: '#2C007DFF', -2: '#775B00FF', -3: '#0E6D00FF', -4: '#34FF17FF', -5: '#961313FF', -6: '#3B1BB1FF', -7: '#DF3AE6FF'}
@@ -39,13 +39,17 @@ for design in designs:
             if color_id in color_library:
                 data['color'] = color_library.get(color_id, data['color'])
 
-    # removing all cargo handles for cleaner visualization
-    for s_id, slat in mega.slats.items():
-        for pos in  range(1, 33):
-            if pos in slat.H2_handles and slat.H2_handles[pos]['category'] == 'CARGO':
-                slat.remove_handle(pos, 2)
-            if pos in slat.H5_handles and slat.H5_handles[pos]['category'] == 'CARGO':
-                slat.remove_handle(pos, 5)
+    if design != 'hexagon_w_ncube':
+        # removing all cargo handles for cleaner visualization
+        for s_id, slat in mega.slats.items():
+            for pos in  range(1, 33):
+                if pos in slat.H2_handles and slat.H2_handles[pos]['category'] == 'CARGO':
+                    slat.remove_handle(pos, 2)
+                if pos in slat.H5_handles and slat.H5_handles[pos]['category'] == 'CARGO':
+                    slat.remove_handle(pos, 5)
+    else:
+        mega.cargo_palette['antiEdna']['color'] = '#46F321FF'  # standardize cargo color
+        mega.cargo_palette['antiBart']['color'] = '#46F321FF'  # standardize cargo color
 
     # removing all slat unique colors
     if design != 'Colored hexagon':

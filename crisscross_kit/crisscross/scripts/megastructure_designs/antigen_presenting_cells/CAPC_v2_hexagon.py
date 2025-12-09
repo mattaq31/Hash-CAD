@@ -24,7 +24,7 @@ create_dir_if_empty(echo_folder, lab_helper_folder, main_folder, design_folder, 
 generate_graphical_report = False
 generate_echo = True
 generate_lab_helpers = True
-regenerate_designs = False
+regenerate_designs = True
 np.random.seed(8)
 
 main_plates = get_cutting_edge_plates(100)

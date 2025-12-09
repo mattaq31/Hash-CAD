@@ -7,6 +7,11 @@ from skimage.util import img_as_float32
 from imageio import imwrite
 import cv2
 
+run_nanocube = False
+run_colored_hexa = False
+run_tem_images = True
+
+
 def parse_tiff_calibration(image_file):
 
     with tifffile.TiffFile(image_file) as tif:
@@ -60,8 +65,10 @@ designs = {
         'crop_coords': (179, 53)
     },
     'fox':{
-        'zoom_im': '9_days_incubation/20250826-Purified_fox_22.tif',
-        'crop_coords': (1621, 694)
+        # 'zoom_im': '9_days_incubation/20250826-Purified_fox_22.tif', # bad PEG version
+        # 'crop_coords': (1621, 694)
+        'zoom_im': '20251203-Fox2pur_dil1_10/20251203-Fox2pur_dil1_10_11.tif',
+        'crop_coords': (1084, 204)
     },
     'glider':{
         'zoom_im': '20240702_MA007_whitegridholder_Q2_solnasmblpulldown_10xdilution_0.tif',
@@ -110,119 +117,163 @@ designs = {
     }
 }
 
-for design, specs in designs.items():
-    if len(specs) == 0:
-        continue
+if run_tem_images:
+    for design, specs in designs.items():
 
-    print('Loading TEM image for design:', design)
-    design_folder = os.path.join(root_dir, design)
-    tem_folder = os.path.join(design_folder, 'tem_images')
-    paper_graphics_folder = os.path.join(design_folder, 'paper_graphics')
+        if len(specs) == 0:
+            continue
 
-    image_file = os.path.join(tem_folder, specs['zoom_im'])
-    output_file = os.path.join(paper_graphics_folder, f'{design}_gallery_tem_cropped.png')
-    img = tifffile.imread(image_file)
-    calibration_data = parse_tiff_calibration(image_file)
-    pixel_size_im = calibration_data['UnitPerPixel']
-    if calibration_data['Unit'] != 'nm':
-        pixel_size_im = pixel_size_im  * 1000 # convert to nm
-    scale_factor = pixel_size_im / pixel_size_standard
-    print(f'Scaling image by factor: {scale_factor}')
+        print('Loading TEM image for design:', design)
+        design_folder = os.path.join(root_dir, design)
+        tem_folder = os.path.join(design_folder, 'tem_images')
+        paper_graphics_folder = os.path.join(design_folder, 'paper_graphics')
 
-    # Rescale image
-    img_float = img_as_float32(img)
+        image_file = os.path.join(tem_folder, specs['zoom_im'])
+        output_file = os.path.join(paper_graphics_folder, f'{design}_gallery_tem_cropped.png')
+        img = tifffile.imread(image_file)
+        calibration_data = parse_tiff_calibration(image_file)
+        pixel_size_im = calibration_data['UnitPerPixel']
+        if calibration_data['Unit'] != 'nm':
+            pixel_size_im = pixel_size_im  * 1000 # convert to nm
+        scale_factor = pixel_size_im / pixel_size_standard
+        print(f'Scaling image by factor: {scale_factor}')
 
-    # Rescale image
-    img_rescaled = rescale(
-        img.astype(np.float32),
-        scale= scale_factor,  # invert: larger pixel size → smaller image
-        anti_aliasing=True,
-        channel_axis=None,
-        preserve_range=True  # keep original intensity range
-    ).astype(img.dtype)
+        # Rescale image
+        img_float = img_as_float32(img)
 
-    # save one example of a full image
-    if design == 'hexagon':
-        imwrite(os.path.join(paper_graphics_folder, f'{design}_gallery_full_image.png'), img_rescaled)
+        # Rescale image
+        img_rescaled = rescale(
+            img.astype(np.float32),
+            scale= scale_factor,  # invert: larger pixel size → smaller image
+            anti_aliasing=True,
+            channel_axis=None,
+            preserve_range=True  # keep original intensity range
+        ).astype(img.dtype)
 
-    # Crop to defined region (if applicable)
-    if 'crop_coords' in specs:
-        x0, y0 = specs['crop_coords']
-        y0 = int(y0 * scale_factor)
-        x0 = int(x0 * scale_factor)
-        y1, x1 = y0 + crop_size[0], x0 + crop_size[1]
-        img_rescaled = img_rescaled[y0:y1, x0:x1]
+        # save one example of a full image
+        if design == 'hexagon':
+            imwrite(os.path.join(paper_graphics_folder, f'{design}_gallery_full_image.png'), img_rescaled)
 
-    # Save as 16-bit PNG
-    imwrite(output_file, img_rescaled)
+        # Crop to defined region (if applicable)
+        if 'crop_coords' in specs:
+            x0, y0 = specs['crop_coords']
+            y0 = int(y0 * scale_factor)
+            x0 = int(x0 * scale_factor)
+            y1, x1 = y0 + crop_size[0], x0 + crop_size[1]
+            img_rescaled = img_rescaled[y0:y1, x0:x1]
 
-    print("------")
+        # Save as 16-bit PNG
+        imwrite(output_file, img_rescaled)
 
-# running the colored hexagon image separately due to additional complications
-input_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library/Colored hexagon/fluoro_export_images/imag1'
-output_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library/Colored hexagon/paper_graphics'
+        print("------")
 
-# file setup
-colored_hexa_image_input = os.path.join(input_folder, 'Composite-2.tif')
-colored_hexa_output_file = os.path.join(output_folder, 'colored_hexa_crop_scaled.tif')
-colored_hexa_output_c1 = os.path.join(output_folder, 'colored_hexa_crop_scaled_c1.png')
-colored_hexa_output_c2 = os.path.join(output_folder, 'colored_hexa_crop_scaled_c2.png')
-colored_hexa_output_viewing = os.path.join(output_folder, 'colored_hexa_crop_for_viewing.tif')
+if run_colored_hexa:
+    # running the colored hexagon and nanocube images separately due to additional complications
+    input_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library/Colored hexagon/fluoro_export_images/imag1'
+    output_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library/Colored hexagon/paper_graphics'
 
-# specs and scale factor
-colored_hexa_pixel_size = 43.261763955 # nm/pix
-img = tifffile.imread(colored_hexa_image_input)
-scale_factor = colored_hexa_pixel_size / pixel_size_standard
-print(f'Scaling colored hexagon image by factor: {scale_factor}')
+    # file setup
+    colored_hexa_image_input = os.path.join(input_folder, 'Composite-2.tif')
+    colored_hexa_output_file = os.path.join(output_folder, 'colored_hexa_crop_scaled.tif')
+    colored_hexa_output_c1 = os.path.join(output_folder, 'colored_hexa_crop_scaled_c1.png')
+    colored_hexa_output_c2 = os.path.join(output_folder, 'colored_hexa_crop_scaled_c2.png')
+    colored_hexa_output_viewing = os.path.join(output_folder, 'colored_hexa_crop_for_viewing.tif')
 
-# Ensure channels-last (Y, X, C)
-if img.ndim == 3 and img.shape[-1] not in (2, 3, 4) and img.shape[0] in (2, 3, 4):
-    img = np.moveaxis(img, 0, -1)
+    # specs and scale factor
+    colored_hexa_pixel_size = 43.261763955 # nm/pix
+    img = tifffile.imread(colored_hexa_image_input)
+    scale_factor = colored_hexa_pixel_size / pixel_size_standard
+    print(f'Scaling colored hexagon image by factor: {scale_factor}')
 
-# Rescale image using opencv (to speed things up)
-img_rescaled = cv2.resize(
-    img,
-    None,
-    fx=scale_factor,
-    fy=scale_factor,
-    interpolation=cv2.INTER_NEAREST
-)
+    # Ensure channels-last (Y, X, C)
+    if img.ndim == 3 and img.shape[-1] not in (2, 3, 4) and img.shape[0] in (2, 3, 4):
+        img = np.moveaxis(img, 0, -1)
 
-# crop out image here.  Extended crop size to fit in the full hexagon properly.
-x0 = 45
-y0 = 40
-y0 = int(y0 * scale_factor)
-x0 = int(x0 * scale_factor)
-y1, x1 = y0 + crop_size[0] + 500, x0 + crop_size[1] + 500
-img_rescaled = img_rescaled[y0:y1, x0:x1, :]
+    # Rescale image using opencv (to speed things up)
+    img_rescaled = cv2.resize(
+        img,
+        None,
+        fx=scale_factor,
+        fy=scale_factor,
+        interpolation=cv2.INTER_NEAREST
+    )
 
-# need to rescale each channel since they are using a very tiny part of the 16-bit range
+    # crop out image here.  Extended crop size to fit in the full hexagon properly.
+    x0 = 45
+    y0 = 40
+    y0 = int(y0 * scale_factor)
+    x0 = int(x0 * scale_factor)
+    y1, x1 = y0 + crop_size[0] + 500, x0 + crop_size[1] + 500
+    img_rescaled = img_rescaled[y0:y1, x0:x1, :]
 
-# Channel 1
-c1 = img_rescaled[..., 0].astype(np.float32)
-c1_min, c1_max = c1.min(), c1.max()
-img_c1_scaled = ((c1 - c1_min) / (c1_max - c1_min) * 65535).astype(np.uint16)
+    # need to rescale each channel since they are using a very tiny part of the 16-bit range
 
-# Channel 2
-c2 = img_rescaled[..., 1].astype(np.float32)
-c2_min, c2_max = c2.min(), c2.max()
-img_c2_scaled = ((c2 - c2_min) / (c2_max - c2_min) * 65535).astype(np.uint16)
+    # Channel 1
+    c1 = img_rescaled[..., 0].astype(np.float32)
+    c1_min, c1_max = c1.min(), c1.max()
+    img_c1_scaled = ((c1 - c1_min) / (c1_max - c1_min) * 65535).astype(np.uint16)
 
-# blue channel will be full of 0s
-composite_rgb_image = np.zeros((img_rescaled.shape[0], img_rescaled.shape[1], 3), dtype=np.uint16)
+    # Channel 2
+    c2 = img_rescaled[..., 1].astype(np.float32)
+    c2_min, c2_max = c2.min(), c2.max()
+    img_c2_scaled = ((c2 - c2_min) / (c2_max - c2_min) * 65535).astype(np.uint16)
 
-composite_rgb_image[...,0] = img_c1_scaled  # Red channel
-composite_rgb_image[...,1] = img_c2_scaled  # Green channel
+    # blue channel will be full of 0s
+    composite_rgb_image = np.zeros((img_rescaled.shape[0], img_rescaled.shape[1], 3), dtype=np.uint16)
 
-# saving the full image combined and separately just in case
-tifffile.imwrite(colored_hexa_output_file, img_rescaled, planarconfig='contig', metadata={'axes': 'YXS'})
-imwrite(colored_hexa_output_c1, img_c1_scaled)
-imwrite(colored_hexa_output_c2, img_c2_scaled)
+    composite_rgb_image[...,0] = img_c1_scaled  # Red channel
+    composite_rgb_image[...,1] = img_c2_scaled  # Green channel
 
-# saving a pre-blended version for direct placement inside a figure
-tifffile.imwrite(colored_hexa_output_viewing, composite_rgb_image)
+    # saving the full image combined and separately just in case
+    tifffile.imwrite(colored_hexa_output_file, img_rescaled, planarconfig='contig', metadata={'axes': 'YXS'})
+    imwrite(colored_hexa_output_c1, img_c1_scaled)
+    imwrite(colored_hexa_output_c2, img_c2_scaled)
+
+    # saving a pre-blended version for direct placement inside a figure
+    tifffile.imwrite(colored_hexa_output_viewing, composite_rgb_image)
 
 
+# NANOCUBE HERE
+if run_nanocube:
+    input_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library/hexagon_w_ncube/fluoro_images/'
+    output_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/design_library/hexagon_w_ncube/paper_graphics'
 
+    # file setup
+    nanocube_image_input = os.path.join(input_folder, '3.tif')
+    nanocube_image_output = os.path.join(output_folder, 'nanocube_fluoro_crop_scaled.tif')
+
+    # specs and scale factor
+    nanocube_pixel_size = 43.31047983680612 # nm/pix
+    img = tifffile.imread(nanocube_image_input)
+    scale_factor = nanocube_pixel_size / pixel_size_standard
+    print(f'Scaling nanocube image by factor: {scale_factor}')
+
+    # Rescale image using opencv (to speed things up)
+    img_rescaled = cv2.resize(
+        img,
+        None,
+        fx=scale_factor,
+        fy=scale_factor,
+        interpolation=cv2.INTER_NEAREST
+    )
+
+    # crop out image here.  Extended crop size to fit in the full hexagon properly.
+    x0 = 957
+    y0 = 848
+    y0 = int(y0 * scale_factor)
+    x0 = int(x0 * scale_factor)
+    y1, x1 = y0 + crop_size[0] + 800, x0 + crop_size[1] + 800
+    img_rescaled = img_rescaled[y0:y1, x0:x1]
+
+    # Channel rescale
+    c1 = img_rescaled.astype(np.float32)
+    c1_min, c1_max = c1.min(), c1.max()
+    img_c1_scaled = ((c1 - c1_min) / (c1_max - c1_min) * 65535).astype(np.uint16)
+
+    green_rgb = np.zeros((img_c1_scaled.shape[0], img_c1_scaled.shape[1], 3), dtype=np.uint16)
+    green_rgb[..., 1] = img_c1_scaled  # places grayscale values into the green channel
+
+    # save image
+    imwrite(nanocube_image_output, green_rgb)
 
 
