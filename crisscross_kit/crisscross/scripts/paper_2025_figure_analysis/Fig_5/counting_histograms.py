@@ -214,7 +214,7 @@ def save_boxplot_svg(df_counts, score_map, output_dir):
     '''
     ax.set_xlabel("Loss")
     ax.set_ylabel("Structures per Image")
-    ax.set_xlim(1.35, max(scores) + 1)
+    ax.set_xlim(max(scores) + 1, 1.35)   # reversed x-axis
     max_tick = int(round(max(scores), 0))
     ax.set_xticks(range(2, max_tick + 2))
     ax.set_xticklabels(range(2, max_tick + 2))

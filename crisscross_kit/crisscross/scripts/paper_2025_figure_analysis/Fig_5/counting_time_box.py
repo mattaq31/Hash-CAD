@@ -18,8 +18,8 @@ def mm_to_in(mm): return mm / MM_PER_INCH
 def mm_to_pt(mm): return (mm / MM_PER_INCH) * 72.0
 
 # ====== style knobs (adjust here) ======
-BOX_W_MM    = 75
-BOX_H_MM    = 36.0
+BOX_W_MM    = 90
+BOX_H_MM    = 45.0
 
 LINE_MM     = 0.20
 TICK_LEN_MM = 0.40
@@ -278,3 +278,4 @@ if __name__ == "__main__":
         x_max=109,                # or None to infer from data
         xtick_step=XTICK_STEP,
     )
+    print("Done.")
