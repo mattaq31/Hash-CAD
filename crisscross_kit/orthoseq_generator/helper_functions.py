@@ -177,7 +177,7 @@ def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
 
     print(f"Saved {len(sequence_pairs)} sequence pairs to:\n{full_path}")
 
-def load_sequence_pairs_from_txt(filename):
+def load_sequence_pairs_from_txt(filename,use_default_results_folder=True):
     """
     Loads DNA sequence pairs from a plain text file in the default results folder.
 
@@ -195,9 +195,11 @@ def load_sequence_pairs_from_txt(filename):
 
     :raises FileNotFoundError: If the specified file does not exist.
     """
-    
-    folder_path = get_default_results_folder()
-    full_path = os.path.join(folder_path, filename)
+    if use_default_results_folder:
+        folder_path = get_default_results_folder()
+        full_path = os.path.join(folder_path, filename)
+    else:
+        full_path = filename
 
     if not os.path.exists(full_path):
         raise FileNotFoundError(f"No such file: {full_path}")
