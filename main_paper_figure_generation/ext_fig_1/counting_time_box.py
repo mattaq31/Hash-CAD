@@ -258,7 +258,7 @@ def plot_two_conditions_overlay_singlecall(
 # ---------------------- HOW TO CALL ----------------------
 if __name__ == "__main__":
     DATA_FOLDER = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1B_hamming_time_square_counting\results"
-    OUT_DIR     = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\Figure_5_more_data"
+    OUT_DIR     = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Ext_data_1"
 
     # condition A
     condA = "H24"

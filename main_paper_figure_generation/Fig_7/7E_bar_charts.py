@@ -14,6 +14,7 @@ mpl.rcParams['svg.fonttype'] = 'none'
 mpl.rcParams['svg.hashsalt'] = ''
 
 # ====== paths ======
+# this data comes from the Fig_6 folder
 PKL_PATH = Path(r"C:/Users/Flori/Dropbox/CrissCross/Papers/hash_cad/exp2_handle_library_sunflowers/counting/data4paper/Plots/hist_per_image.pkl")
 OUT_DIR = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_7\resources")
 OUT_DIR.mkdir(parents=True, exist_ok=True)

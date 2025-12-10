@@ -7,6 +7,7 @@ import glob
 import pandas as pd
 
 # --- EDIT PATHS --------------------------------------------------------------
+# require QuPath CSV pick export here
 DATA_DIRS = [
     Path(r"C:/Users/Flori/Dropbox/CrissCross/Papers/hash_cad/exp2_handle_library_sunflowers/counting/data4paper/set_A"),
     Path(r"C:/Users/Flori/Dropbox/CrissCross/Papers/hash_cad/exp2_handle_library_sunflowers/counting/data4paper/set_B"),

@@ -7,6 +7,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 # ========= Paths =========
+# update filepath to 'results_summary.xlsx' from Zenodo when running on your system
 XLSX_PATH = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_7\data\counting_results\SW119_data_python_input.xlsx")
 OUT_DIR   = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_7\resources")
 OUT_DIR.mkdir(parents=True, exist_ok=True)

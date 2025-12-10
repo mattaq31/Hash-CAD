@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 # ====== paths & config (edit these) ======
+# FIRST EXPORT LABELS FROM QUPATH TO GET THE DATA FOR THIS PLOT
 DATA_FOLDER = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\counting_results")
 OUTPUT_DIR  = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources")
 SELECTED_CONDITIONS = [24, 27, 29, 30]

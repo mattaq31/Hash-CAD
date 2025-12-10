@@ -213,7 +213,8 @@ def alt_score_function(res_dic, fudge_dG):
 # -----------------------------
 if __name__ == "__main__":
     dg= -10
-    print("pimmel")
+
+    # these design files can be obtained from Zenodo too
     file1 = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports\full_designH24.xlsx"
     r_table = get_counts_in_dict(file1)
     r_1 = r_table[0]
@@ -226,8 +227,6 @@ if __name__ == "__main__":
     out_svg = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_4\resources\fig_H24.svg"
     plot_valency_vs_counts(match_types, counts, savepath=out_svg)
 
-
-    print("pimmel")
     file1 = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports\full_designH27.xlsx"
     r_table = get_counts_in_dict(file1)
     r_1 = r_table[0]
@@ -240,7 +239,6 @@ if __name__ == "__main__":
     plot_valency_vs_counts(match_types, counts, savepath=out_svg)
 
 
-    print("pimmel")
     file1 = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports\full_designH29.xlsx"
     r_table = get_counts_in_dict(file1)
     r_1 = r_table[0]
@@ -253,7 +251,6 @@ if __name__ == "__main__":
     plot_valency_vs_counts(match_types, counts, savepath=out_svg)
 
 
-    print("pimmel")
     file1 = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\design_and_echo\Exports\full_designH30.xlsx"
     r_table = get_counts_in_dict(file1)
     r_1 = r_table[0]

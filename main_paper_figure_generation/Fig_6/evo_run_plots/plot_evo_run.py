@@ -316,14 +316,6 @@ if __name__ == "__main__":
     start = 0
     all_scores = {}
 
-
-
-
-
-
-
-
-
     CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\bird_long_fast\match_histograms.csv"
 
     name = "Bird"
@@ -348,30 +340,6 @@ if __name__ == "__main__":
         colors=custom_colors
     )
     plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\sunflower_long_fast\match_histograms.csv"
 
@@ -423,11 +391,6 @@ if __name__ == "__main__":
     plt.show()
 
 
-
-
-
-
-
     OUT_SCORES_SVG = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6\resources/scores_overview.svg"
     series_colors = ["#dc482e", "#fbbe00" , "#46bde2"]
 
@@ -441,39 +404,30 @@ if __name__ == "__main__":
     plt.show()
 
 
+    ##### NOT USED FOR PAPER #####
 
 
-
-
-
-
-
-
-
-
-
-
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\hexagon_long\match_histograms.csv"
-
-    name = "Hexagon"
-    OUT_SVG  = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name +"_valencies.svg"
-
-    data, header = load_match_histogram(CSV_PATH)
-    data_hexagon = data
-    custom_colors = ["#004455","#0088AA", "#00AAD4", "#55DDFF", "#AAEEFF" ]
-    scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
-
-
-    # add scores with key Hexagon to all_scores
-    all_scores[name] = scores
-
-    fig, ax = plot_loglog_matches_vs_index(
-        data,
-        header,
-        start_match=1,
-        end_match=10,
-        title="Elimination of Parasitic Interaction",
-        output_svg=OUT_SVG,
-        colors=custom_colors
-    )
-    plt.show()
+    # CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\hexagon_long\match_histograms.csv"
+    #
+    # name = "Hexagon"
+    # OUT_SVG  = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name +"_valencies.svg"
+    #
+    # data, header = load_match_histogram(CSV_PATH)
+    # data_hexagon = data
+    # custom_colors = ["#004455","#0088AA", "#00AAD4", "#55DDFF", "#AAEEFF" ]
+    # scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+    #
+    #
+    # # add scores with key Hexagon to all_scores
+    # all_scores[name] = scores
+    #
+    # fig, ax = plot_loglog_matches_vs_index(
+    #     data,
+    #     header,
+    #     start_match=1,
+    #     end_match=10,
+    #     title="Elimination of Parasitic Interaction",
+    #     output_svg=OUT_SVG,
+    #     colors=custom_colors
+    # )
+    # plt.show()
