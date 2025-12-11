@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from scripts.paper_2025_figure_analysis.Fig_6.yield_per_handle_assignment import mm_to_pt
+from yield_per_handle_assignment import mm_to_pt
 
 # ----------------- paths -----------------
 PKL_PATH = Path(r"C:/Users/Flori/Dropbox/CrissCross/Papers/hash_cad/exp2_handle_library_sunflowers/counting/data4paper/Plots/hist_per_image.pkl")
