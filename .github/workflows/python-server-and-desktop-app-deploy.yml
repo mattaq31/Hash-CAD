@@ -54,7 +54,7 @@ jobs:
       # Cache the Python server build
       - name: Cache Python server build
         id: cache-python-build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ./flutter_app/assets
           key: ${{ matrix.os }}-python-server-${{ hashFiles(
