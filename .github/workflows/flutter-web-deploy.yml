@@ -41,7 +41,7 @@ jobs:
         working-directory: flutter_app
         
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.7.4
+        uses: JamesIves/github-pages-deploy-action@v4.7.6
         with:
           folder: flutter_app/build/web
           branch: gh-pages
