@@ -402,6 +402,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                 destination_well = combined_df[combined_df["Component"].str.contains(slat_name + "_")]["Destination Well"].iloc[0]
                 destination_plate = combined_df[combined_df["Component"].str.contains(slat_name + "_")]["Destination Plate Name"].iloc[0]
                 compensation_volume = round((max_volume - total_volume) * 1000) # a specific compensation amount is added to each individual well
+
                 output_command_list.append([slat_name + '_volume_normalize',
                                             'WATER_PLATE', plate384[current_water_well],
                                             destination_well,
@@ -410,7 +411,11 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                                             source_plate_type])
                 total_compensation_volume_required += compensation_volume
                 all_plates_needed.add('WATER_PLATE')
-                current_water_well += 1
+
+                if current_water_well == 383: # the water plate is cycled in from a round robin of wells in an attempt to prevent any of the wells from drying up during the process.
+                    current_water_well = 0
+                else:
+                    current_water_well += 1
 
         combined_df = pd.DataFrame(output_command_list, columns=['Component', 'Source Plate Name', 'Source Well',
                                                                  'Destination Well', 'Transfer Volume',
