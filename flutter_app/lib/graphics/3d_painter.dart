@@ -369,28 +369,28 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   void prepareSlatInstanceGeometries(){
     // preparing instancing meshes for slats, seeds and handles
     instanceManager['tube'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 32, 20), threeJs: threeJs, maxIndex: 50); // actual size should be 310, but adding an extra 10 to improve visuals
-    instanceManager['tube-short'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 31, 20), threeJs: threeJs, maxIndex: 50);
-    instanceManager['tube-honey'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, true), threeJs: threeJs, maxIndex: 50);
-    instanceManager['tube-honey-short'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, false), threeJs: threeJs, maxIndex: 50);
+    instanceManager['tube-short'] = InstanceMetrics(geometry: CylinderGeometry(2.5, 2.5, gridSize * 31, 20), threeJs: threeJs, maxIndex: 50, indexMultiplier: 50);
+    instanceManager['tube-honey'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, true), threeJs: threeJs, maxIndex: 50, indexMultiplier: 50);
+    instanceManager['tube-honey-short'] = InstanceMetrics(geometry: createHoneyCombSlat(helixBundlePositions, helixBundleSize, gridSize, false), threeJs: threeJs, maxIndex: 50, indexMultiplier: 50);
 
-    instanceManager['DB-L'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, false), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, false), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, false), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
+    instanceManager['DB-L-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, false), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
+    instanceManager['DB-L-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
+    instanceManager['DB-L-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, false, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
 
     instanceManager['DB-L-120'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, true), threeJs: threeJs, maxIndex: 5);
     instanceManager['DB-L-120-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-120-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-120-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-120-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
+    instanceManager['DB-L-120-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
 
-    instanceManager['DB-L-60'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-60-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-60-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
-    instanceManager['DB-L-60-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5);
+    instanceManager['DB-L-60'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
+    instanceManager['DB-L-60-short'] = InstanceMetrics(geometry: createDBSlat(2.5, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, drawBVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
+    instanceManager['DB-L-60-honey'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, true, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
+    instanceManager['DB-L-60-honey-short'] = InstanceMetrics(geometry: createDBSlat(helixBundleSize/2, gridSize * 15, gridSize, x60Jump, y60Jump, false, true, helixBundlePositions: helixBundlePositions, honeyCombVariant: true, drawBVariant: true), threeJs: threeJs, maxIndex: 5, indexMultiplier: 5);
 
-    instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 1000);
-    instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 1000);
-    instanceManager['cargoHandle'] = InstanceMetrics(geometry: three.BoxGeometry(4, 6, 4), threeJs: threeJs, maxIndex: 1000);
+    instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 1000, indexMultiplier: 1000);
+    instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 1000, indexMultiplier: 1000);
+    instanceManager['cargoHandle'] = InstanceMetrics(geometry: three.BoxGeometry(4, 6, 4), threeJs: threeJs, maxIndex: 1000, indexMultiplier: 1000);
 
     slatInstanceNames.addAll([
       'tube',
@@ -447,9 +447,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       1.5,
     );
 
-    instanceManager['seed'] = InstanceMetrics(geometry: seedGeometry, threeJs: threeJs, maxIndex: 2);
-    instanceManager['tiltSeed'] = InstanceMetrics(geometry: tiltSeedGeometry, threeJs: threeJs, maxIndex: 2);
-    instanceManager['tiltSeedInvert'] = InstanceMetrics(geometry: tiltSeedGeometryInvert, threeJs: threeJs, maxIndex: 2);
+    instanceManager['seed'] = InstanceMetrics(geometry: seedGeometry, threeJs: threeJs, maxIndex: 2, indexMultiplier: 2);
+    instanceManager['tiltSeed'] = InstanceMetrics(geometry: tiltSeedGeometry, threeJs: threeJs, maxIndex: 2, indexMultiplier: 2);
+    instanceManager['tiltSeedInvert'] = InstanceMetrics(geometry: tiltSeedGeometryInvert, threeJs: threeJs, maxIndex: 2, indexMultiplier: 2);
   }
 
 
