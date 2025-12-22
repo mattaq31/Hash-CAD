@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 import 'package:three_js/three_js.dart';
 import 'package:three_js_core/three_js_core.dart' as three;
-import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
 
 

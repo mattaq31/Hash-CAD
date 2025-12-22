@@ -139,7 +139,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     if (occupiedPositions == null) return false;
 
     for (var coord in coordinates) {
-      if (occupiedPositions!.contains(coord) && !hiddenPositions.contains(coord)) {
+      if (occupiedPositions.contains(coord) && !hiddenPositions.contains(coord)) {
         return true;
       }
     }

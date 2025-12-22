@@ -8,7 +8,6 @@ import 'package:three_js_controls/three_js_controls.dart';
 import 'package:three_js_core/three_js_core.dart' as three;
 import 'package:three_js_geometry/three_js_geometry.dart';
 import 'package:three_js_math/three_js_math.dart' as tmath;
-import 'package:three_js_helpers/camera_helper.dart';
 
 import '../2d_painters/helper_functions.dart';
 import '../crisscross_core/cargo.dart';
@@ -122,6 +121,7 @@ class InstanceMetrics {
         setColor(name, color);
       }
     }
+    mesh.instanceMatrix?.needsUpdate = true;
   }
 
   /// Allocates an index, reusing recycled ones if available.
@@ -152,7 +152,6 @@ class InstanceMetrics {
     dummy.updateMatrix();
 
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
-    mesh.instanceMatrix?.needsUpdate = true;
   }
 
   void setPositionRotationScale(String name, tmath.Vector3 position, tmath.Euler rotation, tmath.Vector3 scale) {
@@ -166,7 +165,6 @@ class InstanceMetrics {
     dummy.updateMatrix();
 
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
-    mesh.instanceMatrix?.needsUpdate = true;
   }
 
   void setPosition(String name, tmath.Vector3 position) {
@@ -174,7 +172,6 @@ class InstanceMetrics {
     dummy.position = position;
     dummy.updateMatrix();
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
-    mesh.instanceMatrix?.needsUpdate = true;
   }
 
   void setRotation(String name, tmath.Euler rotation) {
@@ -182,7 +179,6 @@ class InstanceMetrics {
     dummy.rotation.set(rotation.x, rotation.y, rotation.z);
     dummy.updateMatrix();
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
-    mesh.instanceMatrix?.needsUpdate = true;
   }
 
   void setScale(String name, tmath.Vector3 scale) {
@@ -190,13 +186,11 @@ class InstanceMetrics {
     dummy.scale = scale;
     dummy.updateMatrix();
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
-    mesh.instanceMatrix?.needsUpdate = true;
   }
 
   void setColor(String name, Color color) {
     colorIndex[name] = color;
     mesh.instanceColor?.setXYZ(nameIndex[name]!, color.r, color.g, color.b);
-    mesh.instanceColor!.needsUpdate = true;
   }
 
   void hideAndRecycle(String name){
@@ -206,7 +200,6 @@ class InstanceMetrics {
     dummy.position.setValues(99999, 99999, 99999); // place out of sight
     dummy.updateMatrix();
     mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
-    mesh.instanceMatrix?.needsUpdate = true;
     recycleIndex(name);
   }
 
@@ -236,10 +229,10 @@ class InstanceMetrics {
       if (index != null) {
         recycledIndices.add(index);
       }
-
       mesh.setMatrixAt(index!, dummy.matrix.clone());
-      mesh.instanceMatrix?.needsUpdate = true;
     }
+    mesh.instanceMatrix?.needsUpdate = true;
+
   }
 
   void resetAllInstances() {
@@ -718,7 +711,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   /// Adds all provided slats into the 3D scene, updating existing slats if necessary.
   void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette){
 
-    if (!isSetupComplete || threeJs.scene == null) return;
+    if (!isSetupComplete) return;
 
     Set localIDs = slats.map((slat) => slat.id).toSet();
 
@@ -796,7 +789,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   }
 
   void manageSeeds(Map<(String, String, Offset), Seed> seedRoster, Map<String, Map<String, dynamic>> layerMap, Color color){
-    if (!isSetupComplete || threeJs.scene == null) return;
+    if (!isSetupComplete) return;
 
     if (gridMode != lastGridMode){
       instanceManager['seed']!.recycleAllIndices();
@@ -1016,7 +1009,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   void onResize(double width, double height) {
     if (!mounted || width <= 0 || height <= 0 || !isSetupComplete) return; // Ensure widget is still available
 
-    if (threeJs.camera != null && threeJs.renderer != null) {
+    if (threeJs.renderer != null) {
       threeJs.camera.aspect = width / height;
       HFOV = 2 * math.atan(math.tan(VFOV * math.pi / 180 / 2) * width / height) * 180 / math.pi;
       threeJs.camera.updateProjectionMatrix();
@@ -1044,6 +1037,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
       manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
       manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color);
+
+      for (var instance in instanceManager.values) {
+        instance.mesh.instanceMatrix?.needsUpdate = true;
+        instance.mesh.instanceColor?.needsUpdate = true;
+      }
+
       if (hoverView) {
         manageHoverPreview(appState);
       }
@@ -1053,7 +1052,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         threeJs.scene.remove(axesHelper);
       }
       else{
-        if (isSetupComplete && threeJs.scene != null && !threeJs.scene.children.contains(gridHelper)) {
+        if (isSetupComplete && !threeJs.scene.children.contains(gridHelper)) {
           threeJs.scene.add(gridHelper);
           threeJs.scene.add(axesHelper);
         }

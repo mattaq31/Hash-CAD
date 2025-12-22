@@ -115,7 +115,7 @@ class ExcelFileParser {
 
   static List<String> _extractHeaders(List<Data?> headerRow) {
     return headerRow
-        .map((cell) => cell?.value?.toString()?.trim() ?? '')
+        .map((cell) => cell?.value?.toString().trim() ?? '')
         .toList();
   }
 

@@ -1,5 +1,5 @@
 import 'package:grpc/grpc.dart';
-import '../lib/grpc_client_architecture/hamming_evolve_communication.pbgrpc.dart';
+import 'package:hash_cad/grpc_client_architecture/hamming_evolve_communication.pbgrpc.dart';
 
 class Client {
   late HandleEvolveClient stub;

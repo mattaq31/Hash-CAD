@@ -473,8 +473,9 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                     4,
                                     (col) {
                                       int index = row * 4 + col + 1;
-                                      if (!defaultParams.containsKey(index))
+                                      if (!defaultParams.containsKey(index)) {
                                         return SizedBox();
+                                      }
 
                                       String paramKey = defaultParams[index]!;
                                       String label =

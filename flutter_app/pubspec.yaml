@@ -33,8 +33,8 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
-  three_js: ^0.2.5
-  three_js_helpers: ^0.2.0
+  three_js: ^0.2.6
+  three_js_helpers: ^0.2.3
   grpc: ^4.0.1
   protobuf: ^3.1.0
   path_provider: ^2.1.5
@@ -60,6 +60,10 @@ dependencies:
   desktop_drop: ^0.6.1
   flutter_dropzone: ^4.2.1
 
+  three_js_controls: any
+  three_js_core: any
+  three_js_geometry: any
+  three_js_math: any
 
 dependency_overrides:
   three_js_core_loaders:
@@ -80,6 +84,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   msix: ^3.16.8
   flutter_launcher_icons: "^0.14.4"
+  three_js_core_loaders: any
 
 flutter_launcher_icons:
   image_path: "assets/main_icon.png"

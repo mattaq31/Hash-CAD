@@ -24,7 +24,7 @@ void main() async {
   bool isExactlyAtTag = taggedCommit == currentCommit;
 
   // Format the version string
-  String version = '$gitTag';
+  String version = gitTag;
   String buildNumber = gitCommits;
 
   // Read the template file

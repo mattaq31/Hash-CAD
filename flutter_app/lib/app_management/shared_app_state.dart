@@ -1,4 +1,3 @@
-import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:grpc/grpc.dart';
@@ -687,8 +686,9 @@ class DesignState extends ChangeNotifier {
 
   /// Deletes a layer from the design entirely
   void deleteLayer(String layer) {
-    if (!layerMap.containsKey(layer))
+    if (!layerMap.containsKey(layer)) {
       return; // Ensure the layer exists before deleting
+    }
 
     layerMap.remove(layer); // Remove the layer
 
@@ -1337,7 +1337,7 @@ class DesignState extends ChangeNotifier {
     /// Removes a seed from the design.  This involves: 1) remove the handles from the related slats,
     /// 2) removing the blocks from the slat and cargo occupancy grids and 3)
     /// removing the seed and its related coordinates from the seed roster.
-    var seedToRemove;
+    (String, String, Offset)? seedToRemove;
     for (var seed in seedRoster.entries){
       if (seed.value.coordinates.containsValue(convertCoordinateSpacetoRealSpace(coordinate)) && seed.key.$2 == slatSide){
         for (var coord in seed.value.coordinates.values){
@@ -1365,10 +1365,8 @@ class DesignState extends ChangeNotifier {
         seedToRemove = seed.key;
       }
     }
-    if (seedToRemove != null){
-      seedRoster.remove(seedToRemove);
-    }
-    notifyListeners();
+    seedRoster.remove(seedToRemove);
+      notifyListeners();
   }
 
   void importPlates() async{

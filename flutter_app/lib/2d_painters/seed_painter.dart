@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hash_cad/graphics/crosshatch_shader.dart';
 import '../crisscross_core/seed.dart';
 import 'dart:math';
-import '../app_management/shared_app_state.dart';
 
 
 void paintSeedFromArray(Canvas canvas, Map<int, Offset> coordinates, double gridSize,

@@ -14,7 +14,7 @@ bool isColorDark(Color color) {
   return brightness < 0.5; // You can adjust this threshold if needed
 }
 
-drawSlat(List<Offset> coords, Canvas canvas, DesignState appState, ActionState actionState, Paint slatPaint){
+void drawSlat(List<Offset> coords, Canvas canvas, DesignState appState, ActionState actionState, Paint slatPaint){
   /// Paints a slat and takes care of adjustments such as drawing aids, tip extensions, etc.
 
   Offset slatExtendFront = calculateSlatExtend(coords[0], coords[1], appState.gridSize);
@@ -59,7 +59,7 @@ drawSlat(List<Offset> coords, Canvas canvas, DesignState appState, ActionState a
 }
 
 
-drawSlatDrawingAids(Canvas canvas, List coords, Offset slatExtendFront, Offset slatExtendBack, double gridSize, Paint rodPaint, Color color, double slatAlpha){
+void drawSlatDrawingAids(Canvas canvas, List coords, Offset slatExtendFront, Offset slatExtendBack, double gridSize, Paint rodPaint, Color color, double slatAlpha){
 
   // different directions calculated as this can change throughout a customized non-rod slat
   final arrowDirection = (coords.last - coords[coords.length - 2]).direction;

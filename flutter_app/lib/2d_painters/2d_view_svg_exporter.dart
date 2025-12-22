@@ -58,10 +58,10 @@ Future<void> exportSlatsToSvg({
 
     // Track bounds (for viewBox) across all path points
     for (final p in pathPoints) {
-      minX = (minX == null) ? p.dx : (p.dx < minX! ? p.dx : minX);
-      maxX = (maxX == null) ? p.dx : (p.dx > maxX! ? p.dx : maxX);
-      minY = (minY == null) ? p.dy : (p.dy < minY! ? p.dy : minY);
-      maxY = (maxY == null) ? p.dy : (p.dy > maxY! ? p.dy : maxY);
+      minX = (minX == null) ? p.dx : (p.dx < minX ? p.dx : minX);
+      maxX = (maxX == null) ? p.dx : (p.dx > maxX ? p.dx : maxX);
+      minY = (minY == null) ? p.dy : (p.dy < minY ? p.dy : minY);
+      maxY = (maxY == null) ? p.dy : (p.dy > maxY ? p.dy : maxY);
     }
 
     // Compose SVG path 'd' command: M x0 y0 L x1 y1 ...
