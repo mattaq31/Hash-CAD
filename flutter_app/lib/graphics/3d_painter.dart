@@ -87,6 +87,7 @@ class InstanceMetrics {
       initDummy.matrix.copyIntoArray(matrixArray, i * 16);
     }
     matrixDirty = true;
+    colorDirty = true;
 
     threeJs.scene.add(mesh);
   }
@@ -264,8 +265,9 @@ class InstanceMetrics {
     // Reset counters
     nextIndex = 0;
     maxIndex = originalMaxIndex;
-    // Recreate the mesh fresh
-    createMesh();
+
+    // Recreate the mesh
+    createMesh(updateOld: true);
   }
 
   /// Gets the index for a given name, or null if not found.
