@@ -442,13 +442,6 @@ Future<Map<String, dynamic>> parasiticInteractionsCompute(Map<String, Slat> slat
   final int numLayers = slatArray[0][0].length;        // actual layers
   Map<int, int> slatMatchCount = getSlatMatchCounts(slatArray, handleArray, slats, layerMap, minGrid); // actual match counts from design, will be used to compensate histogram
 
-  if (slatMatchCount.isEmpty) { // this is a good way to catch if all slats have no handles
-    return {
-      'worst_match': 0,
-      'mean_log_score': 0.0,
-    };
-  }
-
   // Step 1: Build per-slat handle arrays from the grid, 1D for tube, 2D for non-tube (DB) slats
   // Represent 1D slats as a single-row 2D array [[...]] so we have a uniform type.
   final Map<String, List<List<int>>> handleDict2D = <String, List<List<int>>>{};
@@ -585,6 +578,13 @@ Future<Map<String, dynamic>> parasiticInteractionsCompute(Map<String, Slat> slat
   int gridSum(IntGrid g) => g.fold(0, (s, r) => s + r.fold(0, (s2, v) => s2 + v));
   handleDict2D.removeWhere((_, grid) => gridSum(grid) == 0);
   antihandleDict2D.removeWhere((_, grid) => gridSum(grid) == 0);
+
+  if (handleDict2D.isEmpty || antihandleDict2D.isEmpty) { // if no handles, just return
+    return {
+      'worst_match': 0,
+      'mean_log_score': 0.0,
+    };
+  }
 
   // Prepare rotations for antihandles only, mirroring Python behavior
   // Decide if we have any truly 2D arrays among the slats (either side)
