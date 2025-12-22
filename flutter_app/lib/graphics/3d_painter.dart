@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,6 +45,10 @@ class InstanceMetrics {
   final Map<String, Color> colorIndex;
   final three.Object3D dummy = three.Object3D();
   final three.ThreeJS threeJs;
+  late Float32List matrixArray;
+  late Float32List colorArray;
+  bool matrixDirty = false;
+  bool colorDirty = false;
 
   InstanceMetrics({required this.geometry, required this.threeJs, this.nextIndex = 0, this.maxIndex = 1000, this.indexMultiplier = 1000})
       : recycledIndices = Queue<int>(),
@@ -71,13 +76,17 @@ class InstanceMetrics {
     final colorAttr = tmath.InstancedBufferAttribute(colors, 3);
     mesh.instanceColor = colorAttr;
 
+    matrixArray = mesh.instanceMatrix!.array.toDartList() as Float32List;
+    colorArray = mesh.instanceColor!.array.toDartList() as Float32List;
+
     final initDummy = three.Object3D();
     initDummy.position.setValues(99999, 99999, 99999); // place out of sight
     initDummy.rotation.set(0, 0, 0);
     initDummy.updateMatrix();
     for (int i = 0; i < maxIndex; i++) {
-      mesh.setMatrixAt(i, initDummy.matrix);
+      initDummy.matrix.copyIntoArray(matrixArray, i * 16);
     }
+    matrixDirty = true;
 
     threeJs.scene.add(mesh);
   }
@@ -151,7 +160,8 @@ class InstanceMetrics {
     dummy.rotation.set(rotation.x, rotation.y, rotation.z);
     dummy.updateMatrix();
 
-    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
+    matrixDirty = true;
   }
 
   void setPositionRotationScale(String name, tmath.Vector3 position, tmath.Euler rotation, tmath.Vector3 scale) {
@@ -164,33 +174,41 @@ class InstanceMetrics {
     dummy.scale = scale;
     dummy.updateMatrix();
 
-    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
+    matrixDirty = true;
   }
 
   void setPosition(String name, tmath.Vector3 position) {
     positionIndex[name] = position;
     dummy.position = position;
     dummy.updateMatrix();
-    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
+    matrixDirty = true;
   }
 
   void setRotation(String name, tmath.Euler rotation) {
     rotationIndex[name] = rotation;
     dummy.rotation.set(rotation.x, rotation.y, rotation.z);
     dummy.updateMatrix();
-    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
+    matrixDirty = true;
   }
 
   void setScale(String name, tmath.Vector3 scale) {
     scaleIndex[name] = scale;
     dummy.scale = scale;
     dummy.updateMatrix();
-    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
+    matrixDirty = true;
   }
 
   void setColor(String name, Color color) {
     colorIndex[name] = color;
-    mesh.instanceColor?.setXYZ(nameIndex[name]!, color.r, color.g, color.b);
+    final index = nameIndex[name]! * 3;
+    colorArray[index] = color.r;
+    colorArray[index + 1] = color.g;
+    colorArray[index + 2] = color.b;
+    colorDirty = true;
   }
 
   void hideAndRecycle(String name){
@@ -199,7 +217,8 @@ class InstanceMetrics {
     }
     dummy.position.setValues(99999, 99999, 99999); // place out of sight
     dummy.updateMatrix();
-    mesh.setMatrixAt(nameIndex[name]!, dummy.matrix.clone());
+    dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
+    matrixDirty = true;
     recycleIndex(name);
   }
 
@@ -229,10 +248,9 @@ class InstanceMetrics {
       if (index != null) {
         recycledIndices.add(index);
       }
-      mesh.setMatrixAt(index!, dummy.matrix.clone());
+      dummy.matrix.copyIntoArray(matrixArray, index! * 16);
     }
-    mesh.instanceMatrix?.needsUpdate = true;
-
+    matrixDirty = true;
   }
 
   void resetAllInstances() {
@@ -1038,13 +1056,19 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
       manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color);
 
-      for (var instance in instanceManager.values) {
-        instance.mesh.instanceMatrix?.needsUpdate = true;
-        instance.mesh.instanceColor?.needsUpdate = true;
-      }
-
       if (hoverView) {
         manageHoverPreview(appState);
+      }
+
+      for (var instance in instanceManager.values) {
+        if (instance.matrixDirty) {
+          instance.mesh.instanceMatrix?.needsUpdate = true;
+          instance.matrixDirty = false;
+        }
+        if (instance.colorDirty) {
+          instance.mesh.instanceColor?.needsUpdate = true;
+          instance.colorDirty = false;
+        }
       }
 
       if (!gridView) {
