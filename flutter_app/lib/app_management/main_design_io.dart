@@ -504,8 +504,6 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     colorCount += 1;
   }
 
-
-  // TODO: throw error to user here
   // Read slat type metadata, if available
   Map <(int, int), String> slatTypeMap = {};
 
@@ -574,29 +572,21 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       var sheet = excel.tables[table]!;
       for (var row = 0; row < sheet.maxRows; row++) {
         for (var col = 0; col < sheet.maxColumns; col++) {
-          var cell = sheet
-              .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row))
-              .value;
+          var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
           String value = (cell is TextCellValue) ? cell.value.text ?? '' : '';
           if (value != '' && value != '0') {
+            value = value.trim();
             int slatID = int.parse(value.split('-')[0]);
             int slatPosition = int.parse(value.split('-')[1]);
             slatCoordinates.putIfAbsent(slatID, () => {});
-
-            slatCoordinates[slatID]![slatPosition] =
-                Offset(col + minX, row + minY);
+            slatCoordinates[slatID]![slatPosition] = Offset(col + minX, row + minY);
             slatArray[row][col][layerIndex] = slatID;
           } else if (cell is IntCellValue && cell.value != 0) {
             // backwards compatibility for old files
-
-            int slatID =
-                cell.value; // slat value extracted directly from the cell
+            int slatID =cell.value; // slat value extracted directly from the cell
             slatCoordinates.putIfAbsent(slatID, () => {});
-
-            int nextPosition = slatCoordinates[slatID]!.length +
-                1; // no information on position provided, so just assume its the next available position
-            slatCoordinates[slatID]![nextPosition] =
-                Offset(col + minX, row + minY);
+            int nextPosition = slatCoordinates[slatID]!.length + 1; // no information on position provided, so just assume its the next available position
+            slatCoordinates[slatID]![nextPosition] = Offset(col + minX, row + minY);
             slatArray[row][col][layerIndex] = slatID;
           }
         }
