@@ -37,7 +37,7 @@ src_004, src_005, src_007, P3518, P3510, P3628 = get_cargo_plates()
 ########################################
 # Make DTU rectangles
 square = Megastructure(import_design_file=os.path.join(design_folder, 'updatedsq_10nts_H30.xlsx'))
-square.patch_placeholder_handles(main_plates + (src_004,P3510,))
+square.patch_placeholder_handles(main_plates + (src_004, P3510,))
 square.patch_flat_staples(main_plates[0])
 
 echo_sheet = convert_slats_into_echo_commands(slat_dict=square.slats,
@@ -52,10 +52,10 @@ echo_sheet = convert_slats_into_echo_commands(slat_dict=square.slats,
 
 if generate_lab_helpers:
     prepare_all_standard_sheets(square.slats, os.path.join(lab_helper_folder, '{}_{}.xlsx'.format(expID, structure_name)),
-                                    reference_single_handle_volume=target_volume,
-                                    reference_single_handle_concentration=example_concentration,
-                                    echo_sheet=None if not generate_echo else echo_sheet,
-                                    handle_mix_ratio=10, # setting to 15 to be able to setup the reaction inside the echo plate itself
-                                    slat_mixture_volume=100,
-                                    peg_concentration=2,
-                                    peg_groups_per_layer=2)
+                                reference_single_handle_volume=target_volume,
+                                reference_single_handle_concentration=example_concentration,
+                                echo_sheet=None if not generate_echo else echo_sheet,
+                                handle_mix_ratio=10, # setting to 15 to be able to setup the reaction inside the echo plate itself
+                                slat_mixture_volume=100,
+                                peg_concentration=2,
+                                peg_groups_per_layer=2)

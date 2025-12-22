@@ -8,7 +8,7 @@ from crisscross.plate_mapping.plate_constants import (sanitize_plate_map, base_d
                                                       simpsons_mixplate_antihandles, seed_slat_purification_handles,
                                                       cckz_h5_handle_plates, cckz_h2_antihandle_plates,
                                                       cckz_h5_sample_handle_plates, cckz_h2_sample_antihandle_plates,
-                                                      cnt_patterning, paint_h5_handles, seed_plug_plate_all_8064)
+                                                      cnt_patterning, paint_h5_handles, seed_plug_plate_all_8064, cnt_patterning_2)
 import os
 import ast
 from pydoc import locate
@@ -121,4 +121,5 @@ def get_cargo_plates():
     P3518 = get_plateclass('HashCadPlate', octahedron_patterning_v1, cargo_plate_folder)
     P3510 = get_plateclass('HashCadPlate', cnt_patterning, cargo_plate_folder)
     P3628 = get_plateclass('HashCadPlate', paint_h5_handles, cargo_plate_folder)
+
     return src_004, src_005, src_007, P3518, P3510, P3628
