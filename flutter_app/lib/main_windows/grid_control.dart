@@ -622,9 +622,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   for (var slat in appState.selectedSlats){
                     appState.updateSlatPosition(slat, appState.slats[slat]!.slatPositionToCoordinate.map((key, value) => MapEntry(key, value + convCoordHoverPosition - convCoordAnchor)));
                     if (moveFlipRequested) {
-                      if (appState.slats[slat]!.slatType == 'tube') { // double barrel flips are currently blocked
-                        appState.slats[slat]!.reverseDirection();
-                      }
+                      appState.flipSlat(slat);
                     }
                   }
                 }
@@ -674,14 +672,10 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               },
               // delete shortcut (when in move mode)
               SingleActivator(LogicalKeyboardKey.delete): () {
-                for (var slat in appState.selectedSlats) {
-                  appState.removeSlat(slat);
-                }
+                appState.removeSlats(appState.selectedSlats);
               },
               SingleActivator(LogicalKeyboardKey.backspace): () {
-                for (var slat in appState.selectedSlats) {
-                  appState.removeSlat(slat);
-                }
+                appState.removeSlats(appState.selectedSlats);
               },
               // Navigation shortcuts
               SingleActivator(LogicalKeyboardKey.arrowUp): () {

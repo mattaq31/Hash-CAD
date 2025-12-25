@@ -73,7 +73,7 @@ class SlatHoverPainter extends CustomPainter {
         int index = 1;
         for (var slatCoords in futureSlatEndPoints.values) {
 
-          drawSlat(slatCoords.values.toList(), canvas, appState, actionState, hoverRodPaint);
+          drawSlat(slatCoords.values.toList(), canvas, appState, actionState, hoverRodPaint, false);
 
           // Draw numbers at the beginning and end of the new slat
           final labelBegin = labelPainters[index]!;
@@ -106,7 +106,7 @@ class SlatHoverPainter extends CustomPainter {
           // apply the anchor translation to the coordinates before drawing
           coords = coords.map((e) => e + anchorTranslate).toList();
 
-          drawSlat(coords, canvas, appState, actionState, hoverRodPaint);
+          drawSlat(coords, canvas, appState, actionState, hoverRodPaint, slat.phantomID != null);
         }
       }
     }

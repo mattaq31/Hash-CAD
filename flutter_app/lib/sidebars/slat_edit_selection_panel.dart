@@ -31,6 +31,39 @@ class _SlatEditPanel extends State<SlatEditPanel> {
     return Column(
       children: [
         Divider(thickness: 1, color: Colors.grey.shade200),
+        Text("Selected Slat Actions",style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+        SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.icon(
+              onPressed: appState.selectedSlats.isEmpty ? null: () {
+                appState.flipSlats(appState.selectedSlats);
+              },
+              label: Text("Flip"),
+              icon: Icon(Icons.flip),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                textStyle: TextStyle(fontSize: 14),
+              ),
+            ),
+            SizedBox(width: 10),
+            FilledButton.icon(
+              onPressed: appState.selectedSlats.isEmpty ? null: () {
+                appState.removeSlats(appState.selectedSlats);
+              },
+              label: Text("Delete"),
+              icon: Icon(Icons.delete),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                textStyle: TextStyle(fontSize: 14),
+                backgroundColor: Colors.red,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 10),
+        Divider(thickness: 1, color: Colors.grey.shade200),
         Text("Adjust Slat Colors",
             style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
         SizedBox(height: 10),
@@ -151,7 +184,6 @@ class _SlatEditPanel extends State<SlatEditPanel> {
             )
           ],
         ),
-
         SizedBox(height: 10),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -272,7 +304,113 @@ class _SlatEditPanel extends State<SlatEditPanel> {
               ),
             ),
           ],
-        )
+        ),
+        Divider(thickness: 1, color: Colors.grey.shade200),
+        SizedBox(height: 5),
+        Text("Phantom Slats",style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+        SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 110, // Fixed width to align colons
+              child: Text("Create & link:",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontSize: 14, color: Colors.black87)),
+            ),
+            SizedBox(width: 5),
+            IconButton(
+              tooltip: 'Spawn phantoms from the selected slats',
+              onPressed: appState.selectedSlats.isEmpty ? null: () {
+                appState.spawnAndPlacePhantomSlats();
+              },
+              icon: const Icon(Icons.link, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.primaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.circular(8), // Adjust radius as needed
+                ),
+                padding: const EdgeInsets.all(8),
+                minimumSize: const Size(36, 36),
+                // Ensures square shape
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            SizedBox(width: 5),
+            IconButton(
+              tooltip: 'Unlink selected phantoms',
+              onPressed: () {
+                appState.clearAllSlatColors();
+              },
+              icon: const Icon(Icons.link_off,
+                  size: 20, color: Colors.black87),
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.primaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.circular(8), // Adjust radius as needed
+                ),
+                padding: const EdgeInsets.all(8),
+                minimumSize: const Size(36, 36),
+                // Ensures square shape
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            )
+          ],
+        ),
+        SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 110, // Fixed width to align colons
+              child: Text("Delete:",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontSize: 14, color: Colors.black87)),
+            ),
+            SizedBox(width: 5),
+            IconButton(
+              tooltip: 'Delete phantoms linked to selected slat(s)',
+              onPressed: !appState.selectionHasPhantoms() ? null:  () {
+                appState.clearPhantomSlatSelection();
+              },
+              icon: const Icon(Icons.layers_clear,
+                  size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.primaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.circular(8), // Adjust radius as needed
+                ),
+                padding: const EdgeInsets.all(8),
+                minimumSize: const Size(36, 36),
+                // Ensures square shape
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            SizedBox(width: 5),
+            IconButton(
+              tooltip: 'Delete all phantoms',
+              onPressed: appState.phantomMap.isEmpty ? null : () {
+                appState.removeAllPhantomSlats();
+              },
+              icon: const Icon(Icons.blur_off,
+                  size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.red.shade400,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.circular(8), // Adjust radius as needed
+                ),
+                padding: const EdgeInsets.all(8),
+                minimumSize: const Size(36, 36),
+                // Ensures square shape
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            )
+          ],
+        ),
       ]
     );
   }

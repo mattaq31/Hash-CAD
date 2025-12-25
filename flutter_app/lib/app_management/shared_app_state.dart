@@ -20,6 +20,17 @@ import '../main_windows/alert_window.dart';
 import '../2d_painters/helper_functions.dart' as utils;
 
 
+/// Finds the first free integer key in a map
+int firstFreeKey(Map<int, String> map, {int start = 1}) {
+  if (map.isEmpty) return start;
+  final keys = map.keys.toSet();
+  var k = start;
+  while (keys.contains(k)) {
+    k++;
+  }
+  return k;
+}
+
 /// Useful function to generate the next capital letter in the alphabet for slat identifier keys
 String nextCapitalLetter(String current) {
   int len = current.length;
@@ -204,6 +215,8 @@ class DesignState extends ChangeNotifier {
 
   // useful to keep track of occupancy and speed up grid checks
   Map<String, Map<Offset, String>> occupiedGridPoints = {};
+  // used to keep track of phantom slats
+  Map<String, Map<int, String>> phantomMap = {};
 
   Map<String, Cargo> cargoPalette = {
     'SEED': Cargo(name: 'SEED', shortName: 'S', color: Color.fromARGB(255, 255, 0, 0)),
@@ -258,6 +271,7 @@ class DesignState extends ChangeNotifier {
     cargoAddCount = 1;
     cargoAdditionType = null;
     occupiedGridPoints = {};
+    phantomMap = {};
     seedRoster = {};
     slatAddDirection = 'down';
     uniqueSlatColor = Colors.blue;
@@ -308,7 +322,7 @@ class DesignState extends ChangeNotifier {
     currentlyLoadingDesign = true;
     notifyListeners();
 
-    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster, newDesignName, errorCode) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
+    var (newSlats, newLayerMap, newGridMode, newCargoPalette, newSeedRoster, newPhantomMap, newDesignName, errorCode) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
 
     String messageFor(String code) {
       switch (code) {
@@ -350,11 +364,13 @@ class DesignState extends ChangeNotifier {
     undoStack = SlatUndoStack();
     clearAll();
 
+    // transfer imported values into global state
     layerMap = newLayerMap;
     slats = newSlats;
     gridMode = newGridMode;
     cargoPalette = newCargoPalette;
     designName = newDesignName;
+    phantomMap = newPhantomMap;
     selectedLayerKey = layerMap.keys.first;
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
@@ -368,6 +384,7 @@ class DesignState extends ChangeNotifier {
       nextColorIndex = 0;
     }
 
+    // fill up the standard slat occupancy map
     for (var slat in slats.values) {
       occupiedGridPoints.putIfAbsent(slat.layer, () => {});
       occupiedGridPoints[slat.layer]?.addAll({
@@ -480,6 +497,7 @@ class DesignState extends ChangeNotifier {
       cargoPalette: cargoPalette,
       occupiedCargoPoints: occupiedCargoPoints,
       seedRoster: seedRoster,
+      phantomMap: phantomMap
     ));
   }
 
@@ -517,6 +535,7 @@ class DesignState extends ChangeNotifier {
   /// Updates the active layer
   void updateActiveLayer(String value) {
     selectedLayerKey = value;
+    clearSelection();
     notifyListeners();
   }
 
@@ -527,6 +546,7 @@ class DesignState extends ChangeNotifier {
     } else {
       selectedLayerKey = layerMap.keys.firstWhere((key) => layerMap[key]!['order'] == (layerMap[selectedLayerKey]!['order'] - 1 + layerMap.length) % layerMap.length);
     }
+    clearSelection();
     notifyListeners();
   }
 
@@ -887,13 +907,95 @@ class DesignState extends ChangeNotifier {
 
   /// Removes a slat from the design
   void removeSlat(String ID) {
-
     clearSelection();
     String layer = ID.split('-')[0];
+
+    if(slats[ID]!.phantomID == null) layerMap[layer]?["slat_count"] -= 1;
+
+
+    // deleting the original slat should also delete all phantom slats associated with it
+    if(phantomMap.containsKey(ID)){
+      for (var phantomID in phantomMap[ID]!.values) {
+        slats.remove(phantomID);
+        occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+      }
+      phantomMap.remove(ID);
+    }
+
+    // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
+    if(slats[ID]!.phantomID != null){
+      if(phantomMap[slats[ID]!.phantomID]!.length == 1){
+          phantomMap.remove(slats[ID]!.phantomID);
+        }
+    }
+
     slats.remove(ID);
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
-    layerMap[layer]?["slat_count"] -= 1;
     hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Remove multiple slats from the design
+  void removeSlats(List<String> IDs) {
+    clearSelection();
+    for (var ID in IDs) {
+      String layer = ID.split('-')[0];
+
+      // only track non-phantom slats in the slat count
+      if(slats[ID]!.phantomID == null) layerMap[layer]?["slat_count"] -= 1;
+
+      // deleting the original slat should also delete all phantom slats associated with it
+      if(phantomMap.containsKey(ID)){
+        for (var phantomID in phantomMap[ID]!.values) {
+          slats.remove(phantomID);
+          occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+        }
+        phantomMap.remove(ID);
+      }
+
+      // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
+      if(slats[ID]!.phantomID != null){
+        if(phantomMap[slats[ID]!.phantomID]!.length == 1){
+          phantomMap.remove(slats[ID]!.phantomID);
+        }
+      }
+
+      slats.remove(ID);
+      occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
+    }
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Flips a slat's direction
+  void flipSlat(String ID) {
+    if (slats[ID]!.slatType == 'tube') { // double barrel flips are currently blocked
+      slats[ID]!.reverseDirection();
+
+      if(phantomMap.containsKey(ID)){
+        for (var phantomID in phantomMap[ID]!.values) {
+          slats[phantomID]!.reverseDirection();
+        }
+      }
+    }
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Flips multiple slats' direction
+  void flipSlats(List<String> IDs) {
+    for (var ID in IDs) {
+      if (slats[ID]!.slatType =='tube') { // double barrel flips are currently blocked
+        slats[ID]!.reverseDirection();
+        if(phantomMap.containsKey(ID)){
+          for (var phantomID in phantomMap[ID]!.values) {
+            slats[phantomID]!.reverseDirection();
+          }
+        }
+      }
+    }
     saveUndoState();
     notifyListeners();
   }
@@ -917,12 +1019,96 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSlatHandle(Slat slat, int position, int side, String handlePayload, String category) {
+
+    if (slat.phantomID != null && !category.contains('ASSEMBLY')) {
+      return; // cannot directly apply cargo handle changes to phantom slats
+    }
+
+    // for assembly handles, need to check if there are any phantom slats linked to this slat, and apply the handle to them too
+    if (category.contains('ASSEMBLY')) {
+
+      List<(String, int, int)> slatsUpdated = [];
+      // this recursive function checks for: 1) direct phantom links, 2) other handles attached to phantom slats, 3) further handles attached to those slats, etc.
+      void recursivePhantomSearch(Slat querySlat, int queryPosition, int querySide) {
+
+        querySlat.setPlaceholderHandle(queryPosition, querySide, handlePayload, category); // immediately set handle for the queried slat
+        slatsUpdated.add((querySlat.id, queryPosition, querySide)); // keep track of updated slats to avoid infinite loops
+
+        // TODO: this means that certain handles will be re-set more than once (e.g. a normal slat to another normal slat) if they have a phantom slat.  Not sure if this is worth optimizing further
+        if (phantomMap.containsKey(querySlat.id) || querySlat.phantomID != null) { // check for further phantom links
+          String refID = querySlat.phantomID ?? querySlat.id; // get the reference ID (either the slat's own ID or its phantom reference)
+          for (var siblingPhantomID in phantomMap[refID]!.values) {
+            if (slatsUpdated.contains((siblingPhantomID, queryPosition, querySide))) {
+              continue; // avoid infinite loops by skipping already-updated slats
+            }
+            recursivePhantomSearch(slats[siblingPhantomID]!, queryPosition, querySide); // recursively apply to sibling phantom slats
+          }
+
+          // finally also update the reference slat if the query slat is a phantom
+          if (querySlat.phantomID != null) {
+            if (!slatsUpdated.contains((querySlat.phantomID, queryPosition, querySide))) {
+              recursivePhantomSearch(slats[querySlat.phantomID]!, queryPosition, querySide);
+            }
+          }
+
+          // also check for slats attached to the query slat
+          String layer = querySlat.layer;
+          String? adjacentLayerToCheck;
+          int topOrBottom = (layerMap[layer]!['top_helix'] == 'H5' && querySide == 5 || layerMap[layer]!['top_helix'] == 'H2' && querySide == 2) ? 1 : -1;
+
+          adjacentLayerToCheck = getLayerByOrder(layerMap[layer]!['order'] + topOrBottom); // can be null if layer is at the bottom or top of the stack
+
+          if (adjacentLayerToCheck != null) {
+            Offset coordinate = querySlat.slatPositionToCoordinate[queryPosition]!; // get the real coordinate of the handle position
+            if (occupiedGridPoints[adjacentLayerToCheck]!.containsKey(coordinate)) { // check if there's a slat in the adjacent layer at that coordinate
+
+              // extract required information for the attached slat
+              Slat attachedSlat = slats[occupiedGridPoints[adjacentLayerToCheck]![coordinate]]!;
+              int opposingPosition = attachedSlat.slatCoordinateToPosition[coordinate]!;
+              int opposingSide = (topOrBottom == 1)
+                  ? int.parse(layerMap[adjacentLayerToCheck]?['bottom_helix'][1])
+                  : int.parse(layerMap[adjacentLayerToCheck]?['top_helix'][1]);
+
+              // run attachment for the new slat position too
+              if (!slatsUpdated.contains((attachedSlat.id, opposingPosition, opposingSide))) {
+                recursivePhantomSearch(attachedSlat, opposingPosition, opposingSide);
+              }
+            }
+          }
+        }
+      }
+
+      recursivePhantomSearch(slat, position, side);
+    }
+    else{
+      // for a cargo or seed handle, the handle can be set here and the function is complete (other than checking for phantom slats)
+      if (phantomMap.containsKey(slat.id) || slat.phantomID != null) { // check for phantom links
+        String refID = slat.phantomID ?? slat.id; // get the reference ID (either the slat's own ID or its phantom reference)
+
+        // apply handle to all linked phantom slats
+        for (var siblingPhantomID in phantomMap[refID]!.values) {
+          slats[siblingPhantomID]!.setPlaceholderHandle(position, side, handlePayload, category);
+        }
+
+        // also apply handle to the reference slat
+        slats[refID]!.setPlaceholderHandle(position, side, handlePayload, category);
+      }
+      else{
+        slat.setPlaceholderHandle(position, side, handlePayload, category);
+      }
+    }
+
+  }
+
   void assignAssemblyHandleArray(List<List<List<int>>> handleArray, Offset? minPos, Offset? maxPos){
+
     if (minPos == null || maxPos == null){
       (minPos, maxPos) = extractGridBoundary(slats);
     }
 
     for (var slat in slats.values) {
+
       List assemblyLayers = [];
       if (layerMap[slat.layer]!['order'] == 0) {
         assemblyLayers.add(0);
@@ -947,7 +1133,7 @@ class DesignState extends ChangeNotifier {
               slatSide = int.parse(layerMap[slat.layer]?['bottom_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
               category = 'ASSEMBLY_ANTIHANDLE';
             }
-            slat.setPlaceholderHandle(i + 1, slatSide, '${handleArray[x][y][aLayer]}', category);
+            setSlatHandle(slat, i + 1, slatSide, '${handleArray[x][y][aLayer]}', category);
           }
         }
       }
@@ -961,7 +1147,6 @@ class DesignState extends ChangeNotifier {
       currentMaxValency = 0;
       currentEffValency = 0.0;
     } else {
-
       Offset minPos;
       Offset maxPos;
       (minPos, maxPos) = extractGridBoundary(slats);
@@ -987,7 +1172,12 @@ class DesignState extends ChangeNotifier {
       return;  // i.e. no slats present
     }
 
-    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
+    // Before starting, remove all handles from all slats
+    for (var slat in slats.values) {
+      slat.clearAssemblyHandles();
+    }
+
+    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize, allTypes: true);
     List<List<List<int>>> handleArray;
 
     if (splitLayerHandles && layerMap.length > 2) {
@@ -997,14 +1187,15 @@ class DesignState extends ChangeNotifier {
       handleArray = generateRandomSlatHandles(slatArray, uniqueHandleCount,
           seed: DateTime.now().millisecondsSinceEpoch % 1000);
     }
-
     assignAssemblyHandleArray(handleArray, minPos, maxPos);
+
     saveUndoState();
     notifyListeners();
   }
 
   Future<bool> updateAssemblyHandlesFromFile(BuildContext context) async {
     /// Reads assembly handles from a file and applies them to the slats (e.g. generated after evolution)
+    // TODO: catch errors if links don't make sense
 
     bool readStatus = await importAssemblyHandlesFromFileIntoSlatArray(slats, layerMap, gridSize);
     if (!readStatus) {
@@ -1079,6 +1270,11 @@ class DesignState extends ChangeNotifier {
     for (var slatID in selectedSlats) {
       if (slats.containsKey(slatID)) {
         slats[slatID]!.uniqueColor = color;
+        if (phantomMap.containsKey(slatID)){
+          for (var phantomID in phantomMap[slatID]!.values) {
+            slats[phantomID]?.uniqueColor = color;
+          }
+        }
       }
     }
 
@@ -1140,6 +1336,164 @@ class DesignState extends ChangeNotifier {
     uniqueSlatColorsByLayer.remove(layer);
     saveUndoState();
     notifyListeners();
+  }
+
+  // PHANTOM OPERATIONS //
+
+  /// Adds phantom slats (which are linked to real slats)
+  void addPhantomSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates, Map<int, Slat> referenceSlats) {
+
+    for (var iterID in slatCoordinates.keys) {
+      Slat slat = referenceSlats[iterID]!;
+      Map<int, Offset> coords = slatCoordinates[iterID]!;
+
+      // assigns a new key from the reference slat's phantom map
+      if(!phantomMap.containsKey(slat.id)) phantomMap[slat.id] = {};
+      int phantomKey = firstFreeKey(phantomMap[slat.id]!);
+
+      // creates a new slat with a new ID, copies handles and then links it to the original slat via phantomID
+      slats['${slat.id}-P$phantomKey'] = Slat(phantomKey, '${slat.id}-P$phantomKey', layer, coords, uniqueColor: slat.uniqueColor, slatType: slat.slatType, phantomID: slat.id);
+      slats['${slat.id}-P$phantomKey']!.copyHandlesFromSlat(slat);
+      phantomMap[slat.id]![phantomKey] = '${slat.id}-P$phantomKey';
+
+      // add the slat to the list by adding a map of all coordinate offsets to the slat ID
+      occupiedGridPoints.putIfAbsent(layer, () => {});
+      occupiedGridPoints[layer]?.addAll({
+        for (var offset in coords.values)
+          offset: '${slat.id}-P$phantomKey'
+      });
+    }
+
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void removeAllPhantomSlats(){
+    // removes all phantom slats from the design
+    List<String> phantomSlatIDs = [];
+    for (var slatID in phantomMap.keys) {
+      phantomSlatIDs.addAll(phantomMap[slatID]!.values);
+    }
+    for (var phantomID in phantomSlatIDs) {
+      String layer = phantomID.split('-')[0];
+      slats.remove(phantomID);
+      occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+    }
+    phantomMap.clear();
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void clearPhantomSlatSelection(){
+    // clears selection of phantom slats
+    List<String> phantomSlatIDs = [];
+    List<String> refSlatIDs = [];
+    for (var slatID in phantomMap.keys) {
+      if (!selectedSlats.contains(slatID)) continue;
+      phantomSlatIDs.addAll(phantomMap[slatID]!.values);
+      refSlatIDs.add(slatID);
+    }
+    for (var phantomID in phantomSlatIDs) {
+      String layer = phantomID.split('-')[0];
+      slats.remove(phantomID);
+      occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+    }
+    for (var refID in refSlatIDs) {
+      phantomMap.remove(refID);
+    }
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  bool selectionHasPhantoms(){
+    bool hasPhantoms = false;
+
+    for (var slatID in selectedSlats) {
+      if (phantomMap.containsKey(slatID)){
+        hasPhantoms = true;
+        break;
+      }
+    }
+
+    return hasPhantoms;
+  }
+
+  void spawnAndPlacePhantomSlats() {
+
+    List<Offset> allCoordinates = [];
+    for (var slatID in selectedSlats) {
+      var slat = slats[slatID];
+      allCoordinates.addAll(slat!.slatPositionToCoordinate.values);
+    }
+
+    // Phantom slats are spawned in next to the original slats, allowing a user
+    // to place them wherever they like.  The below finds the best place to spawn them to
+
+    // get layers to check - need to check current layer, layer above and layer below
+    List<String> obstructionLayers = [selectedLayerKey];
+    int layerOrder = layerMap[selectedLayerKey]!['order'];
+    if (layerNumberValid(layerOrder + 1)) {
+      occupiedGridPoints.putIfAbsent(getLayerByOrder(layerOrder + 1)!, () => {});
+      obstructionLayers.add(getLayerByOrder(layerOrder + 1)!);
+    }
+    if (layerNumberValid(layerOrder - 1)) {
+      occupiedGridPoints.putIfAbsent(getLayerByOrder(layerOrder - 1)!, () => {});
+      obstructionLayers.add(getLayerByOrder(layerOrder - 1)!);
+    }
+
+    double magnitudeJump = gridMode == '90' ? 1 : 2;
+    Offset finalOffset = Offset(0, 0);
+    double bestDistance = double.infinity;
+
+    // compute candidate positions in all 4 cardinal directions until a valid position is found
+    for (Offset direction in [Offset(0, magnitudeJump),Offset(0, -magnitudeJump),Offset(magnitudeJump, 0),Offset(-magnitudeJump, 0)]) {
+      bool positionValid = false;
+      Offset candidateOffset = Offset(0, 0);
+      double iter = 1;
+      List<Offset> testCoordinates = [];
+      while (!positionValid) {
+        candidateOffset = candidateOffset + direction * iter;
+        // add the offset to all input coords
+        testCoordinates = allCoordinates.map((e) => e + candidateOffset).toList();
+        // check if any of the new coordinates clash with existing slats (same layer, below and top)
+        positionValid = true;
+        for (var coord in testCoordinates) {
+          for (var layerID in obstructionLayers) {
+            if (occupiedGridPoints[layerID]!.containsKey(coord)) {
+              positionValid = false;
+              break;
+            }
+          }
+          if (!positionValid) {
+            break;
+          }
+        }
+      }
+      // best candidate chosen based on center to center distance from reference slats
+      double centerToCenterDistance = (calculateCenter(testCoordinates) - calculateCenter(allCoordinates)).distance;
+      if (centerToCenterDistance < bestDistance) {
+        bestDistance = centerToCenterDistance;
+        finalOffset = candidateOffset;
+      }
+    }
+
+    // now actually generate and place the phantom slats
+    Map<int, Map<int, Offset>> phantomSlatCoordinates = {};
+    Map<int, Slat> referenceSlats = {};
+    int iter = 1;
+    for (var slatID in selectedSlats) {
+      var slat = slats[slatID];
+      for (var position in slat!.slatPositionToCoordinate.keys) {
+        phantomSlatCoordinates.putIfAbsent(iter, () => {});
+        phantomSlatCoordinates[iter]![position] = slat.slatPositionToCoordinate[position]! + finalOffset;
+      }
+      referenceSlats[iter] = slat;
+      iter += 1;
+    }
+    addPhantomSlats(selectedLayerKey, phantomSlatCoordinates, referenceSlats);
   }
 
   // CARGO OPERATIONS //
@@ -1222,10 +1576,16 @@ class DesignState extends ChangeNotifier {
         // no slat at this position
         continue;
       }
+
+      // no cargo placement can be made on phantom slats
+      if(slats[occupiedGridPoints[layerID]![coord]!]!.phantomID != null){
+        continue;
+      }
+
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-      slat.setPlaceholderHandle(position, integerSlatSide, cargo.name, 'CARGO');
+      setSlatHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
       occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
     }
     saveUndoState();
@@ -1273,6 +1633,13 @@ class DesignState extends ChangeNotifier {
     Set<String> attachmentSlats = {};
     for (var coord in coordinates.values) {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
+
+      if(slat.phantomID != null){
+        // cannot place seeds on phantom slats
+        showWarning(context, 'Invalid Seed Placement', 'Seeds cannot be placed on phantom slats.  Please place the seed on the original slats instead.');
+        return;
+      }
+
       var slatID = slat.id;
       if (slat.slatType != 'tube'){
         slatID = slat.id + (slat.slatCoordinateToPosition[coord]! < 17 ? '-first-half' : 'second-half');
@@ -1308,7 +1675,8 @@ class DesignState extends ChangeNotifier {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-      slat.setPlaceholderHandle(position, integerSlatSide, '$nextSeedID-$row-$col', 'SEED');
+      setSlatHandle(slat, position, integerSlatSide, '$nextSeedID-$row-$col', 'SEED');
+
       occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
 
       // seed takes up space from the slat grid too, not just cargo
@@ -1459,6 +1827,7 @@ class ActionState extends ChangeNotifier {
   bool drawingAids;
   bool slatNumbering;
   bool displayBorder;
+  bool viewPhantoms;
   bool isolateSlatLayerView;
   bool evolveMode;
   bool isSideBarCollapsed;
@@ -1496,6 +1865,7 @@ class ActionState extends ChangeNotifier {
     this.slatNumbering = false,
     this.plateValidation=false,
     this.extendSlatTips = true,
+    this.viewPhantoms = true,
     this.panelMode = 0,
     this.cargoAttachMode = 'top'
   });
@@ -1544,6 +1914,12 @@ class ActionState extends ChangeNotifier {
     displaySeeds = value;
     notifyListeners();
   }
+
+  void setPhantomVisibility(bool value){
+    viewPhantoms = value;
+    notifyListeners();
+  }
+
   void setGridDisplay(bool value){
     displayGrid = value;
     notifyListeners();

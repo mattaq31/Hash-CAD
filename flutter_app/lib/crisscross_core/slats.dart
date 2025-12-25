@@ -37,8 +37,9 @@ class Slat {
 
   Color? uniqueColor;
   String slatType;
+  String? phantomID;
 
-  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32, this.uniqueColor, this.slatType = 'tube'}) {
+  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32, this.uniqueColor, this.slatType = 'tube', this.phantomID}) {
       slatCoordinates.forEach((key, coord) {
         slatPositionToCoordinate[key] = coord;
         slatCoordinateToPosition[coord] = key;
@@ -54,6 +55,11 @@ class Slat {
   void clearColor() {
     /// Clears the unique color of the slat.
     uniqueColor = null;
+  }
+
+  void setPhantom(String newPhantom) {
+    /// Sets the ID of the phantom slat this slat is associated with (or clear it).
+    phantomID = newPhantom;
   }
 
   void updateCoordinates(Map<int, Offset> slatCoordinates){
@@ -216,7 +222,7 @@ class Slat {
   }
 
   Slat copy() {
-    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength, uniqueColor: uniqueColor, slatType: slatType);
+    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength, uniqueColor: uniqueColor, slatType: slatType, phantomID: phantomID);
 
     newSlat.h2Handles = {
       for (var entry in h2Handles.entries)
@@ -231,4 +237,17 @@ class Slat {
 
     return newSlat;
   }
+
+  void copyHandlesFromSlat(Slat slat){
+    h2Handles = {
+      for (var entry in slat.h2Handles.entries)
+        entry.key: Map.from(entry.value)
+    };
+    h5Handles = {
+      for (var entry in slat.h5Handles.entries)
+        entry.key: Map.from(entry.value)
+    };
+    placeholderList = List.from(slat.placeholderList);
+  }
+
 }

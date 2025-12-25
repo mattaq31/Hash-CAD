@@ -566,8 +566,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                   ? null
                                   : () {
                                       serverState.stopEvolve().then((result) {
-                                        appState.assignAssemblyHandleArray(
-                                            result, null, null);
+                                        appState.assignAssemblyHandleArray(result, null, null);
                                         appState.updateDesignHammingValue();
                                         actionState
                                             .setAssemblyHandleDisplay(true);

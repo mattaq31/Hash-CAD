@@ -135,7 +135,7 @@ void exportDesign(Map<String, Slat> slats,
         // next, assign the cargo arrays
         for (var side in ['lower', 'upper']) {
           if (occupiedCargoPoints['$layerID-${side == 'lower' ? 'bottom' : 'top'}'] == null || occupiedCargoPoints['$layerID-${side == 'lower' ? 'bottom' : 'top'}']!.isEmpty) {
-            continue; // skip the sheet entirely if  there is no cargo on this layer (to reduce file complexity)
+            continue; // skip the sheet entirely if there is no cargo on this layer (to reduce file complexity)
           }
           String helixSide = layerMap[layerID]?['${side == 'lower' ? 'bottom' : 'top'}_helix'].toLowerCase();
           Sheet cargoSheet = excel['cargo_layer_${layer + 1}_${side}_$helixSide'];
@@ -162,6 +162,25 @@ void exportDesign(Map<String, Slat> slats,
           }
 
         }
+      }
+    }
+  }
+
+  // writes phantom slats to the same slat file (if any)
+  for (var slat in slats.values){
+    if (slat.phantomID != null){
+      int layer = layerMap[slat.layer]!['order'];
+      Sheet sheet = excel['slat_layer_${layer+1}'];
+      for (int i = 0; i < slat.maxLength; i++) {
+        var pos = slat.slatPositionToCoordinate[i + 1]!;
+        int x = (pos.dx - minPos.dx).toInt();
+        int y = (pos.dy - minPos.dy).toInt();
+        // column/row are flipped in the internal representation - the flip-back to normal values is done here
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: x, rowIndex: y)).value = TextCellValue('P${slat.numericID}_${slats[slat.phantomID]!.numericID}-${i+1}');
+
+        Color layerColor = layerMap.entries.firstWhere((element) => element.value['order'] == layer).value['color'];
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: x, rowIndex: y)).cellStyle = CellStyle(backgroundColorHex: layerColor.toHexString().excelColor);
+
       }
     }
   }
@@ -267,9 +286,11 @@ void exportDesign(Map<String, Slat> slats,
   List<List<CellValue>> rows = [];
 
   for (var slat in slats.values) {
+    if(slat.phantomID != null){
+      continue; // skip phantom slats
+    }
     int layerNum = layerMap[slat.layer]!['order'] + 1;
     int slatIdNum = int.parse(slat.id.split("-I").last);
-
     rows.add([
       IntCellValue(layerNum),
       IntCellValue(slatIdNum),
@@ -427,10 +448,11 @@ bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slat
 }
 
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, String)> parseDesignInIsolate(Uint8List fileBytes) async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, String)> parseDesignInIsolate(Uint8List fileBytes) async {
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
+  Map<String, Map<int, String>> phantomMap = {};
   Map<String, Cargo> cargoPalette = {};
   Map<(String, String, Offset), Seed> seedRoster = {};
 
@@ -439,7 +461,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // Metadata must exist
   if (!excel.tables.containsKey('metadata')) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_GENERAL');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_GENERAL');
   }
 
   // Read metadata
@@ -459,7 +481,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // if no layers found, return empty maps
   if (numLayers == 0) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SLAT_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SLAT_SHEETS');
   }
 
   int layerReadStart = 8;
@@ -488,8 +510,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     String cargoName = readExcelString(metadataSheet, 'A${cargoReadStart + cargoCount}');
     String cargoShortName = readExcelString(metadataSheet, 'B${cargoReadStart + cargoCount}');
     Color cargoColor = Color(int.parse('0xFF${readExcelString(metadataSheet, 'C${cargoReadStart + cargoCount}').substring(1)}'));
-    cargoPalette[cargoName] =
-        Cargo(name: cargoName, shortName: cargoShortName, color: cargoColor);
+    cargoPalette[cargoName] = Cargo(name: cargoName, shortName: cargoShortName, color: cargoColor);
     cargoCount += 1;
   }
   // read in slat colour data, if available (older design files didn't have this metadata)
@@ -512,9 +533,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
       var slatTypeSheet = excel.tables['slat_types']!;
       if (slatTypeSheet.rows.isNotEmpty) {
         // First row is headers
-        List<String> headers = slatTypeSheet.rows.first
-            .map((cell) => cell?.value.toString() ?? "")
-            .toList();
+        List<String> headers = slatTypeSheet.rows.first.map((cell) => cell?.value.toString() ?? "").toList();
 
         int layerIndex = headers.indexOf("Layer");
         int slatIdIndex = headers.indexOf("Slat ID");
@@ -545,7 +564,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_GENERAL');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_GENERAL');
   }
 
   // prepares slat array from metadata information
@@ -556,18 +575,17 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
         (_) => List.generate(excel.tables['slat_layer_1']!.maxColumns,
             (_) => List.filled(numLayers, 0)));
   } catch (_) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SLAT_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SLAT_SHEETS');
   }
 
   // extracts slat positional data into array
   try {
-    for (var table
-        in excel.tables.keys.where((key) => key.startsWith('slat_layer_'))) {
+    for (var table in excel.tables.keys.where((key) => key.startsWith('slat_layer_'))) {
       var layerIndex = int.parse(table.split('_').last) - 1;
-      String layer = layerMap.entries
-          .firstWhere((element) => element.value['order'] == layerIndex)
-          .key;
-      Map<int, Map<int, Offset>> slatCoordinates = {};
+      String layer = layerMap.entries.firstWhere((element) => element.value['order'] == layerIndex).key;
+
+      Map<int, Map<int, Offset>> slatCoordinates = {}; // slatID -> position -> coordinate
+      Map<int, Map<int, Map<int, Offset>>> phantomCoordinates = {};  // ref slatID -> phantomID -> position -> coordinate
 
       var sheet = excel.tables[table]!;
       for (var row = 0; row < sheet.maxRows; row++) {
@@ -576,11 +594,24 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
           String value = (cell is TextCellValue) ? cell.value.text ?? '' : '';
           if (value != '' && value != '0') {
             value = value.trim();
-            int slatID = int.parse(value.split('-')[0]);
-            int slatPosition = int.parse(value.split('-')[1]);
-            slatCoordinates.putIfAbsent(slatID, () => {});
-            slatCoordinates[slatID]![slatPosition] = Offset(col + minX, row + minY);
-            slatArray[row][col][layerIndex] = slatID;
+            // phantom slats have an _ in their excel representation
+            if(value.contains('_')){
+              // e.g. Px_y-z
+              int phantomID = int.parse(value.split('_')[0].substring(1));
+              int slatID = int.parse(value.split('-')[0].split('_')[1]);
+              int slatPosition = int.parse(value.split('-')[1]);
+              phantomCoordinates.putIfAbsent(slatID, () => {});
+              phantomCoordinates[slatID]!.putIfAbsent(phantomID, () => {});
+              phantomCoordinates[slatID]![phantomID]![slatPosition] = Offset(col + minX, row + minY);
+            }
+            else {
+              int slatID = int.parse(value.split('-')[0]);
+              int slatPosition = int.parse(value.split('-')[1]);
+              slatCoordinates.putIfAbsent(slatID, () => {});
+              slatCoordinates[slatID]![slatPosition] = Offset(col + minX, row + minY);
+              slatArray[row][col][layerIndex] = slatID;
+            }
+
           } else if (cell is IntCellValue && cell.value != 0) {
             // backwards compatibility for old files
             int slatID =cell.value; // slat value extracted directly from the cell
@@ -594,20 +625,29 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
       for (var slatBundle in slatCoordinates.entries) {
         var category = 'tube';
-        // get layer number from layer map
+        // get category from metadata, if available
         if (slatTypeMap.containsKey((layerIndex + 1, slatBundle.key))) {
           category = slatTypeMap[(layerIndex + 1, slatBundle.key)]!;
         }
-
-        slats["$layer-I${slatBundle.key}"] = Slat(slatBundle.key,
-            "$layer-I${slatBundle.key}", layer, slatBundle.value,
-            slatType: category);
+        slats["$layer-I${slatBundle.key}"] = Slat(slatBundle.key,"$layer-I${slatBundle.key}", layer, slatBundle.value, slatType: category);
       }
       layerMap[layer]!['slat_count'] = slatCoordinates.length;
+
+      // phantom slats copy their parent slats directly
+      for (var refSlatPhantoms in phantomCoordinates.entries) {
+        for (var phantomSlatBundle in refSlatPhantoms.value.entries) {
+          String phantomName = "$layer-I${refSlatPhantoms.key}-P${phantomSlatBundle.key}";
+          String refSlatName = "$layer-I${refSlatPhantoms.key}";
+          String category = slats[refSlatName]!.slatType;
+          phantomMap.putIfAbsent(refSlatName, () => {});
+          phantomMap[refSlatName]![phantomSlatBundle.key] = phantomName;
+          slats[phantomName] = Slat(phantomSlatBundle.key, phantomName, layer, phantomSlatBundle.value, slatType: category, phantomID: refSlatName);
+        }
+      }
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SLAT_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SLAT_SHEETS');
   }
 
 
@@ -615,13 +655,21 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   for (var slat in slats.values){
     if (slatColors.containsKey(slat.id)){
       slat.setColor(slatColors[slat.id]!);
+
+      // all phantoms also need to be colored in the same way
+      if(phantomMap.containsKey(slat.id)){
+        for (var phantomID in phantomMap[slat.id]!.values){
+          slats[phantomID]?.setColor(slatColors[slat.id]!);
+        }
+      }
+
     }
   }
 
   // assembly handle extraction
   final okHandles = extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minX, minY, false);
   if (!okHandles) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_ASSEMBLY_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_ASSEMBLY_SHEETS');
   }
 
   // extracts cargo handles and assigns them to slats
@@ -655,11 +703,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
           // this is the case where old design files are used, which didn't have a specific metadata system for cargo
           if (!cargoPalette.containsKey(value)) {
             // choose a random color
-            cargoPalette[value] = Cargo(
-                name: value,
-                shortName: generateShortName(value),
-                color: qualitativeCargoColors[
-                    _rand.nextInt(qualitativeCargoColors.length)]);
+            cargoPalette[value] = Cargo(name: value, shortName: generateShortName(value), color: qualitativeCargoColors[_rand.nextInt(qualitativeCargoColors.length)]);
           }
 
           String slatID = "$layerID-I${slatArray[row][col][cargoLayerIndex]}";
@@ -667,17 +711,13 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
           Offset positionCoord = Offset(col + minX, row + minY);
 
           // assign the exact handle to the slat
-          slats[slatID]?.setPlaceholderHandle(
-              slats[slatID]!.slatCoordinateToPosition[positionCoord]!,
-              cargoLayerSide,
-              value,
-              'CARGO');
+          slats[slatID]?.setPlaceholderHandle(slats[slatID]!.slatCoordinateToPosition[positionCoord]!, cargoLayerSide, value, 'CARGO');
         }
       }
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_CARGO_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_CARGO_SHEETS');
   }
 
   // legacy compatibility with files that didn't contain seed info
@@ -738,30 +778,31 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, 'ERR_SEED_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SEED_SHEETS');
   }
 
+   // prepares seed Roster from partial seed arrays
   for (var partialSeed in partialSeedArrays.entries){
     seedRoster[(partialSeed.key.$2, partialSeed.key.$3, partialSeed.value[1]!)] = Seed(ID: partialSeed.key.$1, coordinates: partialSeed.value);
   }
 
-  return (slats, layerMap, gridMode, cargoPalette, seedRoster, '');
+  // before finishing, copies all handles to phantom slats
+  for (var slat in slats.values.where((slat) => slat.phantomID != null)){
+    slat.copyHandlesFromSlat(slats[slat.phantomID!]!);
+  }
+
+  return (slats, layerMap, gridMode, cargoPalette, seedRoster, phantomMap, '');
 }
 
 
-Future<(Map<String, Slat>,
-      Map<String, Map<String, dynamic>>,
-      String,
-      Map<String, Cargo>,
-      Map<(String, String, Offset), Seed>,
-      String,
-      String
-    )> importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, String, String)>
+importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
   Map<String, Cargo> cargoPalette = {};
+  Map<String, Map<int, String>> phantomMap = {};
   Map<(String, String, Offset), Seed> seedRoster = {};
 
   String filePath;
@@ -793,12 +834,12 @@ Future<(Map<String, Slat>,
       fileName = basenameWithoutExtension(result.files.first.name);
     } else {
       // if nothing picked, return empty maps
-      return (slats, layerMap, '', cargoPalette, seedRoster, '', '');
+      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, '', '');
     }
   }
   // run isolate function
   try {
-    final (slatsOut, layerMapOut, layerName, cargoOut, seedOut, errorCode) =
+    final (slatsOut, layerMapOut, layerName, cargoOut, seedOut, phantomMapOut, errorCode) =
         await compute(parseDesignInIsolate, fileBytes);
     return (
       slatsOut,
@@ -806,11 +847,12 @@ Future<(Map<String, Slat>,
       layerName,
       cargoOut,
       seedOut,
+      phantomMapOut,
       fileName,
       errorCode
     );
   } catch (_) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, '', 'ERR_GENERAL');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, '', 'ERR_GENERAL');
   }
 }
 

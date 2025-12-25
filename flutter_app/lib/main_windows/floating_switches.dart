@@ -138,6 +138,13 @@ class _TogglePanelState extends State<TogglePanel> {
                   onChanged: widget.actionState.setSeedDisplay,
                 ),
                 buildFabIcon(
+                  icon: Icons.link,
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: 'Phantom Slats',
+                  value: widget.actionState.viewPhantoms,
+                  onChanged: widget.actionState.setPhantomVisibility,
+                ),
+                buildFabIcon(
                   icon: Icons.verified_user,
                   color: Theme.of(context).colorScheme.primary,
                   tooltip: 'Plate Validation',

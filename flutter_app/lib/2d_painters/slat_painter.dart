@@ -14,7 +14,7 @@ bool isColorDark(Color color) {
   return brightness < 0.5; // You can adjust this threshold if needed
 }
 
-void drawSlat(List<Offset> coords, Canvas canvas, DesignState appState, ActionState actionState, Paint slatPaint){
+void drawSlat(List<Offset> coords, Canvas canvas, DesignState appState, ActionState actionState, Paint slatPaint, bool phantomSlat){
   /// Paints a slat and takes care of adjustments such as drawing aids, tip extensions, etc.
 
   Offset slatExtendFront = calculateSlatExtend(coords[0], coords[1], appState.gridSize);
@@ -40,6 +40,32 @@ void drawSlat(List<Offset> coords, Canvas canvas, DesignState appState, ActionSt
   }
   if (!actionState.drawingAids && actionState.extendSlatTips){
     path.lineTo(coords.last.dx + slatExtendBack.dx, coords.last.dy + slatExtendBack.dy);
+  }
+
+  if (phantomSlat) {
+    final color = slatPaint.color;
+    final hsl = HSLColor.fromColor(color);
+    final hatchColor = isColorDark(color)
+        ? hsl.withLightness((hsl.lightness + 0.3).clamp(0.0, 1.0)).toColor()
+        : hsl.withLightness((hsl.lightness - 0.3).clamp(0.0, 1.0)).toColor();
+
+    // Use a fraction of gridSize to determine stripe density
+    final double patternSize = appState.gridSize / 6;
+    final double angle = calculateSlatAngle(coords.first, coords[1]);
+
+    slatPaint.shader = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [
+        color,
+        color,
+        hatchColor,
+        hatchColor,
+      ],
+      stops: const [0.0, 0.5, 0.5, 1.0],
+      tileMode: TileMode.repeated,
+      transform: GradientRotation(angle),
+    ).createShader(Rect.fromLTWH(0, 0, patternSize, patternSize));
   }
 
   // draws final path here
@@ -376,6 +402,12 @@ class SlatPainter extends CustomPainter {
       if (hiddenSlats.contains(slat.id)){
         continue;
       }
+
+      // turns off phantoms if the user has chosen to not view them
+      if(slat.phantomID != null && !actionState.viewPhantoms){
+        continue;
+      }
+
       if (layerMap[slat.layer]?['hidden']) {
         continue;
       }
@@ -413,7 +445,7 @@ class SlatPainter extends CustomPainter {
       if (!slatBounds.overlaps(visibleRect)) continue;
 
       // draw the actual slat here
-      drawSlat(coords, canvas, appState, actionState, rodPaint);
+      drawSlat(coords, canvas, appState, actionState, rodPaint, slat.phantomID != null);
 
       // slat extension angles and lengths (in case this is requested by the user)
       Offset slatExtendFront = calculateSlatExtend(coords[0], coords[1], appState.gridSize);
@@ -480,7 +512,13 @@ class SlatPainter extends CustomPainter {
                 shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
                 color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
               } else if (category.contains('ASSEMBLY')) {
-                color = Colors.green;
+                if(slat.phantomID != null){
+                  color = Colors.red;
+                }
+                else {
+                  color = Colors.green;
+                }
+
               } else if (category == 'SEED') {
                 color = appState.cargoPalette['SEED']!.color;
                 shortText = '🌱${getIndexFromSeedText(descriptor)}';
@@ -648,7 +686,6 @@ class SlatPainter extends CustomPainter {
           baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
         }
 
-
         // find the center of all coords
         double sumX = 0, sumY = 0;
         for (final c in coords) {
@@ -672,7 +709,7 @@ class SlatPainter extends CustomPainter {
 
         final baseRect = Rect.fromCenter(
           center: Offset.zero,
-          width: slat.slatType == 'tube' ? appState.gridSize * 2 : appState.gridSize * 6,
+          width: slat.slatType == 'tube' ? appState.gridSize * 3 : appState.gridSize * 6,
           height: appState.gridSize * 0.85,
         );
 

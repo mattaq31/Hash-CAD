@@ -18,18 +18,29 @@ import 'slats.dart';
   return (Offset(minX, minY), Offset(maxX, maxY));
 }
 
+/// returns a 3D array [x][y][layer_order] containing the numeric IDs of slats at each grid position (phantom slats are skipped)
 List<List<List<int>>> convertSparseSlatBundletoArray(
     Map<String, Slat> slats,
     Map<String, Map<String, dynamic>> layerMap,
     Offset minGrid,
     Offset maxGrid,
-    double gridSize) {
+    double gridSize, {bool allTypes = false, bool phantomOnly = false}) {
   int xSize = (maxGrid.dx - minGrid.dx).toInt() + 1;
   int ySize = (maxGrid.dy - minGrid.dy).toInt() + 1;
 
   List<List<List<int>>> slatArray = List.generate(xSize,(_) => List.generate(ySize, (_) => List.filled(layerMap.length, 0)));
 
   for (var slat in slats.values) {
+
+    if (!allTypes) {
+      if (slat.phantomID != null && !phantomOnly) {
+        continue; // skip phantom slats
+      }
+      else if (slat.phantomID == null && phantomOnly) {
+        continue; // skip non-phantom slats
+      }
+    }
+
     for (var i = 0; i < slat.maxLength; i++) {
       var pos = slat.slatPositionToCoordinate[i + 1]!;
       int x = (pos.dx - minGrid.dx).toInt();

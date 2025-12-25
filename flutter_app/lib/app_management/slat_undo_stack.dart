@@ -11,6 +11,7 @@ class DesignSaveState {
   final Map<String, Cargo> cargoPalette;
   final Map<String, Map<Offset, String>> occupiedCargoPoints;
   final Map<(String, String, Offset), Seed> seedRoster;
+  final Map<String, Map<int, String>> phantomMap;
 
   DesignSaveState({
     required this.slats,
@@ -20,6 +21,7 @@ class DesignSaveState {
     required this.cargoPalette,
     required this.occupiedCargoPoints,
     required this.seedRoster,
+    required this.phantomMap,
   });
 
   /// Deep copy constructor
@@ -43,6 +45,9 @@ class DesignSaveState {
       },
       seedRoster: {
         for (var e in seedRoster.entries) e.key: e.value.copy()
+      },
+      phantomMap: {
+        for (var e in phantomMap.entries) e.key: Map.from(e.value)
       },
     );
   }
