@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def apply_handle_links(handle_array,link_handles = {}):
+def apply_handle_links(handle_array, link_handles = {}):
 
     def apply_link(l1, l2, force_l1_value=False):
         handle_layer_1 = l1[0] - (2 if l1[1] == 'bottom' else 1)

@@ -3,11 +3,14 @@ from colorama import Fore
 import numpy as np
 
 
-def get_slat_key(layer, slat_id):
+def get_slat_key(layer, slat_id, phantom_id=None):
     """
     Convenience function to generate slat key string.
     """
-    return f'layer{layer}-slat{int(slat_id)}'
+    if phantom_id is not None:
+        return f'layer{layer}-slat{int(slat_id)}-phantom{phantom_id}'
+    else:
+        return f'layer{layer}-slat{int(slat_id)}'
 
 
 def convert_slat_array_into_slat_objects(slat_array):
@@ -32,13 +35,14 @@ class Slat:
     """
     Wrapper class to hold all of a slat's handles and related details.
     """
-    def __init__(self, ID, layer, slat_coordinates, non_assembly_slat=False, unique_color=None, layer_color=None, slat_type='tube'):
+    def __init__(self, ID, layer, slat_coordinates, non_assembly_slat=False, unique_color=None, layer_color=None, slat_type='tube', phantom_parent=None):
         """
         :param ID: Slat unique ID (string)
         :param layer: Layer position for slat (normally 1 and above, but can set to 0 for special slats such as crossbars)
         :param slat_coordinates: Exact positions slat occupies on a 2D grid - either a list of tuples or a dict of lists, where the key is the handle number on the slat
         :param non_assembly_slat: If True, this slat is not used for assembly (e.g., crossbar slats)
         :param unique_color: Optional hexcode color to assign a unique color to the slat for graphics
+        :param phantom_parent: If this slat is a linked copy of another slat (and thus a 'fake' slat used for handle linking purposes), then set the parent slat here.
         """
         self.ID = ID
         self.layer = layer
@@ -47,6 +51,7 @@ class Slat:
         self.unique_color = unique_color
         self.layer_color = layer_color
         self.slat_type = slat_type
+        self.phantom_parent = phantom_parent
 
         # converts coordinates on a 2d array to the handle number on the slat, and vice-versa
         self.slat_position_to_coordinate = OrderedDict()

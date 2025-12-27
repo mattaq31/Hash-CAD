@@ -555,13 +555,15 @@ def prepare_all_standard_sheets(slat_dict, save_filepath, reference_single_handl
     wb = Workbook()
     wb.remove(wb["Sheet"])
 
+    clean_slat_dict =  {k:v for k,v in slat_dict.items() if v.phantom_parent is None}
+
     # prepares slat assembly mixture details
-    prepare_master_mix_sheet(slat_dict, echo_sheet, reference_single_handle_volume, reference_single_handle_concentration,
+    prepare_master_mix_sheet(clean_slat_dict, echo_sheet, reference_single_handle_volume, reference_single_handle_concentration,
                              slat_mixture_volume, unique_transfer_volume_plates, wb, handle_mix_ratio=handle_mix_ratio,
                              split_core_staple_pools=split_core_staple_pools)
 
     # prepares slat purification details
-    prepare_peg_purification_sheet(slat_dict, peg_groups_per_layer, max_slat_concentration_uM, slat_mixture_volume,
+    prepare_peg_purification_sheet(clean_slat_dict, peg_groups_per_layer, max_slat_concentration_uM, slat_mixture_volume,
                                    wb, peg_concentration=peg_concentration, echo_sheet=echo_sheet, special_slat_groups=special_slat_groups)
     wb.save(save_filepath)
 

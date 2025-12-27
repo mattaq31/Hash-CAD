@@ -263,11 +263,13 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
     else:
         raise ValueError('Invalid plate size provided')
 
+    clean_slat_dict = {k:v for k,v in slat_dict.items() if v.phantom_parent is None}
+
     # prepares the exact output wells and plates for the slat dictionary provided
     if manual_plate_well_assignments is None:
-        if len(slat_dict) > len(plate_format):
+        if len(clean_slat_dict) > len(plate_format):
             print(Fore.BLUE + 'Too many slats for one plate, splitting into multiple plates.' + Fore.RESET)
-        for index, (_, slat) in enumerate(slat_dict.items()):
+        for index, (_, slat) in enumerate(clean_slat_dict.items()):
             if index // len(plate_format) > 0:
                 well = plate_format[index % len(plate_format)]
                 plate_num = index // len(plate_format) + 1
@@ -278,7 +280,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             output_well_list.append(well)
             output_plate_num_list.append(plate_num)
     else:
-        if len(manual_plate_well_assignments) != len(slat_dict):
+        if len(manual_plate_well_assignments) != len(clean_slat_dict):
             raise ValueError('The well count provided does not match the number of slats in the output dictionary.')
         for index, (slat_name, slat) in enumerate(slat_dict.items()):
             if isinstance(manual_plate_well_assignments, dict):
@@ -291,7 +293,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
             output_plate_num_list.append(plate_num)
 
     # runs through all the handles for each slats and outputs the plate and well for both the input and output
-    for index, (slat_name, slat) in enumerate(slat_dict.items()):
+    for index, (slat_name, slat) in enumerate(clean_slat_dict.items()):
         slat_h2_data = slat.get_sorted_handles('h2')
         slat_h5_data = slat.get_sorted_handles('h5')
 
@@ -311,9 +313,15 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
                 if output_empty_wells:  # this is the case where a placeholder handle is used (no plate available).
                     #  If the user indicates they want to manually add in these handles,
                     #  this will output placeholders for the specific wells that need manual handling.
+
+                    if 'concentration' in handle_data:
+                        dummy_volume = int(reference_transfer_volume_nl * (reference_concentration_uM / handle_data['concentration']) * slat_multiplier)
+                    else:
+                        dummy_volume = reference_transfer_volume_nl*slat_multiplier
+
                     output_command_list.append([slat_name + '_%s_staple_%s' % (handle_side, handle_num),
                                                 'MANUAL TRANSFER', 'MANUAL TRANSFER',
-                                                output_well_list[index], reference_transfer_volume_nl*slat_multiplier,
+                                                output_well_list[index], dummy_volume,
                                                 f'{destination_plate_name}_{output_plate_num_list[index]}',
                                                 'MANUAL TRANSFER'])
                     continue
@@ -380,7 +388,7 @@ def convert_slats_into_echo_commands(slat_dict, destination_plate_name, output_f
 
     # Check that the total volume for all destination wells is below a maximum limit to avoid falling into source plate during transfer
     total_handle_mix_volumes_list = []
-    for slat_name in slat_dict.keys():
+    for slat_name in clean_slat_dict.keys():
         total_volume = sum(combined_df[combined_df["Component"].str.contains(slat_name+"_")]["Transfer Volume"])/1000
         total_handle_mix_volumes_list.append([slat_name, total_volume, total_volume <= destination_well_max_volume])
 

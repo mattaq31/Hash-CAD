@@ -106,7 +106,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         next_gen_member = mother.copy()
 
         # The mutation rate is defined as the expected number of mutations in the whole structure.
-        # This can be applied using Binomial and poisson statistics:  [mutation rate] =  [num places to be mutated] * probability
+        # This can be applied using Binomial and poisson statistics: [mutation rate] = [num places to be mutated] * probability
         positions_to_be_mutated = mask & mask2 # Mask and mask2 two are the places where mutations are allowed
 
         logicforpointmutations = np.random.random(candidate_handle_arrays[0].shape) < mutation_rate / np.sum(positions_to_be_mutated)

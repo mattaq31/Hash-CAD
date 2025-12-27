@@ -249,6 +249,7 @@ def create_graphical_3D_view(slat_array, slats, save_folder, layer_palette, carg
     seed_coord_dict = defaultdict(dict)
 
     for slat_id, slat in slats.items():  # Z-height is set to 1 here, could be interested in changing in some cases
+        if slat.phantom_parent is not None: continue # for now, will not be including phantom slats in graphics
         if len(slat.slat_position_to_coordinate) == 0:
             print(Fore.YELLOW + f'WARNING: Slat {slat_id} was ignored from 3D graphical '
                                 'view as it does not have a grid position defined.' + Fore.RESET)

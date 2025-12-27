@@ -138,6 +138,7 @@ def create_graphical_slat_view(slat_array, layer_palette, cargo_palette=None, in
     layers_containing_cargo = set()
 
     for slat_id, slat in slats.items():
+        if slat.phantom_parent is not None: continue # for now, will not be including phantom slats in graphics
         # TODO: Is there some way to print the slat ID in the graphic too?
         if len(slat.slat_coordinate_to_position) == 0:
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
@@ -286,6 +287,8 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_palet
 
     # Painting in slats
     for slat_id, slat in slats.items():
+        if slat.phantom_parent is not None: continue # for now, will not be including phantom slats in graphics
+
         if len(slat.slat_coordinate_to_position) == 0:
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from graphical '
                                 'view as it does not have a grid position defined.' % slat_id)
@@ -383,6 +386,5 @@ def create_graphical_assembly_handle_view(slat_array, handle_arrays, layer_palet
         if instant_view:
             fig.show()
         if save_to_folder:
-            fig.savefig(os.path.join(save_to_folder,
-                                     '%shandles_layer_%s_%s.png' % (filename_prepend, fig_ind + 1, fig_ind + 2)), dpi=300)
+            fig.savefig(os.path.join(save_to_folder, '%shandles_layer_%s_%s.png' % (filename_prepend, fig_ind + 1, fig_ind + 2)), dpi=300)
         plt.close(fig)

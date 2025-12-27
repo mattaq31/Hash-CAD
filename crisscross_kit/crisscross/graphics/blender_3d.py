@@ -234,6 +234,7 @@ def interpret_cargo_system(slats, layer_palette, grid_xd, grid_yd, slat_width, c
     # implements cargo visualization if cargo_palette is provided
 
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
+        if slat.phantom_parent is not None: continue # for now, will not be including phantom slats in graphics
         handles = [slat.H5_handles, slat.H2_handles]
         sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
 
@@ -285,6 +286,7 @@ def interpret_seed_system(slats, layer_palette, seed_material, grid_xd, grid_yd)
     seed_coord_dict = defaultdict(dict)
 
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
+        if slat.phantom_parent is not None: continue # for now, will not be including phantom slats in graphics
         handles = [slat.H5_handles, slat.H2_handles]
         sides = ['top' if layer_palette[slat.layer]['top'] == helix else 'bottom' for helix in [5, 2]]
 
@@ -419,6 +421,7 @@ def create_graphical_3D_view_bpy(slat_array, slats, layer_palette, save_folder, 
     interpret_seed_system(slats, layer_palette, cargo_materials['SEED'], grid_xd, grid_yd)
 
     for slat_num, (slat_id, slat) in enumerate(slats.items()):
+        if slat.phantom_parent is not None: continue # for now, will not be including phantom slats in graphics
         if len(slat.slat_position_to_coordinate) == 0:
             print(Fore.YELLOW + 'WARNING: Slat %s was ignored from Blender graphical '
                                 'view as it does not have a grid position defined.' % slat_id)
