@@ -106,7 +106,7 @@ class SlatHoverPainter extends CustomPainter {
           // apply the anchor translation to the coordinates before drawing
           coords = coords.map((e) => e + anchorTranslate).toList();
 
-          drawSlat(coords, canvas, appState, actionState, hoverRodPaint, slat.phantomID != null);
+          drawSlat(coords, canvas, appState, actionState, hoverRodPaint, slat.phantomParent != null);
         }
       }
     }

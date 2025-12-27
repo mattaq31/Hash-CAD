@@ -910,7 +910,7 @@ class DesignState extends ChangeNotifier {
     clearSelection();
     String layer = ID.split('-')[0];
 
-    if(slats[ID]!.phantomID == null) layerMap[layer]?["slat_count"] -= 1;
+    if(slats[ID]!.phantomParent == null) layerMap[layer]?["slat_count"] -= 1;
 
 
     // deleting the original slat should also delete all phantom slats associated with it
@@ -923,9 +923,9 @@ class DesignState extends ChangeNotifier {
     }
 
     // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
-    if(slats[ID]!.phantomID != null){
-      if(phantomMap[slats[ID]!.phantomID]!.length == 1){
-          phantomMap.remove(slats[ID]!.phantomID);
+    if(slats[ID]!.phantomParent != null){
+      if(phantomMap[slats[ID]!.phantomParent]!.length == 1){
+          phantomMap.remove(slats[ID]!.phantomParent);
         }
     }
 
@@ -943,7 +943,7 @@ class DesignState extends ChangeNotifier {
       String layer = ID.split('-')[0];
 
       // only track non-phantom slats in the slat count
-      if(slats[ID]!.phantomID == null) layerMap[layer]?["slat_count"] -= 1;
+      if(slats[ID]!.phantomParent == null) layerMap[layer]?["slat_count"] -= 1;
 
       // deleting the original slat should also delete all phantom slats associated with it
       if(phantomMap.containsKey(ID)){
@@ -955,9 +955,9 @@ class DesignState extends ChangeNotifier {
       }
 
       // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
-      if(slats[ID]!.phantomID != null){
-        if(phantomMap[slats[ID]!.phantomID]!.length == 1){
-          phantomMap.remove(slats[ID]!.phantomID);
+      if(slats[ID]!.phantomParent != null){
+        if(phantomMap[slats[ID]!.phantomParent]!.length == 1){
+          phantomMap.remove(slats[ID]!.phantomParent);
         }
       }
 
@@ -1021,7 +1021,7 @@ class DesignState extends ChangeNotifier {
 
   void setSlatHandle(Slat slat, int position, int side, String handlePayload, String category) {
 
-    if (slat.phantomID != null && !category.contains('ASSEMBLY')) {
+    if (slat.phantomParent != null && !category.contains('ASSEMBLY')) {
       return; // cannot directly apply cargo handle changes to phantom slats
     }
 
@@ -1030,25 +1030,25 @@ class DesignState extends ChangeNotifier {
 
       List<(String, int, int)> slatsUpdated = [];
       // this recursive function checks for: 1) direct phantom links, 2) other handles attached to phantom slats, 3) further handles attached to those slats, etc.
-      void recursivePhantomSearch(Slat querySlat, int queryPosition, int querySide) {
+      void recursivePhantomSearch(Slat querySlat, int queryPosition, int querySide, String queryCategory) {
 
-        querySlat.setPlaceholderHandle(queryPosition, querySide, handlePayload, category); // immediately set handle for the queried slat
+        querySlat.setPlaceholderHandle(queryPosition, querySide, handlePayload, queryCategory); // immediately set handle for the queried slat
         slatsUpdated.add((querySlat.id, queryPosition, querySide)); // keep track of updated slats to avoid infinite loops
 
         // TODO: this means that certain handles will be re-set more than once (e.g. a normal slat to another normal slat) if they have a phantom slat.  Not sure if this is worth optimizing further
-        if (phantomMap.containsKey(querySlat.id) || querySlat.phantomID != null) { // check for further phantom links
-          String refID = querySlat.phantomID ?? querySlat.id; // get the reference ID (either the slat's own ID or its phantom reference)
+        if (phantomMap.containsKey(querySlat.id) || querySlat.phantomParent != null) { // check for further phantom links
+          String refID = querySlat.phantomParent ?? querySlat.id; // get the reference ID (either the slat's own ID or its phantom reference)
           for (var siblingPhantomID in phantomMap[refID]!.values) {
             if (slatsUpdated.contains((siblingPhantomID, queryPosition, querySide))) {
               continue; // avoid infinite loops by skipping already-updated slats
             }
-            recursivePhantomSearch(slats[siblingPhantomID]!, queryPosition, querySide); // recursively apply to sibling phantom slats
+            recursivePhantomSearch(slats[siblingPhantomID]!, queryPosition, querySide, queryCategory); // recursively apply to sibling phantom slats
           }
 
           // finally also update the reference slat if the query slat is a phantom
-          if (querySlat.phantomID != null) {
-            if (!slatsUpdated.contains((querySlat.phantomID, queryPosition, querySide))) {
-              recursivePhantomSearch(slats[querySlat.phantomID]!, queryPosition, querySide);
+          if (querySlat.phantomParent != null) {
+            if (!slatsUpdated.contains((querySlat.phantomParent, queryPosition, querySide))) {
+              recursivePhantomSearch(slats[querySlat.phantomParent]!, queryPosition, querySide, queryCategory);
             }
           }
 
@@ -1072,19 +1072,19 @@ class DesignState extends ChangeNotifier {
 
               // run attachment for the new slat position too
               if (!slatsUpdated.contains((attachedSlat.id, opposingPosition, opposingSide))) {
-                recursivePhantomSearch(attachedSlat, opposingPosition, opposingSide);
+                recursivePhantomSearch(attachedSlat, opposingPosition, opposingSide, queryCategory == 'ASSEMBLY_HANDLE' ? 'ASSEMBLY_ANTIHANDLE' : 'ASSEMBLY_HANDLE');
               }
             }
           }
         }
       }
 
-      recursivePhantomSearch(slat, position, side);
+      recursivePhantomSearch(slat, position, side, category);
     }
     else{
       // for a cargo or seed handle, the handle can be set here and the function is complete (other than checking for phantom slats)
-      if (phantomMap.containsKey(slat.id) || slat.phantomID != null) { // check for phantom links
-        String refID = slat.phantomID ?? slat.id; // get the reference ID (either the slat's own ID or its phantom reference)
+      if (phantomMap.containsKey(slat.id) || slat.phantomParent != null) { // check for phantom links
+        String refID = slat.phantomParent ?? slat.id; // get the reference ID (either the slat's own ID or its phantom reference)
 
         // apply handle to all linked phantom slats
         for (var siblingPhantomID in phantomMap[refID]!.values) {
@@ -1101,6 +1101,8 @@ class DesignState extends ChangeNotifier {
 
   }
 
+  // assigns a full handle array to the design slats - assumes that handles -> antihandles -> handles -> etc. is the correct mapping
+  // TODO: this probably loops through phantom slats too - can probably just ignore these since the recursive algorithm should take care of it
   void assignAssemblyHandleArray(List<List<List<int>>> handleArray, Offset? minPos, Offset? maxPos){
 
     if (minPos == null || maxPos == null){
@@ -1266,9 +1268,9 @@ class DesignState extends ChangeNotifier {
   }
 
   void assignColorToSelectedSlats(Color color) {
-    /// Assigns a color to all selected slats
+    /// Assigns a color to all selected slats (only non-phantom slats can be edited directly)
     for (var slatID in selectedSlats) {
-      if (slats.containsKey(slatID)) {
+      if (slats.containsKey(slatID) && slats[slatID]!.phantomParent == null) {
         slats[slatID]!.uniqueColor = color;
         if (phantomMap.containsKey(slatID)){
           for (var phantomID in phantomMap[slatID]!.values) {
@@ -1352,7 +1354,7 @@ class DesignState extends ChangeNotifier {
       int phantomKey = firstFreeKey(phantomMap[slat.id]!);
 
       // creates a new slat with a new ID, copies handles and then links it to the original slat via phantomID
-      slats['${slat.id}-P$phantomKey'] = Slat(phantomKey, '${slat.id}-P$phantomKey', layer, coords, uniqueColor: slat.uniqueColor, slatType: slat.slatType, phantomID: slat.id);
+      slats['${slat.id}-P$phantomKey'] = Slat(phantomKey, '${slat.id}-P$phantomKey', layer, coords, uniqueColor: slat.uniqueColor, slatType: slat.slatType, phantomParent: slat.id);
       slats['${slat.id}-P$phantomKey']!.copyHandlesFromSlat(slat);
       phantomMap[slat.id]![phantomKey] = '${slat.id}-P$phantomKey';
 
@@ -1578,7 +1580,7 @@ class DesignState extends ChangeNotifier {
       }
 
       // no cargo placement can be made on phantom slats
-      if(slats[occupiedGridPoints[layerID]![coord]!]!.phantomID != null){
+      if(slats[occupiedGridPoints[layerID]![coord]!]!.phantomParent != null){
         continue;
       }
 
@@ -1634,7 +1636,7 @@ class DesignState extends ChangeNotifier {
     for (var coord in coordinates.values) {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
 
-      if(slat.phantomID != null){
+      if(slat.phantomParent != null){
         // cannot place seeds on phantom slats
         showWarning(context, 'Invalid Seed Placement', 'Seeds cannot be placed on phantom slats.  Please place the seed on the original slats instead.');
         return;

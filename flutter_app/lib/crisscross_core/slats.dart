@@ -37,9 +37,9 @@ class Slat {
 
   Color? uniqueColor;
   String slatType;
-  String? phantomID;
+  String? phantomParent;
 
-  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32, this.uniqueColor, this.slatType = 'tube', this.phantomID}) {
+  Slat(this.numericID, this.id, this.layer, Map<int, Offset> slatCoordinates, {this.maxLength = 32, this.uniqueColor, this.slatType = 'tube', this.phantomParent}) {
       slatCoordinates.forEach((key, coord) {
         slatPositionToCoordinate[key] = coord;
         slatCoordinateToPosition[coord] = key;
@@ -58,8 +58,9 @@ class Slat {
   }
 
   void setPhantom(String newPhantom) {
-    /// Sets the ID of the phantom slat this slat is associated with (or clear it).
-    phantomID = newPhantom;
+    /// Sets the ID of the reference slat this slat is associated with (or clear it).
+    /// Setting this also implies this slat is a phantom slat.
+    phantomParent = newPhantom;
   }
 
   void updateCoordinates(Map<int, Offset> slatCoordinates){
@@ -222,7 +223,7 @@ class Slat {
   }
 
   Slat copy() {
-    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength, uniqueColor: uniqueColor, slatType: slatType, phantomID: phantomID);
+    final newSlat = Slat(numericID, id, layer, Map.from(slatPositionToCoordinate), maxLength: maxLength, uniqueColor: uniqueColor, slatType: slatType, phantomParent: phantomParent);
 
     newSlat.h2Handles = {
       for (var entry in h2Handles.entries)

@@ -33,10 +33,10 @@ List<List<List<int>>> convertSparseSlatBundletoArray(
   for (var slat in slats.values) {
 
     if (!allTypes) {
-      if (slat.phantomID != null && !phantomOnly) {
+      if (slat.phantomParent != null && !phantomOnly) {
         continue; // skip phantom slats
       }
-      else if (slat.phantomID == null && phantomOnly) {
+      else if (slat.phantomParent == null && phantomOnly) {
         continue; // skip non-phantom slats
       }
     }
@@ -56,13 +56,24 @@ List<List<List<int>>> extractAssemblyHandleArray(
     Map<String, Map<String, dynamic>> layerMap,
     Offset minGrid,
     Offset maxGrid,
-    double gridSize) {
+    double gridSize,
+    {bool allTypes = false, bool phantomOnly = false}) {
 
   int xSize = (maxGrid.dx - minGrid.dx).toInt() + 1;
   int ySize = (maxGrid.dy - minGrid.dy).toInt() + 1;
   List<List<List<int>>> handleArray = List.generate(xSize,(_) => List.generate(ySize, (_) => List.filled(layerMap.length-1, 0)));
 
   for (var slat in slats.values) {
+
+    if (!allTypes) {
+      if (slat.phantomParent != null && !phantomOnly) {
+        continue; // skip phantom slats
+      }
+      else if (slat.phantomParent == null && phantomOnly) {
+        continue; // skip non-phantom slats
+      }
+    }
+
     final topBottomOrder = (layerMap[slat.layer]?['top_helix'] == 'H5') ? ['H5', 'H2'] : ['H2', 'H5'];
     for (var i = 0; i < slat.maxLength; i++) {
       var pos = slat.slatPositionToCoordinate[i + 1]!;

@@ -168,7 +168,7 @@ void exportDesign(Map<String, Slat> slats,
 
   // writes phantom slats to the same slat file (if any)
   for (var slat in slats.values){
-    if (slat.phantomID != null){
+    if (slat.phantomParent != null){
       int layer = layerMap[slat.layer]!['order'];
       Sheet sheet = excel['slat_layer_${layer+1}'];
       for (int i = 0; i < slat.maxLength; i++) {
@@ -176,7 +176,7 @@ void exportDesign(Map<String, Slat> slats,
         int x = (pos.dx - minPos.dx).toInt();
         int y = (pos.dy - minPos.dy).toInt();
         // column/row are flipped in the internal representation - the flip-back to normal values is done here
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: x, rowIndex: y)).value = TextCellValue('P${slat.numericID}_${slats[slat.phantomID]!.numericID}-${i+1}');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: x, rowIndex: y)).value = TextCellValue('P${slat.numericID}_${slats[slat.phantomParent]!.numericID}-${i+1}');
 
         Color layerColor = layerMap.entries.firstWhere((element) => element.value['order'] == layer).value['color'];
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: x, rowIndex: y)).cellStyle = CellStyle(backgroundColorHex: layerColor.toHexString().excelColor);
@@ -286,7 +286,7 @@ void exportDesign(Map<String, Slat> slats,
   List<List<CellValue>> rows = [];
 
   for (var slat in slats.values) {
-    if(slat.phantomID != null){
+    if(slat.phantomParent != null){
       continue; // skip phantom slats
     }
     int layerNum = layerMap[slat.layer]!['order'] + 1;
@@ -641,7 +641,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
           String category = slats[refSlatName]!.slatType;
           phantomMap.putIfAbsent(refSlatName, () => {});
           phantomMap[refSlatName]![phantomSlatBundle.key] = phantomName;
-          slats[phantomName] = Slat(phantomSlatBundle.key, phantomName, layer, phantomSlatBundle.value, slatType: category, phantomID: refSlatName);
+          slats[phantomName] = Slat(phantomSlatBundle.key, phantomName, layer, phantomSlatBundle.value, slatType: category, phantomParent: refSlatName);
         }
       }
     }
@@ -787,8 +787,8 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   }
 
   // before finishing, copies all handles to phantom slats
-  for (var slat in slats.values.where((slat) => slat.phantomID != null)){
-    slat.copyHandlesFromSlat(slats[slat.phantomID!]!);
+  for (var slat in slats.values.where((slat) => slat.phantomParent != null)){
+    slat.copyHandlesFromSlat(slats[slat.phantomParent!]!);
   }
 
   return (slats, layerMap, gridMode, cargoPalette, seedRoster, phantomMap, '');

@@ -404,7 +404,7 @@ class SlatPainter extends CustomPainter {
       }
 
       // turns off phantoms if the user has chosen to not view them
-      if(slat.phantomID != null && !actionState.viewPhantoms){
+      if(slat.phantomParent != null && !actionState.viewPhantoms){
         continue;
       }
 
@@ -445,7 +445,7 @@ class SlatPainter extends CustomPainter {
       if (!slatBounds.overlaps(visibleRect)) continue;
 
       // draw the actual slat here
-      drawSlat(coords, canvas, appState, actionState, rodPaint, slat.phantomID != null);
+      drawSlat(coords, canvas, appState, actionState, rodPaint, slat.phantomParent != null);
 
       // slat extension angles and lengths (in case this is requested by the user)
       Offset slatExtendFront = calculateSlatExtend(coords[0], coords[1], appState.gridSize);
@@ -512,7 +512,7 @@ class SlatPainter extends CustomPainter {
                 shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
                 color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
               } else if (category.contains('ASSEMBLY')) {
-                if(slat.phantomID != null){
+                if(slat.phantomParent != null){
                   color = Colors.red;
                 }
                 else {
