@@ -62,7 +62,7 @@ if __name__ == '__main__':
                                    split_sequence_handles=False,
                                    mutation_type_probabilities=(0.0725, 0.0725, 0.85),
                                    progress_bar_update_iterations=10,
-                                   repeating_unit_constraints={'link_handles': linked_handles},
+                                   repeating_unit_constraints=linked_handles,
                                    log_tracking_directory=evo_folder)
 
     evolve_manager.run_full_experiment(logging_interval=10, suppress_handle_array_export=True)

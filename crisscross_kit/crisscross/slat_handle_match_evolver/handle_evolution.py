@@ -13,6 +13,7 @@ import toml
 import platform
 from multiprocessing.pool import RUN
 
+from crisscross.core_functions.megastructures import Megastructure
 from crisscross.slat_handle_match_evolver.handle_mutation import mutate_handle_arrays
 from crisscross.slat_handle_match_evolver import generate_random_slat_handles, generate_layer_split_handles
 from crisscross.helper_functions import save_list_dict_to_file, create_dir_if_empty
@@ -20,7 +21,7 @@ from eqcorr2d.eqcorr2d_interface import comprehensive_score_analysis
 
 
 class EvolveManager:
-    def __init__(self, megastructure, random_seed=8, generational_survivors=3,
+    def __init__(self, megastructure: Megastructure, random_seed=8, generational_survivors=3,
                  mutation_rate=5, mutation_type_probabilities=(0.425, 0.425, 0.15), unique_handle_sequences=32,
                  evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
                  process_count=None, early_max_valency_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
@@ -48,7 +49,7 @@ class EvolveManager:
         - useful for server output files, but does not seem to work consistently on every system (optional)
         :param mutation_memory_system: The type of memory system to use for the handle mutation process. Options are 'all', 'best', 'special', or 'off'.
         :param memory_length: Memory of previous 'worst' handle combinations to retain when selecting positions to mutate.
-        :param repeating_unit_constraints: Two dictionaries containing 'link_handles' and 'transplant_handles' that define constraints on handle mutations (mainly for use with repeating unit designs).
+        :param repeating_unit_constraints: Dictionary to define handle link constraints on handle mutations (mainly for use with repeating unit designs).  This is largely depracted now in favour of the Megastructure recursive handle linking system.
         :param similarity_score_calculation_frequency: The duplication risk score will be calculated every x generations.
         This helps speed up the evolution process, since it isn't used for deciding on the best generations to retain.
         """
@@ -114,8 +115,11 @@ class EvolveManager:
 
         self.next_candidates = self.initialize_evolution()
         self.initial_candidates = self.next_candidates.copy()
+
         if self.handle_array is None:
             self.dummy_megastructure.assign_assembly_handles(self.next_candidates[0])
+
+        self.mutation_mask = self.dummy_megastructure.generate_assembly_handle_grid(create_mutation_mask=True)
 
         if remove_duplicates_in_layers is not None: # compensating for the Sierpinski triangle design system TODO: REMOVE AND UPDATE WITH A BETTER SOLUTION
             handle_dict, antihandle_dict = self.dummy_megastructure.get_bag_of_slat_handles(remove_blank_slats=True, use_original_slat_array=True, remove_duplicates_in_layers=remove_duplicates_in_layers)
@@ -148,13 +152,17 @@ class EvolveManager:
         Initializes the pool of candidate handle arrays.
         """
         candidate_handle_arrays = []
-        if not self.split_sequence_handles or self.slat_array.shape[2] < 3:
+        slat_array_with_phantoms = self.dummy_megastructure.generate_slat_occupancy_grid(category='all')
+        if not self.split_sequence_handles or slat_array_with_phantoms.shape[2] < 3:
             for j in range(self.evolution_population):
-                candidate_handle_arrays.append(generate_random_slat_handles(self.slat_array, self.number_unique_handles, **self.repeating_unit_constraints))
+                candidate_array = generate_random_slat_handles(slat_array_with_phantoms, self.number_unique_handles, self.repeating_unit_constraints)
+                self.dummy_megastructure.enforce_phantom_links_on_assembly_handle_array(candidate_array)
+                candidate_handle_arrays.append(candidate_array)
         else:
             for j in range(self.evolution_population):
-                candidate_handle_arrays.append(generate_layer_split_handles(self.slat_array,  self.number_unique_handles, self.sequence_split_factor, **self.repeating_unit_constraints))
-
+                candidate_array = generate_layer_split_handles(slat_array_with_phantoms,  self.number_unique_handles, self.sequence_split_factor, self.repeating_unit_constraints)
+                self.dummy_megastructure.enforce_phantom_links_on_assembly_handle_array(candidate_array)
+                candidate_handle_arrays.append(candidate_array)
         if self.handle_array is not None:
             candidate_handle_arrays[0] = self.handle_array
 
@@ -262,7 +270,10 @@ class EvolveManager:
                                                           mutation_type_probabilities=self.mutation_type_probabilities,
                                                           split_sequence_handles=self.split_sequence_handles,
                                                           sequence_split_factor=self.sequence_split_factor,
-                                                          repeating_unit_constraints=self.repeating_unit_constraints)
+                                                          repeating_unit_constraints=self.repeating_unit_constraints,
+                                                          mutation_mask=self.mutation_mask)
+
+        candidate_handle_arrays = [self.dummy_megastructure.enforce_phantom_links_on_assembly_handle_array(arr) for arr in candidate_handle_arrays]
 
         for key, payload in hallofshame.items():
             self.memory_hallofshame[key].extend(payload)
@@ -410,6 +421,7 @@ class EvolveManager:
                         print('Early stopping criteria met, ending evolution process.')
                         break
             self.close_pool()
+
         except KeyboardInterrupt:
             # Optional: more friendly message/logging
             pass

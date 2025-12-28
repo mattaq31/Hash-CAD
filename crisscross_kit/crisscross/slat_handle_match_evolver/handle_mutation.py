@@ -10,23 +10,26 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                          use_memory_type=None,
                          split_sequence_handles=False,
                          sequence_split_factor=2,
-                         repeating_unit_constraints=None):
+                         repeating_unit_constraints=None,
+                         mutation_mask=None):
     """
     Mutates (randomizes handles) a set of candidate arrays into a new generation,
     while retaining the best scoring arrays from the previous generation.
     :param slat_array: Base slat array for design
     :param candidate_handle_arrays: Set of candidate handle arrays from previous generation
     :param hallofshame: Worst handle/antihandle combinations from previous generation
+    :param best_score_indices: The indices of the best scoring arrays from the previous generation
+    :param unique_sequences: Total length of handle library available
     :param memory_hallofshame: List of all the worst handle/antihandle combinations from previous generations
     :param memory_best_parent_hallofshame: List of the worst handle/antihandle combinations from previous generations (only the ones linked to the best parents)
     :param special_hallofshame: List of special handle/antihandle combinations from previous generations
-    :param best_score_indices: The indices of the best scoring arrays from the previous generation
-    :param unique_sequences: Total length of handle library available
     :param mutation_rate: The expected number of mutations per cycle
-    :param mutation_type_probabilities: Probability of selecting a specific mutation type for a target handle/antihandle
-    (either handle, antihandle or mixed mutations)
+    :param mutation_type_probabilities: Probability of selecting a specific mutation type for a target handle/antihandle (either handle, antihandle or mixed mutations)
+    :param use_memory_type: Select memory type to use for mutation selection ('off', 'all', 'best_memory', 'special')
     :param split_sequence_handles: Set to true if the handle library needs to be split between subsequent layers
     :param sequence_split_factor: The number of layers to split the handle library between (default is 2, which means a single layer would have half the available library)
+    :param repeating_unit_constraints: Dictionary of handles to link together (mostly deprecated in favour of recursive algorithm in Megastructure).  Syntax is {(layer, 'top'/'bottom', (x,y)): (layer, 'top'/'bottom', (x,y))}
+    :param mutation_mask: Optional integer mask to inform mutation system of any handle links in the slat design (created through recursion system)
     :return: New generation of handle arrays to be screened
     """
 
@@ -61,8 +64,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         # pick someone to mutate
         pick = np.random.randint(0, parent_array_count)
         mother = parent_handle_arrays[pick].copy()
-        random_choice = np.random.choice(['mutate handles', 'mutate antihandles', 'mutate anywhere'],
-                                         p=normalized_mutation_probabilities)
+        random_choice = np.random.choice(['mutate handles', 'mutate antihandles', 'mutate anywhere'], p=normalized_mutation_probabilities)
 
         if random_choice == 'mutate handles':
             if use_memory_type is None or use_memory_type == 'off':
@@ -102,12 +104,31 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         elif random_choice == 'mutate anywhere':
             mask2 = np.full(candidate_handle_arrays[0].shape, True, dtype=bool)
 
-
         next_gen_member = mother.copy()
 
         # The mutation rate is defined as the expected number of mutations in the whole structure.
         # This can be applied using Binomial and poisson statistics: [mutation rate] = [num places to be mutated] * probability
-        positions_to_be_mutated = mask & mask2 # Mask and mask2 two are the places where mutations are allowed
+        positions_to_be_mutated = mask & mask2 # mask and mask2 two are the places where mutations are allowed
+
+        # with a mutation mask, only allow mutations in positions with unique integers (since the mask indicates which handles will be linked)
+        if mutation_mask is not None:
+
+            localized_mut_mask = mutation_mask * positions_to_be_mutated # zero out positions that are not allowed to be mutated
+            # Flatten, get first index of each unique value
+            flat = localized_mut_mask.ravel()
+            nz_idx = np.flatnonzero(flat != 0)
+            # Unique non-zero values + their first occurrence indices (relative to nz_idx)
+            _, first_indices = np.unique(flat[nz_idx], return_index=True)
+
+            # Create boolean mask
+            unique_mask = np.zeros_like(flat, dtype=bool)
+            unique_mask[nz_idx[first_indices]] = True
+
+            # Reshape back to original shape
+            unique_mask = unique_mask.reshape(localized_mut_mask.shape)
+
+            # apply unique mask to global positions to be mutated
+            positions_to_be_mutated = positions_to_be_mutated & unique_mask
 
         logicforpointmutations = np.random.random(candidate_handle_arrays[0].shape) < mutation_rate / np.sum(positions_to_be_mutated)
         logicforpointmutations = logicforpointmutations & positions_to_be_mutated
@@ -132,8 +153,19 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                 h_end = h_start + handles_per_layer
                 next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h_start, h_end, size=np.sum( logicforpointmutations[:, :, layer]))
 
-        for handle_type, handles in repeating_unit_constraints.items():
-            apply_handle_links(next_gen_member, handles)
+        # apply the same handle to all other index positions that are linked to it in the mutation mask
+        if mutation_mask is not None:
+            # get indices of positive values in logicforpointmutations
+            mutated_indices = np.argwhere(logicforpointmutations)
+            # for each mutated index, find all other indices with the same mutation mask value and set them to the same handle
+            for idx in mutated_indices:
+                mask_value = mutation_mask[tuple(idx)]
+                linked_indices = np.argwhere(mutation_mask == mask_value)
+                for linked_idx in linked_indices:
+                    next_gen_member[tuple(linked_idx)] = next_gen_member[tuple(idx)]
+
+        # reapplies any handle links that were in place (this can probably be deprecated in the future)
+        apply_handle_links(next_gen_member, repeating_unit_constraints)
 
         mutated_handle_arrays.append(next_gen_member)
         mutation_maps.append(logicforpointmutations)

@@ -29,7 +29,7 @@ if __name__ == '__main__':
                                    evolution_generations=20000,
                                    split_sequence_handles=False,
                                    progress_bar_update_iterations=10,
-                                   repeating_unit_constraints={'link_handles': linked_handles},
+                                   repeating_unit_constraints=linked_handles,
                                    log_tracking_directory='/Users/matt/Desktop/CB015_v2_with_correct_links')
 
     evolve_manager.run_full_experiment(logging_interval=10)

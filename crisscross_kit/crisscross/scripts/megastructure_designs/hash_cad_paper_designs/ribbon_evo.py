@@ -1,5 +1,6 @@
 
 
+# TODO: This script needs to be updated to the new syntax system
 if __name__ == '__main__':
     from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import multirule_oneshot_hamming
     from crisscross.slat_handle_match_evolver import generate_random_slat_handles
@@ -85,6 +86,7 @@ if __name__ == '__main__':
                                                                                         excel_conditional_formatting)
             writer.close()
             break
+
     evolve_manager =  EvolveManager(megastructure.generate_slat_occupancy_grid(),
                                     unique_handle_sequences=64,
                                     early_hamming_stop=31, evolution_population=50,
