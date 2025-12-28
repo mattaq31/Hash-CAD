@@ -69,7 +69,7 @@ for key, slat in megastructure.slats.items():
                 sel_plates = None
                 category = 'HANDLE'
             if handle_val > 0:
-                megastructure.assign_handle_to_slat(slat, slat_position_index + 1, slat_side, str(handle_val), 'ASSEMBLY_%s' % category, 'Assembly|%s|%s' % (category.capitalize(), handle_val), sel_plates, suppress_warnings=False)
+                megastructure.direct_handle_assign(slat, slat_position_index + 1, slat_side, str(handle_val), 'ASSEMBLY_%s' % category, 'Assembly|%s|%s' % (category.capitalize(), handle_val), sel_plates, suppress_warnings=False)
 
 regen_graphics = False
 generate_echo = True

@@ -135,17 +135,19 @@ class Slat:
         if slat_side == 2:
             if handle_id in self.H2_handles and not suppress_warnings:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 2 on slat %s' % (handle_id, self.ID) + Fore.RESET)
+
             self.H2_handles[handle_id] = {'category': category, 'value': value, 'descriptor': descriptor}
         elif slat_side == 5:
             if handle_id in self.H5_handles and not suppress_warnings:
                 print(Fore.RED + 'WARNING: Overwriting handle %s, side 5 on slat %s' % (handle_id, self.ID) + Fore.RESET)
-            self.H5_handles[handle_id] = {'category': category, 'value': value,'descriptor': descriptor}
+
+            self.H5_handles[handle_id] = {'category': category, 'value': value, 'descriptor': descriptor}
         else:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')
 
         # placeholders are tracked here, for later replacement
-        self.placeholder_list.append(f'handle|{handle_id}|h{slat_side}')
-
+        if f'handle|{handle_id}|h{slat_side}' not in self.placeholder_list:
+            self.placeholder_list.append(f'handle|{handle_id}|h{slat_side}')
 
     def remove_handle(self, handle_id, slat_side):
         """
@@ -164,7 +166,6 @@ class Slat:
             raise RuntimeError('Wrong slat side specified (only 2 or 5 available)')
         if f'handle|{handle_id}|h{slat_side}' in self.placeholder_list:
             self.placeholder_list.remove(f'handle|{handle_id}|h{slat_side}')
-
 
     def update_placeholder_handle(self, handle_id, slat_side, sequence, well, plate_name, category, value, concentration, descriptor='No Desc.'):
         """

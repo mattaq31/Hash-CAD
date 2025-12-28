@@ -119,8 +119,7 @@ class EvolveManager:
 
         if remove_duplicates_in_layers is not None: # compensating for the Sierpinski triangle design system TODO: REMOVE AND UPDATE WITH A BETTER SOLUTION
             handle_dict, antihandle_dict = self.dummy_megastructure.get_bag_of_slat_handles(remove_blank_slats=True, use_original_slat_array=True, remove_duplicates_in_layers=remove_duplicates_in_layers)
-            self.slat_compensation_match_counts, self.slat_connection_graph = self.dummy_megastructure.get_slat_match_counts(use_original_slat_array=True,
-                                                                                                                             prepopulated_handle_dict=handle_dict, prepopulated_antihandle_dict=antihandle_dict)
+            self.slat_compensation_match_counts, self.slat_connection_graph = self.dummy_megastructure.get_slat_match_counts(use_original_slat_array=True, prepopulated_handle_dict=handle_dict, prepopulated_antihandle_dict=antihandle_dict)
         else:
             self.slat_compensation_match_counts, self.slat_connection_graph = self.dummy_megastructure.get_slat_match_counts(use_original_slat_array=True)
         self.remove_duplicates_in_layers = remove_duplicates_in_layers

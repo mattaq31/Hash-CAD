@@ -76,6 +76,136 @@ def export_layer_orientations_to_list_format(layer_palette):
     return layer_interface_orientations
 
 
+class HandleLinkManager:
+    def __init__(self, handle_link_df=None):
+        # read handle linking information from sheet (if available)
+        self.handle_link_to_group = {}
+        self.handle_group_to_link = defaultdict(list)
+        self.handle_group_to_value = defaultdict(int)
+        self.handle_blocks = []
+        self.next_group_assignment = 'A'
+        self.max_group_id = 0
+
+        if handle_link_df is not None:
+            for i in range(0, len(handle_link_df), 6):
+                slat_name = handle_link_df.iloc[i, 0]
+                for side, index_jump in zip([5, 2], [2, 4]):
+                    for index, (enforce_val, group) in enumerate(zip(handle_link_df.iloc[i + index_jump][1:], handle_link_df.iloc[i + index_jump + 1][1:])):
+
+                        key = (slat_name, index + 1, side)  # for slat links, convention is (slat_name, position, helix_side)
+                        if np.isnan(enforce_val) and np.isnan(group): continue  # full skip
+
+                        if enforce_val == 0:  # just add to block list and move on
+                            self.handle_blocks.append(key)
+
+                        elif not np.isnan(enforce_val) and np.isnan(group):  # no special group, just enforce a specific value at this position
+                            group = next_capital_letter(self.next_group_assignment)  # uses letters for these groups (can never overlap with numbers)
+                            self.next_group_assignment = group
+                            self.handle_group_to_value[group] = enforce_val
+                            self.handle_group_to_link[group].append(key)
+                            self.handle_link_to_group[key] = group
+
+                        elif not np.isnan(group):  # set a specific group link
+                            self.handle_link_to_group[key] = group
+                            self.handle_group_to_link[group].append(key)
+                            if not np.isnan(enforce_val):
+                                if group in self.handle_group_to_value and self.handle_group_to_value[group] != enforce_val:
+                                    raise RuntimeError('Cannot enforce multiple values to the same slat handle group.'
+                                                       '  Check the slat_handle_links sheet.')
+                                self.handle_group_to_value[group] = enforce_val
+                            self.max_group_id = max(self.max_group_id, group)
+
+    def get_enforce_value(self, access_key):
+        if access_key in self.handle_blocks:
+            return 0
+        if access_key in self.handle_link_to_group:
+            group = self.handle_link_to_group[access_key]
+            if group in self.handle_group_to_value:
+                return self.handle_group_to_value[group]
+        return None
+
+    def add_block(self, key):
+        """
+        Adds a block to a handle.
+        :param key: (slat_name, position, side)
+        """
+        if key not in self.handle_blocks:
+            self.handle_blocks.append(key)
+
+    def remove_block(self, key):
+        """
+        Removes a block from a handle.
+        :param key: (slat_name, position, side)
+        """
+        if key in self.handle_blocks:
+            self.handle_blocks.remove(key)
+
+    def remove_link(self, key):
+        """
+        Removes a link from a handle.
+        :param key: (slat_name, position, side)
+        """
+        group = self.handle_link_to_group.get(key, None)
+        if group is not None:
+            self.handle_group_to_link[group].remove(key)
+            del self.handle_link_to_group[key]
+            if len(self.handle_group_to_link[group]) == 0:
+                del self.handle_group_to_link[group]
+                if group in self.handle_group_to_value:
+                    del self.handle_group_to_value[group]
+
+    def remove_group(self, group_id):
+        """
+        Removes an entire handle link group.
+        :param group_id: Group ID to remove
+        """
+        if group_id in self.handle_group_to_link:
+            for key in self.handle_group_to_link[group_id]:
+                del self.handle_link_to_group[key]
+            del self.handle_group_to_link[group_id]
+            if group_id in self.handle_group_to_value:
+                del self.handle_group_to_value[group_id]
+
+    def add_link(self, key_1, key_2):
+        """
+        Adds a link between two handles.
+        :param key_1: (slat_name, position, side)
+        :param key_2: (slat_name, position, side)
+        """
+
+        group_1 = self.handle_link_to_group.get(key_1, None)
+        group_2 = self.handle_link_to_group.get(key_2, None)
+
+        if group_1 is None and group_2 is None:
+            # create new group
+            new_group = self.max_group_id + 1
+            self.max_group_id += 1
+            self.next_group_assignment = new_group
+            self.handle_link_to_group[key_1] = new_group
+            self.handle_link_to_group[key_2] = new_group
+            self.handle_group_to_link[new_group].extend([key_1, key_2])
+
+        elif group_1 is not None and group_2 is None:
+            # add key_2 to group_1
+            self.handle_link_to_group[key_2] = group_1
+            self.handle_group_to_link[group_1].append(key_2)
+        elif group_1 is None and group_2 is not None:
+            # add key_1 to group_2
+            self.handle_link_to_group[key_1] = group_2
+            self.handle_group_to_link[group_2].append(key_1)
+
+        elif group_1 != group_2:
+            # merge groups
+            for key in self.handle_group_to_link[group_2]:
+                self.handle_link_to_group[key] = group_1
+                self.handle_group_to_link[group_1].append(key)
+            del self.handle_group_to_link[group_2]
+            if group_2 in self.handle_group_to_value:
+                if group_1 in self.handle_group_to_value and self.handle_group_to_value[group_1] != self.handle_group_to_value[group_2]:
+                    raise RuntimeError('Cannot merge two handle link groups with different enforced values.')
+                self.handle_group_to_value[group_1] = self.handle_group_to_value[group_2]
+                del self.handle_group_to_value[group_2]
+
 class Megastructure:
     """
     Convenience class that bundles the entire details of a megastructure including slat positions, seed handles and cargo.
@@ -100,13 +230,14 @@ class Megastructure:
 
         # reads in all design details from file if available
         if import_design_file is not None:
-            slats, handle_arrays, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords = self.import_design(import_design_file)
+            slats, handle_arrays, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords, link_manager = self.import_design(import_design_file)
             self.layer_palette = layer_palette
             self.cargo_palette = cargo_palette
             self.hashcad_canvas_metadata = hashcad_canvas_metadata
             self.slats = slats
             self.slat_grid_coords = slat_grid_coords
             self.original_slat_array = self.generate_slat_occupancy_grid()
+            self.link_manager = link_manager
         else:
             if slat_array is None:
                 raise RuntimeError('A slat array must be provided to initialize the megastructure (either imported or directly).')
@@ -148,6 +279,7 @@ class Megastructure:
 
             self.layer_palette = create_default_layer_palette(layer_interface_orientations)
             self.original_slat_array = slat_array
+            self.link_manager = HandleLinkManager()
 
         if connection_angle not in ['60', '90']:
             raise NotImplementedError('Only 90 and 60 degree connection angles are supported.')
@@ -167,11 +299,11 @@ class Megastructure:
         if seed_dict is not None:
             self.assign_seed_handles(seed_dict)
         if handle_arrays is not None:
+            # TODO: warn user if new handle array clashes with old one...
             self.enforce_phantom_links_on_assembly_handle_array(handle_arrays)
             self.assign_assembly_handles(handle_arrays)
         if len(cargo_dict) > 0:
             self.assign_cargo_handles_with_dict(cargo_dict)
-
 
     def assign_colormap_for_cargo(self, colormap='Dark2'):
         color_list = mpl.colormaps[colormap].colors
@@ -183,7 +315,18 @@ class Megastructure:
         for l in range(len(self.layer_palette)):
             self.layer_palette[l + 1]['color'] = color_list[l % len(color_list)]
 
-    def assign_handle_to_slat(self, slat, slat_position_index, slat_side, handle_val, category, descriptor, sel_plates=None, update=False, suppress_warnings=False):
+    def _get_coordinate_to_slat_lookup(self):
+        """
+        Generates a lookup dictionary mapping (y, x, layer) to a list of (slat_key, position)
+        at that coordinate. This includes both standard and phantom slats.
+        """
+        lookup = defaultdict(list)
+        for key, slat in self.slats.items():
+            for position, coord in slat.slat_position_to_coordinate.items():
+                lookup[(coord[0], coord[1], slat.layer)].append((key, position))
+        return lookup
+
+    def direct_handle_assign(self, slat, slat_position_index, slat_side, handle_val, category, descriptor, sel_plates=None, update=False, suppress_warnings=False):
         """
         Assigns a handle to a slat's specific side/position.
         :param slat: Slat object to attach to.
@@ -214,7 +357,7 @@ class Megastructure:
 
     def _recursive_propagate_handle(self, slat_key, position, side, handle_val, category, descriptor,
                                     handle_update_tracker, dna_plates=None, coordinate_to_slats=None,
-                                    handle_array=None, suppress_warnings=False):
+                                    handle_array=None, suppress_warnings=False, root_entry=False, traversal_tree=None):
         """
         Recursively propagates an assembly handle value through phantom siblings and overlapping slat attachments.
         :param slat_key: Slat ID string (e.g., 'layer1-slat5')
@@ -228,20 +371,17 @@ class Megastructure:
         :param coordinate_to_slats: Dictionary mapping (y, x, layer) to a list of (slat_key, position) at that coordinate.
         :param handle_array: 3D numpy array of handle values (y, x, layer_interface)
         :param suppress_warnings: If True, suppresses overwrite warnings
+        :param root_entry: If True, indicates that this is the root entry of the recursion.
         """
-        if (slat_key, position, side) in handle_update_tracker:
+        access_key = (slat_key, position, side)
+
+        if access_key in handle_update_tracker: # handle already updated
             return
 
-        # ensure a handle is only updated once throughout
-        handle_update_tracker.add((slat_key, position, side))
+        if root_entry:
+            traversal_tree = set()
 
-        slat = self.slats[slat_key]
-
-        # 1. Set handle on the targeted slat if requested
-        if handle_array is None:
-            self.assign_handle_to_slat(slat, position, side, handle_val, category, descriptor, sel_plates=dna_plates, suppress_warnings=suppress_warnings)
-        # 2. OR Update handle_array if provided
-        else:
+        def update_handle_array(value):
             # Determine layer_interface
             top_helix = self.layer_palette[slat.layer]['top']
             bottom_helix = self.layer_palette[slat.layer]['bottom']
@@ -254,9 +394,26 @@ class Megastructure:
 
             if 0 <= interface_idx < handle_array.shape[2]:
                 coord = slat.slat_position_to_coordinate[position]
-                handle_array[coord[0], coord[1], interface_idx] = handle_val
+                handle_array[coord[0], coord[1], interface_idx] = value
 
-        # 3. Propagate to phantom siblings and parent
+        # ensure a handle is only updated once throughout
+        handle_update_tracker.add(access_key)
+        traversal_tree.add(access_key)
+
+        slat = self.slats[slat_key]
+
+        # Set handle on the targeted slat if requested
+        if handle_array is None:
+            if handle_val == 0:  # i.e. delete
+                slat.remove_handle(position, side)
+            else:
+                self.direct_handle_assign(slat, position, side, handle_val, category, descriptor,
+                                          sel_plates=dna_plates, suppress_warnings=suppress_warnings)
+        # OR Update handle_array if provided
+        else:
+            update_handle_array(handle_val)
+
+        # Propagate to phantom siblings and parent
         ref_id = slat.phantom_parent if slat.phantom_parent is not None else slat_key
 
         # Apply to reference slat if input slat is a phantom
@@ -264,7 +421,7 @@ class Megastructure:
             if (ref_id, position, side) not in handle_update_tracker:
                 self._recursive_propagate_handle(ref_id, position, side, handle_val, category, descriptor,
                                                  handle_update_tracker, dna_plates, coordinate_to_slats, handle_array,
-                                                 suppress_warnings)
+                                                 suppress_warnings, traversal_tree=traversal_tree)
 
         # Apply to all phantom siblings if input is also a phantom
         if ref_id in self.phantom_map:
@@ -272,9 +429,19 @@ class Megastructure:
                 if (phantom_id, position, side) not in handle_update_tracker:
                     self._recursive_propagate_handle(phantom_id, position, side, handle_val, category, descriptor,
                                                      handle_update_tracker, dna_plates, coordinate_to_slats, handle_array,
-                                                     suppress_warnings)
+                                                     suppress_warnings, traversal_tree=traversal_tree)
 
-        # 4. Propagate to physically attached slats (only for ASSEMBLY)
+        # Apply to all links in link manager (except seeds, which are not propagated)
+        if slat.phantom_parent is None and access_key in self.link_manager.handle_link_to_group:
+            if category == 'SEED':
+                raise RuntimeError('Seed cargo link handling is not implemented yet.')
+            link_group = self.link_manager.handle_link_to_group[access_key]
+            for new_group_key in self.link_manager.handle_group_to_link[link_group]:
+                if new_group_key not in handle_update_tracker:
+                    self._recursive_propagate_handle(new_group_key[0], new_group_key[1], new_group_key[2], handle_val, category, descriptor,
+                                                     handle_update_tracker, dna_plates, coordinate_to_slats, handle_array, suppress_warnings, traversal_tree=traversal_tree)
+
+        # Propagate to physically attached slats (only for ASSEMBLY)
         if 'ASSEMBLY' in category:
 
             coordinate = slat.slat_position_to_coordinate[position]
@@ -309,20 +476,43 @@ class Megastructure:
                                                              dna_plates,
                                                              coordinate_to_slats,
                                                              handle_array,
-                                                             suppress_warnings)
+                                                             suppress_warnings,
+                                                             traversal_tree=traversal_tree)
 
-    def _get_coordinate_to_slat_lookup(self):
-        """
-        Generates a lookup dictionary mapping (y, x, layer) to a list of (slat_key, position)
-        at that coordinate. This includes both standard and phantom slats.
-        """
-        lookup = defaultdict(list)
-        for key, slat in self.slats.items():
-            for position, coord in slat.slat_position_to_coordinate.items():
-                lookup[(coord[0], coord[1], slat.layer)].append((key, position))
-        return lookup
+        # After all updates, check for enforcement from link manager (only at root entry)
+        if root_entry and 'SEED' not in category:
+            enforce_order = None
+            for access_key in traversal_tree:
+                enforce_value = self.link_manager.get_enforce_value(access_key)
+                if enforce_value is not None:
+                    enforce_order = enforce_value # all handles need to be updated to this value
+                    break
 
-    def set_slat_handle(self, slat_key, position, side, handle_val, category, descriptor,  sel_plates=None, suppress_warnings=False, coordinate_to_slats=None):
+            if enforce_order is None or enforce_order == handle_val: # no problems, can return
+                return
+
+            if enforce_order != 0 and 'ASSEMBLY' not in category:
+                return # only assembly handles can be enforced to non-zero values
+
+            for access_key in traversal_tree:
+                slat_key, position, side = access_key
+                slat = self.slats[slat_key]
+                if handle_array is None:
+                    if enforce_order == 0:  # i.e. delete
+                        slat.remove_handle(position, side)
+                    else:
+                        current_category = slat.H2_handles[position]['category'] if side == 2 else slat.H5_handles[position]['category']
+                        current_descriptor = slat.H2_handles[position]['descriptor'] if side == 2 else slat.H5_handles[position]['descriptor']
+
+                        self.direct_handle_assign(slat, position, side, enforce_order, current_category,
+                                                  current_descriptor.replace('|%s' % handle_val, '|%s' % enforce_order),
+                                                  sel_plates=dna_plates, suppress_warnings=True)
+
+                # OR Update handle_array if provided
+                else:
+                    update_handle_array(enforce_order)
+
+    def smart_set_slat_handle(self, slat_key, position, side, handle_val, category, descriptor, sel_plates=None, suppress_warnings=False, coordinate_to_slats=None):
         """
         Sets a handle on a slat and propagates it through phantom slats and linked handles according to the design rules.
 
@@ -354,7 +544,33 @@ class Megastructure:
 
         self._recursive_propagate_handle(slat_key, position, side, handle_val, category, descriptor,
                                         slats_updated, coordinate_to_slats=coordinate_to_slats,
-                                        dna_plates=sel_plates, suppress_warnings=suppress_warnings)
+                                        dna_plates=sel_plates, suppress_warnings=suppress_warnings, root_entry=True)
+
+    def smart_handle_delete(self, slat_key, slat_position, slat_side, coordinate_to_slats=None):
+        """
+        Deletes a handle from a slat and propagates it through phantom slats and linked handles according to standard
+         design rules.
+        :param slat_key: The target slat ID. Cannot be a phantom slat.
+        :param slat_position: Position index on the slat (1-based).
+        :param slat_side: 2 or 5
+        :param coordinate_to_slats: Can pre-compute slat lookup map if desired.
+        """
+
+        if slat_key not in self.slats:
+            raise RuntimeError(f'Slat {slat_key} not found in design.')
+        slat = self.slats[slat_key]
+        if slat.phantom_parent is not None:
+            print(Fore.YELLOW + f'Warning: Cannot directly delete handle from phantom slat {slat_key}. Delete from paren slat {slat.phantom_parent} instead.' + Style.RESET_ALL)
+            return
+
+        slats_updated = set()
+        if coordinate_to_slats is None:
+            coordinate_to_slats = self._get_coordinate_to_slat_lookup()
+
+        target_category = slat.H2_handles[slat_position]['category'] if slat_side == 2 else slat.H5_handles[slat_position]['category']
+
+        self._recursive_propagate_handle(slat_key, slat_position, slat_side, 0, target_category, 'N/A',
+                                        slats_updated, coordinate_to_slats=coordinate_to_slats, root_entry=True)
 
     def enforce_phantom_links_on_assembly_handle_array(self, handle_array, modify_in_place=True):
         """
@@ -400,7 +616,7 @@ class Megastructure:
                                 if (slat_key, position, side) not in handle_update_tracker:
                                     self._recursive_propagate_handle(slat_key, position, side, handle_value, category, descriptor,
                                                                     handle_update_tracker, coordinate_to_slats=coordinate_to_slats,
-                                                                    handle_array=handle_array)
+                                                                    handle_array=handle_array, root_entry=True)
 
         return handle_array
 
@@ -439,7 +655,32 @@ class Megastructure:
                         sel_plates = crisscross_antihandle_plates
                         category = 'ANTIHANDLE'
                     if handle_val > 0:
-                        self.assign_handle_to_slat(slat, slat_position_index + 1, slat_side, str(handle_val), 'ASSEMBLY_%s' % category, 'Assembly|%s|%s' % (category.capitalize(), handle_val), sel_plates, suppress_warnings=suppress_warnings)
+                        self.direct_handle_assign(slat, slat_position_index + 1, slat_side, str(handle_val), 'ASSEMBLY_%s' % category, 'Assembly|%s|%s' % (category.capitalize(), handle_val), sel_plates, suppress_warnings=suppress_warnings)
+
+    def clear_all_assembly_handles(self):
+        for slat in self.slats.values():
+            for side in [2,5]:
+                if side == 2:
+                    handles = slat.H2_handles
+                else:
+                    handles = slat.H5_handles
+                marked_for_deletion = []
+                for key, val in handles.items():
+                    if 'ASSEMBLY' in val['category']:
+                        marked_for_deletion.append(key)
+                for key in marked_for_deletion:
+                    slat.remove_handle(key, side)
+
+    def clear_all_handles(self):
+        for slat in self.slats.values():
+            for side in [2,5]:
+                if side == 2:
+                    handles = slat.H2_handles
+                else:
+                    handles = slat.H5_handles
+
+                for key in list(handles.keys()):
+                    slat.remove_handle(key, side)
 
     def assign_seed_handles(self, seed_dict, seed_plate=None):
         """
@@ -464,7 +705,7 @@ class Megastructure:
                         if not isinstance(seed_plate.get_sequence(slat_position, side, handle_id), str):
                             raise RuntimeError('Seed plate selected cannot support placement on canvas.')
 
-                    self.set_slat_handle(selected_slat.ID, slat_position, side, handle_id, 'SEED', 'Seed|%s|%s' % (handle_id, seed_id), sel_plates=seed_plate, coordinate_to_slats=slat_lookup)
+                    self.smart_set_slat_handle(selected_slat.ID, slat_position, side, handle_id, 'SEED', 'Seed|%s|%s' % (handle_id, seed_id), sel_plates=seed_plate, coordinate_to_slats=slat_lookup)
 
     def generate_slat_occupancy_grid(self, use_original_slat_array=False, category='original_slats'):
         """
@@ -488,7 +729,10 @@ class Megastructure:
                     continue
 
                 for y, x in slat.slat_coordinate_to_position.keys():
-                    occupancy_grid[y, x, slat.layer - 1] = int(slat.ID.split('slat')[-1])
+                    if slat.phantom_parent is not None:
+                        occupancy_grid[y, x, slat.layer - 1] = int(slat.ID.split('phantom')[-1])
+                    else:
+                        occupancy_grid[y, x, slat.layer - 1] = int(slat.ID.split('slat')[-1])
 
         return occupancy_grid
 
@@ -595,7 +839,7 @@ class Megastructure:
                 self.cargo_palette[cargo_value] = {'short name': cargo_value[0:2].upper(), 'color': default_colors[next_color]}
                 next_color = (next_color + 1) % len(default_colors)
 
-            self.set_slat_handle(selected_slat.ID, slat_position, handle_orientation, cargo_value, 'CARGO', 'Cargo|%s' % cargo_value, sel_plates=cargo_plate, coordinate_to_slats=slat_lookup)
+            self.smart_set_slat_handle(selected_slat.ID, slat_position, handle_orientation, cargo_value, 'CARGO', 'Cargo|%s' % cargo_value, sel_plates=cargo_plate, coordinate_to_slats=slat_lookup)
 
     def convert_cargo_array_into_cargo_dict(self, cargo_array, cargo_keymap, layer, handle_orientation=None):
         """
@@ -670,9 +914,9 @@ class Megastructure:
 
                 for plate in plates:
                     if not isinstance(plate.get_sequence(*plate_key), bool):
-                        self.assign_handle_to_slat(slat, handle_position, orientation, handle_data['value'],
-                                                   handle_data['category'],
-                                                   handle_data['descriptor'].split('Placeholder|')[-1], plate, update=True)
+                        self.direct_handle_assign(slat, handle_position, orientation, handle_data['value'],
+                                                  handle_data['category'],
+                                                  handle_data['descriptor'].split('Placeholder|')[-1], plate, update=True)
                         break
 
             if len(slat.placeholder_list) > 0:
@@ -697,9 +941,9 @@ class Megastructure:
                 continue # skip phantom slats
             for i in range(1, slat.max_length + 1):
                 if i not in slat.H2_handles:
-                    self.assign_handle_to_slat(slat, i, 2, 'BLANK', 'FLAT', 'Flat', flat_plate)
+                    self.direct_handle_assign(slat, i, 2, 'BLANK', 'FLAT', 'Flat', flat_plate)
                 if i not in slat.H5_handles:
-                    self.assign_handle_to_slat(slat, i, 5, 'BLANK', 'FLAT', 'Flat', flat_plate)
+                    self.direct_handle_assign(slat, i, 5, 'BLANK', 'FLAT', 'Flat', flat_plate)
 
     def get_slats_by_assembly_stage(self, minimum_handle_cutoff=16):
         """
@@ -987,7 +1231,6 @@ class Megastructure:
 
         return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle)
 
-
     def create_graphical_slat_view(self, save_to_folder=None, instant_view=True,
                                    include_cargo=True, include_seed=True,
                                    filename_prepend='',
@@ -1192,8 +1435,16 @@ class Megastructure:
             worksheet = writer.sheets[f'slat_layer_{layer+1}']
             # Convert hex like '#FFCC00' to xlsxwriter format
             hex_color = self.layer_palette[layer+1]['color'].lstrip('#')
+
+            # Convert hex to RGB to calculate brightness
+            r = int(hex_color[0:2], 16) / 255.0
+            g = int(hex_color[2:4], 16) / 255.0
+            b = int(hex_color[4:6], 16) / 255.0
+            brightness = (r * 0.299 + g * 0.587 + b * 0.114)
+            font_color = 'white' if brightness < 0.5 else 'black'
+
             # Define cell format with background color
-            cell_format = workbook.add_format({'bg_color': f'#{hex_color}'})
+            cell_format = workbook.add_format({'bg_color': f'#{hex_color}', 'font_color': font_color})
             # Apply format to non-empty cells
             for row in range(slat_df.shape[0]):
                 for col in range(slat_df.shape[1]):
@@ -1306,7 +1557,7 @@ class Megastructure:
                     max_len = max(max_len, len(str(val)))
             worksheet.set_column(col_idx, col_idx, max_len + 2)
 
-        # finally, print out the slat_types worksheet
+        # Print out the slat_types worksheet
         slat_type_output_dict = defaultdict(list)
         for key, slat in self.slats.items():
             if slat.phantom_parent is not None: continue # phantom slats skipped
@@ -1316,6 +1567,79 @@ class Megastructure:
         slat_type_df = pd.DataFrame.from_dict(slat_type_output_dict)
         slat_type_df.to_excel(writer, index=False, header=True, sheet_name="slat_types")
 
+        # finally, print out any slat layouts to the linked slats worksheet
+        link_output_list = []
+
+        max_slat_len = 0 # unsure we'll ever have different sized slats, but oh well
+        for slat_id, slat in self.slats.items():
+            if slat.phantom_parent is not None: continue
+            max_slat_len = max(max_slat_len, slat.max_length)
+
+        for slat_id, slat in self.slats.items():
+            if slat.phantom_parent is not None: continue
+
+            # Layer-Slat Name row
+            link_output_list.append([slat_id] + [None] * max_slat_len)
+            # Position row
+            link_output_list.append(['Position'] + list(range(1, slat.max_length + 1)) + [None] * (max_slat_len - slat.max_length))
+
+            # Handle rows (h5-val, h5-link-group, h2-val, h2-link-group)
+            for side in [5, 2]:
+                val_row = [f'h{side}-val']
+                group_row = [f'h{side}-link-group']
+                for pos in range(1, slat.max_length + 1):
+                    key = (slat_id, side, pos)
+                    val = None
+                    group = None
+
+                    # Check if it's blocked
+                    if key in self.link_manager.handle_blocks:
+                        val = 0
+                    # Check if it's in a group
+                    elif key in self.link_manager.handle_link_to_group:
+                        if not isinstance(self.link_manager.handle_link_to_group[key], str):
+                            group = self.link_manager.handle_link_to_group[key]
+                        val = self.link_manager.handle_group_to_value.get(group)
+
+                    val_row.append(val if val is not None else "")
+                    group_row.append(group if group is not None else "")
+
+                val_row.extend([None] * (max_slat_len - slat.max_length))
+                group_row.extend([None] * (max_slat_len - slat.max_length))
+                link_output_list.append(val_row)
+                link_output_list.append(group_row)
+
+        link_df = pd.DataFrame(link_output_list)
+        link_df.to_excel(writer, index=False, header=False, sheet_name="slat_handle_links")
+
+        # Formatting for merge and center
+        link_worksheet = writer.sheets["slat_handle_links"]
+        for i in range(0, len(link_output_list), 6):
+
+            # apply colour matching slat data
+            slat = self.slats[link_df.iloc[i,0]]
+
+            if slat.unique_color is not None:
+                hex_color = slat.unique_color.lstrip('#')
+            else:
+                hex_color = self.layer_palette[slat.layer]['color'].lstrip('#')
+
+            # Convert hex to RGB to calculate brightness
+            r = int(hex_color[0:2], 16) / 255.0
+            g = int(hex_color[2:4], 16) / 255.0
+            b = int(hex_color[4:6], 16) / 255.0
+            brightness = (r * 0.299 + g * 0.587 + b * 0.114)
+            font_color = 'white' if brightness < 0.5 else 'black'
+
+            # Define cell format with background color
+            merge_format = workbook.add_format({
+                'align': 'center',
+                'valign': 'vcenter',
+                'bg_color': f'#{hex_color}',
+                'font_color': font_color
+            })
+            # Merge the slat name row across the width of the data with the background color
+            link_worksheet.merge_range(i, 0, i, max_slat_len, link_output_list[i][0], merge_format)
         writer.close()
 
     def import_design(self, file):
@@ -1355,6 +1679,12 @@ class Megastructure:
         else:
             # if no slat types are defined, assume all slats are of type 'tube'
             slat_type_dict = {}
+
+
+        # read handle linking information from sheet (if available)
+        if 'slat_handle_links' in design_df:
+            handle_link_df = design_df['slat_handle_links']
+            link_manager = HandleLinkManager(handle_link_df)
 
         slats = {}
         for i in range(layer_count):
@@ -1516,5 +1846,4 @@ class Megastructure:
             if slat.phantom_parent is not None:
                 slat.unique_color = slats[slat.phantom_parent].unique_color
 
-
-        return slats, handle_array, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords
+        return slats, handle_array, seed_dict, cargo_dict, connection_angle, layer_palette, cargo_palette, hashcad_canvas_metadata, slat_grid_coords, link_manager
