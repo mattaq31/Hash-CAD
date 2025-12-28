@@ -87,6 +87,9 @@ Map<int, int> getSlatMatchCounts(List<List<List<int>>> slatArray, List<List<List
   if (layers < 1) return matchHistogram;
 
   for (final entry in slats.entries) {
+    if (entry.value.phantomParent != null) {
+      continue; // skip phantom slats
+    }
     final sKey = entry.key; // expected like A-I1
     final slat = entry.value;
 
@@ -467,6 +470,9 @@ Future<Map<String, dynamic>> parasiticInteractionsCompute(Map<String, Slat> slat
 
 
   for (final entry in slats.entries) {
+    if (entry.value.phantomParent != null) {
+      continue; // skip phantom slats
+    }
     final slatKey = entry.key;
     final Slat slat = entry.value;
 
