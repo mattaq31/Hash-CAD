@@ -46,7 +46,7 @@ String nextCapitalLetter(String current) {
   return 'A${String.fromCharCodes(chars.map((e) => 'A'.codeUnitAt(0) + e))}';
 }
 
-// encapsulates all info necessary to describe a transient set of moving slats
+// encapsulates all info necessary to describe a transient set of moving slats or cargo
 // TODO: should also add ability to visualize moving slats and cargo too...
 class HoverPreview {
 
@@ -198,7 +198,7 @@ class DesignState extends ChangeNotifier {
   int cargoAddCount = 1;
   String? cargoAdditionType;
   String slatAdditionType = 'tube';
-  List<Offset> selectedCargoPositions = [];
+  List<Offset> selectedHandlePositions = [];
   String designName = 'New Megastructure';
 
   Map<String, Map<Offset, String>> occupiedCargoPoints = {};
@@ -277,7 +277,7 @@ class DesignState extends ChangeNotifier {
     };
 
     occupiedCargoPoints = {};
-    selectedCargoPositions = [];
+    selectedHandlePositions = [];
   }
 
   /// updates the grid type (60 or 90)
@@ -554,9 +554,10 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Clears all selected slats
+  /// Clears all selections
   void clearSelection() {
     selectedSlats = [];
+    selectedHandlePositions = [];
     notifyListeners();
   }
 
@@ -886,15 +887,56 @@ class DesignState extends ChangeNotifier {
   }
 
   /// Updates the position of a slat
-  void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates) {
+  void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates, {bool skipStateUpdate = false, requestFlip = false}) {
 
     // also need to remove old positions from occupiedGridPoints and add new ones
     String layer = slatID.split('-')[0];
 
-    occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
+    // need to check and move cargo positions too if necessary
+    // TODO: what if a slat containing seed handles is moved?
+    for (var i = 0; i < slats[slatID]!.maxLength; i++) {
+      for (var handleType in ['H5', 'H2']){
+        var handleDict = handleType == 'H5' ? slats[slatID]!.h5Handles : slats[slatID]!.h2Handles;
+        if (handleDict[i+1] != null && !handleDict[i+1]!['category'].contains('ASSEMBLY')){
+          var topHelix = layerMap[layer]?['top_helix'];
+          var occupancyID = topHelix == handleType ? 'top' : 'bottom';
+          // moveCargo({slats[slatID]!.slatPositionToCoordinate[i+1]!: slatCoordinates[i+1]!}, layer, occupancyID, skipStateUpdate: true);
+          occupiedCargoPoints['$layer-$occupancyID']?.remove(slats[slatID]!.slatPositionToCoordinate[i+1]!);
+          occupiedCargoPoints['$layer-$occupancyID']![slatCoordinates[i+1]!] = slatID;
+        }
+      }
+    }
 
+    occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
     slats[slatID]?.updateCoordinates(slatCoordinates);
     occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
+
+    if (requestFlip && slats[slatID]!.slatType == 'tube') { // double barrel flips are currently blocked
+      slats[slatID]!.reverseDirection();
+      if(phantomMap.containsKey(slatID)){
+        for (var phantomID in phantomMap[slatID]!.values) {
+          slats[phantomID]!.reverseDirection();
+        }
+      }
+    }
+
+    if (skipStateUpdate){
+      return;
+    }
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Updates the position of multiple slats
+  void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates, {bool requestFlip = false}) {
+
+    for (int i=0; i < slatIDs.length; i++){
+      String slatID = slatIDs[i];
+      Map<int, Offset> slatCoordinates = allCoordinates[i];
+      updateSlatPosition(slatID, slatCoordinates, requestFlip: requestFlip, skipStateUpdate: true);
+    }
+
     hammingValueValid = false;
     saveUndoState();
     notifyListeners();
@@ -1004,6 +1046,19 @@ class DesignState extends ChangeNotifier {
         return;
       }
       selectedSlats.add(ID);
+    }
+    notifyListeners();
+  }
+
+  /// Selects or deselects cargo
+  void selectHandle(Offset coordinate, {bool addOnly = false}) {
+    if (selectedHandlePositions.contains(coordinate) && !addOnly) {
+      selectedHandlePositions.remove(coordinate);
+    } else {
+      if (selectedHandlePositions.contains(coordinate)) {
+        return;
+      }
+      selectedHandlePositions.add(coordinate);
     }
     notifyListeners();
   }
@@ -1511,7 +1566,7 @@ class DesignState extends ChangeNotifier {
         var targetDict = layerMap[slat.layer]!['${side}_helix'] == 'H5' ? slat.h5Handles : slat.h2Handles;
         for (int position = 1; position <= slat.maxLength; position++) {
           if (targetDict[position] != null && targetDict[position]!['value'] == cargoName) {
-            targetDict.remove(position);
+            targetDict.remove(position); // TODO: also need to remove placeholder list - need to make a slat function...
             occupiedCargoPoints['${slat.layer}-$side']?.remove(slat.slatPositionToCoordinate[position]!);
           }
         }
@@ -1523,6 +1578,17 @@ class DesignState extends ChangeNotifier {
     saveUndoState();
     notifyListeners();
 
+  }
+
+  Cargo getCargoFromCoordinate(Offset coordinate, String layerID, String slatSide){
+    String slatID = occupiedCargoPoints['$layerID-$slatSide']![coordinate]!;
+    Slat slat = slats[slatID]!;
+    int position = slat.slatCoordinateToPosition[coordinate]!;
+    int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+    var handleDict = integerSlatSide == 5 ? slat.h5Handles : slat.h2Handles;
+    String cargoName = handleDict[position]!['value'];
+
+    return cargoPalette[cargoName]!;
   }
 
   void deleteAllCargo(){
@@ -1539,6 +1605,56 @@ class DesignState extends ChangeNotifier {
         }
       }
     }
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void moveCargo(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide, {bool skipStateUpdate = false}){
+
+    int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+
+    // TODO: seems to be an issue moving only a subset of cargo - need to debug
+    for (var fromCoord in coordinateTransferMap.keys){
+      if(!occupiedCargoPoints['$layerID-$slatSide']!.containsKey(fromCoord)){
+        continue; // no cargo at this position
+      }
+      // obtains information for the cargo at the 'from' coordinate
+      var slatDonor = slats[occupiedGridPoints[layerID]![fromCoord]!]!;
+      int donorPosition = slatDonor.slatCoordinateToPosition[fromCoord]!;
+      var handleDict = integerSlatSide == 5 ? slatDonor.h5Handles : slatDonor.h2Handles;
+      String cargoName = handleDict[donorPosition]!['value'];
+      Offset toCoord = coordinateTransferMap[fromCoord]!;
+
+      if (!occupiedGridPoints[layerID]!.containsKey(toCoord)) {
+        continue; // no slat at this position
+      }
+
+      // no cargo placement can be made on phantom slats
+      if(slats[occupiedGridPoints[layerID]![toCoord]!]!.phantomParent != null){
+        continue;
+      }
+
+      var slatReceiver = slats[occupiedGridPoints[layerID]![toCoord]!]!;
+      int receiverPosition = slatReceiver.slatCoordinateToPosition[toCoord]!;
+
+      // TODO: should use an actual compartmentalized function for this
+      // removes cargo from the 'from' coordinate
+      handleDict.remove(donorPosition);
+      slatDonor.placeholderList.remove('handle-$donorPosition-h$integerSlatSide');
+
+      // adds cargo to the 'to' coordinate
+      setSlatHandle(slatReceiver, receiverPosition, integerSlatSide, cargoName, 'CARGO');
+
+      // updates occupancy maps
+      occupiedCargoPoints['$layerID-$slatSide']?.remove(fromCoord);
+      occupiedCargoPoints['$layerID-$slatSide']![toCoord] = slatReceiver.id;
+
+    }
+
+    if (skipStateUpdate){
+      return;
+    }
+
     saveUndoState();
     notifyListeners();
   }
@@ -1563,7 +1679,7 @@ class DesignState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void attachCargo(Cargo cargo, String layerID, String slatSide, Map<int, Offset> coordinates){
+  void attachCargo(Cargo cargo, String layerID, String slatSide, Map<int, Offset> coordinates, {bool skipStateUpdate = false}){
 
     occupiedCargoPoints.putIfAbsent('$layerID-$slatSide', () => {});
 
@@ -1584,12 +1700,18 @@ class DesignState extends ChangeNotifier {
       setSlatHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
       occupiedCargoPoints['$layerID-$slatSide']![coord] =  slat.id;
     }
+
+    if (skipStateUpdate){
+      return;
+    }
+
     saveUndoState();
     notifyListeners();
   }
 
-  void removeCargo(String slatID, String slatSide, Offset coordinate){
+  void removeCargo(String slatID, String slatSide, Offset coordinate, {bool skipStateUpdate = false}){
 
+    // TODO: needs a phantom check and link to recursive algorithm
     var slat = slats[slatID]!;
     int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
     if (integerSlatSide == 2){
@@ -1608,8 +1730,13 @@ class DesignState extends ChangeNotifier {
     }
     occupiedCargoPoints['${slat.layer}-$slatSide']?.remove(coordinate);
 
+    if (skipStateUpdate){
+      return;
+    }
+
     saveUndoState();
     notifyListeners();
+
   }
 
   void attachSeed(String layerID, String slatSide, Map<int, Offset> coordinates, BuildContext context){

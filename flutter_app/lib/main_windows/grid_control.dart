@@ -16,6 +16,7 @@ import '../2d_painters/seed_painter.dart';
 import '../main_windows/floating_switches.dart';
 import '../2d_painters/2d_view_svg_exporter.dart';
 import '../app_management/action_state.dart';
+import '../graphics/status_indicator.dart';
 
 /// Class that takes care of painting all 2D objects on the grid, including the grid itself, slats and slat hover effects.
 class GridAndCanvas extends StatefulWidget {
@@ -148,7 +149,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   }
 
   /// Function for converting a mouse hover event into a 'snapPosition' and 'hoverValid' flag to be used when pinpointing the current position on the grid.
-  (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedSlats){
+  (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedPositions){
 
     // the position is snapped to the nearest grid point
     // the function needs to make sure the global offset/scale
@@ -161,7 +162,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     if (actionState.panelMode == 0) {  // slat mode
       // TODO: there must be a faster way to get this to run properly...
       // preselectedSlats means that the slats are already selected and are being moved
-      if (preSelectedSlats) {
+      if (preSelectedPositions) {
         Offset slatOffset = appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor);
         for (var slat in appState.selectedSlats) {
           for (var coord in appState.slats[slat]!.slatPositionToCoordinate
@@ -177,18 +178,42 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     }
     else{  // everything else
       Map<int, Offset> allCargoCoordinates;
-      if (appState.cargoAdditionType != 'SEED') {
-        allCargoCoordinates = generateCargoPositions(snapPosition, false, appState);
+      if(preSelectedPositions){
+        for (var coord in appState.selectedHandlePositions){
+          queryCoordinates.add(appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor) + coord);
+        }
       }
       else{
-        allCargoCoordinates = generateSeedPositions(snapPosition, false, appState); // seed has a special occupancy grid
+        if (appState.cargoAdditionType != 'SEED') {
+          allCargoCoordinates = generateCargoPositions(snapPosition, false, appState);
+        }
+        else {
+          allCargoCoordinates = generateSeedPositions(snapPosition, false, appState); // seed has a special occupancy grid
+        }
+        queryCoordinates = allCargoCoordinates.values.toList();
       }
-      queryCoordinates = allCargoCoordinates.values.toList();
     }
 
     snapHoverValid = !checkCoordinateOccupancy(appState, actionState, queryCoordinates);
 
     return (snapPosition, snapHoverValid);
+  }
+
+  Map<int, Offset> getCargoHoverPoints(DesignState appState, ActionState actionState){
+    if (hoverPosition != null && getActionMode(actionState) == 'Cargo-Add') {
+      if (appState.cargoAdditionType != 'SEED') {
+        return generateCargoPositions(hoverPosition!, true, appState);
+      }
+      else{
+        return generateSeedPositions(hoverPosition!, true, appState);
+      }
+    }
+    else if (hoverPosition != null && getActionMode(actionState) == 'Cargo-Move'){
+      return appState.selectedHandlePositions.asMap();
+    }
+    else{
+      return {};
+    }
   }
 
   /// logic for changing the slat cursor type based on the current action mode
@@ -278,6 +303,19 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
     }
     else {
       return "Neutral";
+    }
+  }
+
+  String getStatusIndicatorText(ActionState actionState, DesignState appState){
+    String actionMode = getActionMode(actionState);
+    if (actionMode == 'Slat-Move'){
+      return 'Slats Selected: ${appState.selectedSlats.length}';
+    }
+    else if (actionMode == 'Cargo-Move'){
+      return 'Handles Selected: ${appState.selectedHandlePositions.length}';
+    }
+    else{
+      return "";
     }
   }
 
@@ -524,12 +562,14 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
   @override
   Widget build(BuildContext context) {
 
-
     // watches the current slat and layer statuses
     var appState = context.watch<DesignState>();
 
     // watches the current action mode
     var actionState = context.watch<ActionState>();
+
+    // gets a quick status update for the floating panel
+    String statusText = getStatusIndicatorText(actionState, appState);
 
     // main app activity defined here
     return Stack(
@@ -546,10 +586,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               });
             }
           },
-
           // the following three event handlers are specifically setup to handle the slat move mode
           onPointerDown: (event){
-            if (actionState.slatMode == "Move") {
+            if (getActionMode(actionState).contains('Move')) {
               // Start drag-box selection
               if (isCtrlPressed || isMetaPressed) { // ctrl or meta key pressed
                 setState(() {
@@ -557,11 +596,20 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                   dragBoxStart = event.position;
                   dragBoxEnd = event.position;
                 });
-              } else { // starts slat drag mode (first need to detect if a slat is under the pointer first)
+              } else { // starts drag mode (first need to detect if a slat or handle is under the pointer first)
                 final Offset snappedPosition = gridSnap(event.position, appState);
-                if (checkCoordinateOccupancy(appState, actionState, [appState.convertRealSpacetoCoordinateSpace(snappedPosition)])) {
-                  dragActive = true; // drag mode is signalled here - panning is now disabled
-                  slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
+                if (getActionMode(actionState) == 'Slat-Move') {
+                  // TODO: write a 'quick' check format for the checkCoordinateOccupancy function - also need to check all coordinates of a seed too if moving that
+                  if (checkCoordinateOccupancy(appState, actionState, [appState.convertRealSpacetoCoordinateSpace(snappedPosition)])) {
+                    dragActive = true; // drag mode is signalled here - panning is now disabled
+                    slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
+                  }
+                }
+                else{
+                 if(appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']!.keys.contains(appState.convertRealSpacetoCoordinateSpace(snappedPosition))){
+                   dragActive = true;
+                   slatMoveAnchor = snappedPosition;
+                 }
                 }
               }
             }
@@ -580,8 +628,21 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                     hiddenSlats.add(slat);
                   }
                 }
-                var (localHoverPosition, localHoverValid) =
-                hoverCalculator(event.position, appState, actionState, true);
+                var (localHoverPosition, localHoverValid) = hoverCalculator(event.position, appState, actionState, true);
+                hoverPosition = localHoverPosition;
+                hoverValid = localHoverValid;
+              });
+            }
+
+            else if (getActionMode(actionState) == 'Cargo-Move' && dragActive) {
+              // when drag mode is activated, the cargo will again follow the cursor (similar to the mouse hover mode)
+              setState(() {
+                if (hiddenCargo.isEmpty) {
+                  for (var coordinate in appState.selectedHandlePositions) {
+                    hiddenCargo.add(coordinate);
+                  }
+                }
+                var (localHoverPosition, localHoverValid) = hoverCalculator(event.position, appState, actionState, true);
                 hoverPosition = localHoverPosition;
                 hoverValid = localHoverValid;
               });
@@ -593,19 +654,31 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
               // Finish drag-box selection
               final rect = Rect.fromPoints((dragBoxStart! - offset) / scale, (dragBoxEnd! - offset) / scale);
 
-              final selected = <String>{};
-              for (var entry in appState.slats.entries) {
-                if (entry.value.layer != appState.selectedLayerKey) continue; // only select slats from the active layer
-                final slat = entry.value;
-                final coords = slat.slatPositionToCoordinate.values.map((coord) => appState.convertCoordinateSpacetoRealSpace(coord));
-                // If any part of slat falls inside the rect → select it
-                if (coords.any((pt) => rect.contains(pt))) {
-                  selected.add(entry.key);
+              if (getActionMode(actionState) == 'Slat-Move') {
+                final selected = <String>{};
+                for (var entry in appState.slats.entries) {
+                  if (entry.value.layer != appState.selectedLayerKey) {
+                    continue; // only select slats from the active layer
+                  }
+                  final slat = entry.value;
+                  final coords = slat.slatPositionToCoordinate.values.map((coord) => appState.convertCoordinateSpacetoRealSpace(coord));
+                  // If any part of slat falls inside the rect → select it
+                  if (coords.any((pt) => rect.contains(pt))) {
+                    selected.add(entry.key);
+                  }
+                }
+                // add all selected slats
+                for (var ID in selected) {
+                  appState.selectSlat(ID, addOnly: true);
                 }
               }
-              // add all selected slats
-              for (var ID in selected) {
-                  appState.selectSlat(ID, addOnly: true);
+              else{
+                for (var entry in appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']!.keys) {
+                  final coord = appState.convertCoordinateSpacetoRealSpace(entry);
+                  if (rect.contains(coord)) {
+                    appState.selectHandle(entry, addOnly: true);
+                  }
+                }
               }
 
               setState(() {
@@ -617,14 +690,15 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
             } else if (getActionMode(actionState) == 'Slat-Move') {
               setState(() {
                 if (hoverValid && dragActive && hoverPosition != null) {
+                  // finalizes slat move and applies flips if requested
                   var convCoordHoverPosition = appState.convertRealSpacetoCoordinateSpace(hoverPosition!);
                   var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
+                  List<Map<int, Offset>> transformedCoordinates = [];
                   for (var slat in appState.selectedSlats){
-                    appState.updateSlatPosition(slat, appState.slats[slat]!.slatPositionToCoordinate.map((key, value) => MapEntry(key, value + convCoordHoverPosition - convCoordAnchor)));
-                    if (moveFlipRequested) {
-                      appState.flipSlat(slat);
-                    }
+                    transformedCoordinates.add(appState.slats[slat]!.slatPositionToCoordinate.map((key, value) => MapEntry(key, value + convCoordHoverPosition - convCoordAnchor)));
                   }
+                  appState.updateMultiSlatPosition(appState.selectedSlats, transformedCoordinates, requestFlip: moveFlipRequested);
+
                 }
                 dragActive = false;
                 hiddenSlats = [];
@@ -633,6 +707,26 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 moveFlipRequested = false; // reset the flip request
               });
             }
+
+            else if (getActionMode(actionState) == 'Cargo-Move') {
+              setState(() {
+                if (hoverValid && dragActive && hoverPosition != null) {
+                  // finalizes slat move and applies flips if requested
+                  var convCoordHoverPosition = appState.convertRealSpacetoCoordinateSpace(hoverPosition!);
+                  var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
+                  Map<Offset, Offset> coordinateTransferMap = {};
+                  for (int i = 0; i < appState.selectedHandlePositions.length; i++){
+                    coordinateTransferMap[appState.selectedHandlePositions[i]] = appState.selectedHandlePositions[i] + convCoordHoverPosition - convCoordAnchor;
+                  }
+                  appState.moveCargo(coordinateTransferMap, appState.selectedLayerKey, actionState.cargoAttachMode);
+                }
+                dragActive = false;
+                hiddenCargo = [];
+                hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
+                slatMoveAnchor = Offset.zero;
+              });
+            }
+
           },
 
           // this handles keyboard events (only)
@@ -843,10 +937,9 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         return;
                       }
                       // slats added to a persistent list here
-                      Map<int, Map<int, Offset>> incomingSlats = {};
-                      incomingSlats = generateSlatPositions(snappedPosition, false, appState);
-                      // if not already taken, can proceed to add a new slat
+                      Map<int, Map<int, Offset>> incomingSlats = generateSlatPositions(snappedPosition, false, appState);
                       appState.clearSelection();
+                      //  proceed to add new slats if valid
                       appState.addSlats(appState.selectedLayerKey, incomingSlats);
                     }
                     else if (getActionMode(actionState) == 'Slat-Delete'){
@@ -857,6 +950,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         }
                     }
                     else if (getActionMode(actionState) == 'Cargo-Add'){
+
                       if (!hoverValid) {
                         return;
                       }
@@ -869,16 +963,16 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                       else {
                         incomingCargo = generateCargoPositions(snappedPosition, false, appState);
                       }
-                      // if not already taken, can proceed to add a new slat
+
+                      // proceed to add new cargo if valid
                       appState.clearSelection();
                       if (appState.cargoAdditionType != null) {
                         if (appState.cargoAdditionType == 'SEED'){
                           appState.attachSeed(appState.selectedLayerKey, actionState.cargoAttachMode, incomingCargo, context);
                         }
                         else {
-                          appState.attachCargo(appState.cargoPalette[appState
-                              .cargoAdditionType]!, appState.selectedLayerKey,
-                              actionState.cargoAttachMode, incomingCargo);
+                          appState.attachCargo(appState.cargoPalette[appState.cargoAdditionType]!,
+                              appState.selectedLayerKey, actionState.cargoAttachMode, incomingCargo);
                         }
                       }
                     }
@@ -890,7 +984,6 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                       }
                     }
                   },
-
                   onTapUp: (TapUpDetails details) {
                     final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
 
@@ -906,7 +999,18 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         appState.clearSelection();
                       }
                     }
-                    // TODO: ADD CARGO MOVE MODE!!
+                    else if (getActionMode(actionState) == 'Cargo-Move') {
+                      if (checkCoordinateOccupancy(appState, actionState, [snappedPosition])){
+                        if (appState.selectedHandlePositions.isNotEmpty && !isShiftPressed) {
+                          appState.clearSelection();
+                        }
+                        // this flips a selection if the cargo was already clicked (and pressing shift)
+                        appState.selectHandle(snappedPosition);
+                      }
+                      else {
+                        appState.clearSelection();
+                      }
+                    }
 
                   },
                   // the custom painters here constantly re-apply objects to the screen while moving around
@@ -928,6 +1032,7 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                               appState.selectedLayerKey,
                               appState.selectedSlats,
                               hiddenSlats,
+                              hiddenCargo,
                               actionState,
                               appState),
                           child: Container(),
@@ -951,13 +1056,12 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                         ): CargoHoverPainter(
                             scale,
                             offset,
-                            appState.cargoAdditionType != null ? appState.cargoPalette[appState.cargoAdditionType]! : null,
                             hoverValid,
-                            (hoverPosition != null && getActionMode(actionState) == 'Cargo-Add') ? appState.cargoAdditionType == 'SEED' ? generateSeedPositions(hoverPosition!, true, appState) : generateCargoPositions(hoverPosition!, true, appState) : {},
+                            getCargoHoverPoints(appState, actionState),
                             hoverPosition,
-                            [],
                             slatMoveAnchor,
-                            appState
+                            appState,
+                            actionState
                         ),
                         child: Container(),
                       ),
@@ -1023,9 +1127,32 @@ class _GridAndCanvasState extends State<GridAndCanvas> {
                 );
               },
             ),
-          ),
         ),
-        TogglePanel(actionState: actionState, onCenterPressed: centerOnSlats)
+      ),
+      AnimatedPositioned(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        bottom: 90,
+        left: actionState.isSideBarCollapsed ? 72 + 25 : 72 + 330 + 20,
+        child: AnimatedSwitcher(
+          switchInCurve: Curves.easeInOut,
+          switchOutCurve: Curves.easeInOut,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: animation,
+                alignment: Alignment.topCenter,
+                child: child,
+              ),
+            );
+          },
+          duration: const Duration(milliseconds: 400),
+          child: statusText.isEmpty ? const SizedBox.shrink() : StatusIndicator(text: statusText),
+        ),
+      ),
+
+      TogglePanel(actionState: actionState, onCenterPressed: centerOnSlats)
     ]);
   }
 }

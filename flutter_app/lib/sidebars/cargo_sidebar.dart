@@ -107,13 +107,11 @@ Widget _buildCargoSquare(Cargo cargo, DesignState appState) {
   );
 }
 
-
 class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObserver {
 
   FocusNode cargoAddFocusNode = FocusNode();
 
   TextEditingController cargoAddTextController = TextEditingController(text: '1');
-
 
   void _updateCargoAddCount(DesignState appState) {
     int? newValue = int.tryParse(cargoAddTextController.text);
@@ -243,6 +241,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
         selected: <String>{actionState.cargoMode},
         onSelectionChanged: (Set<String> newSelection) {
           setState(() {
+            appState.cargoAdditionType = null;
             actionState.updateCargoMode(newSelection.first);
           });
         },

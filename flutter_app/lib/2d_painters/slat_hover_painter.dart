@@ -94,11 +94,11 @@ class SlatHoverPainter extends CustomPainter {
         for (var slat in preSelectedSlats) {
 
           // gathers all the coordinates for the selected slat
-          List unSortedCoords = slat.slatPositionToCoordinate.entries
+          List SortedCoords = slat.slatPositionToCoordinate.entries
               .toList()
             ..sort((a, b) => a.key.compareTo(b.key)); // sort by the integer key
 
-          List<Offset> coords = unSortedCoords.map((e) => appState.convertCoordinateSpacetoRealSpace(e.value)).toList();
+          List<Offset> coords = SortedCoords.map((e) => appState.convertCoordinateSpacetoRealSpace(e.value)).toList();
           if (moveTranspose && slat.slatType == 'tube'){
             // reverse the coordinates
             coords = coords.reversed.toList();

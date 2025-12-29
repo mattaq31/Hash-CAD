@@ -185,6 +185,7 @@ class SlatPainter extends CustomPainter {
   final String selectedLayer;
   final List<String> selectedSlats;
   final List<String> hiddenSlats;
+  final List<Offset> hiddenCargo;
   final ActionState actionState;
   final DesignState appState;
   late Map<int, TextPainter> labelPainters;
@@ -192,7 +193,7 @@ class SlatPainter extends CustomPainter {
 
   SlatPainter(this.scale, this.canvasOffset, this.slats,
       this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats,
-      this.actionState, this.appState){
+      this.hiddenCargo, this.actionState, this.appState){
 
     labelPainters = <int, TextPainter>{};
     TextStyle textStyle = TextStyle(
@@ -431,11 +432,11 @@ class SlatPainter extends CustomPainter {
       }
 
       // gathers all the coordinates for the selected slat
-      List unSortedCoords = slat.slatPositionToCoordinate.entries
+      List sortedCoords = slat.slatPositionToCoordinate.entries
           .toList()
         ..sort((a, b) => a.key.compareTo(b.key)); // sort by the integer key
 
-      List<Offset> coords = unSortedCoords.map((e) => getRealCoord(e.value)).toList();
+      List<Offset> coords = sortedCoords.map((e) => getRealCoord(e.value)).toList();
 
       // if slat out of the visible rectangle, can skip drawing to speed up rendering
       final slatBounds = Rect.fromPoints(
@@ -501,11 +502,11 @@ class SlatPainter extends CustomPainter {
               String shortText = descriptor;
               Color color = Colors.grey;
 
-              if(actionState.plateValidation){
-                if (isTop){
+              if (actionState.plateValidation) {
+                if (isTop) {
                   topValid = !slat.checkPlaceholder(handleIndex, sideName);
                 }
-                else{
+                else {
                   bottomValid = !slat.checkPlaceholder(handleIndex, sideName);
                 }
               }
@@ -514,30 +515,29 @@ class SlatPainter extends CustomPainter {
                 shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
                 color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
               } else if (category.contains('ASSEMBLY')) {
-                if(slat.phantomParent != null){
+                if (slat.phantomParent != null) {
                   color = Colors.red;
                 }
                 else {
                   color = Colors.green;
                 }
-
               } else if (category == 'SEED') {
                 color = appState.cargoPalette['SEED']!.color;
                 shortText = '🌱${getIndexFromSeedText(descriptor)}';
               }
 
               if (isTop) {
-                topText = category == 'SEED' ? shortText :'↑$shortText';
+                topText = category == 'SEED' ? shortText : '↑$shortText';
                 topColor = color;
                 topCategory = category;
               } else {
-                bottomText = category == 'SEED' ? shortText :'↓$shortText';
+                bottomText = category == 'SEED' ? shortText : '↓$shortText';
                 bottomColor = color;
                 bottomCategory = category;
               }
             }
 
-            if (h5 != null  && h5['category'] != 'FLAT') {
+            if (h5 != null && h5['category'] != 'FLAT') {
               final side = selectedLayerTopside == 'H5' ? 'top' : 'bottom';
               updateHandleData(h5, side, 5);
             }
@@ -546,7 +546,9 @@ class SlatPainter extends CustomPainter {
               updateHandleData(h2, side, 2);
             }
 
-            final position = getRealCoord(slat.slatPositionToCoordinate[handleIndex]!);
+            final standardizedPosition = slat.slatPositionToCoordinate[handleIndex]!;
+            final position = getRealCoord(standardizedPosition);
+
             final size = appState.gridSize * 0.85;
             final halfHeight = size / 2;
 
@@ -568,8 +570,28 @@ class SlatPainter extends CustomPainter {
               height: halfHeight,
             );
 
-            void drawHandleMarker(Rect rect, Color color, String category, bool isTop) {
-              final paint = Paint()..color = color..style = PaintingStyle.fill;
+            void drawHandleMarker(Rect rect, Color color, String category, bool isTop, bool isSelected) {
+              final paint = Paint()
+                ..color = color
+                ..style = PaintingStyle.fill;
+
+              if (isSelected) {
+                final glowPaint = Paint()
+                  ..color = Colors.black//color.withValues(alpha: 1.0)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 3.0
+                  ..maskFilter = const MaskFilter.blur(
+                    BlurStyle.normal,
+                    0.3, // glow radius
+                  );
+
+                final glowRect = rect.inflate(appState.gridSize/30); // push glow outside box
+                canvas.drawRRect(
+                  RRect.fromRectAndRadius(glowRect, const Radius.circular(2)),
+                  glowPaint,
+                );
+              }
+
               if (category == 'UNUSED') { // not doing triangles for now
                 final path = Path();
                 final centerX = rect.center.dx;
@@ -626,8 +648,10 @@ class SlatPainter extends CustomPainter {
               }
             }
 
-            drawHandleMarker(rectTop, topColor, topCategory, true);
-            drawHandleMarker(rectBottom, bottomColor, bottomCategory, false);
+            bool topHandleHidden = hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top';
+            bool bottomHandleHidden = hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom';
+            bool topHandleSelected = appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top';
+            bool bottomHandleSelected = appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom';
 
             void drawText(String text, Offset offset, Color textColor, double fontSize) {
               final textPainter = TextPainter(
@@ -652,8 +676,15 @@ class SlatPainter extends CustomPainter {
               textPainter.paint(canvas, actualOffset);
             }
 
-            drawText(topText, Offset(position.dx, position.dy - halfHeight / 2), isColorDark(topColor) ? Colors.white : Colors.black,  halfHeight * 0.8);
-            drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2), isColorDark(bottomColor) ? Colors.white : Colors.black, halfHeight * 0.8);
+            if (!topHandleHidden) {
+              drawHandleMarker(rectTop, topColor, topCategory, true, topHandleSelected);
+              drawText(topText, Offset(position.dx, position.dy - halfHeight / 2), isColorDark(topColor) ? Colors.white : Colors.black,  halfHeight * 0.8);
+
+            }
+            if (!bottomHandleHidden) {
+              drawHandleMarker(rectBottom, bottomColor, bottomCategory, false, bottomHandleSelected);
+              drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2), isColorDark(bottomColor) ? Colors.white : Colors.black, halfHeight * 0.8);
+            }
 
             canvas.drawLine(
               Offset(rectTop.left, position.dy),
