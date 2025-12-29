@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_management/shared_app_state.dart';
 import 'alert_window.dart';
-
+import '../app_management/action_state.dart';
 
 class TogglePanel extends StatefulWidget {
   final ActionState actionState;

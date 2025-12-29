@@ -6,6 +6,7 @@ import '../app_management/shared_app_state.dart';
 import 'slat_design_sidebar.dart';
 import 'assembly_handles_sidebar.dart';
 import 'cargo_sidebar.dart';
+import '../app_management/action_state.dart';
 
 class SideBarTools extends StatefulWidget {
   const SideBarTools({super.key});

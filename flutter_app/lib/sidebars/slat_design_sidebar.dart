@@ -6,6 +6,7 @@ import 'layer_manager.dart';
 import '../app_management/shared_app_state.dart';
 import 'slat_edit_selection_panel.dart';
 import 'slat_add_selection_panel.dart';
+import '../app_management/action_state.dart';
 
 
 List<String> getOrderedKeys(Map<String, Map<String, dynamic>> layerMap) {

@@ -1,9 +1,10 @@
-
 import 'package:flutter/material.dart';
+
 import 'slat_painter.dart';
 import '../graphics/crosshatch_shader.dart';
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
+import '../app_management/action_state.dart';
 
 /// Custom painter for the slat hover display
 class SlatHoverPainter extends CustomPainter {

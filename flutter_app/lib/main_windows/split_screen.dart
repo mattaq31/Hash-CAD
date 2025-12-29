@@ -13,6 +13,8 @@ import '../grpc_client_architecture/server_startup.dart';
 import '../app_management/version_tracker.dart';
 import 'floating_main_title.dart';
 import '../drag_and_drop/design_drop_target.dart';
+import '../app_management/action_state.dart';
+import '../app_management/server_state.dart';
 
 
 class SplitScreen extends StatefulWidget {

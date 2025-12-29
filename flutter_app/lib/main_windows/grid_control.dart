@@ -15,7 +15,7 @@ import '../2d_painters/drag_box_painter.dart';
 import '../2d_painters/seed_painter.dart';
 import '../main_windows/floating_switches.dart';
 import '../2d_painters/2d_view_svg_exporter.dart';
-
+import '../app_management/action_state.dart';
 
 /// Class that takes care of painting all 2D objects on the grid, including the grid itself, slats and slat hover effects.
 class GridAndCanvas extends StatefulWidget {

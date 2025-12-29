@@ -6,6 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 
 import '../app_management/shared_app_state.dart';
+import '../app_management/action_state.dart';
+import '../app_management/server_state.dart';
 import 'layer_manager.dart';
 import '../main_windows/alert_window.dart';
 

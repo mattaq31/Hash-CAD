@@ -1,6 +1,8 @@
 import '../app_management/shared_app_state.dart';
 import '../graphics/line_chart.dart';
 import '../sidebars/assembly_handles_sidebar.dart';
+import '../app_management/action_state.dart';
+import '../app_management/server_state.dart';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

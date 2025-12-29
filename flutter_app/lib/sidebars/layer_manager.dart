@@ -1,9 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+
 import '../app_management/shared_app_state.dart';
 import '../graphics/honeycomb_pictogram.dart';
-
+import '../app_management/action_state.dart';
 
 class LayerManagerWidget extends StatelessWidget {
   final DesignState appState;
