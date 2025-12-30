@@ -101,7 +101,7 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T> {
       var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
       if (checkCoordinateOccupancy(appState, actionState, [coordConvertedPosition])) {
         appState.removeCargo(
-            appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']![coordConvertedPosition]!,
+            appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!,
             actionState.cargoAttachMode,
             coordConvertedPosition);
       }

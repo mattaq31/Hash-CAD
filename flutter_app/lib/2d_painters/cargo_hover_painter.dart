@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../graphics/crosshatch_shader.dart';
 import '../app_management/shared_app_state.dart';
 import '../app_management/action_state.dart';
-import  '../crisscross_core/cargo.dart';
 import './seed_painter.dart';
 import '../crisscross_core/seed.dart';
 import 'slat_painter.dart';

@@ -80,7 +80,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
           var occupancyID = topHelix == handleType ? 'top' : 'bottom';
           // moveCargo({slats[slatID]!.slatPositionToCoordinate[i+1]!: slatCoordinates[i+1]!}, layer, occupancyID, skipStateUpdate: true);
           occupiedCargoPoints['$layer-$occupancyID']?.remove(slats[slatID]!.slatPositionToCoordinate[i + 1]!);
-          occupiedCargoPoints['$layer-$occupancyID']![slatCoordinates[i + 1]!] = slatID;
+          occupiedCargoPoints['$layer-$occupancyID']![slatCoordinates[i + 1]!] = handleDict[i + 1]!['value'];
         }
       }
     }

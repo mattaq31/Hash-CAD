@@ -158,14 +158,14 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
           var occupancyID = topHelix == 'H2' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
           occupiedCargoPoints['$layer-$occupancyID']![
-              slat.slatPositionToCoordinate[i + 1]!] = slat.id;
+              slat.slatPositionToCoordinate[i + 1]!] = slat.h2Handles[i + 1]!['value'];
         }
         if (slat.h5Handles[i + 1] != null &&
             !slat.h5Handles[i + 1]!['category'].contains('ASSEMBLY')) {
           var occupancyID = topHelix == 'H5' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
           occupiedCargoPoints['$layer-$occupancyID']![
-              slat.slatPositionToCoordinate[i + 1]!] = slat.id;
+              slat.slatPositionToCoordinate[i + 1]!] = slat.h5Handles[i + 1]!['value'];
         }
       }
     }

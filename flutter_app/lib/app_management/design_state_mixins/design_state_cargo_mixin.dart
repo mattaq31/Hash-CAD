@@ -51,14 +51,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
   }
 
   Cargo getCargoFromCoordinate(Offset coordinate, String layerID, String slatSide) {
-    String slatID = occupiedCargoPoints['$layerID-$slatSide']![coordinate]!;
-    Slat slat = slats[slatID]!;
-    int position = slat.slatCoordinateToPosition[coordinate]!;
-    int integerSlatSide = int.parse(
-        layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-    var handleDict = integerSlatSide == 5 ? slat.h5Handles : slat.h2Handles;
-    String cargoName = handleDict[position]!['value'];
-
+    String cargoName = occupiedCargoPoints['$layerID-$slatSide']![coordinate]!;
     return cargoPalette[cargoName]!;
   }
 
@@ -120,7 +113,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
 
       // updates occupancy maps
       occupiedCargoPoints['$layerID-$slatSide']?.remove(fromCoord);
-      occupiedCargoPoints['$layerID-$slatSide']![toCoord] = slatReceiver.id;
+      occupiedCargoPoints['$layerID-$slatSide']![toCoord] = cargoName;
     }
 
     if (skipStateUpdate) {
@@ -171,7 +164,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
       int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix']
           .replaceAll(RegExp(r'[^0-9]'), ''));
       setSlatHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
-      occupiedCargoPoints['$layerID-$slatSide']![coord] = slat.id;
+      occupiedCargoPoints['$layerID-$slatSide']![coord] = cargo.name;
     }
 
     if (skipStateUpdate) {

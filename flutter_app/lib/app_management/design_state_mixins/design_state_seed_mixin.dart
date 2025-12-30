@@ -94,9 +94,10 @@ mixin DesignStateSeedMixin on ChangeNotifier {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-      setSlatHandle(slat, position, integerSlatSide, '$nextSeedID-$row-$col', 'SEED');
+      String seedHandleValue = '$nextSeedID-$row-$col';
+      setSlatHandle(slat, position, integerSlatSide, seedHandleValue, 'SEED');
 
-      occupiedCargoPoints['$layerID-$slatSide']![coord] = slat.id;
+      occupiedCargoPoints['$layerID-$slatSide']![coord] = seedHandleValue;
 
       // seed takes up space from the slat grid too, not just cargo
       if (occupiedLayer != '') {
@@ -130,7 +131,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
           seed.key.$2 == slatSide) {
         for (var coord in seed.value.coordinates.values) {
           var convCoord = convertRealSpacetoCoordinateSpace(coord);
-          var slat = slats[occupiedCargoPoints['$layerID-$slatSide']![convCoord]];
+          var slat = slats[occupiedGridPoints[layerID]![convCoord]];
 
           int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
           if (integerSlatSide == 2) {
