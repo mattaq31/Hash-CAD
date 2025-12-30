@@ -3,25 +3,10 @@ import 'package:flutter/services.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import 'grid_control_contract.dart';
 
 /// Mixin containing keyboard event handlers for GridAndCanvas
-mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T> {
-  // Required state - to be provided by _GridAndCanvasState
-  Offset? get hoverPosition;
-  bool get dragActive;
-  bool get moveFlipRequested;
-  set moveFlipRequested(bool value);
-  bool get isShiftPressed;
-  set isShiftPressed(bool value);
-  bool get isCtrlPressed;
-  set isCtrlPressed(bool value);
-  bool get isMetaPressed;
-  set isMetaPressed(bool value);
-
-  // Methods from other mixins
-  String getActionMode(ActionState actionState);
-  void setHoverCoordinates(DesignState appState);
-
+mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   Map<ShortcutActivator, VoidCallback> getKeyboardBindings(DesignState appState, ActionState actionState) {
     return {
       // Rotation shortcut

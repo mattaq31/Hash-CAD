@@ -4,26 +4,13 @@ import 'package:flutter/services.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import 'grid_control_contract.dart';
 
 /// Mixin containing helper calculation functions for GridAndCanvas
-mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
-  // Required state - to be provided by _GridAndCanvasState
-  double get scale;
-  Offset get offset;
-  double get minScale;
-  double get maxScale;
-  Offset? get hoverPosition;
-  List<String> get hiddenSlats;
-  List<Offset> get hiddenCargo;
-  Offset get slatMoveAnchor;
-
-  // Methods from other mixins
-  Map<int, Map<int, Offset>> generateSlatPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-  Map<int, Offset> generateCargoPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-  Map<int, Offset> generateSeedPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-
+mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   /// Function for converting a mouse zoom event into a 'scale' and 'offset' to be used when pinpointing the current position on the grid.
   /// 'zoomFactor' affects the scroll speed (higher is slower).
+  @override
   (double, Offset) scrollZoomCalculator(PointerScrollEvent event, {double zoomFactor = 0.2}) {
     double newScale = scale;
 
@@ -50,6 +37,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Function for checking if a slat can be placed at a given coordinate.
+  @override
   bool checkCoordinateOccupancy(DesignState appState, ActionState actionState, List<Offset> coordinates) {
     Iterable<Offset>? occupiedPositions;
     Set<Offset> hiddenPositions = {};
@@ -96,6 +84,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Function for converting a mouse hover event into a 'snapPosition' and 'hoverValid' flag to be used when pinpointing the current position on the grid.
+  @override
   (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedPositions) {
     // the position is snapped to the nearest grid point
     // the function needs to make sure the global offset/scale
@@ -157,6 +146,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
     return (snapPosition, snapHoverValid);
   }
 
+  @override
   Map<int, Offset> getCargoHoverPoints(DesignState appState, ActionState actionState) {
     if (hoverPosition != null && getActionMode(actionState) == 'Cargo-Add') {
       if (appState.cargoAdditionType != 'SEED') {
@@ -172,6 +162,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// logic for changing the slat cursor type based on the current action mode
+  @override
   SystemMouseCursor getCursorForSlatMode(String actionMode) {
     if (actionMode.contains("Add")) {
       return SystemMouseCursors.precise;
@@ -184,6 +175,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
+  @override
   Offset gridSnap(Offset inputPosition, DesignState designState) {
     if (designState.gridMode == '90') {
       return Offset(
@@ -228,6 +220,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
+  @override
   String getActionMode(ActionState actionState) {
     if (actionState.panelMode == 0) {
       if (actionState.slatMode == "Add") {
@@ -254,6 +247,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
+  @override
   List<String> getStatusIndicatorText(ActionState actionState, DesignState appState) {
     String actionMode = getActionMode(actionState);
     if (actionMode == 'Slat-Move') {

@@ -5,17 +5,11 @@ import 'dart:math' as math;
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
 import '../../2d_painters/helper_functions.dart';
+import 'grid_control_contract.dart';
 
 /// Mixin containing position generation functions for GridAndCanvas
-mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T> {
-  // Required state - to be provided by _GridAndCanvasState
-  double get scale;
-  set scale(double value);
-  Offset get offset;
-  set offset(Offset value);
-  double get minScale;
-  double get maxScale;
-
+mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
+  @override
   Map<int, Map<int, Offset>> generateSlatPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState) {
     // slats added to a persistent list here
     Map<int, Map<int, Offset>> incomingSlats = {};
@@ -84,6 +78,7 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T> {
     return incomingSlats;
   }
 
+  @override
   Map<int, Offset> generateCargoPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState) {
     // cargo added to a persistent list here
     Map<int, Offset> incomingCargo = {};
@@ -110,6 +105,7 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T> {
     return incomingCargo;
   }
 
+  @override
   Map<int, Offset> generateSeedPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState) {
     // seed handles added to a persistent list here
     Map<int, Offset> incomingHandles = {};
@@ -148,6 +144,7 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Centers the 2D view on all slats, accounting for all UI elements
+  @override
   void centerOnSlats() {
     var appState = context.read<DesignState>();
     var actionState = context.read<ActionState>();

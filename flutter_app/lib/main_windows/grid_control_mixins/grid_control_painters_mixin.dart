@@ -9,28 +9,10 @@ import '../../2d_painters/cargo_hover_painter.dart';
 import '../../2d_painters/delete_painter.dart';
 import '../../2d_painters/seed_painter.dart';
 import '../../2d_painters/drag_box_painter.dart';
+import 'grid_control_contract.dart';
 
 /// Mixin containing the CustomPaint widget builders for GridAndCanvas
-mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T> {
-  // Required state - to be provided by _GridAndCanvasState
-  double get scale;
-  Offset get offset;
-  bool get hoverValid;
-  Map<int, Map<int, Offset>> get hoverSlatMap;
-  Offset? get hoverPosition;
-  bool get dragActive;
-  List<String> get hiddenSlats;
-  List<Offset> get hiddenCargo;
-  Offset get slatMoveAnchor;
-  bool get moveFlipRequested;
-  bool get dragBoxActive;
-  Offset? get dragBoxStart;
-  Offset? get dragBoxEnd;
-
-  // Methods from other mixins
-  String getActionMode(ActionState actionState);
-  Map<int, Offset> getCargoHoverPoints(DesignState appState, ActionState actionState);
-
+mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   /// Builds the stack of CustomPaint widgets for the 2D canvas
   Widget buildPainterStack(DesignState appState, ActionState actionState) {
     return Stack(

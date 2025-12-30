@@ -3,44 +3,10 @@ import 'package:flutter/gestures.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import 'grid_control_contract.dart';
 
 /// Mixin containing mouse/pointer event handlers for GridAndCanvas
-mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T> {
-  // Required state - to be provided by _GridAndCanvasState
-  double get scale;
-  set scale(double value);
-  Offset get offset;
-  set offset(Offset value);
-  Offset? get hoverPosition;
-  set hoverPosition(Offset? value);
-  bool get hoverValid;
-  set hoverValid(bool value);
-  bool get dragActive;
-  set dragActive(bool value);
-  Offset get slatMoveAnchor;
-  set slatMoveAnchor(Offset value);
-  List<String> get hiddenSlats;
-  set hiddenSlats(List<String> value);
-  List<Offset> get hiddenCargo;
-  set hiddenCargo(List<Offset> value);
-  bool get moveFlipRequested;
-  set moveFlipRequested(bool value);
-  bool get isCtrlPressed;
-  bool get isMetaPressed;
-  bool get dragBoxActive;
-  set dragBoxActive(bool value);
-  Offset? get dragBoxStart;
-  set dragBoxStart(Offset? value);
-  Offset? get dragBoxEnd;
-  set dragBoxEnd(Offset? value);
-
-  // Methods from other mixins
-  String getActionMode(ActionState actionState);
-  (double, Offset) scrollZoomCalculator(PointerScrollEvent event, {double zoomFactor});
-  Offset gridSnap(Offset inputPosition, DesignState designState);
-  bool checkCoordinateOccupancy(DesignState appState, ActionState actionState, List<Offset> coordinates);
-  (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedPositions);
-
+mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   void handlePointerSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent && !dragBoxActive) {
       setState(() {

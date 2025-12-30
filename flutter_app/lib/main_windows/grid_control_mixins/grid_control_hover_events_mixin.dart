@@ -4,25 +4,10 @@ import 'package:provider/provider.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import 'grid_control_contract.dart';
 
 /// Mixin containing hover event handlers for GridAndCanvas
-mixin GridControlHoverEventsMixin<T extends StatefulWidget> on State<T> {
-  // Required state - to be provided by _GridAndCanvasState
-  Offset? get hoverPosition;
-  set hoverPosition(Offset? value);
-  bool get hoverValid;
-  set hoverValid(bool value);
-  Map<int, Map<int, Offset>> get hoverSlatMap;
-  set hoverSlatMap(Map<int, Map<int, Offset>> value);
-  FocusNode get keyFocusNode;
-
-  // Methods from other mixins
-  String getActionMode(ActionState actionState);
-  (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedPositions);
-  void setHoverCoordinates(DesignState appState);
-  Map<int, Offset> generateSeedPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-  Map<int, Offset> generateCargoPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-
+mixin GridControlHoverEventsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   void handleHover(PointerHoverEvent event, DesignState appState, ActionState actionState) {
     keyFocusNode.requestFocus(); // returns focus back to keyboard shortcuts
 

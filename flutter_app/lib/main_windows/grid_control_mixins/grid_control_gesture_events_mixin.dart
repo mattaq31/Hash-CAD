@@ -2,35 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import 'grid_control_contract.dart';
 
 /// Mixin containing gesture event handlers for GridAndCanvas
-mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T> {
-  // Required state - to be provided by _GridAndCanvasState
-  double get scale;
-  set scale(double value);
-  Offset get offset;
-  set offset(Offset value);
-  double get initialScale;
-  set initialScale(double value);
-  Offset get initialPanOffset;
-  set initialPanOffset(Offset value);
-  Offset get initialGestureFocalPoint;
-  set initialGestureFocalPoint(Offset value);
-  double get minScale;
-  double get maxScale;
-  bool get dragActive;
-  bool get dragBoxActive;
-  bool get hoverValid;
-  bool get isShiftPressed;
-
-  // Methods from other mixins
-  String getActionMode(ActionState actionState);
-  Offset gridSnap(Offset inputPosition, DesignState designState);
-  bool checkCoordinateOccupancy(DesignState appState, ActionState actionState, List<Offset> coordinates);
-  Map<int, Map<int, Offset>> generateSlatPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-  Map<int, Offset> generateCargoPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-  Map<int, Offset> generateSeedPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
-
+mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   void handleScaleStart(ScaleStartDetails details) {
     initialScale = scale;
     initialPanOffset = offset;

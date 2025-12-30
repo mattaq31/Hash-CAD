@@ -7,6 +7,7 @@ import '../main_windows/floating_switches.dart';
 import '../2d_painters/2d_view_svg_exporter.dart';
 import '../graphics/status_indicator.dart';
 
+import 'grid_control_mixins/grid_control_contract.dart';
 import 'grid_control_mixins/grid_control_helpers_mixin.dart';
 import 'grid_control_mixins/grid_control_position_generators_mixin.dart';
 import 'grid_control_mixins/grid_control_hover_events_mixin.dart';
@@ -26,6 +27,7 @@ class GridAndCanvas extends StatefulWidget {
 
 class _GridAndCanvasState extends State<GridAndCanvas>
     with
+        GridControlContract<GridAndCanvas>,
         GridControlHelpersMixin<GridAndCanvas>,
         GridControlPositionGeneratorsMixin<GridAndCanvas>,
         GridControlHoverEventsMixin<GridAndCanvas>,
