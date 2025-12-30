@@ -1,0 +1,251 @@
+import 'package:flutter/material.dart';
+
+import '../../crisscross_core/slats.dart';
+
+/// Mixin containing slat CRUD operations for DesignState
+mixin DesignStateSlatMixin on ChangeNotifier {
+  // Required state
+  Map<String, Slat> get slats;
+
+  Map<String, Map<String, dynamic>> get layerMap;
+
+  Map<String, Map<Offset, String>> get occupiedGridPoints;
+
+  Map<String, Map<Offset, String>> get occupiedCargoPoints;
+
+  Map<String, Map<int, String>> get phantomMap;
+
+  List<String> get selectedSlats;
+
+  set selectedSlats(List<String> value);
+
+  List<Offset> get selectedHandlePositions;
+
+  set selectedHandlePositions(List<Offset> value);
+
+  String get slatAdditionType;
+
+  set slatAdditionType(String value);
+
+  int get slatAddCount;
+
+  set slatAddCount(int value);
+
+  bool get hammingValueValid;
+
+  set hammingValueValid(bool value);
+
+  // Methods from other mixins
+  void saveUndoState();
+
+  void clearSelection();
+
+  void setSlatAdditionType(String type) {
+    slatAdditionType = type;
+    notifyListeners();
+  }
+
+  void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
+    /// Adds slats to the design
+    for (var slat in slatCoordinates.entries) {
+      slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(
+          layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}', layer, slat.value,
+          slatType: slatAdditionType);
+      // add the slat to the list by adding a map of all coordinate offsets to the slat ID
+      occupiedGridPoints.putIfAbsent(layer, () => {});
+      occupiedGridPoints[layer]
+          ?.addAll({for (var offset in slat.value.values) offset: '$layer-I${layerMap[layer]?["next_slat_id"]}'});
+      layerMap[layer]?["next_slat_id"] += 1;
+      layerMap[layer]?["slat_count"] += 1;
+    }
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates,
+      {bool skipStateUpdate = false, requestFlip = false}) {
+    /// Updates the position of a slat
+
+    // also need to remove old positions from occupiedGridPoints and add new ones
+    String layer = slatID.split('-')[0];
+
+    // need to check and move cargo positions too if necessary
+    // TODO: what if a slat containing seed handles is moved?
+    for (var i = 0; i < slats[slatID]!.maxLength; i++) {
+      for (var handleType in ['H5', 'H2']) {
+        var handleDict = handleType == 'H5' ? slats[slatID]!.h5Handles : slats[slatID]!.h2Handles;
+        if (handleDict[i + 1] != null && !handleDict[i + 1]!['category'].contains('ASSEMBLY')) {
+          var topHelix = layerMap[layer]?['top_helix'];
+          var occupancyID = topHelix == handleType ? 'top' : 'bottom';
+          // moveCargo({slats[slatID]!.slatPositionToCoordinate[i+1]!: slatCoordinates[i+1]!}, layer, occupancyID, skipStateUpdate: true);
+          occupiedCargoPoints['$layer-$occupancyID']?.remove(slats[slatID]!.slatPositionToCoordinate[i + 1]!);
+          occupiedCargoPoints['$layer-$occupancyID']![slatCoordinates[i + 1]!] = slatID;
+        }
+      }
+    }
+
+    occupiedGridPoints[layer]?.removeWhere((key, value) => value == slatID);
+    slats[slatID]?.updateCoordinates(slatCoordinates);
+    occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
+
+    if (requestFlip && slats[slatID]!.slatType == 'tube') {
+      // double barrel flips are currently blocked
+      slats[slatID]!.reverseDirection();
+      if (phantomMap.containsKey(slatID)) {
+        for (var phantomID in phantomMap[slatID]!.values) {
+          slats[phantomID]!.reverseDirection();
+        }
+      }
+    }
+
+    if (skipStateUpdate) {
+      return;
+    }
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates,
+      {bool requestFlip = false}) {
+    /// Updates the position of multiple slats
+    for (int i = 0; i < slatIDs.length; i++) {
+      String slatID = slatIDs[i];
+      Map<int, Offset> slatCoordinates = allCoordinates[i];
+      updateSlatPosition(slatID, slatCoordinates, requestFlip: requestFlip, skipStateUpdate: true);
+    }
+
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void removeSlat(String ID) {
+    /// Removes a slat from the design
+    clearSelection();
+    String layer = ID.split('-')[0];
+
+    if (slats[ID]!.phantomParent == null) layerMap[layer]?["slat_count"] -= 1;
+
+    // deleting the original slat should also delete all phantom slats associated with it
+    if (phantomMap.containsKey(ID)) {
+      for (var phantomID in phantomMap[ID]!.values) {
+        slats.remove(phantomID);
+        occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+      }
+      phantomMap.remove(ID);
+    }
+
+    // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
+    if (slats[ID]!.phantomParent != null) {
+      if (phantomMap[slats[ID]!.phantomParent]!.length == 1) {
+        phantomMap.remove(slats[ID]!.phantomParent);
+      }
+    }
+
+    slats.remove(ID);
+    occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void removeSlats(List<String> IDs) {
+    /// Remove multiple slats from the design
+    clearSelection();
+    for (var ID in IDs) {
+      String layer = ID.split('-')[0];
+
+      // only track non-phantom slats in the slat count
+      if (slats[ID]!.phantomParent == null) layerMap[layer]?["slat_count"] -= 1;
+
+      // deleting the original slat should also delete all phantom slats associated with it
+      if (phantomMap.containsKey(ID)) {
+        for (var phantomID in phantomMap[ID]!.values) {
+          slats.remove(phantomID);
+          occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+        }
+        phantomMap.remove(ID);
+      }
+
+      // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
+      if (slats[ID]!.phantomParent != null) {
+        if (phantomMap[slats[ID]!.phantomParent]!.length == 1) {
+          phantomMap.remove(slats[ID]!.phantomParent);
+        }
+      }
+
+      slats.remove(ID);
+      occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
+    }
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void flipSlat(String ID) {
+    /// Flips a slat's direction
+    if (slats[ID]!.slatType == 'tube') {
+      // double barrel flips are currently blocked
+      slats[ID]!.reverseDirection();
+
+      if (phantomMap.containsKey(ID)) {
+        for (var phantomID in phantomMap[ID]!.values) {
+          slats[phantomID]!.reverseDirection();
+        }
+      }
+    }
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void flipSlats(List<String> IDs) {
+    /// Flips multiple slats' direction
+    for (var ID in IDs) {
+      if (slats[ID]!.slatType == 'tube') {
+        // double barrel flips are currently blocked
+        slats[ID]!.reverseDirection();
+        if (phantomMap.containsKey(ID)) {
+          for (var phantomID in phantomMap[ID]!.values) {
+            slats[phantomID]!.reverseDirection();
+          }
+        }
+      }
+    }
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void selectSlat(String ID, {bool addOnly = false}) {
+    /// Selects or deselects a slat
+    if (selectedSlats.contains(ID) && !addOnly) {
+      selectedSlats.remove(ID);
+    } else {
+      if (selectedSlats.contains(ID)) {
+        return;
+      }
+      selectedSlats.add(ID);
+    }
+    notifyListeners();
+  }
+
+  void selectHandle(Offset coordinate, {bool addOnly = false}) {
+    /// Selects or deselects cargo
+    if (selectedHandlePositions.contains(coordinate) && !addOnly) {
+      selectedHandlePositions.remove(coordinate);
+    } else {
+      if (selectedHandlePositions.contains(coordinate)) {
+        return;
+      }
+      selectedHandlePositions.add(coordinate);
+    }
+    notifyListeners();
+  }
+
+  void updateSlatAddCount(int value) {
+    /// Updates the number of slats to be added with the next 'add' click
+    slatAddCount = value;
+    notifyListeners();
+  }
+}
