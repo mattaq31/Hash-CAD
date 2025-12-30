@@ -254,14 +254,15 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
-  String getStatusIndicatorText(ActionState actionState, DesignState appState) {
+  List<String> getStatusIndicatorText(ActionState actionState, DesignState appState) {
     String actionMode = getActionMode(actionState);
     if (actionMode == 'Slat-Move') {
-      return 'Slats Selected: ${appState.selectedSlats.length}';
+      return ['Slats Selected: ${appState.selectedSlats.length}'];
     } else if (actionMode == 'Cargo-Move') {
-      return 'Handles Selected: ${appState.selectedHandlePositions.length}';
+      return ['Handles Selected: ${appState.selectedHandlePositions.length}',
+      'Cargo Site: ${actionState.cargoAttachMode.toUpperCase()}'];
     } else {
-      return "";
+      return [];
     }
   }
 }

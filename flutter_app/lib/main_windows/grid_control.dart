@@ -45,6 +45,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   @override
   bool moveFlipRequested = false;
 
+  // Current scale and offset (zoom and move)
   @override
   double scale = 0.8;
   @override
@@ -56,6 +57,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   @override
   Offset initialGestureFocalPoint = Offset.zero;
 
+  // Hover (mouse over grid area) state
   @override
   Offset? hoverPosition;
   @override
@@ -63,6 +65,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   @override
   Map<int, Map<int, Offset>> hoverSlatMap = {};
 
+  // Dragging/moving state
   @override
   bool dragActive = false;
   @override
@@ -72,6 +75,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   @override
   List<Offset> hiddenCargo = [];
 
+  // Keyboard state
   @override
   bool isShiftPressed = false;
   @override
@@ -114,7 +118,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
     var actionState = context.watch<ActionState>();
 
     // gets a quick status update for the floating panel
-    String statusText = getStatusIndicatorText(actionState, appState);
+    List<String> statusText = getStatusIndicatorText(actionState, appState);
 
     // Main app activity defined here
     return Stack(
@@ -195,7 +199,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
             );
           },
           duration: const Duration(milliseconds: 400),
-          child: statusText.isEmpty ? const SizedBox.shrink() : StatusIndicator(text: statusText),
+          child: statusText.isEmpty ? const SizedBox.shrink() : StatusIndicator(lines: statusText),
         ),
       ),
 
