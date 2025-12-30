@@ -15,6 +15,8 @@ mixin DesignStateCargoMixin on ChangeNotifier {
   set cargoAddCount(int value);
   String? get cargoAdditionType;
   set cargoAdditionType(String? value);
+  List<Offset> get selectedHandlePositions;
+  set selectedHandlePositions(List<Offset> value);
 
   // Methods from other mixins
   void saveUndoState();
@@ -79,7 +81,6 @@ mixin DesignStateCargoMixin on ChangeNotifier {
   void moveCargo(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide, {bool skipStateUpdate = false}) {
     int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
 
-    // TODO: seems to be an issue moving only a subset of cargo - need to debug
     for (var fromCoord in coordinateTransferMap.keys) {
       if (!occupiedCargoPoints['$layerID-$slatSide']!.containsKey(fromCoord)) {
         continue; // no cargo at this position
@@ -139,6 +140,19 @@ mixin DesignStateCargoMixin on ChangeNotifier {
       cargoAdditionType = null;
     } else {
       cargoAdditionType = ID;
+    }
+    notifyListeners();
+  }
+
+  void selectHandle(Offset coordinate, {bool addOnly = false}) {
+    /// Selects or deselects cargo handles
+    if (selectedHandlePositions.contains(coordinate) && !addOnly) {
+      selectedHandlePositions.remove(coordinate);
+    } else {
+      if (selectedHandlePositions.contains(coordinate)) {
+        return;
+      }
+      selectedHandlePositions.add(coordinate);
     }
     notifyListeners();
   }

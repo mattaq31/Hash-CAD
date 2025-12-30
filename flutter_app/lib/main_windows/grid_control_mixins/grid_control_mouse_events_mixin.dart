@@ -178,10 +178,13 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T> {
           var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
           Map<Offset, Offset> coordinateTransferMap = {};
           for (int i = 0; i < appState.selectedHandlePositions.length; i++) {
-            coordinateTransferMap[appState.selectedHandlePositions[i]] =
-                appState.selectedHandlePositions[i] + convCoordHoverPosition - convCoordAnchor;
+            coordinateTransferMap[appState.selectedHandlePositions[i]] = appState.selectedHandlePositions[i] + convCoordHoverPosition - convCoordAnchor;
           }
           appState.moveCargo(coordinateTransferMap, appState.selectedLayerKey, actionState.cargoAttachMode);
+          appState.clearSelection();
+          for (var newCoord in coordinateTransferMap.values) {
+            appState.selectHandle(newCoord, addOnly: true);
+          }
         }
         dragActive = false;
         hiddenCargo = [];

@@ -230,19 +230,6 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  void selectHandle(Offset coordinate, {bool addOnly = false}) {
-    /// Selects or deselects cargo
-    if (selectedHandlePositions.contains(coordinate) && !addOnly) {
-      selectedHandlePositions.remove(coordinate);
-    } else {
-      if (selectedHandlePositions.contains(coordinate)) {
-        return;
-      }
-      selectedHandlePositions.add(coordinate);
-    }
-    notifyListeners();
-  }
-
   void updateSlatAddCount(int value) {
     /// Updates the number of slats to be added with the next 'add' click
     slatAddCount = value;

@@ -96,8 +96,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Function for converting a mouse hover event into a 'snapPosition' and 'hoverValid' flag to be used when pinpointing the current position on the grid.
-  (Offset, bool) hoverCalculator(
-      Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedPositions) {
+  (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedPositions) {
     // the position is snapped to the nearest grid point
     // the function needs to make sure the global offset/scale
     // due to panning/zooming are taken into account
@@ -139,6 +138,21 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T> {
     }
 
     snapHoverValid = !checkCoordinateOccupancy(appState, actionState, queryCoordinates);
+
+    // For cargo move, also check that all destination coordinates have slats to bind to
+    if (snapHoverValid && actionState.panelMode != 0 && preSelectedPositions) {
+      var slatPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys;
+      if (slatPositions != null) {
+        for (var coord in queryCoordinates) {
+          if (!slatPositions.contains(coord)) {
+            snapHoverValid = false;
+            break;
+          }
+        }
+      } else {
+        snapHoverValid = false;
+      }
+    }
 
     return (snapPosition, snapHoverValid);
   }
