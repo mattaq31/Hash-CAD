@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hash_cad/grpc_client_architecture/hamming_evolve_communication.pb.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/cargo.dart';
@@ -7,21 +8,37 @@ import '../../crisscross_core/cargo.dart';
 mixin DesignStateCargoMixin on ChangeNotifier {
   // Required state
   Map<String, Slat> get slats;
+
   Map<String, Map<String, dynamic>> get layerMap;
+
   Map<String, Map<Offset, String>> get occupiedGridPoints;
+
   Map<String, Map<Offset, String>> get occupiedCargoPoints;
+
   Map<String, Cargo> get cargoPalette;
+
   int get cargoAddCount;
+
   set cargoAddCount(int value);
+
   String? get cargoAdditionType;
+
   set cargoAdditionType(String? value);
+
   List<Offset> get selectedHandlePositions;
+
   set selectedHandlePositions(List<Offset> value);
+
+  String get selectedLayerKey;
 
   // Methods from other mixins
   void saveUndoState();
+
   void setSlatHandle(Slat slat, int position, int side, String handlePayload, String category);
+
   void removeSeed(String layerID, String slatSide, Offset coordinate);
+
+  void clearSelection();
 
   void addCargoType(Cargo cargo) {
     cargoPalette[cargo.name] = cargo;
@@ -33,12 +50,9 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     // need to remove all cargo of this type from the slats and from the cargo occupancy map (otherwise will error out)
     for (var slat in slats.values) {
       for (var side in ['top', 'bottom']) {
-        var targetDict = layerMap[slat.layer]!['${side}_helix'] == 'H5'
-            ? slat.h5Handles
-            : slat.h2Handles;
+        var targetDict = layerMap[slat.layer]!['${side}_helix'] == 'H5' ? slat.h5Handles : slat.h2Handles;
         for (int position = 1; position <= slat.maxLength; position++) {
-          if (targetDict[position] != null &&
-              targetDict[position]!['value'] == cargoName) {
+          if (targetDict[position] != null && targetDict[position]!['value'] == cargoName) {
             targetDict.remove(position); // TODO: also need to remove placeholder list - need to make a slat function...
             occupiedCargoPoints['${slat.layer}-$side']?.remove(slat.slatPositionToCoordinate[position]!);
           }
@@ -61,15 +75,11 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     // need to remove all cargo of this type from the slats and from the cargo occupancy map (otherwise will error out)
     for (var slat in slats.values) {
       for (var side in ['top', 'bottom']) {
-        var targetDict = layerMap[slat.layer]!['${side}_helix'] == 'H5'
-            ? slat.h5Handles
-            : slat.h2Handles;
+        var targetDict = layerMap[slat.layer]!['${side}_helix'] == 'H5' ? slat.h5Handles : slat.h2Handles;
         for (int position = 1; position <= slat.maxLength; position++) {
-          if (targetDict[position] != null &&
-              targetDict[position]!['category'] == 'CARGO') {
+          if (targetDict[position] != null && targetDict[position]!['category'] == 'CARGO') {
             targetDict.remove(position);
-            occupiedCargoPoints['${slat.layer}-$side']
-                ?.remove(slat.slatPositionToCoordinate[position]!);
+            occupiedCargoPoints['${slat.layer}-$side']?.remove(slat.slatPositionToCoordinate[position]!);
           }
         }
       }
@@ -78,7 +88,8 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  void moveCargo(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide, {bool skipStateUpdate = false}) {
+  void moveCargo(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide,
+      {bool skipStateUpdate = false}) {
     int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
 
     for (var fromCoord in coordinateTransferMap.keys) {
@@ -157,8 +168,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  void attachCargo(Cargo cargo, String layerID, String slatSide,
-      Map<int, Offset> coordinates,
+  void attachCargo(Cargo cargo, String layerID, String slatSide, Map<int, Offset> coordinates,
       {bool skipStateUpdate = false}) {
     occupiedCargoPoints.putIfAbsent('$layerID-$slatSide', () => {});
 
@@ -175,8 +185,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
 
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
-      int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix']
-          .replaceAll(RegExp(r'[^0-9]'), ''));
+      int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
       setSlatHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
       occupiedCargoPoints['$layerID-$slatSide']![coord] = cargo.name;
     }
@@ -194,8 +203,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     var slat = slats[slatID]!;
     int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
     if (integerSlatSide == 2) {
-      if (slat.h2Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] ==
-          'SEED') {
+      if (slat.h2Handles[slat.slatCoordinateToPosition[coordinate]!]!['category'] == 'SEED') {
         removeSeed(slat.layer, slatSide, coordinate);
         return;
       }
@@ -211,6 +219,24 @@ mixin DesignStateCargoMixin on ChangeNotifier {
 
     if (skipStateUpdate) {
       return;
+    }
+
+    saveUndoState();
+    notifyListeners();
+  }
+
+  void removeSelectedCargo(String slatSide) {
+    // TODO: needs a phantom check and link to recursive algorithm
+    String layerID = selectedLayerKey;
+
+    if( selectedHandlePositions.isEmpty) {
+      return;
+    }
+    List<Offset> selectedCoordsCopy = List.from(selectedHandlePositions);
+    clearSelection();
+    for (var coordinate in selectedCoordsCopy) {
+      var slatID = occupiedGridPoints[layerID]![coordinate]!;
+      removeCargo(slatID, slatSide, coordinate, skipStateUpdate: true);
     }
 
     saveUndoState();

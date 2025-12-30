@@ -42,9 +42,12 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       // delete shortcut (when in move mode)
       SingleActivator(LogicalKeyboardKey.delete): () {
         appState.removeSlats(appState.selectedSlats);
+        appState.removeSelectedCargo(actionState.cargoAttachMode);
+
       },
       SingleActivator(LogicalKeyboardKey.backspace): () {
         appState.removeSlats(appState.selectedSlats);
+        appState.removeSelectedCargo(actionState.cargoAttachMode);
       },
       // Navigation shortcuts
       SingleActivator(LogicalKeyboardKey.arrowUp): () {

@@ -153,6 +153,9 @@ mixin DesignStateSlatMixin on ChangeNotifier {
 
   void removeSlats(List<String> IDs) {
     /// Remove multiple slats from the design
+    if(IDs.isEmpty) {
+      return;
+    }
     clearSelection();
     for (var ID in IDs) {
       String layer = ID.split('-')[0];
