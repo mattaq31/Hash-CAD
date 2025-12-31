@@ -79,7 +79,27 @@ def export_layer_orientations_to_list_format(layer_palette):
 class HandleLinkManager:
     """
     Manages handle linking information for megastructures.
-    This includes groups of linked handles, enforced values, and blocked (zeroed) handles.
+
+    This class tracks three types of constraints on handle values:
+
+    1. **Linked Groups**: Handles that must share the same value. When one handle
+       in a group changes, all others must change to match.
+       - Stored in: handle_link_to_group (key → group_id) and
+         handle_group_to_link (group_id → list of keys)
+
+    2. **Enforced Values**: Groups that must have a specific handle value.
+       - Stored in: handle_group_to_value (group_id → value)
+
+    3. **Blocked Handles**: Individual handles that must be zero (deleted).
+       - Stored in: handle_blocks (list of keys)
+
+    Handle keys use the convention: (slat_name, position, helix_side)
+    Example: ('layer1-slat5', 3, 2) means position 3 on H2 side of layer1-slat5.
+
+    Group IDs use two separate namespaces to avoid collisions:
+    - Numeric (1, 2, 3...): User-defined groups from spreadsheet
+    - Alphabetic ('A', 'B', 'C'...): Auto-generated groups for enforced values
+    Alphabetic groups are never saved to file (export_design checks for string keys).
     """
     def __init__(self, handle_link_df=None):
         # read handle linking information from sheet (if available)
@@ -87,8 +107,8 @@ class HandleLinkManager:
         self.handle_group_to_link = defaultdict(list)
         self.handle_group_to_value = defaultdict(int)
         self.handle_blocks = []
-        self.next_group_assignment = 'A'
-        self.max_group_id = 1
+        self.next_group_assignment = 'A'  # alphabetic IDs for auto-generated groups (never saved to file)
+        self.max_group_id = 0  # tracks highest numeric group ID from spreadsheet
 
         if handle_link_df is not None:
             for i in range(0, len(handle_link_df), 6):
@@ -103,7 +123,8 @@ class HandleLinkManager:
                             self.handle_blocks.append(key)
 
                         elif not np.isnan(enforce_val) and np.isnan(group):  # no special group, just enforce a specific value at this position
-                            group = next_capital_letter(self.next_group_assignment)  # uses letters for these groups (can never overlap with numbers)
+                            # Create auto-generated group using alphabetic ID (never overlaps with numeric user groups)
+                            group = next_capital_letter(self.next_group_assignment)
                             self.next_group_assignment = group
                             self.handle_group_to_value[group] = enforce_val
                             self.handle_group_to_link[group].append(key)
@@ -170,6 +191,25 @@ class HandleLinkManager:
             if group_id in self.handle_group_to_value:
                 del self.handle_group_to_value[group_id]
 
+    def _merge_groups(self, target_group, source_group):
+        """
+        Merge source_group into target_group, moving all keys and enforced values.
+
+        :param target_group: Group ID to merge into (this group survives)
+        :param source_group: Group ID to be dissolved (this group is deleted)
+        :raises RuntimeError: If groups have conflicting enforced values
+        """
+        for key in self.handle_group_to_link[source_group]:
+            self.handle_link_to_group[key] = target_group
+            self.handle_group_to_link[target_group].append(key)
+        del self.handle_group_to_link[source_group]
+
+        if source_group in self.handle_group_to_value:
+            if target_group in self.handle_group_to_value and self.handle_group_to_value[target_group] != self.handle_group_to_value[source_group]:
+                raise RuntimeError('Cannot merge two handle link groups with different enforced values.')
+            self.handle_group_to_value[target_group] = self.handle_group_to_value[source_group]
+            del self.handle_group_to_value[source_group]
+
     def add_link(self, key_1, key_2):
         """
         Adds a link between two handles.
@@ -181,9 +221,8 @@ class HandleLinkManager:
         group_2 = self.handle_link_to_group.get(key_2, None)
 
         if group_1 is None and group_2 is None:
-            # create new group
-            new_group = self.max_group_id + 1
-            self.max_group_id += 1
+            # create new group using alphabetic ID (never saved to file)
+            new_group = next_capital_letter(self.next_group_assignment)
             self.next_group_assignment = new_group
             self.handle_link_to_group[key_1] = new_group
             self.handle_link_to_group[key_2] = new_group
@@ -199,16 +238,8 @@ class HandleLinkManager:
             self.handle_group_to_link[group_2].append(key_1)
 
         elif group_1 != group_2:
-            # merge groups
-            for key in self.handle_group_to_link[group_2]:
-                self.handle_link_to_group[key] = group_1
-                self.handle_group_to_link[group_1].append(key)
-            del self.handle_group_to_link[group_2]
-            if group_2 in self.handle_group_to_value:
-                if group_1 in self.handle_group_to_value and self.handle_group_to_value[group_1] != self.handle_group_to_value[group_2]:
-                    raise RuntimeError('Cannot merge two handle link groups with different enforced values.')
-                self.handle_group_to_value[group_1] = self.handle_group_to_value[group_2]
-                del self.handle_group_to_value[group_2]
+            # merge group_2 into group_1
+            self._merge_groups(group_1, group_2)
 
     def clear_all(self):
         self.handle_link_to_group = {}
@@ -216,7 +247,7 @@ class HandleLinkManager:
         self.handle_group_to_value = defaultdict(int)
         self.handle_blocks = []
         self.next_group_assignment = 'A'
-        self.max_group_id = 1
+        self.max_group_id = 0
 
 class Megastructure:
     """
@@ -370,6 +401,87 @@ class Megastructure:
                 slat.set_handle(slat_position_index, slat_side, sequence, well, plate_name,
                                 category, handle_val, concentration, descriptor=descriptor)
 
+    def _propagate_if_not_seen(self, slat_key, position, side, handle_val, category, descriptor,
+                               handle_update_tracker, dna_plates, coordinate_to_slats, handle_array,
+                               suppress_warnings, traversal_tree, traverse_only):
+        """
+        Helper that only propagates if the target handle hasn't been visited.
+        Reduces boilerplate in propagation paths by encapsulating the tracker check.
+        """
+        if (slat_key, position, side) not in handle_update_tracker:
+            self._recursive_propagate_handle(
+                slat_key, position, side, handle_val, category, descriptor,
+                handle_update_tracker, dna_plates, coordinate_to_slats, handle_array,
+                suppress_warnings, traversal_tree=traversal_tree, traverse_only=traverse_only
+            )
+
+    def _get_related_handles(self, slat_key, position, side, category, descriptor, coordinate_to_slats):
+        """
+        Returns all handles that should receive the same value as the given handle.
+
+        This consolidates the logic for finding related handles across:
+        - Phantom network (parent and siblings)
+        - Link manager groups (explicit links)
+        - Physical layer attachments (for ASSEMBLY handles)
+
+        :param slat_key: Current slat ID
+        :param position: Handle position on slat
+        :param side: Handle side (2 or 5)
+        :param category: Handle category
+        :param descriptor: Handle descriptor
+        :param coordinate_to_slats: Lookup dict for physical attachments
+        :return: List of (slat_key, position, side, category, descriptor) tuples
+        """
+        related = []
+        slat = self.slats[slat_key]
+        access_key = (slat_key, position, side)
+
+        # --- Phantom network: parent and siblings ---
+        ref_id = slat.phantom_parent if slat.phantom_parent is not None else slat_key
+
+        # Phantom parent (if current slat is a phantom)
+        if slat.phantom_parent is not None:
+            related.append((ref_id, position, side, category, descriptor))
+
+        # Phantom siblings
+        if ref_id in self.phantom_map:
+            for phantom_id in self.phantom_map[ref_id]:
+                related.append((phantom_id, position, side, category, descriptor))
+
+        # --- Link manager: explicit links (only for non-phantoms, non-SEED/CARGO) ---
+        if slat.phantom_parent is None and access_key in self.link_manager.handle_link_to_group:
+            if category not in ('SEED', 'CARGO'):
+                link_group = self.link_manager.handle_link_to_group[access_key]
+                for linked_key in self.link_manager.handle_group_to_link[link_group]:
+                    related.append((linked_key[0], linked_key[1], linked_key[2], category, descriptor))
+
+        # --- Physical layer attachment (only for ASSEMBLY handles) ---
+        if 'ASSEMBLY' in category and coordinate_to_slats is not None:
+            coordinate = slat.slat_position_to_coordinate[position]
+            top_helix = self.layer_palette[slat.layer]['top']
+            top_or_bottom = 1 if (top_helix == 5 and side == 5) or (top_helix == 2 and side == 2) else -1
+            adjacent_layer = slat.layer + top_or_bottom
+
+            if 1 <= adjacent_layer <= len(self.layer_palette):
+                if (coordinate[0], coordinate[1], adjacent_layer) in coordinate_to_slats:
+                    attached_slat_key, opposing_position = coordinate_to_slats[(coordinate[0], coordinate[1], adjacent_layer)]
+
+                    if top_or_bottom == 1:
+                        opposing_side = self.layer_palette[adjacent_layer]['bottom']
+                    else:
+                        opposing_side = self.layer_palette[adjacent_layer]['top']
+
+                    # Flip category for attached slat
+                    opposing_category = 'ASSEMBLY_ANTIHANDLE' if category == 'ASSEMBLY_HANDLE' else 'ASSEMBLY_HANDLE'
+                    opposing_descriptor = descriptor.replace(
+                        'Handle' if opposing_category == 'ASSEMBLY_ANTIHANDLE' else 'Antihandle',
+                        'Antihandle' if opposing_category == 'ASSEMBLY_ANTIHANDLE' else 'Handle'
+                    )
+
+                    related.append((attached_slat_key, opposing_position, opposing_side, opposing_category, opposing_descriptor))
+
+        return related
+
     def _recursive_propagate_handle(self, slat_key, position, side, handle_val, category, descriptor,
                                     handle_update_tracker,dna_plates=None, coordinate_to_slats=None, handle_array=None,
                                     suppress_warnings=False, root_entry=False, traversal_tree=None, traverse_only=False):
@@ -392,9 +504,11 @@ class Megastructure:
         """
         access_key = (slat_key, position, side)
 
-        if access_key in handle_update_tracker: # handle already updated
+        # ===== BLOCK A: Early exit if already processed =====
+        if access_key in handle_update_tracker:
             return
 
+        # ===== BLOCK B: Root entry setup =====
         if root_entry and traversal_tree is None:
             traversal_tree = set()
 
@@ -414,7 +528,8 @@ class Megastructure:
                 coord = slat.slat_position_to_coordinate[position]
                 handle_array[coord[0], coord[1], interface_idx] = value
 
-        # ensure a handle is only updated once throughout
+        # ===== BLOCK C: Update current handle =====
+        # Track this handle as visited to prevent infinite loops
         handle_update_tracker.add(access_key)
         traversal_tree.add(access_key)
 
@@ -432,71 +547,21 @@ class Megastructure:
             else:
                 update_handle_array(handle_val)
 
-        # Propagate to phantom siblings and parent
-        ref_id = slat.phantom_parent if slat.phantom_parent is not None else slat_key
+        # ===== BLOCK D: Propagate to all related handles =====
+        # This consolidates propagation to: phantom network, link manager, and physical layer attachments.
+        # See _get_related_handles() for the logic that determines which handles are related.
+        related_handles = self._get_related_handles(slat_key, position, side, category, descriptor, coordinate_to_slats)
+        for rel_slat_key, rel_position, rel_side, rel_category, rel_descriptor in related_handles:
+            self._propagate_if_not_seen(rel_slat_key, rel_position, rel_side, handle_val, rel_category, rel_descriptor,
+                                        handle_update_tracker, dna_plates, coordinate_to_slats, handle_array,
+                                        suppress_warnings, traversal_tree, traverse_only)
 
-        # Apply to reference slat if input slat is a phantom
-        if slat.phantom_parent is not None:
-            if (ref_id, position, side) not in handle_update_tracker:
-                self._recursive_propagate_handle(ref_id, position, side, handle_val, category, descriptor,
-                                                 handle_update_tracker, dna_plates, coordinate_to_slats, handle_array,
-                                                 suppress_warnings, traversal_tree=traversal_tree, traverse_only=traverse_only)
-
-        # Apply to all phantom siblings if input is also a phantom
-        if ref_id in self.phantom_map:
-            for phantom_id in self.phantom_map[ref_id]:
-                if (phantom_id, position, side) not in handle_update_tracker:
-                    self._recursive_propagate_handle(phantom_id, position, side, handle_val, category, descriptor,
-                                                     handle_update_tracker, dna_plates, coordinate_to_slats, handle_array,
-                                                     suppress_warnings, traversal_tree=traversal_tree, traverse_only=traverse_only)
-
-        # Apply to all links in link manager (except seeds, which are not propagated)
-        if slat.phantom_parent is None and access_key in self.link_manager.handle_link_to_group:
-            if category == 'SEED':
-                raise RuntimeError('Seed cargo link handling is not implemented yet.')
-            link_group = self.link_manager.handle_link_to_group[access_key]
-            for new_group_key in self.link_manager.handle_group_to_link[link_group]:
-                if new_group_key not in handle_update_tracker:
-                    self._recursive_propagate_handle(new_group_key[0], new_group_key[1], new_group_key[2], handle_val, category, descriptor,
-                                                     handle_update_tracker, dna_plates, coordinate_to_slats, handle_array, suppress_warnings,
-                                                     traversal_tree=traversal_tree, traverse_only=traverse_only)
-
-        # Propagate to physically attached slats (only for ASSEMBLY)
-        if 'ASSEMBLY' in category:
-            coordinate = slat.slat_position_to_coordinate[position]
-            # Determine which adjacent layer to check
-            top_helix = self.layer_palette[slat.layer]['top']
-            top_or_bottom = 1 if (top_helix == 5 and side == 5) or (top_helix == 2 and side == 2) else -1
-            adjacent_layer = slat.layer + top_or_bottom
-            if 1 <= adjacent_layer <= len(self.layer_palette):
-                if (coordinate[0], coordinate[1], adjacent_layer) in coordinate_to_slats:
-                    attached_slat_key, opposing_position = coordinate_to_slats[(coordinate[0], coordinate[1], adjacent_layer)]
-                    # Determine opposing side
-                    if top_or_bottom == 1:
-                        opposing_side = self.layer_palette[adjacent_layer]['bottom']
-                    else:
-                        opposing_side = self.layer_palette[adjacent_layer]['top']
-
-                    # Flip handle type for attached slat
-                    opposing_category = 'ASSEMBLY_ANTIHANDLE' if category == 'ASSEMBLY_HANDLE' else 'ASSEMBLY_HANDLE'
-
-                    oppposing_descriptor = descriptor.replace('Handle' if opposing_category == 'ASSEMBLY_ANTIHANDLE' else 'Antihandle', 'Antihandle' if opposing_category == 'ASSEMBLY_ANTIHANDLE' else 'Handle')
-
-                    if (attached_slat_key, opposing_position, opposing_side) not in handle_update_tracker:
-                        self._recursive_propagate_handle(attached_slat_key, opposing_position, opposing_side,
-                                                         handle_val,
-                                                         opposing_category,
-                                                         oppposing_descriptor,
-                                                         handle_update_tracker,
-                                                         dna_plates,
-                                                         coordinate_to_slats,
-                                                         handle_array,
-                                                         suppress_warnings,
-                                                         traversal_tree=traversal_tree,
-                                                         traverse_only=traverse_only)
-
-        # After all updates, check for enforcement from link manager (only at root entry)
-        if root_entry and 'SEED' not in category and not traverse_only:
+        # ===== BLOCK E: Enforcement phase (root entry only) =====
+        # After all propagation completes, check if any handle in the traversal tree has an
+        # enforced value. If so, re-update all handles in the tree to that enforced value.
+        # This is a second pass that can override the initial value that was propagated.
+        # Skip enforcement for SEED and CARGO categories (only ASSEMBLY handles use enforcement).
+        if root_entry and category not in ('SEED', 'CARGO') and not traverse_only:
             enforce_order = None
             for access_key in traversal_tree:
                 enforce_value = self.link_manager.get_enforce_value(access_key)
@@ -591,12 +656,26 @@ class Megastructure:
 
     def enforce_phantom_links_on_assembly_handle_array(self, handle_array, modify_in_place=True):
         """
-        Enforces phantom slat linking rules on an assembly handle array, ensuring that phantom slats
-        and physically connected slats share the same handle values at linked positions.
+        Synchronizes handle values across all linked positions in an assembly handle array.
 
-        :param handle_array: 3D numpy array of handle values (y, x, layer_interface)
+        This method ensures that:
+        1. Phantom slats share handle values with their parent reference slats
+        2. Physically connected slats at layer interfaces have matching handle/antihandle pairs
+        3. Explicitly linked handles (via link_manager) share the same values
+        4. Enforced values (zeros or specific handle IDs) are applied where required
+
+        IMPORTANT: Call this after random handle generation but before evolution scoring,
+        to ensure the handle array respects all linking constraints.
+
+        Algorithm:
+        - Iterates through every non-zero position in the 3D handle array
+        - For each position, triggers _recursive_propagate_handle to propagate the value
+          through all linked handles (phantoms, physical attachments, explicit links)
+        - The recursion handles phantom networks, physical attachments, and explicit links
+
+        :param handle_array: 3D numpy array of handle values with shape (y, x, layer_interface)
         :param modify_in_place: If True, modifies the input array; if False, creates a copy
-        :return: Modified handle array with phantom links enforced
+        :return: Modified handle array with all links enforced
         """
 
         if not modify_in_place:
@@ -1633,7 +1712,7 @@ class Megastructure:
         slat_type_df = pd.DataFrame.from_dict(slat_type_output_dict)
         slat_type_df.to_excel(writer, index=False, header=True, sheet_name="slat_types")
 
-        # finally, print out any slat layouts to the linked slats worksheet
+        # finally, print out all slat layouts to the linked slats worksheet
         link_output_list = []
 
         max_slat_len = 0 # unsure we'll ever have different sized slats, but oh well
@@ -1827,6 +1906,18 @@ class Megastructure:
                     seed_id = position_id.split('-')[0]
                     seed_handle = position_id.split('-', 1)[1].replace('-', '_')
                     seed_dict[(seed_id, layer, orientation)].append((y, x, seed_handle))
+
+        # warn if any seed has fewer than expected handles (5x16 = 80)
+        MINIMUM_SEED_HANDLES = 80
+        seed_handle_counts = {}
+        for (seed_id, layer, orientation), seed_data in seed_dict.items():
+            if seed_id not in seed_handle_counts:
+                seed_handle_counts[seed_id] = 0
+            seed_handle_counts[seed_id] += len(seed_data)
+        for seed_id, count in seed_handle_counts.items():
+            if count < MINIMUM_SEED_HANDLES:
+                print(Fore.YELLOW + f'WARNING: Seed "{seed_id}" has only {count} handles '
+                      f'(recommended: {MINIMUM_SEED_HANDLES}).' + Style.RESET_ALL)
 
         # extracts and formats metadata
         metadata = design_df.get('metadata')

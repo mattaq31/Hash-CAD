@@ -110,7 +110,24 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         # This can be applied using Binomial and poisson statistics: [mutation rate] = [num places to be mutated] * probability
         positions_to_be_mutated = mask & mask2 # mask and mask2 two are the places where mutations are allowed
 
-        # with a mutation mask, only allow mutations in positions with unique integers (since the mask indicates which handles will be linked)
+        # =============================================================================
+        # TWO-PHASE MUTATION WITH LINKED HANDLES
+        # =============================================================================
+        # When handles are linked (via phantoms, physical attachments, or explicit links),
+        # mutations must be applied consistently to all linked positions.
+        #
+        # PHASE 1 (below): Filter mutation candidates
+        #   - Use mutation_mask to identify unique mutation positions
+        #   - Only allow mutations at the "first occurrence" of each link group
+        #   - This prevents multiple mutations being selected for the same linked group
+        #
+        # PHASE 2 (after mutation): Broadcast mutations to linked positions
+        #   - After mutations are applied, copy each mutated value to all positions
+        #     that share the same link group (identified by equal mask values)
+        #   - This ensures all linked handles get the same new value
+        # =============================================================================
+
+        # PHASE 1: Filter to unique mutation positions using link mask
         if mutation_mask is not None:
 
             localized_mut_mask = mutation_mask * positions_to_be_mutated # zero out positions that are not allowed to be mutated
@@ -153,7 +170,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
                 h_end = h_start + handles_per_layer
                 next_gen_member[:, :, layer][logicforpointmutations[:, :, layer]] = np.random.randint(h_start, h_end, size=np.sum( logicforpointmutations[:, :, layer]))
 
-        # apply the same handle to all other index positions that are linked to it in the mutation mask
+        # PHASE 2: Broadcast mutations to all linked positions
         if mutation_mask is not None:
             # get indices of positive values in logicforpointmutations
             mutated_indices = np.argwhere(logicforpointmutations)

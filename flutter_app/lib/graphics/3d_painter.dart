@@ -325,7 +325,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   AxesHelper axesHelper = AxesHelper(1000);
 
   // parameters for six-helix bundle view
-  bool helixBundleView = true;
+  bool helixBundleView = false;
   final double helixBundleSize = 5/(1 + math.sqrt(3));
   late double helixBundledX = (math.sqrt(3)/2) * helixBundleSize;
   late List<List<double>> helixBundlePositions = [
