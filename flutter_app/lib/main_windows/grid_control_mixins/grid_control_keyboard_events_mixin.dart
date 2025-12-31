@@ -43,7 +43,6 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       SingleActivator(LogicalKeyboardKey.delete): () {
         appState.removeSlats(appState.selectedSlats);
         appState.removeSelectedCargo(actionState.cargoAttachMode);
-
       },
       SingleActivator(LogicalKeyboardKey.backspace): () {
         appState.removeSlats(appState.selectedSlats);
@@ -110,7 +109,7 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       // Handle the shift key state
       if (event is KeyDownEvent) {
         isShiftPressed = event.logicalKey.keyLabel.contains('Shift');
-        isCtrlPressed = event.logicalKey.keyLabel.contains('Control');
+          isCtrlPressed = event.logicalKey.keyLabel.contains('Control');
         isMetaPressed = event.logicalKey.keyLabel.contains('Meta'); // macOS meta key
       } else if (event is KeyUpEvent) {
         if (event.logicalKey.keyLabel.contains('Shift')) {

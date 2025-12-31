@@ -59,6 +59,7 @@ Widget _buildSeedItem(DesignState appState, TextEditingController cargoAddTextCo
           rows: 5,
           printHandles: false,
           seedTransparency: [false],
+          showLabels: false,
           color: appState.cargoPalette['SEED']!.color,
         ),
       ),

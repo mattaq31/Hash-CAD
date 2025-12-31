@@ -131,7 +131,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
             onPointerSignal: handlePointerSignal,
             onPointerDown: (event) => handlePointerDown(event, appState, actionState),
             onPointerMove: (event) => handlePointerMove(event, appState, actionState),
-            onPointerUp: (event) => handlePointerUp(event, appState, actionState),
+            onPointerUp: (event) => handlePointerUp(event, appState, actionState, context),
 
             child: CallbackShortcuts(
               bindings: getKeyboardBindings(appState, actionState), // defines keyboard shortcuts
@@ -147,7 +147,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
                     onScaleStart: handleScaleStart,
                     onScaleUpdate: handleScaleUpdate,
                     onTapDown: (details) => handleTapDown(details, appState, actionState, context),
-                    onTapUp: (details) => handleTapUp(details, appState, actionState),
+                    onTapUp: (details) => handleTapUp(details, appState, actionState, context),
                     child: buildPainterStack(appState, actionState), // the main painters (slats, hover, grid, etc.) are defined in here
                   ),
                 ),

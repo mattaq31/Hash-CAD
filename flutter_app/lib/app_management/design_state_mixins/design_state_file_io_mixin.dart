@@ -149,23 +149,42 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
     }
 
     // fill up occupiedCargoPoints (from both the seed and cargo values)
+    // Also update occupiedGridPoints for SEED category handles (they block the adjacent layer)
     for (var slat in slats.values) {
       var layer = slat.layer;
       var topHelix = layerMap[layer]?['top_helix'];
       for (var i = 0; i < slat.maxLength; i++) {
-        if (slat.h2Handles[i + 1] != null &&
-            !slat.h2Handles[i + 1]!['category'].contains('ASSEMBLY')) {
+        if (slat.h2Handles[i + 1] != null && !slat.h2Handles[i + 1]!['category'].contains('ASSEMBLY')) {
           var occupancyID = topHelix == 'H2' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
-          occupiedCargoPoints['$layer-$occupancyID']![
-              slat.slatPositionToCoordinate[i + 1]!] = slat.h2Handles[i + 1]!['value'];
+          var coord = slat.slatPositionToCoordinate[i + 1]!;
+          occupiedCargoPoints['$layer-$occupancyID']![coord] = slat.h2Handles[i + 1]!['value'];
+
+          // SEED handles also block the adjacent layer
+          if (slat.h2Handles[i + 1]!['category'] == 'SEED') {
+            int seedOccupancyLayer = layerMap[layer]?['order'] + (occupancyID == 'top' ? 1 : -1);
+            if (layerNumberValid(seedOccupancyLayer)) {
+              String seedBlockedLayer = getLayerByOrder(seedOccupancyLayer)!;
+              occupiedGridPoints.putIfAbsent(seedBlockedLayer, () => {});
+              occupiedGridPoints[seedBlockedLayer]![coord] = 'SEED';
+            }
+          }
         }
-        if (slat.h5Handles[i + 1] != null &&
-            !slat.h5Handles[i + 1]!['category'].contains('ASSEMBLY')) {
+        if (slat.h5Handles[i + 1] != null && !slat.h5Handles[i + 1]!['category'].contains('ASSEMBLY')) {
           var occupancyID = topHelix == 'H5' ? 'top' : 'bottom';
           occupiedCargoPoints.putIfAbsent('$layer-$occupancyID', () => {});
-          occupiedCargoPoints['$layer-$occupancyID']![
-              slat.slatPositionToCoordinate[i + 1]!] = slat.h5Handles[i + 1]!['value'];
+          var coord = slat.slatPositionToCoordinate[i + 1]!;
+          occupiedCargoPoints['$layer-$occupancyID']![coord] = slat.h5Handles[i + 1]!['value'];
+
+          // SEED handles also block the adjacent layer
+          if (slat.h5Handles[i + 1]!['category'] == 'SEED') {
+            int seedOccupancyLayer = layerMap[layer]?['order'] + (occupancyID == 'top' ? 1 : -1);
+            if (layerNumberValid(seedOccupancyLayer)) {
+              String seedBlockedLayer = getLayerByOrder(seedOccupancyLayer)!;
+              occupiedGridPoints.putIfAbsent(seedBlockedLayer, () => {});
+              occupiedGridPoints[seedBlockedLayer]![coord] = 'SEED';
+            }
+          }
         }
       }
     }
@@ -183,6 +202,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
       if (layerNumberValid(seedOccupancyLayer)) {
         String newLayer = getLayerByOrder(seedOccupancyLayer)!;
         for (var coord in seed.value.coordinates.values) {
+          occupiedGridPoints.putIfAbsent(newLayer, () => {});
           occupiedGridPoints[newLayer]![coord] = 'SEED';
         }
       }

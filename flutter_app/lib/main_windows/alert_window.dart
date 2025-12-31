@@ -26,6 +26,72 @@ void showWarning(BuildContext context, String title, String message){
           ));
 }
 
+/// Shows dialog for selecting seed handles with options for group or individual selection.
+/// Returns 'group', 'single', or null (if cancelled).
+Future<String?> showSeedHandleSelectionDialog(BuildContext context, String seedID) async {
+  return showDialog<String>(
+    context: context,
+    builder: (BuildContext context) => AlertDialog(
+      title: Text('Seed Handle Selection'),
+      content: RichText(
+        text: TextSpan(
+          style: TextStyle(color: Colors.black87, fontSize: 16),
+          children: [
+            TextSpan(text: 'This handle belongs to Seed $seedID. How would you like to proceed?'),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'group'),
+          child: const Text('Select all seed handles'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'single'),
+          child: const Text('Select just this handle'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Cancel'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Shows dialog for deleting seed handles with options for group or individual deletion.
+/// Returns 'group', 'single', or null (if cancelled).
+Future<String?> showSeedHandleDeletionDialog(BuildContext context, String seedID) async {
+  return showDialog<String>(
+    context: context,
+    builder: (BuildContext context) => AlertDialog(
+      title: Text('Delete Seed Handle'),
+      content: RichText(
+        text: TextSpan(
+          style: TextStyle(color: Colors.black87, fontSize: 16),
+          children: [
+            TextSpan(text: 'This handle belongs to Seed $seedID. How would you like to proceed?'),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'group'),
+          child: const Text('Delete entire seed'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'single'),
+          child: const Text('Delete just this handle'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Cancel'),
+        ),
+      ],
+    ),
+  );
+}
+
 void showKeyboardShortcutsDialog(BuildContext context) {
   showDialog(
     context: context,

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import '../alert_window.dart';
 import 'grid_control_contract.dart';
 
 /// Mixin containing mouse/pointer event handlers for GridAndCanvas
@@ -31,7 +33,7 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         // starts drag mode (first need to detect if a slat or handle is under the pointer first)
         final Offset snappedPosition = gridSnap(event.position, appState);
         if (getActionMode(actionState) == 'Slat-Move') {
-          // TODO: write a 'quick' check format for the checkCoordinateOccupancy function - also need to check all coordinates of a seed too if moving that
+
           if (checkCoordinateOccupancy(appState, actionState, [appState.convertRealSpacetoCoordinateSpace(snappedPosition)])) {
             dragActive = true; // drag mode is signalled here - panning is now disabled
             slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
@@ -80,7 +82,7 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
     }
   }
 
-  void handlePointerUp(PointerUpEvent event, DesignState appState, ActionState actionState) {
+  Future<void> handlePointerUp(PointerUpEvent event, DesignState appState, ActionState actionState, BuildContext context) async {
     // drag is always cancelled when the pointer is let go
     if (dragBoxActive) {
       // Finish drag-box selection
@@ -104,11 +106,59 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
           appState.selectSlat(ID, addOnly: true);
         }
       } else {
+        // Collect all handles in the drag box
+        List<Offset> handlesInRect = [];
+        appState.occupiedCargoPoints.putIfAbsent('${appState.selectedLayerKey}-${actionState.cargoAttachMode}', () => {});
         for (var entry in appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']!.keys) {
           final coord = appState.convertCoordinateSpacetoRealSpace(entry);
           if (rect.contains(coord)) {
-            appState.selectHandle(entry, addOnly: true);
+            handlesInRect.add(entry);
           }
+        }
+
+        // Group handles by active seed membership
+        Map<(String, String, Offset), List<Offset>> seedHandles = {}; // seedKey -> handles in rect
+        List<Offset> nonSeedHandles = [];
+
+        for (var handleCoord in handlesInRect) {
+          var seedKey = appState.isHandlePartOfActiveSeed(
+            appState.selectedLayerKey,
+            actionState.cargoAttachMode,
+            handleCoord,
+          );
+          if (seedKey != null) {
+            seedHandles.putIfAbsent(seedKey, () => []);
+            seedHandles[seedKey]!.add(handleCoord);
+          } else {
+            nonSeedHandles.add(handleCoord);
+          }
+        }
+
+        // Select all non-seed handles (regular cargo + isolated seed handles)
+        for (var coord in nonSeedHandles) {
+          appState.selectHandle(coord, addOnly: true);
+        }
+
+        // For each active seed with handles in the rect, show dialog
+        for (var seedEntry in seedHandles.entries) {
+          var seedKey = seedEntry.key;
+          var handlesInRectForSeed = seedEntry.value;
+          String seedID = appState.seedRoster[seedKey]!.ID;
+
+          final result = await showSeedHandleSelectionDialog(context, seedID);
+
+          if (result == 'group') {
+            // Select all handles of this seed
+            for (var coord in appState.getAllSeedHandleCoordinates(seedKey)) {
+              appState.selectHandle(coord, addOnly: true);
+            }
+          } else if (result == 'single') {
+            // Select only the handles that were in the rect
+            for (var coord in handlesInRectForSeed) {
+              appState.selectHandle(coord, addOnly: true);
+            }
+          }
+          // null (cancel) does nothing for this seed
         }
       }
 
@@ -116,7 +166,12 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         dragBoxActive = false;
         dragBoxStart = null;
         dragBoxEnd = null;
+        // Sync modifier key states with actual keyboard state (focus may have shifted to dialog)
+        final keysPressed = HardwareKeyboard.instance.logicalKeysPressed;
+        isCtrlPressed = keysPressed.any((key) => key == LogicalKeyboardKey.controlLeft || key == LogicalKeyboardKey.controlRight);
+        isMetaPressed = keysPressed.any((key) => key == LogicalKeyboardKey.metaLeft || key == LogicalKeyboardKey.metaRight);
       });
+
     } else if (getActionMode(actionState) == 'Slat-Move') {
       setState(() {
         if (hoverValid && dragActive && hoverPosition != null) {

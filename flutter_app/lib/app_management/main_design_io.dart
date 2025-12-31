@@ -729,8 +729,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // extracts seed handles and assigns them to slats
    try {
-    for (var table
-        in excel.tables.keys.where((key) => key.startsWith('seed'))) {
+    for (var table in excel.tables.keys.where((key) => key.startsWith('seed'))) {
       // runs through each handle layer sheet
       int seedLayerIndex = int.parse(table.split('_')[2]) - 1;
       int seedLayerSide =
@@ -781,9 +780,62 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SEED_SHEETS');
   }
 
-   // prepares seed Roster from partial seed arrays
-  for (var partialSeed in partialSeedArrays.entries){
-    seedRoster[(partialSeed.key.$2, partialSeed.key.$3, partialSeed.value[1]!)] = Seed(ID: partialSeed.key.$1, coordinates: partialSeed.value);
+  // prepares seedRoster from partial seed arrays
+  // Only register in seedRoster if complete 5x16 pattern (80 handles) and valid formation
+  for (var partialSeed in partialSeedArrays.entries) {
+    Map<int, Offset> seedCoordinates = partialSeed.value;
+    String seedID = partialSeed.key.$1;
+    String layerID = partialSeed.key.$2;
+    String sideString = partialSeed.key.$3;
+
+    // Must have exactly 80 handles for a complete seed
+    if (seedCoordinates.length != 80) {
+      // Partial seeds remain as isolated seed handles on slats (already set above)
+      continue;
+    }
+
+    // Verify no phantom slats and count distinct slats anchored
+    Set<String> attachmentSlats = {};
+    bool hasPhantom = false;
+
+    for (var coord in seedCoordinates.values) {
+      String slatID = "$layerID-I${slatArray[coord.dy.toInt() - minY.toInt()][coord.dx.toInt() - minX.toInt()][layerMap[layerID]!['order']]}";
+      var slat = slats[slatID];
+      if (slat == null) continue;
+
+      if (slat.phantomParent != null) {
+        hasPhantom = true;
+        break;
+      }
+
+      var uniqueSlatID = slat.id;
+      if (slat.slatType != 'tube') {
+        uniqueSlatID = slat.id + (slat.slatCoordinateToPosition[coord]! < 17 ? '-first-half' : 'second-half');
+      }
+      attachmentSlats.add(uniqueSlatID);
+    }
+
+    // Skip if handles on phantom slats or not enough distinct slats (parallel placement)
+    if (hasPhantom || attachmentSlats.length < 16) {
+      continue;
+    }
+
+    // Build list of (Offset, row, col) for geometry validation
+    List<(Offset, int, int)> handles = [];
+    for (var entry in seedCoordinates.entries) {
+      int index = entry.key;
+      int row = (index - 1) ~/ 16 + 1;
+      int col = (index - 1) % 16 + 1;
+      handles.add((entry.value, row, col));
+    }
+
+    // Verify handles are spatially adjacent in correct grid pattern
+    if (!validateSeedGeometry(handles)) {
+      continue;
+    }
+
+    // Valid complete seed - add to roster
+    seedRoster[(layerID, sideString, seedCoordinates[1]!)] = Seed(ID: seedID, coordinates: seedCoordinates);
   }
 
   // before finishing, copies all handles to phantom slats

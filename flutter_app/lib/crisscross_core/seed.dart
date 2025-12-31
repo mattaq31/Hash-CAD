@@ -40,6 +40,47 @@ int getIndexFromSeedText(String seedText) {
   return (row - 1) * 16 + (col - 1) + 1; // 1-based index
 }
 
+/// Validates that a set of seed handles forms a valid 5x16 grid pattern.
+/// Takes a list of (coordinate, row, col) tuples.
+/// Returns true if:
+///   - All 80 positions (rows 1-5, cols 1-16) are present
+///   - Handles are spatially adjacent in the correct grid pattern
+/// Note: Phantom slat and distinct slat checks must be done by the caller.
+bool validateSeedGeometry(List<(Offset, int, int)> handles) {
+  // Must have exactly 80 handles
+  if (handles.length != 80) return false;
+
+  // Verify all row/col combinations 1-5 x 1-16 are present
+  Set<(int, int)> positions = handles.map((e) => (e.$2, e.$3)).toSet();
+  if (positions.length != 80) return false;
+
+  // Build lookup map from (row, col) to coordinate
+  Map<(int, int), Offset> positionToCoord = {};
+  for (var handle in handles) {
+    positionToCoord[(handle.$2, handle.$3)] = handle.$1;
+  }
+
+  // Verify handles are spatially adjacent in correct grid pattern
+  // Calculate expected offsets from position (1,1) to (1,2) and (2,1)
+  Offset anchor = positionToCoord[(1, 1)]!;
+  Offset colOffset = positionToCoord[(1, 2)]! - anchor; // offset per column step
+  Offset rowOffset = positionToCoord[(2, 1)]! - anchor; // offset per row step
+
+  // Verify all positions match expected pattern based on these offsets
+  for (var handle in handles) {
+    int row = handle.$2;
+    int col = handle.$3;
+    Offset expectedPos = anchor + (colOffset * (col - 1).toDouble()) + (rowOffset * (row - 1).toDouble());
+
+    // Allow small tolerance for floating point comparison
+    if ((handle.$1 - expectedPos).distance > 0.01) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 class Seed {
   String ID;
   Map<int, Offset> coordinates;

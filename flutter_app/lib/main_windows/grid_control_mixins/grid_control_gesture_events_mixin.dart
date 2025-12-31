@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import '../alert_window.dart';
 import 'grid_control_contract.dart';
 
 /// Mixin containing gesture event handlers for GridAndCanvas
@@ -30,7 +31,7 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
     });
   }
 
-  void handleTapDown(TapDownDetails details, DesignState appState, ActionState actionState, BuildContext context) {
+  Future<void> handleTapDown(TapDownDetails details, DesignState appState, ActionState actionState, BuildContext context) async {
     final Offset snappedPosition = gridSnap(details.localPosition, appState);
     if (getActionMode(actionState) == 'Slat-Add') {
       if (!hoverValid) {
@@ -75,15 +76,60 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
       // cargo removed from the persistent list here
       var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
       if (checkCoordinateOccupancy(appState, actionState, [coordConvertedPosition])) {
-        appState.removeCargo(
-            appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!,
-            actionState.cargoAttachMode,
-            coordConvertedPosition);
+        // Check if this handle belongs to an active seed
+        var seedKey = appState.isHandlePartOfActiveSeed(
+          appState.selectedLayerKey,
+          actionState.cargoAttachMode,
+          coordConvertedPosition,
+        );
+
+        if (seedKey != null) {
+          // Show dialog for seed handle deletion
+          final result = await showSeedHandleDeletionDialog(context, appState.seedRoster[seedKey]!.ID);
+
+          if (result == 'group') {
+            // Delete entire seed (existing behavior)
+            appState.removeSeed(appState.selectedLayerKey, actionState.cargoAttachMode, coordConvertedPosition);
+          } else if (result == 'single') {
+            // Dissolve seed and delete just this handle
+            appState.dissolveSeed(seedKey, skipStateUpdate: true);
+            appState.removeSingleSeedHandle(
+              appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!,
+              actionState.cargoAttachMode,
+              coordConvertedPosition,
+            );
+          }
+          // null (cancel) does nothing
+        } else {
+          // Check if this is an isolated seed handle (SEED category but not in roster)
+          String slatID = appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!;
+          var slat = appState.slats[slatID]!;
+          int position = slat.slatCoordinateToPosition[coordConvertedPosition]!;
+          int integerSlatSide = int.parse(
+              appState.layerMap[appState.selectedLayerKey]?['${actionState.cargoAttachMode}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+          var handleDict = integerSlatSide == 5 ? slat.h5Handles : slat.h2Handles;
+
+          if (handleDict[position]?['category'] == 'SEED') {
+            // Isolated seed handle - use removeSingleSeedHandle
+            appState.removeSingleSeedHandle(
+              slatID,
+              actionState.cargoAttachMode,
+              coordConvertedPosition,
+            );
+          } else {
+            // Regular cargo - use removeCargo
+            appState.removeCargo(
+              slatID,
+              actionState.cargoAttachMode,
+              coordConvertedPosition,
+            );
+          }
+        }
       }
     }
   }
 
-  void handleTapUp(TapUpDetails details, DesignState appState, ActionState actionState) {
+  Future<void> handleTapUp(TapUpDetails details, DesignState appState, ActionState actionState, BuildContext context) async {
     final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
 
     if (getActionMode(actionState) == 'Slat-Move') {
@@ -98,11 +144,38 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
       }
     } else if (getActionMode(actionState) == 'Cargo-Move') {
       if (checkCoordinateOccupancy(appState, actionState, [snappedPosition])) {
-        if (appState.selectedHandlePositions.isNotEmpty && !isShiftPressed) {
-          appState.clearSelection();
+        // Check if this handle belongs to an active seed
+        var seedKey = appState.isHandlePartOfActiveSeed(
+          appState.selectedLayerKey,
+          actionState.cargoAttachMode,
+          snappedPosition,
+        );
+
+        if (seedKey != null) {
+          // Show dialog for seed handle selection
+          final result = await showSeedHandleSelectionDialog(context, appState.seedRoster[seedKey]!.ID);
+
+          if (result == 'group') {
+            // Select all handles in the seed group
+            if (!isShiftPressed) appState.clearSelection();
+            for (var coord in appState.getAllSeedHandleCoordinates(seedKey)) {
+              appState.selectHandle(coord, addOnly: true);
+            }
+          } else if (result == 'single') {
+            // Select just this handle
+            if (appState.selectedHandlePositions.isNotEmpty && !isShiftPressed) {
+              appState.clearSelection();
+            }
+            appState.selectHandle(snappedPosition);
+          }
+          // null (cancel) does nothing
+        } else {
+          // Regular cargo or isolated seed handle - select normally without popup
+          if (appState.selectedHandlePositions.isNotEmpty && !isShiftPressed) {
+            appState.clearSelection();
+          }
+          appState.selectHandle(snappedPosition);
         }
-        // this flips a selection if the cargo was already clicked (and pressing shift)
-        appState.selectHandle(snappedPosition);
       } else {
         appState.clearSelection();
       }

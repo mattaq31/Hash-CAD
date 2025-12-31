@@ -36,47 +36,189 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     return (newScale, calcOffset);
   }
 
-  /// Function for checking if a slat can be placed at a given coordinate.
+  /// Function for checking if a slat or cargo can be placed at a given coordinate.
+  /// Handles three seed collision scenarios:
+  /// 1. Adding a new seed (cargoAdditionType == 'SEED')
+  /// 2. Moving existing seed handles (Cargo-Move with SEED category handles)
+  /// 3. Moving slats that have seed handles (Slat-Move with SEED category handles)
   @override
   bool checkCoordinateOccupancy(DesignState appState, ActionState actionState, List<Offset> coordinates) {
     Iterable<Offset>? occupiedPositions;
     Set<Offset> hiddenPositions = {};
 
+    // For seed layer collision: we need to check ONLY seed handle positions against adjacent layer
+    // (not all slat positions, since slats on adjacent layers intentionally cross each other)
+    Map<Offset, Set<Offset>> seedLayerChecks = {}; // newSeedCoord -> adjacentLayerOccupancy
+    Set<Offset> hiddenSeedLayerPositions = {}; // Old seed positions being moved (to exclude)
+
     if (actionState.panelMode == 0) {
       // slat mode
       occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys;
-      for (var slat in hiddenSlats) {
-        hiddenPositions.addAll(appState.slats[slat]?.slatPositionToCoordinate.values ?? {});
-      }
-    } else {
-      // cargo mode (or otherwise)
-      String additionalOccupancy = '';
-      if (appState.cargoAdditionType == 'SEED') {
-        // if in seed mode, need to calculate collisions with slats too!
-        int targetLayerOrder =
-            appState.layerMap[appState.selectedLayerKey]!["order"] + (actionState.cargoAttachMode == 'top' ? 1 : -1);
-        if (targetLayerOrder != -1 && targetLayerOrder < appState.layerMap.length) {
-          additionalOccupancy =
-              appState.layerMap.keys.firstWhere((key) => appState.layerMap[key]!['order'] == targetLayerOrder);
+
+      for (var slatId in hiddenSlats) {
+        var slat = appState.slats[slatId];
+        if (slat == null) continue;
+        hiddenPositions.addAll(slat.slatPositionToCoordinate.values);
+
+        // Check if this slat has SEED handles - need to check adjacent layer collisions
+        for (var handleType in ['H5', 'H2']) {
+          var handleDict = handleType == 'H5' ? slat.h5Handles : slat.h2Handles;
+
+          // Find seed handle positions and their target layer
+          List<int> seedPositions = [];
+          for (var entry in handleDict.entries) {
+            if (entry.value['category'] == 'SEED') {
+              seedPositions.add(entry.key);
+              var oldCoord = slat.slatPositionToCoordinate[entry.key];
+              if (oldCoord != null) hiddenSeedLayerPositions.add(oldCoord);
+            }
+          }
+
+          if (seedPositions.isNotEmpty) {
+            var topHelix = appState.layerMap[slat.layer]?['top_helix'];
+            var occupancyID = topHelix == handleType ? 'top' : 'bottom';
+            int targetLayerOrder = appState.layerMap[slat.layer]!['order'] + (occupancyID == 'top' ? 1 : -1);
+
+            if (appState.layerNumberValid(targetLayerOrder)) {
+              String? targetLayer = appState.getLayerByOrder(targetLayerOrder);
+              if (targetLayer != null) {
+                Set<Offset> adjacentOccupancy = appState.occupiedGridPoints[targetLayer]?.keys.toSet() ?? {};
+
+                // Store old seed positions mapped to adjacent layer occupancy
+                // We'll match these to new positions during the collision check phase
+                for (var seedPos in seedPositions) {
+                  seedLayerChecks[slat.slatPositionToCoordinate[seedPos]!] = adjacentOccupancy;
+                }
+              }
+            }
+          }
         }
       }
-      if (additionalOccupancy != '') {
-        occupiedPositions = {
-          ...?appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']?.keys,
-          ...?appState.occupiedGridPoints[additionalOccupancy]?.keys
-        };
-      } else {
-        occupiedPositions =
-            appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']?.keys;
-      }
+    } else {
+      appState.occupiedCargoPoints.putIfAbsent('${appState.selectedLayerKey}-${actionState.cargoAttachMode}', () => {});
+      // cargo mode
+      occupiedPositions = appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']?.keys;
       hiddenPositions.addAll(hiddenCargo);
+
+      Set<Offset>? seedLayerOccupancy;
+
+      // Case 1: Adding a new seed - all coordinates are seed positions
+      if (appState.cargoAdditionType == 'SEED' && getActionMode(actionState) == 'Cargo-Add') {
+        int targetLayerOrder = appState.layerMap[appState.selectedLayerKey]!["order"] + (actionState.cargoAttachMode == 'top' ? 1 : -1);
+        if (appState.layerNumberValid(targetLayerOrder)) {
+          String? targetLayer = appState.getLayerByOrder(targetLayerOrder);
+          if (targetLayer != null) {
+            seedLayerOccupancy = appState.occupiedGridPoints[targetLayer]?.keys.toSet();
+          }
+        }
+        // For seed addition, ALL coordinates need to be checked against adjacent layer
+        if (seedLayerOccupancy != null) {
+          for (var coord in coordinates) {
+            seedLayerChecks[coord] = seedLayerOccupancy;
+          }
+        }
+      }
+
+      // Case 2: Moving existing seed handles
+      if (getActionMode(actionState) == 'Cargo-Move' && hiddenCargo.isNotEmpty) {
+        Set<Offset>? adjacentOccupancy;
+
+        for (var coord in hiddenCargo) {
+          var slatId = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
+          if (slatId == null) continue;
+          var slat = appState.slats[slatId];
+          if (slat == null) continue;
+          int? position = slat.slatCoordinateToPosition[coord];
+          if (position == null) continue;
+          int integerSlatSide = int.parse(appState.layerMap[slat.layer]?['${actionState.cargoAttachMode}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+          var handleDict = integerSlatSide == 5 ? slat.h5Handles : slat.h2Handles;
+          if (handleDict[position]?['category'] == 'SEED') {
+            hiddenSeedLayerPositions.add(coord);
+
+            // Get adjacent layer occupancy (cache it since it's the same for all)
+            if (adjacentOccupancy == null) {
+              int targetLayerOrder = appState.layerMap[appState.selectedLayerKey]!["order"] + (actionState.cargoAttachMode == 'top' ? 1 : -1);
+              if (appState.layerNumberValid(targetLayerOrder)) {
+                String? targetLayer = appState.getLayerByOrder(targetLayerOrder);
+                if (targetLayer != null) {
+                  adjacentOccupancy = appState.occupiedGridPoints[targetLayer]?.keys.toSet() ?? {};
+                }
+              }
+            }
+
+            if (adjacentOccupancy != null) {
+              seedLayerChecks[coord] = adjacentOccupancy;
+            }
+          }
+        }
+      }
     }
 
-    if (occupiedPositions == null) return false;
+    if (occupiedPositions == null && seedLayerChecks.isEmpty) return false;
 
+    // Check 1: Regular same-layer collision
     for (var coord in coordinates) {
-      if (occupiedPositions.contains(coord) && !hiddenPositions.contains(coord)) {
+      if (occupiedPositions != null && occupiedPositions.contains(coord) && !hiddenPositions.contains(coord)) {
         return true;
+      }
+    }
+
+    // Check 2: Seed-layer collision (only for coordinates that correspond to seed handles)
+    if (seedLayerChecks.isNotEmpty) {
+      // For slat move: we need to map old seed positions to new positions
+      // For cargo move/add: coordinates ARE the new positions directly
+      if (actionState.panelMode == 0 && hiddenSlats.isNotEmpty) {
+        // Match old positions to new positions in coordinates list
+        // coordinates contains new positions for ALL selected slats in order
+        int coordIndex = 0;
+        for (var slatId in hiddenSlats) {
+          var slat = appState.slats[slatId];
+          if (slat == null) continue;
+          var slatOldCoords = slat.slatPositionToCoordinate;
+          for (var entry in slatOldCoords.entries) {
+            if (coordIndex < coordinates.length) {
+              Offset oldCoord = entry.value;
+              Offset newCoord = coordinates[coordIndex];
+
+              // Check if this position had a seed handle
+              if (seedLayerChecks.containsKey(oldCoord)) {
+                var adjacentOccupancy = seedLayerChecks[oldCoord]!;
+                // Check if NEW position collides with adjacent layer
+                if (adjacentOccupancy.contains(newCoord) && !hiddenSeedLayerPositions.contains(newCoord)) {
+                  return true;
+                }
+              }
+              coordIndex++;
+            }
+          }
+        }
+      } else {
+        // Cargo mode: coordinates are new positions, hiddenCargo are old positions
+        // Calculate offset from first hidden cargo to first coordinate
+        if (hiddenCargo.isNotEmpty && coordinates.isNotEmpty) {
+          for (int i = 0; i < coordinates.length && i < hiddenCargo.length; i++) {
+            Offset oldCoord = hiddenCargo[i];
+            Offset newCoord = coordinates[i];
+
+            if (seedLayerChecks.containsKey(oldCoord)) {
+              var adjacentOccupancy = seedLayerChecks[oldCoord]!;
+              if (adjacentOccupancy.contains(newCoord) && !hiddenSeedLayerPositions.contains(newCoord)) {
+                return true;
+              }
+            }
+          }
+        } else if (getActionMode(actionState) == 'Cargo-Add') {
+          // For seed addition, all coordinates need checking
+          for (var coord in coordinates) {
+            // seedLayerChecks has all coordinates mapped to same adjacentOccupancy
+            if (seedLayerChecks.containsKey(coord)) {
+              var adjacentOccupancy = seedLayerChecks[coord]!;
+              if (adjacentOccupancy.contains(coord)) {
+                return true;
+              }
+            }
+          }
+        }
       }
     }
 
@@ -96,7 +238,6 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
 
     if (actionState.panelMode == 0) {
       // slat mode
-      // TODO: there must be a faster way to get this to run properly...
       // preselectedSlats means that the slats are already selected and are being moved
       if (preSelectedPositions) {
         Offset slatOffset = appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor);

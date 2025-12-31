@@ -1,7 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hash_cad/graphics/crosshatch_shader.dart';
 import '../crisscross_core/seed.dart';
 import 'dart:math';
+
+bool _isColorDark(Color color) {
+  double brightness = (color.r * 0.299 + color.g * 0.587 + color.b * 0.114);
+  return brightness < 0.5;
+}
 
 
 void paintSeedFromArray(Canvas canvas, Map<int, Offset> coordinates, double gridSize,
@@ -102,6 +108,7 @@ class SeedPainter extends CustomPainter {
   final int cols;
   final Color color;
   final bool printHandles;
+  final bool showLabels;
 
   SeedPainter({
     required this.scale,
@@ -113,6 +120,7 @@ class SeedPainter extends CustomPainter {
     this.rows = 5,
     this.cols = 16,
     this.color = Colors.red,
+    this.showLabels = true,
   });
 
   @override
@@ -126,6 +134,7 @@ class SeedPainter extends CustomPainter {
     canvas.translate(canvasOffset.dx, canvasOffset.dy);
     canvas.scale(scale);
 
+    // First pass: draw all seed pictographs
     for (var i = 0; i < seeds.length; i++) {
       Seed seed = seeds[i];
       double transparency = seedTransparency[i] ? 0.5 : 1.0;
@@ -134,7 +143,80 @@ class SeedPainter extends CustomPainter {
           seed.transverseAngle!, color: color, cols:cols, rows:rows,
           printHandles: printHandles, alpha:transparency);
     }
+
+    // Second pass: draw all seed ID labels on top
+    if (showLabels) {
+      for (var i = 0; i < seeds.length; i++) {
+        Seed seed = seeds[i];
+        _drawSeedLabel(canvas, seed, handleJump);
+      }
+    }
+
     canvas.restore();
+  }
+
+  void _drawSeedLabel(Canvas canvas, Seed seed, double gridSize) {
+    // Position label at the first coordinate (corner of the seed)
+    final cornerCoord = seed.coordinates[1]!;
+
+    // Offset the label slightly outside the seed boundary (although this may vary with rotation, whatever it looks fine in most cases)
+    final labelSize = gridSize * 1.2;
+    final labelCenter = Offset(
+      cornerCoord.dx - gridSize * 0.4,
+      cornerCoord.dy - gridSize * 0.4,
+    );
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: seed.ID,
+        style: TextStyle(
+          color: _isColorDark(color) ? Colors.white : Colors.black,
+          fontFamily: 'Roboto',
+          fontSize: gridSize * 0.9,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+    textPainter.layout();
+
+    double baselineOffset;
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      baselineOffset = textPainter.height;
+    } else {
+      baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
+    }
+
+    final labelRect = Rect.fromCenter(
+      center: labelCenter,
+      width: labelSize,
+      height: labelSize,
+    );
+
+    final textOffset = Offset(
+      labelCenter.dx - textPainter.width / 2 + 0.1,
+      labelCenter.dy - baselineOffset / 2 - 0.5,
+    );
+
+    // Draw colored background
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(labelRect, Radius.circular(gridSize * 0.2)),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+
+    // Draw border
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(labelRect, Radius.circular(gridSize * 0.2)),
+      Paint()
+        ..color = Colors.black
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1,
+    );
+
+    textPainter.paint(canvas, textOffset);
   }
 
   @override
@@ -143,6 +225,7 @@ class SeedPainter extends CustomPainter {
       oldDelegate.seeds != seeds ||
         oldDelegate.rows != rows ||
         oldDelegate.color != color ||
-        oldDelegate.cols != cols;
+        oldDelegate.cols != cols ||
+        oldDelegate.showLabels != showLabels;
   }
 }

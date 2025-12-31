@@ -115,30 +115,6 @@ class CargoHoverPainter extends CustomPainter {
 
           canvas.drawRect(rect, borderPaint);
         }
-        // otherwise, draw hover points based on the anchor and provided coordinates - TODO: preSelectedPositions should be removed, integrate anchor in the above
-
-        // else {
-        //   // Offset anchorTranslate = hoverPosition! - moveAnchor;
-        //   for (var coord in preSelectedPositions) {
-        //     // convert the below to a rect with the correct syntax
-        //     final rect = Rect.fromCenter(
-        //       center: coord,
-        //       width: appState.gridSize * 0.85,
-        //       height: appState.gridSize * 0.85,
-        //     );
-        //
-        //     // Fill rectangle
-        //     canvas.drawRect(rect, hoverRodPaint);
-        //
-        //     // Outline with thin black border
-        //     final borderPaint = Paint()
-        //       ..style = PaintingStyle.stroke
-        //       ..strokeWidth = 0.1
-        //       ..color = Colors.black;
-        //
-        //     canvas.drawRect(rect, borderPaint);
-        //   }
-        // }
       }
     }
     canvas.restore();
