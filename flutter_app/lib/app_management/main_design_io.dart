@@ -14,7 +14,8 @@ import '../crisscross_core/cargo.dart';
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/sparse_to_array_conversion.dart';
 import '../crisscross_core/seed.dart';
-import '../crisscross_core/handle_utilities.dart';
+import '../crisscross_core/common_utilities.dart';
+import 'design_state_mixins/design_state_handle_link_mixin.dart';
 
 // Remember the last directory used for opening files in this session (desktop only)
 String? _lastOpenDirectory;
@@ -77,6 +78,7 @@ void exportDesign(Map<String, Slat> slats,
     Map<String, Cargo> cargoPalette,
     Map<String, Map<Offset, String>> occupiedCargoPoints,
     Map<(String, String, Offset), Seed> seedRoster,
+    HandleLinkManager linkManager,
     double gridSize, String gridMode, String suggestedDesignName) async{
 
   Offset minPos;
@@ -314,6 +316,9 @@ void exportDesign(Map<String, Slat> slats,
     slatTypeSheet.appendRow(row);
   }
 
+  // finally, export the link manager to its own sheet
+  writeHandleLinksToExcel(excel, slats, linkManager, layerMap);
+
   excel.delete('Sheet1'); // removes useless first sheet
 
   if (kIsWeb){
@@ -448,21 +453,21 @@ bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slat
   return true;
 }
 
-
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, String)> parseDesignInIsolate(Uint8List fileBytes) async {
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, HandleLinkManager, String)> parseDesignInIsolate(Uint8List fileBytes) async {
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
   Map<String, Map<int, String>> phantomMap = {};
   Map<String, Cargo> cargoPalette = {};
   Map<(String, String, Offset), Seed> seedRoster = {};
+  HandleLinkManager linkManager = HandleLinkManager();
 
   // read in file with Excel package
   var excel = Excel.decodeBytes(fileBytes);
 
   // Metadata must exist
   if (!excel.tables.containsKey('metadata')) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_GENERAL');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_GENERAL');
   }
 
   // Read metadata
@@ -482,7 +487,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // if no layers found, return empty maps
   if (numLayers == 0) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SLAT_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SLAT_SHEETS');
   }
 
   int layerReadStart = 8;
@@ -565,18 +570,16 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_GENERAL');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_GENERAL');
   }
 
   // prepares slat array from metadata information
   List<List<List<int>>> slatArray;
   try {
-    slatArray = List.generate(
-        excel.tables['slat_layer_1']!.maxRows,
-        (_) => List.generate(excel.tables['slat_layer_1']!.maxColumns,
-            (_) => List.filled(numLayers, 0)));
+    slatArray = List.generate(excel.tables['slat_layer_1']!.maxRows,
+        (_) => List.generate(excel.tables['slat_layer_1']!.maxColumns, (_) => List.filled(numLayers, 0)));
   } catch (_) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SLAT_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SLAT_SHEETS');
   }
 
   // extracts slat positional data into array
@@ -648,7 +651,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SLAT_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SLAT_SHEETS');
   }
 
 
@@ -670,7 +673,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   // assembly handle extraction
   final okHandles = extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minX, minY, false);
   if (!okHandles) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_ASSEMBLY_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_ASSEMBLY_SHEETS');
   }
 
   // extracts cargo handles and assigns them to slats
@@ -717,7 +720,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_CARGO_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_CARGO_SHEETS');
   }
 
   // legacy compatibility with files that didn't contain seed info
@@ -776,7 +779,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, 'ERR_SEED_SHEETS');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SEED_SHEETS');
   }
 
   // prepares seedRoster from partial seed arrays
@@ -842,11 +845,21 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     slat.copyHandlesFromSlat(slats[slat.phantomParent!]!);
   }
 
-  return (slats, layerMap, gridMode, cargoPalette, seedRoster, phantomMap, '');
+
+  // finally, import handle link data if available
+  try {
+    if(!extractHandleLinksFromExcel(excel, slats, layerMap, linkManager)){ // indicates some form of error
+      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER');
+    }
+  } catch (_){
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER');
+  }
+
+
+  return (slats, layerMap, gridMode, cargoPalette, seedRoster, phantomMap, linkManager, '');
 }
 
-
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, String, String)>
+Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, HandleLinkManager, String, String)>
 importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
   /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
 
@@ -855,6 +868,7 @@ importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
   Map<String, Cargo> cargoPalette = {};
   Map<String, Map<int, String>> phantomMap = {};
   Map<(String, String, Offset), Seed> seedRoster = {};
+  HandleLinkManager linkManager = HandleLinkManager();
 
   String filePath;
   Uint8List fileBytes;
@@ -885,12 +899,12 @@ importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
       fileName = basenameWithoutExtension(result.files.first.name);
     } else {
       // if nothing picked, return empty maps
-      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, '', '');
+      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, '', '');
     }
   }
   // run isolate function
   try {
-    final (slatsOut, layerMapOut, layerName, cargoOut, seedOut, phantomMapOut, errorCode) =
+    final (slatsOut, layerMapOut, layerName, cargoOut, seedOut, phantomMapOut, linkManagerOut, errorCode) =
         await compute(parseDesignInIsolate, fileBytes);
     return (
       slatsOut,
@@ -899,11 +913,12 @@ importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
       cargoOut,
       seedOut,
       phantomMapOut,
+      linkManagerOut,
       fileName,
       errorCode
     );
   } catch (_) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, '', 'ERR_GENERAL');
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, '', 'ERR_GENERAL');
   }
 }
 
@@ -952,7 +967,6 @@ Future <bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats
   // assign assembly handles to slats (returns true if successful, false if there is an error)
   return extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minPos.dx, minPos.dy, true);
 }
-
 
 Future <void> importPlatesFromFile(PlateLibrary plateLibrary) async{
 
@@ -1046,6 +1060,118 @@ Future<void> exportEvolutionParameters(Map<String, String> parameters) async {
   // Save to a file
   final file = File(filePath);
   await file.writeAsString(tomlString);
+}
+
+/// Extracts handle link data from an Excel file and imports it into the HandleLinkManager.
+/// Returns true if successful (even if no link data exists), false on error.
+bool extractHandleLinksFromExcel(Excel excelFile, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, HandleLinkManager linkManager) {
+
+  if (!excelFile.tables.containsKey('slat_handle_links')) {
+    // No link data sheet (backwards compatibility)
+    return true;
+  }
+
+  try {
+    var sheet = excelFile.tables['slat_handle_links']!;
+    List<List<dynamic>> data = [];
+
+    for (var row = 0; row < sheet.maxRows; row++) {
+      List<dynamic> rowData = [];
+      for (var col = 0; col < sheet.maxColumns; col++) {
+        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
+        if (cell is TextCellValue) {
+          rowData.add(cell.value.text ?? '');
+        } else if (cell is IntCellValue) {
+          rowData.add(cell.value);
+        } else if (cell is DoubleCellValue) {
+          rowData.add(cell.value);
+        } else {
+          rowData.add(null);
+        }
+      }
+      data.add(rowData);
+    }
+
+    linkManager.importFromExcelData(data, slats, layerMap);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Writes handle link data to an Excel workbook.
+/// Creates the 'slat_handle_links' sheet with proper formatting.
+void writeHandleLinksToExcel(Excel excel, Map<String, Slat> slats, HandleLinkManager linkManager, Map<String, Map<String, dynamic>> layerMap) {
+
+  List<List<dynamic>> linkData = linkManager.exportToExcelData(slats, layerMap);
+  if (linkData.isEmpty) {
+    return;
+  }
+
+  Sheet sheet = excel['slat_handle_links'];
+
+  // Determine max columns
+  int maxCols = 0;
+  for (var row in linkData) {
+    if (row.length > maxCols) maxCols = row.length;
+  }
+
+  // Write data to sheet
+  for (int rowIdx = 0; rowIdx < linkData.length; rowIdx++) {
+    var row = linkData[rowIdx];
+    for (int colIdx = 0; colIdx < row.length; colIdx++) {
+      var value = row[colIdx];
+      if (value == null || value == '') {
+        // Leave cell empty
+        continue;
+      } else if (value is int) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIdx, rowIndex: rowIdx)).value = IntCellValue(value);
+      } else if (value is double) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIdx, rowIndex: rowIdx)).value = DoubleCellValue(value);
+      } else {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIdx, rowIndex: rowIdx)).value = TextCellValue(value.toString());
+      }
+    }
+  }
+
+  // Apply formatting to slat name rows (every 6 rows starting at 0)
+  for (int i = 0; i < linkData.length; i += 6) {
+    if (i >= linkData.length) break;
+
+    var slatId = linkData[i][0].toString();
+    var slat = slats[pythonToDartSlatNameConvert(slatId, layerMap)]!;
+    Color layerColor;
+
+    if (slat.uniqueColor != null) {
+      layerColor = slat.uniqueColor!;
+    } else {
+      layerColor = layerMap[slat.layer]?['color'] ?? Color(0xFF808080);
+    }
+
+    // Calculate brightness to determine font color
+    int r = (layerColor.r * 255.0).round() & 0xFF;
+    int g = (layerColor.g * 255.0).round() & 0xFF;
+    int b = (layerColor.b * 255.0).round() & 0xFF;
+    double brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0;
+    String fontColor = brightness < 0.5 ? 'FFFFFF' : '000000';
+
+    // Merge the slat name row across all columns
+    if (maxCols > 1) {
+      sheet.merge(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i),
+        CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: i),
+        customValue: TextCellValue(slatId),
+      );
+    }
+
+    // Apply background color to first cell of the slat name row
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: i)).cellStyle = CellStyle(
+      backgroundColorHex: layerColor.toHexString().excelColor,
+      fontColorHex: fontColor.excelColor,
+      horizontalAlign: HorizontalAlign.Center,
+    );
+
+  }
 }
 
 

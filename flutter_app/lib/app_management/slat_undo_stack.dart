@@ -2,6 +2,7 @@ import '../crisscross_core/slats.dart';
 import 'package:flutter/material.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/seed.dart';
+import 'design_state_mixins/design_state_handle_link_mixin.dart';
 
 class DesignSaveState {
   final Map<String, Slat> slats;
@@ -12,6 +13,7 @@ class DesignSaveState {
   final Map<String, Map<Offset, String>> occupiedCargoPoints;
   final Map<(String, String, Offset), Seed> seedRoster;
   final Map<String, Map<int, String>> phantomMap;
+  final HandleLinkManager assemblyLinkManager;
 
   DesignSaveState({
     required this.slats,
@@ -22,6 +24,7 @@ class DesignSaveState {
     required this.occupiedCargoPoints,
     required this.seedRoster,
     required this.phantomMap,
+    required this.assemblyLinkManager,
   });
 
   /// Deep copy constructor
@@ -49,6 +52,7 @@ class DesignSaveState {
       phantomMap: {
         for (var e in phantomMap.entries) e.key: Map.from(e.value)
       },
+      assemblyLinkManager: assemblyLinkManager.copy(),
     );
   }
 }

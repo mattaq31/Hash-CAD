@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
-import '../../crisscross_core/handle_utilities.dart';
+import '../../crisscross_core/common_utilities.dart';
 import 'grid_control_contract.dart';
 
 /// Mixin containing helper calculation functions for GridAndCanvas

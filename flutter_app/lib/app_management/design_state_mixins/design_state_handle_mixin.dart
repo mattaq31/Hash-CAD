@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/assembly_handles.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
-import '../../crisscross_core/handle_utilities.dart';
+import '../../crisscross_core/common_utilities.dart';
 import '../main_design_io.dart';
 
 /// Mixin containing handle assignment and assembly handle operations for DesignState

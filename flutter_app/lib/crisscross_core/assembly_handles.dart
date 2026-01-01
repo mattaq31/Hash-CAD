@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'slats.dart';
 import 'slat_standardized_mapping.dart';
+import 'common_utilities.dart';
 
 // Treat all per-slat arrays as 2D "grids" of ints (even 1D slats as [ [L] ])
 typedef IntGrid = List<List<int>>;
@@ -66,15 +67,6 @@ List<List<List<int>>> generateLayerSplitHandles(List<List<List<int>>> baseArray,
 
 Map<int, int> getSlatMatchCounts(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Offset minGrid) {
 
-  String? getLayerByOrder(int order) {
-    for (final entry in layerMap.entries) {
-      if (entry.value['order'] == order) {
-        return entry.key;
-      }
-    }
-    return null;
-  }
-
   // Histogram: {number of matches between a pair: number of slat pairs having that many matches}
   final Map<int, int> matchHistogram = <int, int>{};
   final Set<String> completedSlats = <String>{};
@@ -119,7 +111,7 @@ Map<int, int> getSlatMatchCounts(List<List<List<int>>> slatArray, List<List<List
         final otherSlatId = slatArray[x][y][slatLayer]; // layer above: index slatLayer
         if (otherSlatId == 0) continue;
 
-        final otherKey = '${getLayerByOrder(slatLayer)}-I$otherSlatId';
+        final otherKey = '${getLayerByOrder(layerMap, slatLayer)}-I$otherSlatId';
         if (!completedSlats.contains(otherKey)) {
           matchesWithOtherSlats[otherKey] = (matchesWithOtherSlats[otherKey] ?? 0) + 1;
         }
@@ -141,7 +133,7 @@ Map<int, int> getSlatMatchCounts(List<List<List<int>>> slatArray, List<List<List
         final otherSlatId = slatArray[x][y][slatLayer - 2]; // layer below: index slatLayer - 2
         if (otherSlatId == 0) continue;
 
-        final otherKey = '${getLayerByOrder(slatLayer - 2)}-I$otherSlatId';
+        final otherKey = '${getLayerByOrder(layerMap, slatLayer - 2)}-I$otherSlatId';
         if (!completedSlats.contains(otherKey)) {
           matchesWithOtherSlats[otherKey] = (matchesWithOtherSlats[otherKey] ?? 0) + 1;
         }

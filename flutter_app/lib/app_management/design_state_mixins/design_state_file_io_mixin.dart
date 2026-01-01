@@ -7,6 +7,7 @@ import '../../crisscross_core/seed.dart';
 import '../slat_undo_stack.dart';
 import '../main_design_io.dart';
 import '../shared_app_state.dart';
+import 'design_state_handle_link_mixin.dart';
 
 /// Mixin containing file import/export and undo/redo operations for DesignState
 mixin DesignStateFileIOMixin on ChangeNotifier {
@@ -49,15 +50,18 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
   SlatUndoStack get undoStack;
   set undoStack(SlatUndoStack value);
 
+  HandleLinkManager get assemblyLinkManager;
+  set assemblyLinkManager(HandleLinkManager value);
+
   // Methods from other mixins
   void resetDefaults();
-  void clearSelection();
   void updateDesignHammingValue();
+  void saveUndoState();
   Offset convertCoordinateSpacetoRealSpace(Offset inputPosition);
 
   void exportCurrentDesign() async {
     /// Exports the current design to an excel file
-    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, gridSize, gridMode, designName);
+    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, assemblyLinkManager, gridSize, gridMode, designName);
   }
 
   void importNewDesign(BuildContext context, {String? fileName, Uint8List? fileBytes}) async {
@@ -71,6 +75,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
       newCargoPalette,
       newSeedRoster,
       newPhantomMap,
+      newLinkManager,
       newDesignName,
       errorCode
     ) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
@@ -85,6 +90,8 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
           return 'There seems to be a problem with the seed sheets in the selected file - can you check the formatting?';
         case 'ERR_CARGO_SHEETS':
           return 'There seems to be a problem with the cargo sheets in the selected file - can you check the formatting?';
+        case  'ERR_LINK_MANAGER':
+          return 'There seems to be a problem with the assembly handle link data in the selected file - can you check the formatting?';
         case 'ERR_GENERAL':
           return 'The file could not be imported - are you sure this is a standard design file?';
         default:
@@ -128,6 +135,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
     cargoPalette = newCargoPalette;
     designName = newDesignName;
     phantomMap = newPhantomMap;
+    assemblyLinkManager = newLinkManager;
     selectedLayerKey = layerMap.keys.first;
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
@@ -258,54 +266,12 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
     };
     // state reset
     resetDefaults();
+    assemblyLinkManager = HandleLinkManager();
 
     saveUndoState();
     notifyListeners();
   }
 
-  void saveUndoState() {
-    undoStack.saveState(DesignSaveState(
-        slats: slats,
-        occupiedGridPoints: occupiedGridPoints,
-        layerMap: layerMap,
-        layerMetaData: {
-          'selectedLayerKey': selectedLayerKey,
-          'nextLayerKey': nextLayerKey,
-          'nextColorIndex': nextColorIndex,
-        },
-        cargoPalette: cargoPalette,
-        occupiedCargoPoints: occupiedCargoPoints,
-        seedRoster: seedRoster,
-        phantomMap: phantomMap));
-  }
-
-  void undo2DAction({bool redo = false}) {
-    // reverses actions taken on the 2D portion of the design
-    clearSelection();
-    hammingValueValid = false;
-    DesignSaveState? newState;
-    if (redo) {
-      newState = undoStack.redo();
-    } else {
-      newState = undoStack.undo();
-    }
-
-    if (newState != null) {
-      slats = newState.slats;
-      occupiedGridPoints = newState.occupiedGridPoints;
-      occupiedCargoPoints = newState.occupiedCargoPoints;
-      cargoPalette = newState.cargoPalette;
-      layerMap = newState.layerMap;
-      selectedLayerKey = newState.layerMetaData['selectedLayerKey'];
-      nextLayerKey = newState.layerMetaData['nextLayerKey'];
-      nextColorIndex = newState.layerMetaData['nextColorIndex'];
-      seedRoster = newState.seedRoster;
-      if (!cargoPalette.containsKey(cargoAdditionType)) {
-        cargoAdditionType = null;
-      }
-    }
-    notifyListeners();
-  }
 
   // Helper methods that need to be declared as abstract in this mixin
   // since they're implemented in other mixins

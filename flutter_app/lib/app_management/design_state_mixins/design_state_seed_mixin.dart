@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/seed.dart';
-import '../../crisscross_core/handle_utilities.dart';
+import '../../crisscross_core/common_utilities.dart';
 import '../../main_windows/alert_window.dart';
 import '../shared_app_state.dart';
 

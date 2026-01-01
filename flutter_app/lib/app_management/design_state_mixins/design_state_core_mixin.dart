@@ -4,6 +4,10 @@ import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/seed.dart';
 import '../../2d_painters/helper_functions.dart' as utils;
 import '../shared_app_state.dart';
+import '../slat_undo_stack.dart';
+import 'design_state_handle_link_mixin.dart';
+import '../../crisscross_core/slats.dart';
+
 
 /// Mixin containing core utility operations for DesignState
 mixin DesignStateCoreMixin on ChangeNotifier {
@@ -15,11 +19,18 @@ mixin DesignStateCoreMixin on ChangeNotifier {
   set gridMode(String value);
   HoverPreview? get hoverPreview;
   set hoverPreview(HoverPreview? value);
-  Map<String, Map<String, dynamic>> get layerMap;
   String get designName;
   set designName(String value);
   Color get uniqueSlatColor;
   set uniqueSlatColor(Color value);
+  SlatUndoStack get undoStack;
+  set undoStack(SlatUndoStack value);
+  HandleLinkManager get assemblyLinkManager;
+  set assemblyLinkManager(HandleLinkManager value);
+  Map<String, Slat> get slats;
+  set slats(Map<String, Slat> value);
+  Map<String, Map<String, dynamic>> get layerMap;
+  set layerMap(Map<String, Map<String, dynamic>> value);
 
   // State that needs setters for resetDefaults
   String get selectedLayerKey;
@@ -65,7 +76,7 @@ mixin DesignStateCoreMixin on ChangeNotifier {
 
   // Methods from other mixins that this mixin calls
   void clearAll();
-  void saveUndoState();
+  void clearSelection();
 
   void setHoverPreview(HoverPreview? preview) {
     hoverPreview = preview;
@@ -143,4 +154,51 @@ mixin DesignStateCoreMixin on ChangeNotifier {
     uniqueSlatColor = color;
     notifyListeners();
   }
+
+  void saveUndoState() {
+    undoStack.saveState(DesignSaveState(
+        slats: slats,
+        occupiedGridPoints: occupiedGridPoints,
+        layerMap: layerMap,
+        layerMetaData: {
+          'selectedLayerKey': selectedLayerKey,
+          'nextLayerKey': nextLayerKey,
+          'nextColorIndex': nextColorIndex,
+        },
+        cargoPalette: cargoPalette,
+        occupiedCargoPoints: occupiedCargoPoints,
+        seedRoster: seedRoster,
+        phantomMap: phantomMap,
+        assemblyLinkManager: assemblyLinkManager));
+  }
+
+  void undo2DAction({bool redo = false}) {
+    // reverses actions taken on the 2D portion of the design
+    clearSelection();
+    hammingValueValid = false;
+    DesignSaveState? newState;
+    if (redo) {
+      newState = undoStack.redo();
+    } else {
+      newState = undoStack.undo();
+    }
+
+    if (newState != null) {
+      slats = newState.slats;
+      occupiedGridPoints = newState.occupiedGridPoints;
+      occupiedCargoPoints = newState.occupiedCargoPoints;
+      cargoPalette = newState.cargoPalette;
+      layerMap = newState.layerMap;
+      selectedLayerKey = newState.layerMetaData['selectedLayerKey'];
+      nextLayerKey = newState.layerMetaData['nextLayerKey'];
+      nextColorIndex = newState.layerMetaData['nextColorIndex'];
+      seedRoster = newState.seedRoster;
+      assemblyLinkManager = newState.assemblyLinkManager;
+      if (!cargoPalette.containsKey(cargoAdditionType)) {
+        cargoAdditionType = null;
+      }
+    }
+    notifyListeners();
+  }
+
 }

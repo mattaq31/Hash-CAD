@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/cargo.dart';
-import '../../crisscross_core/handle_utilities.dart';
+import '../../crisscross_core/common_utilities.dart';
 
 /// Mixin containing cargo type management and cargo attachment operations for DesignState
 mixin DesignStateCargoMixin on ChangeNotifier {

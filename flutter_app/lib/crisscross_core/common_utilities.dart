@@ -34,6 +34,15 @@ int getLayerOffsetForSide(Map<String, Map<String, dynamic>> layerMap, String lay
   return (layerMap[layerID]!['top_helix'] == 'H5' && side == 5 ||  layerMap[layerID]!['top_helix'] == 'H2' && side == 2) ? 1 : -1;
 }
 
+String? getLayerByOrder(Map<String, Map<String, dynamic>> layerMap, int order) {
+  for (final entry in layerMap.entries) {
+    if (entry.value['order'] == order) {
+      return entry.key;
+    }
+  }
+  return null;
+}
+
 /// Gets the opposing helix side for a given layer based on direction
 /// direction: 1 for looking up (returns bottom helix of adjacent), -1 for looking down (returns top helix of adjacent)
 int getOpposingSide(Map<String, Map<String, dynamic>> layerMap, String adjacentLayerID, int direction) {
