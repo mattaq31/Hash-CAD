@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import '../../crisscross_core/handle_utilities.dart';
 import 'grid_control_contract.dart';
 
 /// Mixin containing helper calculation functions for GridAndCanvas
@@ -61,8 +62,8 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
         hiddenPositions.addAll(slat.slatPositionToCoordinate.values);
 
         // Check if this slat has SEED handles - need to check adjacent layer collisions
-        for (var handleType in ['H5', 'H2']) {
-          var handleDict = handleType == 'H5' ? slat.h5Handles : slat.h2Handles;
+        for (var handleType in [5, 2]) {
+          var handleDict = getHandleDict(slat, handleType);
 
           // Find seed handle positions and their target layer
           List<int> seedPositions = [];
@@ -75,9 +76,9 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
           }
 
           if (seedPositions.isNotEmpty) {
-            var topHelix = appState.layerMap[slat.layer]?['top_helix'];
-            var occupancyID = topHelix == handleType ? 'top' : 'bottom';
-            int targetLayerOrder = appState.layerMap[slat.layer]!['order'] + (occupancyID == 'top' ? 1 : -1);
+            int topHelixSide = getSlatSideFromLayer(appState.layerMap, slat.layer, 'top');
+            var occupancyID = topHelixSide == handleType ? 'top' : 'bottom';
+            int targetLayerOrder = getAdjacentLayerOrder(appState.layerMap, slat.layer, occupancyID);
 
             if (appState.layerNumberValid(targetLayerOrder)) {
               String? targetLayer = appState.getLayerByOrder(targetLayerOrder);
@@ -95,16 +96,17 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
         }
       }
     } else {
-      appState.occupiedCargoPoints.putIfAbsent('${appState.selectedLayerKey}-${actionState.cargoAttachMode}', () => {});
+      String layerSideKey = generateLayerSideKey(appState.selectedLayerKey, actionState.cargoAttachMode);
+      appState.occupiedCargoPoints.putIfAbsent(layerSideKey, () => {});
       // cargo mode
-      occupiedPositions = appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']?.keys;
+      occupiedPositions = appState.occupiedCargoPoints[layerSideKey]?.keys;
       hiddenPositions.addAll(hiddenCargo);
 
       Set<Offset>? seedLayerOccupancy;
 
       // Case 1: Adding a new seed - all coordinates are seed positions
       if (appState.cargoAdditionType == 'SEED' && getActionMode(actionState) == 'Cargo-Add') {
-        int targetLayerOrder = appState.layerMap[appState.selectedLayerKey]!["order"] + (actionState.cargoAttachMode == 'top' ? 1 : -1);
+        int targetLayerOrder = getAdjacentLayerOrder(appState.layerMap, appState.selectedLayerKey, actionState.cargoAttachMode);
         if (appState.layerNumberValid(targetLayerOrder)) {
           String? targetLayer = appState.getLayerByOrder(targetLayerOrder);
           if (targetLayer != null) {
@@ -130,14 +132,14 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
           if (slat == null) continue;
           int? position = slat.slatCoordinateToPosition[coord];
           if (position == null) continue;
-          int integerSlatSide = int.parse(appState.layerMap[slat.layer]?['${actionState.cargoAttachMode}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-          var handleDict = integerSlatSide == 5 ? slat.h5Handles : slat.h2Handles;
+          int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.cargoAttachMode);
+          var handleDict = getHandleDict(slat, integerSlatSide);
           if (handleDict[position]?['category'] == 'SEED') {
             hiddenSeedLayerPositions.add(coord);
 
             // Get adjacent layer occupancy (cache it since it's the same for all)
             if (adjacentOccupancy == null) {
-              int targetLayerOrder = appState.layerMap[appState.selectedLayerKey]!["order"] + (actionState.cargoAttachMode == 'top' ? 1 : -1);
+              int targetLayerOrder = getAdjacentLayerOrder(appState.layerMap, appState.selectedLayerKey, actionState.cargoAttachMode);
               if (appState.layerNumberValid(targetLayerOrder)) {
                 String? targetLayer = appState.getLayerByOrder(targetLayerOrder);
                 if (targetLayer != null) {

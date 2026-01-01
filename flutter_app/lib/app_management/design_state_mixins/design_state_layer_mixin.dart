@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/seed.dart';
+import '../../crisscross_core/handle_utilities.dart';
 import '../../main_windows/alert_window.dart';
 import '../shared_app_state.dart';
 
@@ -64,6 +65,14 @@ mixin DesignStateLayerMixin on ChangeNotifier {
   bool layerNumberValid(int layerOrder);
 
   String? getLayerByOrder(int order);
+
+  /// Gets the layer ID for an adjacent layer (above for 'top', below for 'bottom'),
+  /// or null if out of bounds.
+  String? getAdjacentLayer(String layerID, String slatSide) {
+    int adjacentOrder = getAdjacentLayerOrder(layerMap, layerID, slatSide);
+    if (!layerNumberValid(adjacentOrder)) return null;
+    return getLayerByOrder(adjacentOrder);
+  }
 
   String flipSlatSide(String side);
 
@@ -173,12 +182,14 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     }
 
     // swaps occupancy grid points to match layer flip
-    occupiedCargoPoints.putIfAbsent('$layer-top', () => {});
-    occupiedCargoPoints.putIfAbsent('$layer-bottom', () => {});
+    String topKey = generateLayerSideKey(layer, 'top');
+    String bottomKey = generateLayerSideKey(layer, 'bottom');
+    occupiedCargoPoints.putIfAbsent(topKey, () => {});
+    occupiedCargoPoints.putIfAbsent(bottomKey, () => {});
 
-    var temp = occupiedCargoPoints['$layer-top']!;
-    occupiedCargoPoints['$layer-top'] = occupiedCargoPoints['$layer-bottom']!;
-    occupiedCargoPoints['$layer-bottom'] = temp;
+    var temp = occupiedCargoPoints[topKey]!;
+    occupiedCargoPoints[topKey] = occupiedCargoPoints[bottomKey]!;
+    occupiedCargoPoints[bottomKey] = temp;
 
     // apply slat and seed occupancy map changes
     if (seedKeysToFlip.isNotEmpty) {

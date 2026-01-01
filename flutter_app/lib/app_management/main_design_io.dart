@@ -14,6 +14,7 @@ import '../crisscross_core/cargo.dart';
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/sparse_to_array_conversion.dart';
 import '../crisscross_core/seed.dart';
+import '../crisscross_core/handle_utilities.dart';
 
 // Remember the last directory used for opening files in this session (desktop only)
 String? _lastOpenDirectory;
@@ -678,8 +679,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
         in excel.tables.keys.where((key) => key.startsWith('cargo'))) {
       // runs through each handle layer sheet
       int cargoLayerIndex = int.parse(table.split('_')[2]) - 1;
-      int cargoLayerSide =
-          int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
+      int cargoLayerSide = parseHelixSide(table.split('_')[4]);
       var sheet = excel.tables[table]!;
 
       // extract layerID
@@ -732,8 +732,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     for (var table in excel.tables.keys.where((key) => key.startsWith('seed'))) {
       // runs through each handle layer sheet
       int seedLayerIndex = int.parse(table.split('_')[2]) - 1;
-      int seedLayerSide =
-          int.parse(table.split('_')[4].replaceAll(RegExp(r'[^0-9]'), ''));
+      int seedLayerSide = parseHelixSide(table.split('_')[4]);
       String sideString = table.split('_')[3] == 'upper' ? 'top' : 'bottom';
 
       var sheet = excel.tables[table]!;

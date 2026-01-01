@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/assembly_handles.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
+import '../../crisscross_core/handle_utilities.dart';
 import '../main_design_io.dart';
 
 /// Mixin containing handle assignment and assembly handle operations for DesignState
@@ -81,10 +82,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
           // also check for slats attached to the query slat
           String layer = querySlat.layer;
           String? adjacentLayerToCheck;
-          int topOrBottom = (layerMap[layer]!['top_helix'] == 'H5' && querySide == 5 ||
-                  layerMap[layer]!['top_helix'] == 'H2' && querySide == 2)
-              ? 1
-              : -1;
+          int topOrBottom = getLayerOffsetForSide(layerMap, layer, querySide);
 
           adjacentLayerToCheck = getLayerByOrder(
               layerMap[layer]!['order'] + topOrBottom); // can be null if layer is at the bottom or top of the stack
@@ -98,9 +96,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
               // extract required information for the attached slat
               Slat attachedSlat = slats[occupiedGridPoints[adjacentLayerToCheck]![coordinate]]!;
               int opposingPosition = attachedSlat.slatCoordinateToPosition[coordinate]!;
-              int opposingSide = (topOrBottom == 1)
-                  ? int.parse(layerMap[adjacentLayerToCheck]?['bottom_helix'][1])
-                  : int.parse(layerMap[adjacentLayerToCheck]?['top_helix'][1]);
+              int opposingSide = getOpposingSide(layerMap, adjacentLayerToCheck, topOrBottom);
 
               // run attachment for the new slat position too
               if (!slatsUpdated.contains((attachedSlat.id, opposingPosition, opposingSide))) {
@@ -158,10 +154,10 @@ mixin DesignStateHandleMixin on ChangeNotifier {
             int slatSide;
             String category;
             if (aLayer == layerMap[slat.layer]!['order']) {
-              slatSide = int.parse(layerMap[slat.layer]?['top_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+              slatSide = getSlatSideFromLayer(layerMap, slat.layer, 'top');
               category = 'ASSEMBLY_HANDLE';
             } else {
-              slatSide = int.parse(layerMap[slat.layer]?['bottom_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+              slatSide = getSlatSideFromLayer(layerMap, slat.layer, 'bottom');
               category = 'ASSEMBLY_ANTIHANDLE';
             }
             setSlatHandle(slat, i + 1, slatSide, '${handleArray[x][y][aLayer]}', category);

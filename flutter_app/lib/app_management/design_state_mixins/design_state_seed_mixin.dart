@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/seed.dart';
+import '../../crisscross_core/handle_utilities.dart';
 import '../../main_windows/alert_window.dart';
 import '../shared_app_state.dart';
 
@@ -112,9 +113,9 @@ mixin DesignStateSeedMixin on ChangeNotifier {
       return;
     }
 
-    occupiedCargoPoints.putIfAbsent('$layerID-$slatSide', () => {});
+    occupiedCargoPoints.putIfAbsent(generateLayerSideKey(layerID, slatSide), () => {});
 
-    int slatOccupiedLayerOrder = layerMap[layerID]?['order'] + (slatSide == 'top' ? 1 : -1);
+    int slatOccupiedLayerOrder = getAdjacentLayerOrder(layerMap, layerID, slatSide);
 
     String occupiedLayer = '';
     if (layerNumberValid(slatOccupiedLayerOrder)) {
@@ -129,11 +130,11 @@ mixin DesignStateSeedMixin on ChangeNotifier {
 
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
-      int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+      int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
       String seedHandleValue = '$nextSeedID-$row-$col';
       setSlatHandle(slat, position, integerSlatSide, seedHandleValue, 'SEED');
 
-      occupiedCargoPoints['$layerID-$slatSide']![coord] = seedHandleValue;
+      occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]![coord] = seedHandleValue;
 
       // seed takes up space from the slat grid too, not just cargo
       if (occupiedLayer != '') {
@@ -160,13 +161,13 @@ mixin DesignStateSeedMixin on ChangeNotifier {
   /// Scans for isolated seed handles that form a valid 5x16 pattern and reinstates them as seeds.
   /// Called after cargo movement to check if handles have reformed a seed.
   void checkAndReinstateSeeds(String layerID, String slatSide, {bool skipStateUpdate = false}) {
-    int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+    int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
 
     // Collect all SEED-category handles on this layer/side, grouped by seed ID
     // Each entry: seedID -> list of (coordinate, row, col)
     Map<String, List<(Offset, int, int)>> potentialSeeds = {};
 
-    var cargoMap = occupiedCargoPoints['$layerID-$slatSide'];
+    var cargoMap = occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)];
     if (cargoMap == null) return;
 
     for (var entry in cargoMap.entries) {
@@ -181,7 +182,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
       if (slat.phantomParent != null) continue;
 
       int position = slat.slatCoordinateToPosition[coord]!;
-      var handleDict = integerSlatSide == 5 ? slat.h5Handles : slat.h2Handles;
+      var handleDict = getHandleDict(slat, integerSlatSide);
 
       // Skip if no handle at this position or not a SEED category
       if (handleDict[position] == null) continue;
@@ -287,16 +288,12 @@ mixin DesignStateSeedMixin on ChangeNotifier {
           var convCoord = convertRealSpacetoCoordinateSpace(coord);
           var slat = slats[occupiedGridPoints[layerID]![convCoord]];
 
-          int integerSlatSide = int.parse(layerMap[layerID]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
-          if (integerSlatSide == 2) {
-            slat!.h2Handles.remove(slat.slatCoordinateToPosition[convCoord]!);
-          } else {
-            slat!.h5Handles.remove(slat.slatCoordinateToPosition[convCoord]!);
-          }
+          int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
+          getHandleDict(slat!, integerSlatSide).remove(slat.slatCoordinateToPosition[convCoord]!);
 
-          occupiedCargoPoints['$layerID-$slatSide']?.remove(convCoord);
+          occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]?.remove(convCoord);
 
-          int slatOccupiedLayerOrder = layerMap[layerID]?['order'] + (slatSide == 'top' ? 1 : -1);
+          int slatOccupiedLayerOrder = getAdjacentLayerOrder(layerMap, layerID, slatSide);
 
           if (layerNumberValid(slatOccupiedLayerOrder)) {
             String occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
@@ -315,20 +312,16 @@ mixin DesignStateSeedMixin on ChangeNotifier {
   /// Used when dissolving a seed and removing individual handles.
   void removeSingleSeedHandle(String slatID, String slatSide, Offset coordinate, {bool skipStateUpdate = false}) {
     var slat = slats[slatID]!;
-    int integerSlatSide = int.parse(layerMap[slat.layer]?['${slatSide}_helix'].replaceAll(RegExp(r'[^0-9]'), ''));
+    int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
 
     // Remove from slat handles
-    if (integerSlatSide == 2) {
-      slat.h2Handles.remove(slat.slatCoordinateToPosition[coordinate]!);
-    } else {
-      slat.h5Handles.remove(slat.slatCoordinateToPosition[coordinate]!);
-    }
+    getHandleDict(slat, integerSlatSide).remove(slat.slatCoordinateToPosition[coordinate]!);
 
     // Remove from cargo occupancy
-    occupiedCargoPoints['${slat.layer}-$slatSide']?.remove(coordinate);
+    occupiedCargoPoints[generateLayerSideKey(slat.layer, slatSide)]?.remove(coordinate);
 
     // Remove from grid occupancy (seeds also block a layer)
-    int slatOccupiedLayerOrder = layerMap[slat.layer]?['order'] + (slatSide == 'top' ? 1 : -1);
+    int slatOccupiedLayerOrder = getAdjacentLayerOrder(layerMap, slat.layer, slatSide);
     if (layerNumberValid(slatOccupiedLayerOrder)) {
       String occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
       occupiedGridPoints[occupiedLayer]?.remove(coordinate);

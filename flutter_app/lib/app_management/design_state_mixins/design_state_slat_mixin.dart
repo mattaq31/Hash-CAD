@@ -318,6 +318,9 @@ mixin DesignStateSlatMixin on ChangeNotifier {
 
   void selectSlat(String ID, {bool addOnly = false}) {
     /// Selects or deselects a slat
+
+    if (ID == 'SEED') return; // Prevent selecting 'SEED' as a slat ID
+
     if (selectedSlats.contains(ID) && !addOnly) {
       selectedSlats.remove(ID);
     } else {
