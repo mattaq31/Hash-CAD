@@ -346,9 +346,12 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   // assigns a full handle array to the design slats - assumes that handles -> antihandles -> handles -> etc. is the correct mapping
   void assignAssemblyHandleArray(List<List<List<int>>> handleArray, Offset? minPos, Offset? maxPos) {
+
     if (minPos == null || maxPos == null) {
       (minPos, maxPos) = extractGridBoundary(slats);
     }
+
+    Set<HandleKey> assignedHandles = {};
 
     for (var slat in slats.values) {
       List assemblyLayers = [];
@@ -374,8 +377,13 @@ mixin DesignStateHandleMixin on ChangeNotifier {
               slatSide = getSlatSideFromLayer(layerMap, slat.layer, 'bottom');
               category = 'ASSEMBLY_ANTIHANDLE';
             }
-            // todo: a counter that prevents overwriting existing handles should be added here
-            smartSetHandle(slat, i + 1, slatSide, '${handleArray[x][y][aLayer]}', category);
+
+            if (assignedHandles.contains((slat.id, i + 1, slatSide))) { // prevents double assignment due to overlapping assembly layers
+              continue;
+            }
+
+            var localAssignedHandles = smartSetHandle(slat, i + 1, slatSide, '${handleArray[x][y][aLayer]}', category);
+            assignedHandles.addAll(localAssignedHandles);
           }
         }
       }
@@ -405,7 +413,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  void generateRandomAssemblyHandles(int uniqueHandleCount, bool splitLayerHandles) {
+  void generateRandomAssemblyHandles(int uniqueHandleCount, bool splitLayerHandles, {bool allAvailableHandles = false}) {
     Offset minPos;
     Offset maxPos;
     (minPos, maxPos) = extractGridBoundary(slats);
@@ -414,7 +422,29 @@ mixin DesignStateHandleMixin on ChangeNotifier {
       return; // i.e. no slats present
     }
 
-    // Before starting, remove all handles from all slats
+    // Collect existing assembly handle positions when in "all available" mode
+    Set<(int, int, int)>? additionalPositions;
+    if (allAvailableHandles) {
+      additionalPositions = {};
+      for (var slat in slats.values) {
+        for (int side in [2, 5]) {
+          var handleDict = getHandleDict(slat, side);
+          for (var entry in handleDict.entries) {
+            if (entry.value['category']?.contains('ASSEMBLY') ?? false) {
+              Offset coord = slat.slatPositionToCoordinate[entry.key]!;
+              int x = (coord.dx - minPos.dx).toInt();
+              int y = (coord.dy - minPos.dy).toInt();
+              int arrayLayer = (side == getSlatSideFromLayer(layerMap, slat.layer, 'top'))
+                  ? layerMap[slat.layer]!['order']
+                  : layerMap[slat.layer]!['order'] - 1;
+              if (arrayLayer >= 0) additionalPositions.add((x, y, arrayLayer));
+            }
+          }
+        }
+      }
+    }
+
+    // Clear existing assembly handles
     for (var slat in slats.values) {
       slat.clearAssemblyHandles();
     }
@@ -422,13 +452,12 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     List<List<List<int>>> slatArray =
         convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize, allTypes: true);
     List<List<List<int>>> handleArray;
+    int seed = DateTime.now().millisecondsSinceEpoch % 1000;
 
     if (splitLayerHandles && layerMap.length > 2) {
-      handleArray =
-          generateLayerSplitHandles(slatArray, uniqueHandleCount, seed: DateTime.now().millisecondsSinceEpoch % 1000);
+      handleArray = generateLayerSplitHandles(slatArray, uniqueHandleCount, seed: seed, additionalPositions: additionalPositions);
     } else {
-      handleArray =
-          generateRandomSlatHandles(slatArray, uniqueHandleCount, seed: DateTime.now().millisecondsSinceEpoch % 1000);
+      handleArray = generateRandomSlatHandles(slatArray, uniqueHandleCount, seed: seed, additionalPositions: additionalPositions);
     }
     assignAssemblyHandleArray(handleArray, minPos, maxPos);
 

@@ -36,6 +36,8 @@ mixin DesignStateSeedMixin on ChangeNotifier {
 
   Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category);
 
+  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false});
+
   /// Checks if a coordinate belongs to an active seed in the roster.
   /// Returns the seed key (layerID, slatSide, firstCoordinate) if found, null otherwise.
   (String, String, Offset)? isHandlePartOfActiveSeed(String layerID, String slatSide, Offset coordinate) {
@@ -132,6 +134,12 @@ mixin DesignStateSeedMixin on ChangeNotifier {
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
       String seedHandleValue = '$nextSeedID-$row-$col';
+
+      // Clear any existing assembly handle at this position (break links/enforcements)
+      var handleDict = getHandleDict(slat, integerSlatSide);
+      if (handleDict[position]?['category']?.contains('ASSEMBLY') ?? false) {
+        smartDeleteHandle(slat, position, integerSlatSide, cascadeDelete: false);
+      }
 
       Set<HandleKey> affectedPositions = smartSetHandle(slat, position, integerSlatSide, seedHandleValue, 'SEED');
 

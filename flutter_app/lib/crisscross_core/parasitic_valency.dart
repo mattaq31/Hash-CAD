@@ -9,20 +9,22 @@ import 'common_utilities.dart';
 // Treat all per-slat arrays as 2D "grids" of ints (even 1D slats as [ [L] ])
 typedef IntGrid = List<List<int>>;
 
-List<List<List<int>>> generateRandomSlatHandles(List<List<List<int>>> baseArray, int uniqueSequences, {int seed=8}) {
+List<List<List<int>>> generateRandomSlatHandles(List<List<List<int>>> baseArray, int uniqueSequences,
+    {int seed = 8, Set<(int, int, int)>? additionalPositions}) {
   int xSize = baseArray.length;
   int ySize = baseArray[0].length;
   int numLayers = baseArray[0][0].length;
 
-  List<List<List<int>>> handleArray = List.generate(xSize, (_) => List.generate(ySize, (_) => List.filled(numLayers-1, 0)));
+  List<List<List<int>>> handleArray = List.generate(xSize, (_) => List.generate(ySize, (_) => List.filled(numLayers - 1, 0)));
 
   Random rand = Random(seed);
   for (int i = 0; i < xSize; i++) {
     for (int j = 0; j < ySize; j++) {
       for (int k = 0; k < numLayers - 1; k++) {
-        // Check if slats exist in the current and next layer
-        if (baseArray[i][j][k] != 0 && baseArray[i][j][k + 1] != 0) {
-          handleArray[i][j][k] = rand.nextInt(uniqueSequences) + 1; // Random value between 1 and uniqueSequences
+        bool hasInterface = baseArray[i][j][k] != 0 && baseArray[i][j][k + 1] != 0;
+        bool isAdditional = additionalPositions?.contains((i, j, k)) ?? false;
+        if (hasInterface || isAdditional) {
+          handleArray[i][j][k] = rand.nextInt(uniqueSequences) + 1;
         }
       }
     }
@@ -30,12 +32,12 @@ List<List<List<int>>> generateRandomSlatHandles(List<List<List<int>>> baseArray,
   return handleArray;
 }
 
-List<List<List<int>>> generateLayerSplitHandles(List<List<List<int>>> baseArray, int uniqueSequences, {int seed = 8}) {
+List<List<List<int>>> generateLayerSplitHandles(List<List<List<int>>> baseArray, int uniqueSequences,
+    {int seed = 8, Set<(int, int, int)>? additionalPositions}) {
   int xSize = baseArray.length;
   int ySize = baseArray[0].length;
   int numLayers = baseArray[0][0].length;
 
-  // Initialize the handle array with zeros
   List<List<List<int>>> handleArray = List.generate(xSize, (_) => List.generate(ySize, (_) => List.filled(numLayers - 1, 0)));
 
   Random rand = Random(seed);
@@ -43,7 +45,6 @@ List<List<List<int>>> generateLayerSplitHandles(List<List<List<int>>> baseArray,
   for (int i = 0; i < xSize; i++) {
     for (int j = 0; j < ySize; j++) {
       for (int k = 0; k < numLayers - 1; k++) {
-
         int h1, h2;
         if (k % 2 == 0) {
           h1 = 1;
@@ -53,9 +54,10 @@ List<List<List<int>>> generateLayerSplitHandles(List<List<List<int>>> baseArray,
           h2 = uniqueSequences + 1;
         }
 
-        // Check if slats exist in the current and next layer
-        if (baseArray[i][j][k] != 0 && baseArray[i][j][k + 1] != 0) {
-          handleArray[i][j][k] = rand.nextInt(h2 - h1) + h1; // Random value between 1 and uniqueSequences
+        bool hasInterface = baseArray[i][j][k] != 0 && baseArray[i][j][k + 1] != 0;
+        bool isAdditional = additionalPositions?.contains((i, j, k)) ?? false;
+        if (hasInterface || isAdditional) {
+          handleArray[i][j][k] = rand.nextInt(h2 - h1) + h1;
         }
       }
     }

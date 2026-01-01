@@ -36,6 +36,8 @@ mixin DesignStateCargoMixin on ChangeNotifier {
 
   Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category);
 
+  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false});
+
   void removeSeed(String layerID, String slatSide, Offset coordinate);
 
   void clearSelection();
@@ -126,7 +128,19 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     String layerSideKey = generateLayerSideKey(layerID, slatSide);
 
     for (var fromCoord in coordinateTransferMap.keys) {
+
       if (!occupiedCargoPoints[layerSideKey]!.containsKey(fromCoord)) {
+
+        if(occupiedGridPoints[layerID]!.containsKey(fromCoord)){
+          // no cargo at this position, but there is a slat - need to clear any assembly handles
+          var slat = slats[occupiedGridPoints[layerID]![fromCoord]!]!;
+          int position = slat.slatCoordinateToPosition[fromCoord]!;
+          var handleDict = getHandleDict(slat, integerSlatSide);
+          if (handleDict[position]?['category']?.contains('ASSEMBLY') ?? false) {
+            smartDeleteHandle(slat, position, integerSlatSide, cascadeDelete: false);
+          }
+        }
+
         continue; // no cargo at this position
       }
 
@@ -265,6 +279,13 @@ mixin DesignStateCargoMixin on ChangeNotifier {
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
+
+      // Clear any existing assembly handle at this position (break links/enforcements)
+      var handleDict = getHandleDict(slat, integerSlatSide);
+      if (handleDict[position]?['category']?.contains('ASSEMBLY') ?? false) {
+        smartDeleteHandle(slat, position, integerSlatSide, cascadeDelete: false);
+      }
+
       Set<HandleKey> affectedPositions = smartSetHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
 
       // Batch update occupiedCargoPoints for all affected coordinates
