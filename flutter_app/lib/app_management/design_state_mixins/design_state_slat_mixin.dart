@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
+import 'design_state_handle_link_mixin.dart';
 
 /// Mixin containing slat CRUD operations for DesignState
 mixin DesignStateSlatMixin on ChangeNotifier {
@@ -14,6 +15,8 @@ mixin DesignStateSlatMixin on ChangeNotifier {
   Map<String, Map<Offset, String>> get occupiedCargoPoints;
 
   Map<String, Map<int, String>> get phantomMap;
+
+  HandleLinkManager get assemblyLinkManager;
 
   List<String> get selectedSlats;
 
@@ -241,6 +244,9 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     for (var seedKey in affectedSeeds) {
       dissolveSeed(seedKey, skipStateUpdate: true);
     }
+
+    // Clean up link manager entries for this slat
+    assemblyLinkManager.removeAllEntriesForSlat(ID);
 
     if (slats[ID]!.phantomParent == null) layerMap[layer]?["slat_count"] -= 1;
 

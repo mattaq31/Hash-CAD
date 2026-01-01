@@ -848,11 +848,13 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // finally, import handle link data if available
   try {
-    if(!extractHandleLinksFromExcel(excel, slats, layerMap, linkManager)){ // indicates some form of error
-      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER');
+    String? linkError = extractHandleLinksFromExcel(excel, slats, layerMap, linkManager);
+    if (linkError != null) {
+      // Return the specific error message for display to user
+      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER: $linkError');
     }
-  } catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER');
+  } catch (e) {
+    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER: ${e.toString()}');
   }
 
 
@@ -1063,12 +1065,12 @@ Future<void> exportEvolutionParameters(Map<String, String> parameters) async {
 }
 
 /// Extracts handle link data from an Excel file and imports it into the HandleLinkManager.
-/// Returns true if successful (even if no link data exists), false on error.
-bool extractHandleLinksFromExcel(Excel excelFile, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, HandleLinkManager linkManager) {
+/// Returns null if successful (even if no link data exists), or an error message string on conflict/error.
+String? extractHandleLinksFromExcel(Excel excelFile, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, HandleLinkManager linkManager) {
 
   if (!excelFile.tables.containsKey('slat_handle_links')) {
     // No link data sheet (backwards compatibility)
-    return true;
+    return null;
   }
 
   try {
@@ -1092,10 +1094,16 @@ bool extractHandleLinksFromExcel(Excel excelFile, Map<String, Slat> slats, Map<S
       data.add(rowData);
     }
 
+    // Validate before importing
+    String? validationError = linkManager.validateImport(data, slats, layerMap);
+    if (validationError != null) {
+      return validationError;
+    }
+
     linkManager.importFromExcelData(data, slats, layerMap);
-    return true;
-  } catch (_) {
-    return false;
+    return null;
+  } catch (e) {
+    return 'Error importing handle links: ${e.toString()}';
   }
 }
 

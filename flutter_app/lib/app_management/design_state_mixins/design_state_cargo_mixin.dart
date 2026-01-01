@@ -34,11 +34,13 @@ mixin DesignStateCargoMixin on ChangeNotifier {
   // Methods from other mixins
   void saveUndoState();
 
-  void setSlatHandle(Slat slat, int position, int side, String handlePayload, String category);
+  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category);
 
   void removeSeed(String layerID, String slatSide, Offset coordinate);
 
   void clearSelection();
+
+  void _removeHandleFromSlat(Slat slat, int position, int side);
 
   void addCargoType(Cargo cargo) {
     cargoPalette[cargo.name] = cargo;
@@ -54,7 +56,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
         var targetDict = getHandleDict(slat, slatSide);
         for (int position = 1; position <= slat.maxLength; position++) {
           if (targetDict[position] != null && targetDict[position]!['value'] == cargoName) {
-            targetDict.remove(position); // TODO: also need to remove placeholder list - need to make a slat function...
+            _removeHandleFromSlat(slat, position, slatSide);
             occupiedCargoPoints[generateLayerSideKey(slat.layer, side)]?.remove(slat.slatPositionToCoordinate[position]!);
           }
         }
@@ -168,25 +170,36 @@ mixin DesignStateCargoMixin on ChangeNotifier {
 
     // PHASE 2: Remove all cargo from source positions
     for (var op in moveOperations) {
-      var handleDict = getHandleDict(op.slatDonor, integerSlatSide);
-      handleDict.remove(op.donorPosition);
-      op.slatDonor.placeholderList.remove('handle-${op.donorPosition}-h$integerSlatSide');
-      occupiedCargoPoints[layerSideKey]?.remove(op.fromCoord);
+
+      Set<(String, Offset)> affectedCoordinates = deleteHandleWithPhantomPropagation(op.slatDonor, op.donorPosition, integerSlatSide);
+
+      // Batch update occupiedCargoPoints for all affected coordinates
+      for (var (layerID, coord) in affectedCoordinates) {
+        occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]?.remove(coord);
+      }
 
       // For SEED category handles, also remove from the slat occupancy on the blocked layer
       if (op.cargoCategory == 'SEED' && seedOccupiedLayer != null) {
-        occupiedGridPoints[seedOccupiedLayer]?.remove(op.fromCoord);
+        for (var (_, coord) in affectedCoordinates) {
+          occupiedGridPoints[seedOccupiedLayer]?.remove(coord);
+        }
       }
     }
 
     // PHASE 3: Add all cargo to destination positions
     for (var op in moveOperations) {
-      setSlatHandle(op.slatReceiver, op.receiverPosition, integerSlatSide, op.cargoName, op.cargoCategory);
-      occupiedCargoPoints[layerSideKey]![op.toCoord] = op.cargoName;
+      Set<HandleKey> affectedPositions = smartSetHandle(op.slatReceiver, op.receiverPosition, integerSlatSide, op.cargoName, op.cargoCategory);
+
+      // Batch update occupiedCargoPoints for all affected coordinates
+      for (var (slatID, position, _) in affectedPositions) {
+        occupiedCargoPoints[layerSideKey]![slats[slatID]!.slatPositionToCoordinate[position]!] = op.cargoName;
+      }
 
       // For SEED category handles, also update the slat occupancy on the blocked layer
       if (op.cargoCategory == 'SEED' && seedOccupiedLayer != null) {
-        occupiedGridPoints[seedOccupiedLayer]![op.toCoord] = 'SEED';
+        for (var (slatID, position, _) in affectedPositions) {
+          occupiedGridPoints[seedOccupiedLayer]![slats[slatID]!.slatPositionToCoordinate[position]!] = 'SEED';
+        }
       }
     }
 
@@ -249,16 +262,16 @@ mixin DesignStateCargoMixin on ChangeNotifier {
         continue;
       }
 
-      // no cargo placement can be made on phantom slats
-      if (slats[occupiedGridPoints[layerID]![coord]!]!.phantomParent != null) {
-        continue;
-      }
-
       var slat = slats[occupiedGridPoints[layerID]![coord]!]!;
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
-      setSlatHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
-      occupiedCargoPoints[layerSideKey]![coord] = cargo.name;
+      Set<HandleKey> affectedPositions = smartSetHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
+
+      // Batch update occupiedCargoPoints for all affected coordinates
+      for (var (slatID, position, _) in affectedPositions) {
+        occupiedCargoPoints[layerSideKey]![slats[slatID]!.slatPositionToCoordinate[position]!] = cargo.name;
+      }
+
     }
 
     if (skipStateUpdate) {
@@ -269,8 +282,11 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  Map<String, Map<int, String>> get phantomMap;
+
+  Set<(String, Offset)> deleteHandleWithPhantomPropagation(Slat slat, int position, int side);
+
   void removeCargo(String slatID, String slatSide, Offset coordinate, {bool skipStateUpdate = false}) {
-    // TODO: needs a phantom check and link to recursive algorithm
     var slat = slats[slatID]!;
     int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
     var handleDict = getHandleDict(slat, integerSlatSide);
@@ -280,8 +296,14 @@ mixin DesignStateCargoMixin on ChangeNotifier {
       removeSeed(slat.layer, slatSide, coordinate);
       return;
     }
-    handleDict.remove(position);
-    occupiedCargoPoints[generateLayerSideKey(slat.layer, slatSide)]?.remove(coordinate);
+
+    // Delete cargo with phantom propagation, returns affected coordinates
+    Set<(String, Offset)> affectedCoordinates = deleteHandleWithPhantomPropagation(slat, position, integerSlatSide);
+
+    // Batch update occupiedCargoPoints for all affected coordinates
+    for (var (layerID, coord) in affectedCoordinates) {
+      occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]?.remove(coord);
+    }
 
     if (skipStateUpdate) {
       return;
@@ -296,7 +318,6 @@ mixin DesignStateCargoMixin on ChangeNotifier {
   String? getLayerByOrder(int order);
 
   void removeSelectedCargo(String slatSide) {
-    // TODO: needs a phantom check and link to recursive algorithm
     String layerID = selectedLayerKey;
 
     if (selectedHandlePositions.isEmpty) {

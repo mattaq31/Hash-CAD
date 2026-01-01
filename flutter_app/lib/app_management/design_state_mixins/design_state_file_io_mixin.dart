@@ -58,6 +58,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
   void updateDesignHammingValue();
   void saveUndoState();
   Offset convertCoordinateSpacetoRealSpace(Offset inputPosition);
+  void fullHandleValidationWithWarning(BuildContext context);
 
   void exportCurrentDesign() async {
     /// Exports the current design to an excel file
@@ -90,8 +91,10 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
           return 'There seems to be a problem with the seed sheets in the selected file - can you check the formatting?';
         case 'ERR_CARGO_SHEETS':
           return 'There seems to be a problem with the cargo sheets in the selected file - can you check the formatting?';
-        case  'ERR_LINK_MANAGER':
-          return 'There seems to be a problem with the assembly handle link data in the selected file - can you check the formatting?';
+        case String code when code.startsWith('ERR_LINK_MANAGER:'):
+          // Extract the detailed error message after the prefix
+          String detail = code.substring('ERR_LINK_MANAGER:'.length).trim();
+          return 'Handle link error detected:\n\n$detail\n\nPlease fix the formatting issue or conflict before importing.';
         case 'ERR_GENERAL':
           return 'The file could not be imported - are you sure this is a standard design file?';
         default:
@@ -235,6 +238,10 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
 
     updateDesignHammingValue();
     currentlyLoadingDesign = false;
+
+    // Check for issues after import
+    fullHandleValidationWithWarning(context);
+
     notifyListeners();
   }
 

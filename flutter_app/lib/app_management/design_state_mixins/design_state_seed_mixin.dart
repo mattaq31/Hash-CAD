@@ -34,7 +34,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
 
   Offset convertCoordinateSpacetoRealSpace(Offset inputPosition);
 
-  void setSlatHandle(Slat slat, int position, int side, String handlePayload, String category);
+  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category);
 
   /// Checks if a coordinate belongs to an active seed in the roster.
   /// Returns the seed key (layerID, slatSide, firstCoordinate) if found, null otherwise.
@@ -132,13 +132,19 @@ mixin DesignStateSeedMixin on ChangeNotifier {
       int position = slat.slatCoordinateToPosition[coord]!;
       int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
       String seedHandleValue = '$nextSeedID-$row-$col';
-      setSlatHandle(slat, position, integerSlatSide, seedHandleValue, 'SEED');
 
-      occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]![coord] = seedHandleValue;
+      Set<HandleKey> affectedPositions = smartSetHandle(slat, position, integerSlatSide, seedHandleValue, 'SEED');
+
+      // mark occupied positions in cargo and grid occupancy maps (cos there could also be phantom slats)
+      for (var (slatID, position, _) in affectedPositions) {
+        occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]![slats[slatID]!.slatPositionToCoordinate[position]!] = seedHandleValue;
+      }
 
       // seed takes up space from the slat grid too, not just cargo
       if (occupiedLayer != '') {
-        occupiedGridPoints[occupiedLayer]![coord] = 'SEED';
+        for (var (slatID, position, _) in affectedPositions) {
+          occupiedGridPoints[occupiedLayer]![slats[slatID]!.slatPositionToCoordinate[position]!] = 'SEED';
+        }
       }
 
       index += 1;
@@ -282,49 +288,68 @@ mixin DesignStateSeedMixin on ChangeNotifier {
     /// 2) removing the blocks from the slat and cargo occupancy grids and 3)
     /// removing the seed and its related coordinates from the seed roster.
     (String, String, Offset)? seedToRemove;
+    int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
+
+    // Collect all affected coordinates for batch update
+    Set<(String, Offset)> affectedCoordinates = {};
+
     for (var seed in seedRoster.entries) {
       if (seed.value.coordinates.containsValue(convertCoordinateSpacetoRealSpace(coordinate)) && seed.key.$2 == slatSide) {
         for (var coord in seed.value.coordinates.values) {
           var convCoord = convertRealSpacetoCoordinateSpace(coord);
           var slat = slats[occupiedGridPoints[layerID]![convCoord]];
 
-          int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
-          getHandleDict(slat!, integerSlatSide).remove(slat.slatCoordinateToPosition[convCoord]!);
-
-          occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]?.remove(convCoord);
-
-          int slatOccupiedLayerOrder = getAdjacentLayerOrder(layerMap, layerID, slatSide);
-
-          if (layerNumberValid(slatOccupiedLayerOrder)) {
-            String occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
-            occupiedGridPoints[occupiedLayer]?.remove(convCoord);
+          if (slat != null) {
+            int position = slat.slatCoordinateToPosition[convCoord]!;
+            // Delete with phantom propagation, merge affected coordinates
+            affectedCoordinates.addAll(deleteHandleWithPhantomPropagation(slat, position, integerSlatSide));
           }
         }
         seedToRemove = seed.key;
       }
     }
+
+    // Batch update occupancy maps for all affected coordinates
+    for (var (affectedLayerID, coord) in affectedCoordinates) {
+      occupiedCargoPoints[generateLayerSideKey(affectedLayerID, slatSide)]?.remove(coord);
+
+      int slatOccupiedLayerOrder = getAdjacentLayerOrder(layerMap, affectedLayerID, slatSide);
+      if (layerNumberValid(slatOccupiedLayerOrder)) {
+        String occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
+        occupiedGridPoints[occupiedLayer]?.remove(coord);
+      }
+    }
+
     seedRoster.remove(seedToRemove);
     saveUndoState();
     notifyListeners();
   }
 
+  Map<String, Map<int, String>> get phantomMap;
+
+  Set<(String, Offset)> deleteHandleWithPhantomPropagation(Slat slat, int position, int side);
+
   /// Removes a single seed handle without affecting the seed roster.
   /// Used when dissolving a seed and removing individual handles.
+  /// Propagates deletion through phantom network.
   void removeSingleSeedHandle(String slatID, String slatSide, Offset coordinate, {bool skipStateUpdate = false}) {
     var slat = slats[slatID]!;
     int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
+    int position = slat.slatCoordinateToPosition[coordinate]!;
 
-    // Remove from slat handles
-    getHandleDict(slat, integerSlatSide).remove(slat.slatCoordinateToPosition[coordinate]!);
+    // Delete with phantom propagation, returns affected coordinates
+    Set<(String, Offset)> affectedCoordinates = deleteHandleWithPhantomPropagation(slat, position, integerSlatSide);
 
-    // Remove from cargo occupancy
-    occupiedCargoPoints[generateLayerSideKey(slat.layer, slatSide)]?.remove(coordinate);
+    // Batch update occupancy maps for all affected coordinates
+    for (var (layerID, coord) in affectedCoordinates) {
+      occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]?.remove(coord);
 
-    // Remove from grid occupancy (seeds also block a layer)
-    int slatOccupiedLayerOrder = getAdjacentLayerOrder(layerMap, slat.layer, slatSide);
-    if (layerNumberValid(slatOccupiedLayerOrder)) {
-      String occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
-      occupiedGridPoints[occupiedLayer]?.remove(coordinate);
+      // Seeds also block an adjacent layer
+      int slatOccupiedLayerOrder = getAdjacentLayerOrder(layerMap, layerID, slatSide);
+      if (layerNumberValid(slatOccupiedLayerOrder)) {
+        String occupiedLayer = getLayerByOrder(slatOccupiedLayerOrder)!;
+        occupiedGridPoints[occupiedLayer]?.remove(coord);
+      }
     }
 
     if (skipStateUpdate) {
@@ -334,5 +359,4 @@ mixin DesignStateSeedMixin on ChangeNotifier {
     saveUndoState();
     notifyListeners();
   }
-
 }

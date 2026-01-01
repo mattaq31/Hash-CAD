@@ -283,4 +283,5 @@ class DesignState extends ChangeNotifier
     undoStack = SlatUndoStack();
     notifyListeners();
   }
+
 }

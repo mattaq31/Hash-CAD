@@ -5,6 +5,7 @@ import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/common_utilities.dart';
 import '../../main_windows/alert_window.dart';
 import '../shared_app_state.dart';
+import 'design_state_handle_link_mixin.dart';
 
 /// Mixin containing layer management operations for DesignState
 mixin DesignStateLayerMixin on ChangeNotifier {
@@ -18,6 +19,8 @@ mixin DesignStateLayerMixin on ChangeNotifier {
   Map<String, Map<Offset, String>> get occupiedCargoPoints;
 
   Map<(String, String, Offset), Seed> get seedRoster;
+
+  HandleLinkManager get assemblyLinkManager;
 
   List<String> get colorPalette;
 
@@ -271,6 +274,11 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     // Update selectedLayerKey if needed TODO: do not allow the deletion of the last layer or else deal with a null system...
     if (selectedLayerKey == layer) {
       selectedLayerKey = (sortedKeys.isEmpty ? null : sortedKeys.last)!;
+    }
+
+    // Clean up link manager entries for all slats in this layer
+    for (var slatId in slats.keys.where((key) => slats[key]!.layer == layer).toList()) {
+      assemblyLinkManager.removeAllEntriesForSlat(slatId);
     }
 
     // removes all slats from the deleted layer

@@ -355,6 +355,79 @@ class HandleLinkManager {
 
   /// Checks if any links or blocks exist
   bool get hasData => handleLinkToGroup.isNotEmpty || handleBlocks.isNotEmpty;
+
+  /// Removes all link manager entries for a given slat ID.
+  /// Called when a slat is deleted to clean up stale references.
+  void removeAllEntriesForSlat(String slatId) {
+    // Remove from blocks
+    handleBlocks.removeWhere((key) => key.$1 == slatId);
+
+    // Find all keys for this slat
+    List<HandleKey> keysToRemove = handleLinkToGroup.keys.where((key) => key.$1 == slatId).toList();
+
+    // Remove each key from its group
+    for (var key in keysToRemove) {
+      removeLink(key);
+    }
+  }
+
+  /// Validates import data for conflicts before applying.
+  /// Returns null if valid, or an error message if conflicts exist.
+  String? validateImport(List<List<dynamic>> data, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap) {
+    // Create a temporary manager to parse the data
+    var tempManager = HandleLinkManager();
+    try {
+      tempManager.importFromExcelData(data, slats, layerMap);
+    } on StateError catch (e) {
+      // importFromExcelData throws StateError for conflicting enforced values in same group
+      return e.message;
+    } catch (e) {
+      return 'Import error: ${e.toString()}';
+    }
+
+    // Check for conflicts with existing handle values in slats
+    for (var groupEntry in tempManager.handleGroupToValue.entries) {
+      var groupId = groupEntry.key;
+      var enforcedValue = groupEntry.value;
+
+      for (var handleKey in tempManager.handleGroupToLink[groupId] ?? []) {
+        var slat = slats[handleKey.$1];
+        if (slat == null) continue;
+
+        var handleDict = handleKey.$3 == 5 ? slat.h5Handles : slat.h2Handles;
+        var currentHandle = handleDict[handleKey.$2];
+
+        if (currentHandle != null && currentHandle['category']?.contains('ASSEMBLY') == true) {
+          var currentValue = int.tryParse(currentHandle['value']?.toString() ?? '');
+          if (currentValue != null && currentValue != 0 && currentValue != enforcedValue) {
+            String slatName = dartToPythonSlatNameConvert(handleKey.$1, layerMap);
+            return 'Conflict: Handle at $slatName position ${handleKey.$2} H${handleKey.$3} has value '
+                '$currentValue but import requires $enforcedValue';
+          }
+        }
+      }
+    }
+
+    // Check for blocks that conflict with existing non-zero handles
+    for (var blockedKey in tempManager.handleBlocks) {
+      var slat = slats[blockedKey.$1];
+      if (slat == null) continue;
+
+      var handleDict = blockedKey.$3 == 5 ? slat.h5Handles : slat.h2Handles;
+      var currentHandle = handleDict[blockedKey.$2];
+
+      if (currentHandle != null && currentHandle['category']?.contains('ASSEMBLY') == true) {
+        var currentValue = int.tryParse(currentHandle['value']?.toString() ?? '');
+        if (currentValue != null && currentValue != 0) {
+          String slatName = dartToPythonSlatNameConvert(blockedKey.$1, layerMap);
+          return 'Conflict: Handle at $slatName position ${blockedKey.$2} H${blockedKey.$3} has value '
+              '$currentValue but import blocks this position (requires 0)';
+        }
+      }
+    }
+
+    return null; // No conflicts
+  }
 }
 
 /// Mixin providing HandleLinkManager access in DesignState
