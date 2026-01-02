@@ -55,14 +55,14 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   void undo2DAction({bool redo = false});
 
-  bool handleWithinBounds(Slat slat, int position, int side){
+  bool handleWithinBounds(Slat slat, int position, int side, String layerID){
 
-    int topSide = getSlatSideFromLayer(layerMap, selectedLayerKey, 'top');
+    int topSide = getSlatSideFromLayer(layerMap, layerID, 'top');
 
-    if(layerMap[selectedLayerKey]!['order'] == 0 && topSide != side) {
+    if(layerMap[layerID]!['order'] == 0 && topSide != side) {
       return false;
     }
-    if(layerMap[selectedLayerKey]!['order'] == layerMap.length - 1 && topSide == side) {
+    if(layerMap[layerID]!['order'] == layerMap.length - 1 && topSide == side) {
       return false;
     }
     return true;
@@ -86,7 +86,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
         slatsUpdated.add(accessKey);
 
         // Set handle on this slat (only if it's within the bounds)
-        if (handleWithinBounds(querySlat, queryPosition, querySide)) {
+        if (handleWithinBounds(querySlat, queryPosition, querySide, querySlat.layer)) {
           querySlat.setPlaceholderHandle(queryPosition, querySide, handlePayload, queryCategory);
         }
 
@@ -155,7 +155,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
             Slat targetSlat = slats[key.$1]!;
             var handleDict = getHandleDict(targetSlat, key.$3);
             String currentCategory = handleDict[key.$2]?['category'] ?? category;
-            if (handleWithinBounds(targetSlat, key.$2, key.$3)) {
+            if (handleWithinBounds(targetSlat, key.$2, key.$3, targetSlat.layer)) {
               targetSlat.setPlaceholderHandle(key.$2, key.$3, enforced.toString(), currentCategory);
             }
           }
