@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import '../../crisscross_core/common_utilities.dart';
 import '../alert_window.dart';
 import 'grid_control_contract.dart';
 
@@ -33,10 +34,23 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         // starts drag mode (first need to detect if a slat or handle is under the pointer first)
         final Offset snappedPosition = gridSnap(event.position, appState);
         if (getActionMode(actionState) == 'Slat-Move') {
-
           if (checkCoordinateOccupancy(appState, actionState, [appState.convertRealSpacetoCoordinateSpace(snappedPosition)])) {
             dragActive = true; // drag mode is signalled here - panning is now disabled
             slatMoveAnchor = snappedPosition; // the slats to be moved are anchored to the cursor
+          }
+        } else if (getActionMode(actionState) == 'Assembly-Move') {
+          // Check if clicking on an assembly handle
+          var coordPos = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
+          var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coordPos];
+          if (slatID != null) {
+            var slat = appState.slats[slatID]!;
+            int pos = slat.slatCoordinateToPosition[coordPos]!;
+            int side = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
+            var handleDict = getHandleDict(slat, side);
+            if (handleDict[pos]?['category']?.toString().contains('ASSEMBLY') ?? false) {
+              dragActive = true;
+              slatMoveAnchor = snappedPosition;
+            }
           }
         } else {
           if (appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']!.keys
@@ -79,6 +93,18 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         hoverPosition = localHoverPosition;
         hoverValid = localHoverValid;
       });
+    } else if (getActionMode(actionState) == 'Assembly-Move' && dragActive) {
+      // when drag mode is activated, assembly handles will follow the cursor
+      setState(() {
+        if (hiddenAssembly.isEmpty) {
+          for (var coordinate in appState.selectedAssemblyPositions) {
+            hiddenAssembly.add(coordinate);
+          }
+        }
+        var (localHoverPosition, localHoverValid) = hoverCalculator(event.position, appState, actionState, true);
+        hoverPosition = localHoverPosition;
+        hoverValid = localHoverValid;
+      });
     }
   }
 
@@ -105,8 +131,27 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         for (var ID in selected) {
           appState.selectSlat(ID, addOnly: true);
         }
+      } else if (getActionMode(actionState) == 'Assembly-Move') {
+        // Collect all assembly handles in the drag box
+        for (var entry in appState.slats.entries) {
+          if (entry.value.layer != appState.selectedLayerKey) continue;
+          var slat = entry.value;
+          int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
+          var handleDict = getHandleDict(slat, integerSlatSide);
+          for (var handleEntry in handleDict.entries) {
+            if (handleEntry.value['category']?.toString().contains('ASSEMBLY') ?? false) {
+              var coord = slat.slatPositionToCoordinate[handleEntry.key];
+              if (coord != null) {
+                final realCoord = appState.convertCoordinateSpacetoRealSpace(coord);
+                if (rect.contains(realCoord)) {
+                  appState.selectAssemblyHandle(coord, addOnly: true);
+                }
+              }
+            }
+          }
+        }
       } else {
-        // Collect all handles in the drag box
+        // Cargo-Move: Collect all handles in the drag box
         List<Offset> handlesInRect = [];
         appState.occupiedCargoPoints.putIfAbsent('${appState.selectedLayerKey}-${actionState.cargoAttachMode}', () => {});
         for (var entry in appState.occupiedCargoPoints['${appState.selectedLayerKey}-${actionState.cargoAttachMode}']!.keys) {
@@ -210,6 +255,26 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         dragActive = false;
         hiddenCargo = [];
         hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
+        slatMoveAnchor = Offset.zero;
+      });
+    } else if (getActionMode(actionState) == 'Assembly-Move') {
+      setState(() {
+        if (hoverValid && dragActive && hoverPosition != null) {
+          var convCoordHoverPosition = appState.convertRealSpacetoCoordinateSpace(hoverPosition!);
+          var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
+          Map<Offset, Offset> coordinateTransferMap = {};
+          for (var pos in appState.selectedAssemblyPositions) {
+            coordinateTransferMap[pos] = pos + convCoordHoverPosition - convCoordAnchor;
+          }
+          appState.moveAssemblyHandle(coordinateTransferMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
+          appState.clearAssemblySelection();
+          for (var newCoord in coordinateTransferMap.values) {
+            appState.selectAssemblyHandle(newCoord, addOnly: true);
+          }
+        }
+        dragActive = false;
+        hiddenAssembly = [];
+        hoverPosition = null;
         slatMoveAnchor = Offset.zero;
       });
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import '../../crisscross_core/common_utilities.dart';
 import '../alert_window.dart';
 import 'grid_control_contract.dart';
 
@@ -126,6 +127,41 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
           }
         }
       }
+    } else if (getActionMode(actionState) == 'Assembly-Add') {
+      if (!hoverValid) return;
+      var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
+
+      // Validate: must have slat at position
+      if (!appState.occupiedGridPoints[appState.selectedLayerKey]!.containsKey(coordConvertedPosition)) return;
+
+      // Validate: no cargo at position
+      String layerSideKey = '${appState.selectedLayerKey}-${actionState.assemblyAttachMode}';
+      if (appState.occupiedCargoPoints[layerSideKey]?.containsKey(coordConvertedPosition) ?? false) return;
+
+      var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]![coordConvertedPosition]!;
+      var slat = appState.slats[slatID]!;
+      int position = slat.slatCoordinateToPosition[coordConvertedPosition]!;
+      int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
+
+      String handleValue = actionState.assemblyHandleValue;
+      String category = actionState.assemblyAttachMode == 'top' ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE';
+
+      appState.clearAssemblySelection();
+      appState.smartSetHandle(slat, position, integerSlatSide, handleValue, category, requestStateUpdate: true);
+
+    } else if (getActionMode(actionState) == 'Assembly-Delete') {
+      var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
+      var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coordConvertedPosition];
+      if (slatID == null) return;
+
+      var slat = appState.slats[slatID]!;
+      int position = slat.slatCoordinateToPosition[coordConvertedPosition]!;
+      int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
+      var handleDict = getHandleDict(slat, integerSlatSide);
+
+      if (handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false) {
+        appState.smartDeleteHandle(slat, position, integerSlatSide, cascadeDelete: false, requestStateUpdate: true);
+      }
     }
   }
 
@@ -178,6 +214,26 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
         }
       } else {
         appState.clearSelection();
+      }
+    } else if (getActionMode(actionState) == 'Assembly-Move') {
+      // Check if there's an assembly handle at this position
+      var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[snappedPosition];
+      if (slatID != null) {
+        var slat = appState.slats[slatID]!;
+        int position = slat.slatCoordinateToPosition[snappedPosition]!;
+        int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
+        var handleDict = getHandleDict(slat, integerSlatSide);
+
+        if (handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false) {
+          if (appState.selectedAssemblyPositions.isNotEmpty && !isShiftPressed) {
+            appState.clearAssemblySelection();
+          }
+          appState.selectAssemblyHandle(snappedPosition);
+        } else {
+          appState.clearAssemblySelection();
+        }
+      } else {
+        appState.clearAssemblySelection();
       }
     }
   }

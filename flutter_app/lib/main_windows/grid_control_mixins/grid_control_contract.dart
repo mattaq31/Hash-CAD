@@ -32,6 +32,8 @@ mixin GridControlContract<T extends StatefulWidget> on State<T> {
   set hiddenSlats(List<String> value);
   List<Offset> get hiddenCargo;
   set hiddenCargo(List<Offset> value);
+  List<Offset> get hiddenAssembly;
+  set hiddenAssembly(List<Offset> value);
   Offset get slatMoveAnchor;
   set slatMoveAnchor(Offset value);
   bool get dragActive;
@@ -56,7 +58,7 @@ mixin GridControlContract<T extends StatefulWidget> on State<T> {
   (double, Offset) scrollZoomCalculator(PointerScrollEvent event, {double zoomFactor = 0.2});
   bool checkCoordinateOccupancy(DesignState appState, ActionState actionState, List<Offset> coordinates);
   (Offset, bool) hoverCalculator(Offset eventPosition, DesignState appState, ActionState actionState, bool preSelectedPositions);
-  Map<int, Offset> getCargoHoverPoints(DesignState appState, ActionState actionState);
+  Map<int, Offset> getHandleHoverPoints(DesignState appState, ActionState actionState);
   SystemMouseCursor getCursorForSlatMode(String actionMode);
   Offset gridSnap(Offset inputPosition, DesignState designState);
   String getActionMode(ActionState actionState);

@@ -103,6 +103,28 @@ class HandleLinkManager {
     }
   }
 
+  /// Updates a handle key to a new key, preserving all links and blocks.
+  /// Used when moving assembly handles to transfer their link relationships.
+  void updateKey(HandleKey oldKey, HandleKey newKey) {
+    // Update blocks
+    int blockIndex = handleBlocks.indexOf(oldKey);
+    if (blockIndex != -1) {
+      handleBlocks[blockIndex] = newKey;
+    }
+
+    // Update links
+    var group = handleLinkToGroup[oldKey];
+    if (group != null) {
+      // Remove old key from group
+      handleGroupToLink[group]?.remove(oldKey);
+      handleLinkToGroup.remove(oldKey);
+
+      // Add new key to group
+      handleLinkToGroup[newKey] = group;
+      handleGroupToLink[group]?.add(newKey);
+    }
+  }
+
   /// Removes an entire handle link group.
   void removeGroup(dynamic groupId) {
     if (handleGroupToLink.containsKey(groupId)) {

@@ -76,6 +76,8 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   List<String> hiddenSlats = [];
   @override
   List<Offset> hiddenCargo = [];
+  @override
+  List<Offset> hiddenAssembly = [];
 
   // Keyboard state
   @override

@@ -34,9 +34,9 @@ mixin DesignStateSeedMixin on ChangeNotifier {
 
   Offset convertCoordinateSpacetoRealSpace(Offset inputPosition);
 
-  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category);
+  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false});
 
-  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false});
+  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false});
 
   /// Checks if a coordinate belongs to an active seed in the roster.
   /// Returns the seed key (layerID, slatSide, firstCoordinate) if found, null otherwise.

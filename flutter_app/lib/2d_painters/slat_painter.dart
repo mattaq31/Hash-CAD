@@ -186,6 +186,7 @@ class SlatPainter extends CustomPainter {
   final List<String> selectedSlats;
   final List<String> hiddenSlats;
   final List<Offset> hiddenCargo;
+  final List<Offset> hiddenAssembly;
   final ActionState actionState;
   final DesignState appState;
   late Map<int, TextPainter> labelPainters;
@@ -193,7 +194,7 @@ class SlatPainter extends CustomPainter {
 
   SlatPainter(this.scale, this.canvasOffset, this.slats,
       this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats,
-      this.hiddenCargo, this.actionState, this.appState){
+      this.hiddenCargo, this.hiddenAssembly, this.actionState, this.appState){
 
     labelPainters = <int, TextPainter>{};
     TextStyle textStyle = TextStyle(
@@ -515,7 +516,10 @@ class SlatPainter extends CustomPainter {
                 shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
                 color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
               } else if (category.contains('ASSEMBLY')) {
-                if (slat.phantomParent != null) {
+                if(appState.assemblyLinkManager.handleLinkToGroup.containsKey((slat.id, handleIndex, sideName))){
+                  color = Colors.purple;
+                }
+                else if (slat.phantomParent != null) {
                   color = Colors.red;
                 }
                 else {
@@ -648,10 +652,14 @@ class SlatPainter extends CustomPainter {
               }
             }
 
-            bool topHandleHidden = hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top';
-            bool bottomHandleHidden = hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom';
-            bool topHandleSelected = appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top';
-            bool bottomHandleSelected = appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom';
+            bool topHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top')
+                || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top');
+            bool bottomHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom')
+                || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom');
+            bool topHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top')
+                || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
+            bool bottomHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom')
+                || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom' && bottomCategory.contains('ASSEMBLY'));
 
             void drawText(String text, Offset offset, Color textColor, double fontSize) {
               final textPainter = TextPainter(

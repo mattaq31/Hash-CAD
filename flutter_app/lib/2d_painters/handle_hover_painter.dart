@@ -9,7 +9,7 @@ import 'slat_painter.dart';
 
 
 /// Custom painter for the cargo hover display
-class CargoHoverPainter extends CustomPainter {
+class HandleHoverPainter extends CustomPainter {
   final double scale;
   final Offset canvasOffset;
   // final Cargo? cargo;
@@ -20,7 +20,7 @@ class CargoHoverPainter extends CustomPainter {
   final DesignState appState;
   final ActionState actionState;
 
-  CargoHoverPainter(this.scale, this.canvasOffset,
+  HandleHoverPainter(this.scale, this.canvasOffset,
       this.hoverValid, this.cargoArrayPoints, this.hoverPosition,
       this.moveAnchor, this.appState, this.actionState);
 
@@ -56,8 +56,11 @@ class CargoHoverPainter extends CustomPainter {
     }
 
     if (hoverPosition != null && cargoArrayPoints.isNotEmpty) {
-    // TODO: this needs special fixing
-      if (appState.cargoAdditionType == 'SEED'){ // special seed drawing supersedes normal cargo drawing
+      // Check if we're in assembly mode (panelMode == 1)
+      bool isAssemblyMode = actionState.panelMode == 1;
+
+      if (!isAssemblyMode && appState.cargoAdditionType == 'SEED') {
+        // special seed drawing supersedes normal cargo drawing
         Seed seed = Seed(ID: 'dummy', coordinates: cargoArrayPoints);
 
         paintSeedFromArray(canvas, cargoArrayPoints, appState.gridSize,
@@ -66,10 +69,65 @@ class CargoHoverPainter extends CustomPainter {
             color: appState.cargoPalette['SEED']!.color,
             printHandles: true,
             crosshatch: !hoverValid);
-      }
-      else {
+      } else if (isAssemblyMode) {
+        // Assembly handle hover drawing
+        String attachMode = actionState.assemblyAttachMode;
 
-        // if there are no preset positions, attempt to draw based on layer angle
+        for (var coord in cargoArrayPoints.values) {
+          double squareSide = appState.gridSize * 0.85;
+          Offset centerCoord;
+          Color paintColor;
+
+          if (moveAnchor != Offset.zero) {
+            // Moving mode - offset from anchor
+            centerCoord = appState.convertCoordinateSpacetoRealSpace(coord) + hoverPosition! - moveAnchor;
+            // Get color from existing handle at this position
+            paintColor = attachMode == 'top' ? Colors.blue : Colors.orange;
+          } else {
+            // Add mode - direct position
+            centerCoord = coord;
+            paintColor = attachMode == 'top' ? Colors.blue : Colors.orange;
+          }
+
+          final Paint hoverRodPaint = Paint()
+            ..color = paintColor.withValues(alpha: 0.5)
+            ..strokeWidth = appState.gridSize / 2
+            ..style = PaintingStyle.fill;
+
+          if (!hoverValid) {
+            hoverRodPaint.shader = CrossHatchShader.shader;
+            hoverRodPaint.color = Colors.red;
+          }
+
+          centerCoord = attachMode == 'top'
+              ? centerCoord - Offset(0, squareSide / 4)
+              : centerCoord + Offset(0, squareSide / 4);
+
+          final rect = Rect.fromCenter(
+            center: centerCoord,
+            width: squareSide,
+            height: squareSide / 2,
+          );
+
+          // Fill rectangle
+          canvas.drawRect(rect, hoverRodPaint);
+
+          // Draw handle value text for Add mode
+          String displayText = moveAnchor == Offset.zero
+              ? actionState.assemblyHandleValue
+              : (attachMode == 'top' ? '↑' : '↓');
+          drawText(displayText, centerCoord, Colors.white, squareSide * 0.4);
+
+          // Outline with thin black border
+          final borderPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.1
+            ..color = Colors.black;
+
+          canvas.drawRect(rect, borderPaint);
+        }
+      } else {
+        // Cargo handle hover drawing
         for (var coord in cargoArrayPoints.values) {
           double squareSide = appState.gridSize * 0.85;
           Offset centerCoord;
@@ -78,34 +136,36 @@ class CargoHoverPainter extends CustomPainter {
           if (moveAnchor != Offset.zero) {
             centerCoord = appState.convertCoordinateSpacetoRealSpace(coord) + hoverPosition! - moveAnchor;
             paintColor = appState.getCargoFromCoordinate(coord, appState.selectedLayerKey, actionState.cargoAttachMode).color;
-          }
-          else{
+          } else {
             centerCoord = coord;
             paintColor = appState.cargoPalette[appState.cargoAdditionType]?.color ?? Colors.grey;
           }
 
           final Paint hoverRodPaint = Paint()
-            ..color = paintColor.withValues(alpha: 0.5) // Semi-transparent input
+            ..color = paintColor.withValues(alpha: 0.5)
             ..strokeWidth = appState.gridSize / 2
             ..style = PaintingStyle.fill;
 
-          if (!hoverValid) { // invalid location
+          if (!hoverValid) {
             hoverRodPaint.shader = CrossHatchShader.shader;
             hoverRodPaint.color = Colors.red;
           }
 
-          centerCoord = actionState.cargoAttachMode == 'top' ? centerCoord - Offset(0, squareSide/4) : centerCoord + Offset(0, squareSide/4);
+          centerCoord = actionState.cargoAttachMode == 'top'
+              ? centerCoord - Offset(0, squareSide / 4)
+              : centerCoord + Offset(0, squareSide / 4);
 
           final rect = Rect.fromCenter(
             center: centerCoord,
             width: squareSide,
-            height: squareSide/2,
+            height: squareSide / 2,
           );
 
           // Fill rectangle
           canvas.drawRect(rect, hoverRodPaint);
 
-          drawText(actionState.cargoAttachMode == 'top' ? '↑' : '↓', centerCoord, isColorDark(paintColor) ? Colors.white : Colors.black,  squareSide * 0.4);
+          drawText(actionState.cargoAttachMode == 'top' ? '↑' : '↓', centerCoord,
+              isColorDark(paintColor) ? Colors.white : Colors.black, squareSide * 0.4);
 
           // Outline with thin black border
           final borderPaint = Paint()
@@ -121,7 +181,7 @@ class CargoHoverPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CargoHoverPainter oldDelegate) {
+  bool shouldRepaint(covariant HandleHoverPainter oldDelegate) {
     return hoverPosition != oldDelegate.hoverPosition ||
         hoverValid != oldDelegate.hoverValid;
   }

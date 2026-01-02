@@ -5,7 +5,7 @@ import '../../app_management/action_state.dart';
 import '../../2d_painters/grid_painter.dart';
 import '../../2d_painters/slat_painter.dart';
 import '../../2d_painters/slat_hover_painter.dart';
-import '../../2d_painters/cargo_hover_painter.dart';
+import '../../2d_painters/handle_hover_painter.dart';
 import '../../2d_painters/delete_painter.dart';
 import '../../2d_painters/seed_painter.dart';
 import '../../2d_painters/drag_box_painter.dart';
@@ -41,6 +41,7 @@ mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridContro
               appState.selectedSlats,
               hiddenSlats,
               hiddenCargo,
+              hiddenAssembly,
               actionState,
               appState,
             ),
@@ -64,11 +65,11 @@ mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridContro
                   appState,
                   actionState,
                 )
-              : CargoHoverPainter(
+              : HandleHoverPainter(
                   scale,
                   offset,
                   hoverValid,
-                  getCargoHoverPoints(appState, actionState),
+                  getHandleHoverPoints(appState, actionState),
                   hoverPosition,
                   slatMoveAnchor,
                   appState,

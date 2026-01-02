@@ -24,11 +24,9 @@ mixin GridControlHoverEventsMixin<T extends StatefulWidget> on State<T>, GridCon
           final pts = (appState.cargoAdditionType == 'SEED')
               ? generateSeedPositions(hoverPosition!, true, appState).values.toList()
               : generateCargoPositions(hoverPosition!, true, appState).values.toList();
-          appState.setHoverPreview(HoverPreview(
-            kind: 'Cargo-Add',
-            isValid: hoverValid,
-            cargoOrSeedPoints: pts,
-          ));
+          // TODO: cargo/seed previews are still not used in the 3D system
+
+          appState.setHoverPreview(HoverPreview(kind: 'Cargo-Add', isValid: hoverValid,cargoOrSeedPoints: pts));
         }
       });
     }

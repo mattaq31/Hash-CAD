@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 class ActionState extends ChangeNotifier {
   String slatMode;
   String cargoMode;
+  String assemblyMode;
+  String assemblyHandleValue;
+  String assemblyAttachMode;
   bool displayAssemblyHandles;
   bool displayCargoHandles;
   bool displaySlatIDs;
@@ -39,6 +42,9 @@ class ActionState extends ChangeNotifier {
   ActionState({
     this.slatMode = 'Add',
     this.cargoMode = 'Add',
+    this.assemblyMode = 'Add',
+    this.assemblyHandleValue = '1',
+    this.assemblyAttachMode = 'top',
     this.displayAssemblyHandles = false,
     this.displayCargoHandles = true,
     this.displaySlatIDs = false,
@@ -69,6 +75,21 @@ class ActionState extends ChangeNotifier {
 
   void updateCargoMode(String value) {
     cargoMode = value;
+    notifyListeners();
+  }
+
+  void updateAssemblyMode(String value) {
+    assemblyMode = value;
+    notifyListeners();
+  }
+
+  void updateAssemblyHandleValue(String value) {
+    assemblyHandleValue = value;
+    notifyListeners();
+  }
+
+  void updateAssemblyAttachMode(String value) {
+    assemblyAttachMode = value;
     notifyListeners();
   }
 

@@ -43,10 +43,12 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       SingleActivator(LogicalKeyboardKey.delete): () {
         appState.removeSlats(appState.selectedSlats);
         appState.removeSelectedCargo(actionState.cargoAttachMode);
+        appState.deleteSelectedHandles(actionState.assemblyAttachMode);
       },
       SingleActivator(LogicalKeyboardKey.backspace): () {
         appState.removeSlats(appState.selectedSlats);
         appState.removeSelectedCargo(actionState.cargoAttachMode);
+        appState.deleteSelectedHandles(actionState.assemblyAttachMode);
       },
       // Navigation shortcuts
       SingleActivator(LogicalKeyboardKey.arrowUp): () {
@@ -64,21 +66,33 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       SingleActivator(LogicalKeyboardKey.digit1): () {
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Add');
-        } else if (actionState.panelMode == 2) {
+        }
+        else if (actionState.panelMode == 1) {
+          actionState.updateAssemblyMode('Add');
+        }
+        else if (actionState.panelMode == 2) {
           actionState.updateCargoMode('Add');
         }
       },
       SingleActivator(LogicalKeyboardKey.digit2): () {
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Delete');
-        } else if (actionState.panelMode == 2) {
+        }
+        else if (actionState.panelMode == 1) {
+          actionState.updateAssemblyMode('Delete');
+        }
+        else if (actionState.panelMode == 2) {
           actionState.updateCargoMode('Delete');
         }
       },
       SingleActivator(LogicalKeyboardKey.digit3): () {
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Move');
-        } else if (actionState.panelMode == 2) {
+        }
+        else if (actionState.panelMode == 1) {
+          actionState.updateAssemblyMode('Move');
+        }
+        else if (actionState.panelMode == 2) {
           actionState.updateCargoMode('Move');
         }
       },

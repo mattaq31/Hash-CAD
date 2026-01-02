@@ -157,8 +157,13 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                   onDestinationSelected: (int index) {
                     actionState.setPanelMode(index);
 
-                    if (actionState.panelMode != 0){ // Clear slat selection when not in slat design mode
-                      appState.clearSelection();
+                    appState.clearSelection();
+
+                    if(index == 1){
+                      actionState.setAssemblyHandleDisplay(true);
+                    }
+                    if (index == 2){
+                      actionState.setCargoHandleDisplay(true);
                     }
 
                     if (actionState.isSideBarCollapsed) {

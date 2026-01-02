@@ -241,6 +241,8 @@ class DesignState extends ChangeNotifier
   @override
   List<Offset> selectedHandlePositions = [];
   @override
+  List<Offset> selectedAssemblyPositions = [];
+  @override
   String designName = 'New Megastructure';
 
   @override

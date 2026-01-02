@@ -34,9 +34,9 @@ mixin DesignStateCargoMixin on ChangeNotifier {
   // Methods from other mixins
   void saveUndoState();
 
-  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category);
+  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false});
 
-  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false});
+  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false});
 
   void removeSeed(String layerID, String slatSide, Offset coordinate);
 

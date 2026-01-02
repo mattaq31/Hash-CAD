@@ -95,6 +95,12 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
           }
         }
       }
+    } else if (actionState.panelMode == 1) {
+      // assembly handle mode - check for cargo/seed occupancy
+      String layerSideKey = generateLayerSideKey(appState.selectedLayerKey, actionState.assemblyAttachMode);
+      appState.occupiedCargoPoints.putIfAbsent(layerSideKey, () => {});
+      occupiedPositions = appState.occupiedCargoPoints[layerSideKey]?.keys;
+      hiddenPositions.addAll(hiddenAssembly);
     } else {
       String layerSideKey = generateLayerSideKey(appState.selectedLayerKey, actionState.cargoAttachMode);
       appState.occupiedCargoPoints.putIfAbsent(layerSideKey, () => {});
@@ -252,8 +258,27 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
         Map<int, Map<int, Offset>> allSlatCoordinates = generateSlatPositions(snapPosition, false, appState);
         queryCoordinates = allSlatCoordinates.values.expand((innerMap) => innerMap.values).toList();
       }
+    } else if (actionState.panelMode == 1) {
+      // assembly handle mode
+
+      // assembly handles are not allowed on the top-most or bottom-most layer (make a new empty layer to do that)
+      if(appState.layerMap[appState.selectedLayerKey]!['order'] == 0 && actionState.assemblyAttachMode == 'bottom') {
+        return (snapPosition, false);
+      }
+      if(appState.layerMap[appState.selectedLayerKey]!['order'] == appState.layerMap.length - 1 && actionState.assemblyAttachMode == 'top') {
+        return (snapPosition, false);
+      }
+      if (preSelectedPositions) {
+        for (var coord in appState.selectedAssemblyPositions) {
+          queryCoordinates.add(appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor) + coord);
+        }
+      } else {
+        // Single handle placement - just the snap position
+        queryCoordinates = [appState.convertRealSpacetoCoordinateSpace(snapPosition)];
+      }
+
     } else {
-      // everything else
+      // cargo mode
       Map<int, Offset> allCargoCoordinates;
       if (preSelectedPositions) {
         for (var coord in appState.selectedHandlePositions) {
@@ -271,8 +296,8 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
 
     snapHoverValid = !checkCoordinateOccupancy(appState, actionState, queryCoordinates);
 
-    // For cargo move, also check that all destination coordinates have slats to bind to
-    if (snapHoverValid && actionState.panelMode != 0 && preSelectedPositions) {
+    // For handles, also check that all destination coordinates have slats to bind to
+    if (snapHoverValid && actionState.panelMode != 0) {
       var slatPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys;
       if (slatPositions != null) {
         for (var coord in queryCoordinates) {
@@ -290,7 +315,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
   }
 
   @override
-  Map<int, Offset> getCargoHoverPoints(DesignState appState, ActionState actionState) {
+  Map<int, Offset> getHandleHoverPoints(DesignState appState, ActionState actionState) {
     if (hoverPosition != null && getActionMode(actionState) == 'Cargo-Add') {
       if (appState.cargoAdditionType != 'SEED') {
         return generateCargoPositions(hoverPosition!, true, appState);
@@ -299,6 +324,11 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       }
     } else if (hoverPosition != null && getActionMode(actionState) == 'Cargo-Move') {
       return appState.selectedHandlePositions.asMap();
+    } else if (hoverPosition != null && getActionMode(actionState) == 'Assembly-Add') {
+      // Single point for assembly handle placement
+      return {0: hoverPosition!};
+    } else if (hoverPosition != null && getActionMode(actionState) == 'Assembly-Move') {
+      return appState.selectedAssemblyPositions.asMap();
     } else {
       return {};
     }
@@ -375,6 +405,16 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       } else {
         return "Neutral";
       }
+    } else if (actionState.panelMode == 1) {
+      if (actionState.assemblyMode == 'Add') {
+        return "Assembly-Add";
+      } else if (actionState.assemblyMode == 'Delete') {
+        return "Assembly-Delete";
+      } else if (actionState.assemblyMode == 'Move') {
+        return "Assembly-Move";
+      } else {
+        return "Neutral";
+      }
     } else if (actionState.panelMode == 2) {
       if (actionState.cargoMode == 'Add') {
         return "Cargo-Add";
@@ -398,6 +438,9 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     } else if (actionMode == 'Cargo-Move') {
       return ['Handles Selected: ${appState.selectedHandlePositions.length}',
       'Cargo Site: ${actionState.cargoAttachMode.toUpperCase()}'];
+    } else if (actionMode == 'Assembly-Move') {
+      return ['Handles Selected: ${appState.selectedAssemblyPositions.length}',
+      'Handle Site: ${actionState.assemblyAttachMode.toUpperCase()}'];
     } else {
       return [];
     }

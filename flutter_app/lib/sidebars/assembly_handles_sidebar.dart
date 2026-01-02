@@ -30,12 +30,13 @@ class AssemblyHandleDesignTools extends StatefulWidget {
 class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with WidgetsBindingObserver {
   TextEditingController handleAddTextController = TextEditingController();
   FocusNode handleChangeFocusNode = FocusNode();
+  FocusNode defaultHandleFocusNode = FocusNode();
 
   // State for new UI mockup segmented controls
   bool preventSelfComplementarySlats = false;
   String _updateScope = 'all'; // 'all' or 'interfaces'
   String _handleAttachment = 'top'; // 'top' or 'bottom'
-  final TextEditingController _defaultHandleController = TextEditingController(text: '1');
+  final TextEditingController _defaultHandleController = TextEditingController();
 
   @override
   void initState() {
@@ -48,6 +49,13 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           _updateHandleCount(serverState);
         }
       });
+      var actionState = context.read<ActionState>();
+      _defaultHandleController.text = actionState.assemblyHandleValue;
+      defaultHandleFocusNode.addListener(() {
+        if (!defaultHandleFocusNode.hasFocus) {
+          _updateDefaultHandleCount(actionState);
+        }
+      });      
     });
   }
 
@@ -65,6 +73,21 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       handleAddTextController.text = '997';
     }
     handleAddTextController.text = serverState.evoParams['unique_handle_sequences']!;
+  }
+  
+  // could consider limiting this below the library size...
+  void _updateDefaultHandleCount(ActionState actionState){
+    int? newValue = int.tryParse(_defaultHandleController.text);
+    if (newValue != null && newValue >= 1 && newValue <= 999) {
+      actionState.updateAssemblyHandleValue(newValue.toString());
+    } else if (newValue != null && newValue < 1) {
+      actionState.updateAssemblyHandleValue('1');
+      _defaultHandleController.text = '1';
+    } else {
+      actionState.updateAssemblyHandleValue('999');
+      _defaultHandleController.text = '999';
+    }
+    _defaultHandleController.text = actionState.assemblyHandleValue;
   }
 
   @override
@@ -196,7 +219,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         children: [
           ElevatedButton.icon(
             onPressed: () {
-              int uniqueHandleCount = int.tryParse(handleAddTextController.text) ?? 10;
+              int uniqueHandleCount = int.tryParse(handleAddTextController.text) ?? 64;
               appState.generateRandomAssemblyHandles(
                 uniqueHandleCount,
                 preventSelfComplementarySlats,
@@ -244,10 +267,15 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                 children: [
                   IconButton(
                     tooltip: 'Place handle',
-                    onPressed: null,
+                    onPressed: () => actionState.updateAssemblyMode('Add'),
                     icon: const Icon(Icons.add_location_alt, size: 20),
                     style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor: actionState.assemblyMode == 'Add'
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor: actionState.assemblyMode == 'Add'
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : null,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.all(8),
                       minimumSize: const Size(36, 36),
@@ -257,10 +285,15 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   SizedBox(width: 8),
                   IconButton(
                     tooltip: 'Delete handle',
-                    onPressed: null,
+                    onPressed: () => actionState.updateAssemblyMode('Delete'),
                     icon: const Icon(Icons.wrong_location, size: 20),
                     style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor: actionState.assemblyMode == 'Delete'
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor: actionState.assemblyMode == 'Delete'
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : null,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.all(8),
                       minimumSize: const Size(36, 36),
@@ -270,10 +303,15 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   SizedBox(width: 8),
                   IconButton(
                     tooltip: 'Move handle',
-                    onPressed: null,
+                    onPressed: () => actionState.updateAssemblyMode('Move'),
                     icon: const Icon(Icons.open_with, size: 20),
                     style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor: actionState.assemblyMode == 'Move'
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor: actionState.assemblyMode == 'Move'
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : null,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.all(8),
                       minimumSize: const Size(36, 36),
@@ -338,6 +376,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               height: 36,
               child: TextField(
                 controller: _defaultHandleController,
+                focusNode: defaultHandleFocusNode,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
@@ -345,6 +384,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 ),
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (value) => _updateDefaultHandleCount(actionState),
               ),
             ),
           ),
@@ -356,16 +396,15 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               IconButton(
                 tooltip: 'Attach to top',
                 onPressed: () {
-                  setState(() {
-                    _handleAttachment = 'top';
-                  });
+                  setState(() => _handleAttachment = 'top');
+                  actionState.updateAssemblyAttachMode('top');
                 },
                 icon: Icon(Icons.arrow_upward, size: 16),
                 style: IconButton.styleFrom(
-                  backgroundColor: _handleAttachment == 'top'
+                  backgroundColor: actionState.assemblyAttachMode == 'top'
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.primaryContainer,
-                  foregroundColor: _handleAttachment == 'top'
+                  foregroundColor: actionState.assemblyAttachMode == 'top'
                       ? Theme.of(context).colorScheme.onPrimary
                       : null,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -378,16 +417,15 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               IconButton(
                 tooltip: 'Attach to bottom',
                 onPressed: () {
-                  setState(() {
-                    _handleAttachment = 'bottom';
-                  });
+                  setState(() => _handleAttachment = 'bottom');
+                  actionState.updateAssemblyAttachMode('bottom');
                 },
                 icon: Icon(Icons.arrow_downward, size: 16),
                 style: IconButton.styleFrom(
-                  backgroundColor: _handleAttachment == 'bottom'
+                  backgroundColor: actionState.assemblyAttachMode == 'bottom'
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.primaryContainer,
-                  foregroundColor: _handleAttachment == 'bottom'
+                  foregroundColor: actionState.assemblyAttachMode == 'bottom'
                       ? Theme.of(context).colorScheme.onPrimary
                       : null,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),

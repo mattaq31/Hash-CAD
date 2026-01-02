@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/parasitic_valency.dart';
@@ -17,6 +18,8 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   Map<String, Map<Offset, String>> get occupiedGridPoints;
 
   Map<String, Map<int, String>> get phantomMap;
+
+  String get selectedLayerKey;
 
   double get gridSize;
 
@@ -41,6 +44,10 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   // Access to link manager from other mixin
   HandleLinkManager get assemblyLinkManager;
 
+  // Selection state for assembly handles
+  List<Offset> get selectedAssemblyPositions;
+  set selectedAssemblyPositions(List<Offset> value);
+
   // Methods from other mixins
   void saveUndoState();
 
@@ -48,7 +55,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   void undo2DAction({bool redo = false});
 
-  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category) {
+  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false}) {
 
     Set<HandleKey> slatsUpdated = {};
     // For assembly handles, use recursive propagation with link manager integration
@@ -158,6 +165,11 @@ mixin DesignStateHandleMixin on ChangeNotifier {
         slatsUpdated.add((slat.id, position, side));
       }
     }
+
+    if (requestStateUpdate) {
+      saveUndoState();
+      notifyListeners();
+    }
     return slatsUpdated;
   }
 
@@ -167,7 +179,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   /// Cascade mode: Also deletes all linked handles and their layer attachments.
   ///
   /// Returns a set of all coordinates that were affected (for batch updating occupancy maps).
-  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false}) {
+  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false}) {
     if (slat.phantomParent != null) {
       // For phantom slats, redirect to parent
       return smartDeleteHandle(slats[slat.phantomParent]!, position, side, cascadeDelete: cascadeDelete);
@@ -196,6 +208,11 @@ mixin DesignStateHandleMixin on ChangeNotifier {
       if (category.contains('ASSEMBLY')) {
         assemblyLinkManager.removeLink((slat.id, position, side));
       }
+    }
+
+    if (requestStateUpdate) {
+      saveUndoState();
+      notifyListeners();
     }
 
     return affectedCoordinates;
@@ -306,6 +323,97 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     slat.placeholderList.remove('handle-$position-h$side');
   }
 
+  /// Selects or deselects an assembly handle at the given coordinate.
+  void selectAssemblyHandle(Offset coordinate, {bool addOnly = false}) {
+    if (selectedAssemblyPositions.contains(coordinate) && !addOnly) {
+      selectedAssemblyPositions.remove(coordinate);
+    } else if (!selectedAssemblyPositions.contains(coordinate)) {
+      selectedAssemblyPositions.add(coordinate);
+    }
+    notifyListeners();
+  }
+
+  /// Clears all selected assembly handle positions.
+  void clearAssemblySelection() {
+    selectedAssemblyPositions.clear();
+    notifyListeners();
+  }
+
+  void deleteSelectedHandles(String slatSide){
+    int integerSlatSide = getSlatSideFromLayer(layerMap, selectedLayerKey, slatSide);
+    for (var coord in selectedAssemblyPositions) {
+      var slat = slats[occupiedGridPoints[selectedLayerKey]?[coord]]!;
+      int position = slat.slatCoordinateToPosition[coord]!;
+      smartDeleteHandle(slat, position, integerSlatSide, cascadeDelete: false);
+    }
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Moves assembly handles from source to destination coordinates, preserving links.
+  void moveAssemblyHandle(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide) {
+    int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
+
+    // PHASE 1: Collect handle data and link keys before changes
+    List<({Offset fromCoord, Offset toCoord, Slat slatDonor, int donorPosition,
+           Slat slatReceiver, int receiverPosition, String handleValue, String handleCategory,
+           HandleKey oldKey, HandleKey newKey})> moveOperations = [];
+
+    for (var fromCoord in coordinateTransferMap.keys) {
+      var slatID = occupiedGridPoints[layerID]?[fromCoord];
+      if (slatID == null) continue;
+
+      var slatDonor = slats[slatID]!;
+      int donorPosition = slatDonor.slatCoordinateToPosition[fromCoord]!;
+      var handleDict = getHandleDict(slatDonor, integerSlatSide);
+
+      if (handleDict[donorPosition] == null) continue; // No handle to move
+      if (!handleDict[donorPosition]!['category'].toString().contains('ASSEMBLY')) continue; // Not an assembly handle
+
+      String handleValue = handleDict[donorPosition]!['value'].toString();
+      String handleCategory = handleDict[donorPosition]!['category'];
+      Offset toCoord = coordinateTransferMap[fromCoord]!;
+
+      if (!occupiedGridPoints[layerID]!.containsKey(toCoord)) continue; // No receiver slat present
+
+      var receiverSlatID = occupiedGridPoints[layerID]![toCoord]!;
+
+      var slatReceiver = slats[receiverSlatID]!;
+      int receiverPosition = slatReceiver.slatCoordinateToPosition[toCoord]!;
+
+      // Track old and new keys for link manager update
+      HandleKey oldKey = (slatDonor.id, donorPosition, integerSlatSide);
+      HandleKey newKey = (slatReceiver.id, receiverPosition, integerSlatSide);
+
+      moveOperations.add((
+        fromCoord: fromCoord, toCoord: toCoord,
+        slatDonor: slatDonor, donorPosition: donorPosition,
+        slatReceiver: slatReceiver, receiverPosition: receiverPosition,
+        handleValue: handleValue, handleCategory: handleCategory,
+        oldKey: oldKey, newKey: newKey,
+      ));
+    }
+
+    // PHASE 2: Update link manager keys BEFORE deleting (so links are preserved)
+    for (var op in moveOperations) {
+      assemblyLinkManager.updateKey(op.oldKey, op.newKey);
+    }
+
+    // PHASE 3: Delete from source (cascade=false, links already moved)
+    for (var op in moveOperations) {
+      // Delete directly without touching link manager (already updated)
+      deleteHandleWithPhantomPropagation(op.slatDonor, op.donorPosition, integerSlatSide);
+    }
+
+    // PHASE 4: Add to destination
+    for (var op in moveOperations) {
+      smartSetHandle(op.slatReceiver, op.receiverPosition, integerSlatSide, op.handleValue, op.handleCategory);
+    }
+
+    saveUndoState();
+    notifyListeners();
+  }
+
   /// Deletes a handle through phantom network only (no link manager, no layer attachments).
   /// Used for cargo and seed handles which don't use the link manager.
   /// Returns a set of all affected (layerID, coordinate) pairs for batch occupancy map updates.
@@ -370,10 +478,14 @@ mixin DesignStateHandleMixin on ChangeNotifier {
           if (handleArray[x][y][aLayer] != 0) {
             int slatSide;
             String category;
+            // Interface aLayer is between layers aLayer and aLayer+1
+            // Layer's TOP faces interface (order), BOTTOM also faces interface (order - 1)
             if (aLayer == layerMap[slat.layer]!['order']) {
+              // This layer's TOP faces interface aLayer
               slatSide = getSlatSideFromLayer(layerMap, slat.layer, 'top');
               category = 'ASSEMBLY_HANDLE';
             } else {
+              // This layer's BOTTOM faces interface aLayer
               slatSide = getSlatSideFromLayer(layerMap, slat.layer, 'bottom');
               category = 'ASSEMBLY_ANTIHANDLE';
             }
@@ -424,8 +536,11 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
     // Collect existing assembly handle positions when in "all available" mode
     Set<(int, int, int)>? additionalPositions;
+    Set<(String, int, int)>? outOfBoundsPositions;
     if (allAvailableHandles) {
       additionalPositions = {};
+      outOfBoundsPositions = {};
+      int numInterfaces = layerMap.length - 1;
       for (var slat in slats.values) {
         for (int side in [2, 5]) {
           var handleDict = getHandleDict(slat, side);
@@ -434,10 +549,16 @@ mixin DesignStateHandleMixin on ChangeNotifier {
               Offset coord = slat.slatPositionToCoordinate[entry.key]!;
               int x = (coord.dx - minPos.dx).toInt();
               int y = (coord.dy - minPos.dy).toInt();
+              // TOP side faces interface above (order - 1), BOTTOM side faces interface below (order)
               int arrayLayer = (side == getSlatSideFromLayer(layerMap, slat.layer, 'top'))
                   ? layerMap[slat.layer]!['order']
-                  : layerMap[slat.layer]!['order'] - 1;
-              if (arrayLayer >= 0) additionalPositions.add((x, y, arrayLayer));
+                  : layerMap[slat.layer]!['order'] -1;
+              if (arrayLayer >= 0 && arrayLayer < numInterfaces) {
+                additionalPositions.add((x, y, arrayLayer));
+              }
+              else{
+                outOfBoundsPositions.add((slat.id, side, entry.key));
+              }
             }
           }
         }
@@ -449,8 +570,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
       slat.clearAssemblyHandles();
     }
 
-    List<List<List<int>>> slatArray =
-        convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize, allTypes: true);
+    List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize, allTypes: true);
     List<List<List<int>>> handleArray;
     int seed = DateTime.now().millisecondsSinceEpoch % 1000;
 
@@ -460,6 +580,18 @@ mixin DesignStateHandleMixin on ChangeNotifier {
       handleArray = generateRandomSlatHandles(slatArray, uniqueHandleCount, seed: seed, additionalPositions: additionalPositions);
     }
     assignAssemblyHandleArray(handleArray, minPos, maxPos);
+
+    // assigns all remaining handles that were out of bounds of the handle array
+    if (allAvailableHandles && outOfBoundsPositions != null && outOfBoundsPositions.isNotEmpty) {
+      Random rand = Random(DateTime.now().millisecondsSinceEpoch % 1000);
+      for (var (slatID, side, position) in outOfBoundsPositions) {
+        String category = (side == getSlatSideFromLayer(layerMap, slats[slatID]!.layer, 'top'))
+            ? 'ASSEMBLY_HANDLE'
+            : 'ASSEMBLY_ANTIHANDLE';
+        String handlePayload =  (rand.nextInt(uniqueHandleCount) + 1).toString(); // generate a pseudo-random handle value
+        smartSetHandle(slats[slatID]!, position, side, handlePayload, category);
+      }
+    }
 
     saveUndoState();
     notifyListeners();
