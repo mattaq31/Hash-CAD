@@ -55,6 +55,20 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   void undo2DAction({bool redo = false});
 
+  bool handleWithinBounds(Slat slat, int position, int side){
+
+    int topSide = getSlatSideFromLayer(layerMap, selectedLayerKey, 'top');
+
+    if(layerMap[selectedLayerKey]!['order'] == 0 && topSide != side) {
+      return false;
+    }
+    if(layerMap[selectedLayerKey]!['order'] == layerMap.length - 1 && topSide == side) {
+      return false;
+    }
+    return true;
+  }
+
+
   Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false}) {
 
     Set<HandleKey> slatsUpdated = {};
@@ -70,8 +84,11 @@ mixin DesignStateHandleMixin on ChangeNotifier {
         // Prevent infinite loops
         if (slatsUpdated.contains(accessKey)) return;
         slatsUpdated.add(accessKey);
-        // Set handle on this slat
-        querySlat.setPlaceholderHandle(queryPosition, querySide, handlePayload, queryCategory);
+
+        // Set handle on this slat (only if it's within the bounds)
+        if (handleWithinBounds(querySlat, queryPosition, querySide)) {
+          querySlat.setPlaceholderHandle(queryPosition, querySide, handlePayload, queryCategory);
+        }
 
         // 1) Propagate through phantom network
         if (phantomMap.containsKey(querySlat.id) || querySlat.phantomParent != null) {
@@ -138,7 +155,9 @@ mixin DesignStateHandleMixin on ChangeNotifier {
             Slat targetSlat = slats[key.$1]!;
             var handleDict = getHandleDict(targetSlat, key.$3);
             String currentCategory = handleDict[key.$2]?['category'] ?? category;
-            targetSlat.setPlaceholderHandle(key.$2, key.$3, enforced.toString(), currentCategory);
+            if (handleWithinBounds(targetSlat, key.$2, key.$3)) {
+              targetSlat.setPlaceholderHandle(key.$2, key.$3, enforced.toString(), currentCategory);
+            }
           }
         }
       } else if (enforcedValues.length > 1) {
@@ -273,8 +292,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   }
 
   /// Deletes handle through phantom network and layer attachment only (not through link groups).
-  void _deleteWithPhantomAndLayerPropagation(Slat slat, int position, int side, String category, Set<HandleKey> visited,
-      Set<(String, Offset)> affectedCoordinates) {
+  void _deleteWithPhantomAndLayerPropagation(Slat slat, int position, int side, String category, Set<HandleKey> visited, Set<(String, Offset)> affectedCoordinates) {
     HandleKey accessKey = (slat.id, position, side);
     if (visited.contains(accessKey)) return;
     visited.add(accessKey);
@@ -346,6 +364,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
       int position = slat.slatCoordinateToPosition[coord]!;
       smartDeleteHandle(slat, position, integerSlatSide, cascadeDelete: false);
     }
+    hammingValueValid = false;
     saveUndoState();
     notifyListeners();
   }
@@ -402,7 +421,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     // PHASE 3: Delete from source (cascade=false, links already moved)
     for (var op in moveOperations) {
       // Delete directly without touching link manager (already updated)
-      deleteHandleWithPhantomPropagation(op.slatDonor, op.donorPosition, integerSlatSide);
+      smartDeleteHandle(op.slatDonor, op.donorPosition, integerSlatSide);
     }
 
     // PHASE 4: Add to destination
@@ -410,6 +429,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
       smartSetHandle(op.slatReceiver, op.receiverPosition, integerSlatSide, op.handleValue, op.handleCategory);
     }
 
+    hammingValueValid = false;
     saveUndoState();
     notifyListeners();
   }
@@ -645,7 +665,6 @@ mixin DesignStateHandleMixin on ChangeNotifier {
       );
     }
   }
-
 
   /// Checks if imported handles violate link manager constraints.
   /// Returns a warning message if violations exist, null otherwise.

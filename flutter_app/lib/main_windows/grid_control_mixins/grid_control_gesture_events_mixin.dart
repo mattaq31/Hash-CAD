@@ -148,6 +148,7 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
 
       appState.clearAssemblySelection();
       appState.smartSetHandle(slat, position, integerSlatSide, handleValue, category, requestStateUpdate: true);
+      appState.hammingValueValid = false;
 
     } else if (getActionMode(actionState) == 'Assembly-Delete') {
       var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
@@ -161,6 +162,7 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
 
       if (handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false) {
         appState.smartDeleteHandle(slat, position, integerSlatSide, cascadeDelete: false, requestStateUpdate: true);
+        appState.hammingValueValid = false;
       }
     }
   }
