@@ -252,15 +252,19 @@ mixin DesignStateSlatMixin on ChangeNotifier {
 
     // deleting the original slat should also delete all phantom slats associated with it
     if (phantomMap.containsKey(ID)) {
-      for (var phantomID in phantomMap[ID]!.values) {
+      List<String> phantomIDs = phantomMap[ID]!.values.toList(); // create a copy to avoid modification during iteration
+      for (var phantomID in phantomIDs) {
         removeSlat(phantomID, skipStateUpdate: true);
       }
       phantomMap.remove(ID);
     }
 
-    // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
     if (slats[ID]!.phantomParent != null) {
-      if (phantomMap[slats[ID]!.phantomParent]!.length == 1) {
+      // remove phantomID from phantom map
+      int phantomKey = int.parse(ID.split('-P')[1]);
+      phantomMap[slats[ID]!.phantomParent!]!.remove(phantomKey);
+      // if a phantom slat is deleted and the phantom map is subsequently empty, the phantom map should be emptied
+      if (phantomMap[slats[ID]!.phantomParent]!.isEmpty) {
         phantomMap.remove(slats[ID]!.phantomParent);
       }
     }

@@ -340,9 +340,9 @@ class _SlatEditPanel extends State<SlatEditPanel> {
             ),
             SizedBox(width: 5),
             IconButton(
-              tooltip: 'Unlink selected phantoms',
-              onPressed: () {
-                appState.clearAllSlatColors();
+              tooltip: 'Convert selected phantoms to normal slats with linked assembly handles',
+              onPressed: !appState.selectionInvolvesPhantoms() ? null:  () {
+                appState.unLinkSelectedPhantoms();
               },
               icon: const Icon(Icons.link_off,
                   size: 20, color: Colors.black87),

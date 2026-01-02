@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
+import '../../crisscross_core/common_utilities.dart';
 import '../shared_app_state.dart';
+import 'design_state_handle_link_mixin.dart';
 
 /// Mixin containing phantom slat operations for DesignState
 mixin DesignStatePhantomMixin on ChangeNotifier {
@@ -23,6 +25,11 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
   bool get hammingValueValid;
 
   set hammingValueValid(bool value);
+
+  void clearSelection();
+  void removeSlat(String ID, {bool skipStateUpdate = false});
+
+  HandleLinkManager get assemblyLinkManager;
 
   // Methods from other mixins
   void saveUndoState();
@@ -63,12 +70,13 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     for (var slatID in phantomMap.keys) {
       phantomSlatIDs.addAll(phantomMap[slatID]!.values);
     }
+
     for (var phantomID in phantomSlatIDs) {
-      String layer = phantomID.split('-')[0];
-      slats.remove(phantomID);
-      occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+      removeSlat(phantomID, skipStateUpdate: true);
     }
+
     phantomMap.clear();
+
     hammingValueValid = false;
     saveUndoState();
     notifyListeners();
@@ -77,20 +85,14 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
   void clearPhantomSlatSelection() {
     // clears selection of phantom slats
     List<String> phantomSlatIDs = [];
-    List<String> refSlatIDs = [];
     for (var slatID in phantomMap.keys) {
       if (!selectedSlats.contains(slatID)) continue;
       phantomSlatIDs.addAll(phantomMap[slatID]!.values);
-      refSlatIDs.add(slatID);
     }
     for (var phantomID in phantomSlatIDs) {
-      String layer = phantomID.split('-')[0];
-      slats.remove(phantomID);
-      occupiedGridPoints[layer]?.removeWhere((key, value) => value == phantomID);
+      removeSlat(phantomID, skipStateUpdate: true);
     }
-    for (var refID in refSlatIDs) {
-      phantomMap.remove(refID);
-    }
+
     hammingValueValid = false;
     saveUndoState();
     notifyListeners();
@@ -105,7 +107,18 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
         break;
       }
     }
+    return hasPhantoms;
+  }
 
+  bool selectionInvolvesPhantoms() {
+    bool hasPhantoms = false;
+
+    for (var slatID in selectedSlats) {
+      if (slats[slatID]!.phantomParent != null) {
+        hasPhantoms = true;
+        break;
+      }
+    }
     return hasPhantoms;
   }
 
@@ -187,4 +200,93 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     }
     addPhantomSlats(selectedLayerKey, phantomSlatCoordinates, referenceSlats);
   }
+
+  void unLinkSelectedPhantoms() {
+    // Removes phantom slats and replaces them with normal slats with linked handles (linked to the reference)
+
+    // Step 1: gather phantom slats in selection
+    List<String> phantomSlatIDs = [];
+    List<String> refSlatIDs = [];
+    for (var slatID in selectedSlats) {
+      if(slats[slatID]!.phantomParent == null) continue;
+      phantomSlatIDs.add(slatID);
+      refSlatIDs.add(slats[slatID]!.phantomParent!);
+    }
+
+    if (phantomSlatIDs.isEmpty) return;
+
+    // Step 2 & 3: for each phantom slat, create a new independent slat with a new ID
+    for (var phantomID in phantomSlatIDs) {
+      Slat phantomSlat = slats[phantomID]!;
+      String layer = phantomSlat.layer;
+      String refSlatID = phantomSlat.phantomParent!;
+
+      // Get new ID from layer's slat pool
+      int newNumericID = layerMap[layer]!['next_slat_id'];
+      String newSlatID = '$layer-I$newNumericID';
+
+      // Create new slat without phantom parent
+      Slat newSlat = Slat(
+        newNumericID,
+        newSlatID,
+        layer,
+        Map.from(phantomSlat.slatPositionToCoordinate),
+        maxLength: phantomSlat.maxLength,
+        uniqueColor: phantomSlat.uniqueColor,
+        slatType: phantomSlat.slatType,
+      );
+      newSlat.copyHandlesFromSlat(phantomSlat);
+
+      // Add new slat to collection
+      slats[newSlatID] = newSlat;
+
+      // Update layer slat tracking
+      layerMap[layer]!['next_slat_id'] += 1;
+      layerMap[layer]!['slat_count'] += 1;
+
+      // Update occupiedGridPoints to point to new slat ID
+      for (var coord in newSlat.slatPositionToCoordinate.values) {
+        occupiedGridPoints[layer]?[coord] = newSlatID;
+      }
+
+      // Remove old phantom slat
+      slats.remove(phantomID);
+
+      // Step 4: link all assembly handles between new slat and reference slat
+      for (int pos = 1; pos <= newSlat.maxLength; pos++) {
+        // Link H2 assembly handles
+        if (newSlat.h2Handles[pos] != null && newSlat.h2Handles[pos]!['category']?.contains('ASSEMBLY') == true) {
+          HandleKey newKey = (newSlatID, pos, 2);
+          HandleKey refKey = (refSlatID, pos, 2);
+          assemblyLinkManager.addLink(newKey, refKey);
+        }
+        // Link H5 assembly handles
+        if (newSlat.h5Handles[pos] != null && newSlat.h5Handles[pos]!['category']?.contains('ASSEMBLY') == true) {
+          HandleKey newKey = (newSlatID, pos, 5);
+          HandleKey refKey = (refSlatID, pos, 5);
+          assemblyLinkManager.addLink(newKey, refKey);
+        }
+      }
+    }
+
+    // Clean up phantom map entries
+    for (int i = 0; i < phantomSlatIDs.length; i++) {
+      String phantomID = phantomSlatIDs[i];
+      String parentID = refSlatIDs[i];
+      // remove phantomID from phantom map
+      int phantomKey = int.parse(phantomID.split('-P')[1]);
+      phantomMap[parentID]!.remove(phantomKey);
+
+      // if the map is now empty, remove the parentID entry as well
+      if(phantomMap[parentID]!.isEmpty) {
+        phantomMap.remove(parentID);
+      }
+    }
+
+    // Step 5: save and notify listeners
+    clearSelection();
+    saveUndoState();
+    notifyListeners();
+  }
+
 }
