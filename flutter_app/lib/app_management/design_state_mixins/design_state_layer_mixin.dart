@@ -34,7 +34,10 @@ mixin DesignStateLayerMixin on ChangeNotifier {
 
   List<Offset> get selectedHandlePositions;
 
+  List<Offset> get selectedAssemblyPositions;
+
   set selectedHandlePositions(List<Offset> value);
+  set selectedAssemblyPositions(List<Offset> value);
 
   String get nextLayerKey;
 
@@ -114,6 +117,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     /// Clears all selections
     selectedSlats = [];
     selectedHandlePositions = [];
+    selectedAssemblyPositions = [];
     notifyListeners();
   }
 
