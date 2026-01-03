@@ -1196,7 +1196,11 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                   message: 'Center View',
                   child: ElevatedButton(
                     onPressed: () {
-                      centerOnSlats([instanceManager[selectSlatVisualStyle('tube')]!,instanceManager[selectSlatVisualStyle('DB-L-120')]!, instanceManager[selectSlatVisualStyle('DB-L-60')]!]);
+                      List<InstanceMetrics> slatInstances = [];
+                      for (var instanceName in slatInstanceNames){
+                        slatInstances.add(instanceManager[instanceName]!);
+                      }
+                      centerOnSlats(slatInstances);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
