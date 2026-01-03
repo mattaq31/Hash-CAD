@@ -38,6 +38,7 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
       }
     } else {
       cursorCoordinate = appState.convertRealSpacetoCoordinateSpace(cursorPoint);
+
       slatMultiJump = multiGenerator[(appState.gridMode, direction)]!;
       slatInnerJump = directionGenerator[(appState.gridMode, direction)]!;
     }

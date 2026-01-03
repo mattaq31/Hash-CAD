@@ -140,15 +140,26 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
       // Enforcement phase: check if any visited handle has an enforced value
       Set<int> enforcedValues = {};
+      bool blocked = false;
       for (var key in slatsUpdated) {
         int? enforced = assemblyLinkManager.getEnforceValue(key);
         if (enforced != null && enforced != 0) {
           enforcedValues.add(enforced);
         }
+        if (assemblyLinkManager.handleBlocks.contains(key)) {
+          blocked = true;
+          break;
+        }
       }
-
+      if(blocked){
+        // If any handle is blocked, make sure to remove all handles set in this operation
+        for (var key in slatsUpdated) {
+          Slat targetSlat = slats[key.$1]!;
+          _removeHandleFromSlat(targetSlat, key.$2, key.$3);
+        }
+      }
       // If there's a single enforced value that differs from what we set, apply it
-      if (enforcedValues.length == 1) {
+      else if (enforcedValues.length == 1) {
         int enforced = enforcedValues.first;
         if (enforced.toString() != handlePayload) {
           for (var key in slatsUpdated) {

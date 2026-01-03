@@ -458,6 +458,11 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   Map<String, Slat> get slats;
   Map<String, Map<String, dynamic>> get layerMap;
 
+  // Methods from other mixins
+  void saveUndoState();
+  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false});
+  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false});
+
   // The link manager instance
   HandleLinkManager get assemblyLinkManager;
   set assemblyLinkManager(HandleLinkManager value);
@@ -465,6 +470,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   /// Clears all handle links and blocks
   void clearAllHandleLinks() {
     assemblyLinkManager.clearAll();
+    saveUndoState();
     notifyListeners();
   }
 
@@ -477,5 +483,112 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   /// Exports handle link data to Excel format
   List<List<dynamic>> exportHandleLinks() {
     return assemblyLinkManager.exportToExcelData(slats, layerMap);
+  }
+
+  /// Links multiple handles together and notifies listeners
+  void linkHandles(List<HandleKey> keys) {
+    assemblyLinkManager.linkMultiple(keys);
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Removes a link from a handle and notifies listeners
+  void unlinkHandle(HandleKey key) {
+    assemblyLinkManager.removeLink(key);
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Toggles block status on a handle and notifies listeners
+  void toggleHandleBlock(HandleKey key) {
+    if (assemblyLinkManager.handleBlocks.contains(key)) {
+      assemblyLinkManager.removeBlock(key);
+    } else {
+      assemblyLinkManager.addBlock(key);
+    }
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Sets enforced value on a handle and notifies listeners
+  void setHandleEnforcedValue(HandleKey key, int value) {
+    assemblyLinkManager.setEnforcedValue(key, value);
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Links multiple handles and propagates handle values to all linked handles.
+  /// If any of the handles has an existing assembly value, that value is propagated to all.
+  void linkHandlesAndPropagate(List<HandleKey> keys) {
+    if (keys.length < 2) return;
+
+    // First, find if any of the handles has an existing assembly value
+    String? existingValue;
+    for (var key in keys) {
+      var slat = slats[key.$1];
+      if (slat == null) continue;
+      var handleDict = key.$3 == 5 ? slat.h5Handles : slat.h2Handles;
+      var handleData = handleDict[key.$2];
+      if (handleData != null && handleData['category']?.toString().toUpperCase().contains('ASSEMBLY') == true) {
+        existingValue = handleData['value']?.toString();
+        if (existingValue != null && existingValue != '0') break;
+      }
+    }
+
+    // Create the link
+    assemblyLinkManager.linkMultiple(keys);
+
+    // If there's an existing value, propagate it to all linked handles
+    if (existingValue != null && existingValue != '0') {
+      String category = 'ASSEMBLY_HANDLE'; // Use handle by default
+      for (var key in keys) {
+        var slat = slats[key.$1];
+        if (slat == null) continue;
+        smartSetHandle(slat, key.$2, key.$3, existingValue, category);
+      }
+    }
+
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Toggles block status on a handle and applies the change (deletes handle if blocking).
+  void toggleHandleBlockAndApply(HandleKey key) {
+    var slat = slats[key.$1];
+    if (slat == null) return;
+
+    if (assemblyLinkManager.handleBlocks.contains(key)) {
+      // Unblock - just remove from blocks list
+      assemblyLinkManager.removeBlock(key);
+    } else {
+      // Block - add to blocks and delete the handle
+      smartDeleteHandle(slat, key.$2, key.$3);
+      assemblyLinkManager.addBlock(key);
+    }
+
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Sets enforced value on a handle's group and propagates to all linked handles.
+  void setHandleEnforcedValueAndApply(HandleKey key, int value) {
+    var slat = slats[key.$1];
+    if (slat == null) return;
+
+    // Set the enforced value in link manager
+    assemblyLinkManager.setEnforcedValue(key, value);
+
+    // Get all handles in the same group and propagate the value
+    var linkedHandles = assemblyLinkManager.getLinkedHandles(key);
+    String category = 'ASSEMBLY_HANDLE';
+
+    for (var linkedKey in linkedHandles) {
+      var linkedSlat = slats[linkedKey.$1];
+      if (linkedSlat == null) continue;
+      smartSetHandle(linkedSlat, linkedKey.$2, linkedKey.$3, value.toString(), category);
+    }
+
+    saveUndoState();
+    notifyListeners();
   }
 }

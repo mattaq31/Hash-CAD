@@ -20,6 +20,7 @@ class ActionState extends ChangeNotifier {
   bool viewPhantoms;
   bool isolateSlatLayerView;
   bool evolveMode;
+  bool slatLinkerActive;
   bool isSideBarCollapsed;
   int panelMode;
   String cargoAttachMode;
@@ -50,6 +51,7 @@ class ActionState extends ChangeNotifier {
     this.displaySlatIDs = false,
     this.isolateSlatLayerView = false,
     this.evolveMode = false,
+    this.slatLinkerActive = false,
     this.isSideBarCollapsed = false,
     this.displaySeeds = true,
     this.displayBorder = true,
@@ -179,6 +181,16 @@ class ActionState extends ChangeNotifier {
 
   void deactivateEvolveMode(){
     evolveMode = false;
+    notifyListeners();
+  }
+
+  void activateSlatLinker(){
+    slatLinkerActive = true;
+    notifyListeners();
+  }
+
+  void deactivateSlatLinker(){
+    slatLinkerActive = false;
     notifyListeners();
   }
 

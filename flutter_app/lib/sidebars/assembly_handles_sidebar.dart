@@ -442,7 +442,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
 
       // Slat Linker card (prominent styling)
       InkWell(
-        onTap: null, // Non-functional for now
+        onTap: () => actionState.activateSlatLinker(),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -454,7 +454,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.hub, size: 28, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.mediation, size: 28, color: Theme.of(context).colorScheme.primary),
               SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

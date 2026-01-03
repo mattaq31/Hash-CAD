@@ -93,8 +93,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
     // progress bar metrics
     final int current = serverState.hammingMetrics.length;
     final int total =
-        int.tryParse(serverState.evoParams['evolution_generations'] ?? '1') ??
-            1;
+        int.tryParse(serverState.evoParams['evolution_generations'] ?? '1') ?? 1;
     final double progress = current / total;
 
     // initiates server healthcheck

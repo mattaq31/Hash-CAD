@@ -433,9 +433,7 @@ class SlatPainter extends CustomPainter {
       }
 
       // gathers all the coordinates for the selected slat
-      List sortedCoords = slat.slatPositionToCoordinate.entries
-          .toList()
-        ..sort((a, b) => a.key.compareTo(b.key)); // sort by the integer key
+      List sortedCoords = slat.slatPositionToCoordinate.entries.toList()..sort((a, b) => a.key.compareTo(b.key)); // sort by the integer key
 
       List<Offset> coords = sortedCoords.map((e) => getRealCoord(e.value)).toList();
 
@@ -477,7 +475,17 @@ class SlatPainter extends CustomPainter {
           final int handleIndex = i + 1;
           final h5 = slat.h5Handles[handleIndex];
           final h2 = slat.h2Handles[handleIndex];
-          if (h5 == null && h2 == null) continue;
+
+          // blocks are also visualized on a slat instead of handles
+          bool blockPresent = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, 5)) || appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, 2));
+
+          // also check phantom parent for blocks
+          if(slat.phantomParent != null){
+            blockPresent = appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, 5)) || appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, 2));
+          }
+
+
+          if (h5 == null && h2 == null && !blockPresent) continue;
 
           Set<String> categoriesPresent = {
             if (h5 != null) h5["category"],
@@ -485,7 +493,7 @@ class SlatPainter extends CustomPainter {
           };
 
           // the below controls the logic and formatting for placing handle markers on slats
-          if ((actionState.displayAssemblyHandles && (categoriesPresent.contains('ASSEMBLY_HANDLE') || categoriesPresent.contains('ASSEMBLY_ANTIHANDLE'))) || (actionState.displayCargoHandles && (categoriesPresent.contains('CARGO') || categoriesPresent.contains('SEED')))) {
+          if ((actionState.displayAssemblyHandles && (categoriesPresent.contains('ASSEMBLY_HANDLE') || categoriesPresent.contains('ASSEMBLY_ANTIHANDLE'))) || (actionState.displayCargoHandles && (categoriesPresent.contains('CARGO') || categoriesPresent.contains('SEED'))) || blockPresent) {
             String topText = '↑X';
             String bottomText = '↓X';
             Color topColor = Colors.grey;
@@ -652,14 +660,36 @@ class SlatPainter extends CustomPainter {
               }
             }
 
-            bool topHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top')
-                || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top');
-            bool bottomHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom')
-                || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom');
-            bool topHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top')
-                || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
-            bool bottomHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom')
-                || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom' && bottomCategory.contains('ASSEMBLY'));
+            bool topHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top') || topCategory == '';
+            bool bottomHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom') || bottomCategory == '';
+            bool topHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
+            bool bottomHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom' && bottomCategory.contains('ASSEMBLY'));
+
+            // blocks handled here
+            bool topBlocked = false;
+            bool bottomBlocked = false;
+            if (slat.phantomParent != null){
+              topBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, selectedLayerTopside == 'H5' ? 5 : 2));
+              bottomBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, selectedLayerTopside == 'H5' ? 2 : 5));
+            }
+            else{
+              topBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, selectedLayerTopside == 'H5' ? 5 : 2));
+              bottomBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, selectedLayerTopside == 'H5' ? 2 : 5));
+            }
+            if (topBlocked){
+              topHandleHidden = false;
+              topText = '↑X';
+              topColor = Colors.grey;
+            }
+            if (bottomBlocked){
+              bottomHandleHidden = false;
+              bottomText = '↓X';
+              bottomColor = Colors.grey;
+            }
+
+            if (topHandleHidden && bottomHandleHidden) {
+              continue; // Skip drawing if both handles are hidden
+            }
 
             void drawText(String text, Offset offset, Color textColor, double fontSize) {
               final textPainter = TextPainter(
@@ -687,7 +717,6 @@ class SlatPainter extends CustomPainter {
             if (!topHandleHidden) {
               drawHandleMarker(rectTop, topColor, topCategory, true, topHandleSelected);
               drawText(topText, Offset(position.dx, position.dy - halfHeight / 2), isColorDark(topColor) ? Colors.white : Colors.black,  halfHeight * 0.8);
-
             }
             if (!bottomHandleHidden) {
               drawHandleMarker(rectBottom, bottomColor, bottomCategory, false, bottomHandleSelected);
