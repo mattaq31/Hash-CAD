@@ -457,6 +457,8 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   // Required state
   Map<String, Slat> get slats;
   Map<String, Map<String, dynamic>> get layerMap;
+  bool get hammingValueValid;
+  set hammingValueValid(bool value);
 
   // Methods from other mixins
   void saveUndoState();
@@ -548,6 +550,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
       }
     }
 
+    hammingValueValid = false;
     saveUndoState();
     notifyListeners();
   }
@@ -566,6 +569,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
       assemblyLinkManager.addBlock(key);
     }
 
+    hammingValueValid = false;
     saveUndoState();
     notifyListeners();
   }
@@ -588,6 +592,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
       smartSetHandle(linkedSlat, linkedKey.$2, linkedKey.$3, value.toString(), category);
     }
 
+    hammingValueValid = false;
     saveUndoState();
     notifyListeners();
   }
