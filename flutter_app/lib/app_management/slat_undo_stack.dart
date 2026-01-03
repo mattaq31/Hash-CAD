@@ -14,6 +14,7 @@ class DesignSaveState {
   final Map<(String, String, Offset), Seed> seedRoster;
   final Map<String, Map<int, String>> phantomMap;
   final HandleLinkManager assemblyLinkManager;
+  final String gridMode;
 
   DesignSaveState({
     required this.slats,
@@ -25,6 +26,7 @@ class DesignSaveState {
     required this.seedRoster,
     required this.phantomMap,
     required this.assemblyLinkManager,
+    required this.gridMode,
   });
 
   /// Deep copy constructor
@@ -53,6 +55,7 @@ class DesignSaveState {
         for (var e in phantomMap.entries) e.key: Map.from(e.value)
       },
       assemblyLinkManager: assemblyLinkManager.copy(),
+      gridMode: gridMode,
     );
   }
 }

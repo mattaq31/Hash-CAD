@@ -129,12 +129,12 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
     }
 
     undoStack = SlatUndoStack();
+    gridMode = newGridMode; // Set gridMode before clearAll() so default layerMap uses correct directions
     clearAll();
 
     // transfer imported values into global state
     layerMap = newLayerMap;
     slats = newSlats;
-    gridMode = newGridMode;
     cargoPalette = newCargoPalette;
     designName = newDesignName;
     phantomMap = newPhantomMap;
@@ -228,9 +228,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
     for (var layer in layerMap.keys) {
       uniqueSlatColorsByLayer[layer] = [];
       for (var slat in slats.values) {
-        if (slat.layer == layer &&
-            slat.uniqueColor != null &&
-            !uniqueSlatColorsByLayer[layer]!.contains(slat.uniqueColor!)) {
+        if (slat.layer == layer && slat.uniqueColor != null && !uniqueSlatColorsByLayer[layer]!.contains(slat.uniqueColor!)) {
           uniqueSlatColorsByLayer[layer]!.add(slat.uniqueColor!);
         }
       }
@@ -241,6 +239,9 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
 
     // Check for issues after import
     fullHandleValidationWithWarning(context);
+
+    // Save the imported state as the undo baseline (not the default cleared state)
+    saveUndoState();
 
     notifyListeners();
   }

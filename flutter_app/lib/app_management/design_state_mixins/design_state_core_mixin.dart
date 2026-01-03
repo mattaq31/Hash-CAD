@@ -169,7 +169,8 @@ mixin DesignStateCoreMixin on ChangeNotifier {
         occupiedCargoPoints: occupiedCargoPoints,
         seedRoster: seedRoster,
         phantomMap: phantomMap,
-        assemblyLinkManager: assemblyLinkManager));
+        assemblyLinkManager: assemblyLinkManager,
+        gridMode: gridMode));
   }
 
   void undo2DAction({bool redo = false}) {
@@ -194,6 +195,7 @@ mixin DesignStateCoreMixin on ChangeNotifier {
       nextColorIndex = newState.layerMetaData['nextColorIndex'];
       seedRoster = newState.seedRoster;
       assemblyLinkManager = newState.assemblyLinkManager;
+      gridMode = newState.gridMode;
       if (!cargoPalette.containsKey(cargoAdditionType)) {
         cargoAdditionType = null;
       }
