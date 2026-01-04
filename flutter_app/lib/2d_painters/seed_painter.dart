@@ -27,6 +27,8 @@ void paintSeedFromArray(Canvas canvas, Map<int, Offset> coordinates, double grid
   if (crosshatch){
     paint.shader = CrossHatchShader.shader;
     paint.color = Colors.red;
+    spotPaint.shader = CrossHatchShader.shader;
+    spotPaint.color = Colors.red;
   }
   final path = Path();
 

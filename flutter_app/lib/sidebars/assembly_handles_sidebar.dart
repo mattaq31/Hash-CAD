@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import '../app_management/shared_app_state.dart';
 import '../app_management/action_state.dart';
 import '../app_management/server_state.dart';
+import '../crisscross_core/common_utilities.dart';
+import '../graphics/honeycomb_pictogram.dart';
 import 'layer_manager.dart';
 import '../main_windows/alert_window.dart';
 
@@ -217,7 +219,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton.icon(
+          FilledButton.icon(
             onPressed: () {
               int uniqueHandleCount = int.tryParse(handleAddTextController.text) ?? 64;
               appState.generateRandomAssemblyHandles(
@@ -229,17 +231,51 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
             },
             icon: Icon(Icons.shuffle, size: 18),
             label: Text("Randomize"),
-            style: ElevatedButton.styleFrom(
+            style: FilledButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               textStyle: TextStyle(fontSize: 16),
             ),
           ),
           SizedBox(width: 10),
-          ElevatedButton.icon(
-            onPressed: null, // Non-functional for now
+          FilledButton.icon(
+            onPressed: appState.currentlyComputingHamming ? null : () {
+              if (!kIsWeb) {
+                actionState.activateEvolveMode();
+              } else {
+                showDialog<String>(
+                  context: context,
+                  builder: (BuildContext context) => AlertDialog(
+                    title: const Text('Assembly Handle Evolution'),
+                    content: RichText(
+                      text: TextSpan(
+                        style: TextStyle(color: Colors.black87, fontSize: 16),
+                        children: [
+                          const TextSpan(text: 'To run assembly handle evolution, please download the desktop version of the app ('),
+                          TextSpan(
+                            text: 'https://github.com/mattaq31/Hash-CAD/releases',
+                            style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                launchUrl(Uri.parse('https://github.com/mattaq31/Hash-CAD/releases'));
+                              },
+                          ),
+                          const TextSpan(text: ')!'),
+                        ],
+                      ),
+                    ),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, 'OK'),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
             icon: Icon(Icons.auto_awesome, size: 18),
             label: Text("Evolve"),
-            style: ElevatedButton.styleFrom(
+            style: FilledButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               textStyle: TextStyle(fontSize: 16),
             ),
@@ -253,15 +289,17 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       Text("Manual Editing", style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
       SizedBox(height: 10),
 
-      // Row containing: 6 icon buttons | numerical input | top/bottom toggles
+
+      // Row 1: Add/Delete/Move | Slat Linker | Link/Unlink/Block
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 6 icon buttons in 2x3 grid
+          SizedBox(width:20),
           Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Row 1
+              // Add/Delete/Move buttons
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -302,9 +340,9 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   ),
                   SizedBox(width: 8),
                   IconButton(
-                    tooltip: 'Move handle',
+                    tooltip: 'Move or edit handles',
                     onPressed: () => actionState.updateAssemblyMode('Move'),
-                    icon: const Icon(Icons.open_with, size: 20),
+                    icon: const Icon(Icons.pan_tool, size: 20),
                     style: IconButton.styleFrom(
                       backgroundColor: actionState.assemblyMode == 'Move'
                           ? Theme.of(context).colorScheme.primary
@@ -320,14 +358,29 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   ),
                 ],
               ),
-              SizedBox(height: 8),
-              // Row 2
+              SizedBox(height: 12),
+              // Link/Unlink/Block buttons
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    tooltip: 'Link handles',
-                    onPressed: null,
+                    tooltip: 'Link selected handles',
+                    onPressed: appState.selectedAssemblyPositions.length >= 2 ? () {
+                      List<HandleKey> keys = [];
+                      int intSide = getSlatSideFromLayer(appState.layerMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
+                      for (var coord in appState.selectedAssemblyPositions) {
+                        var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
+                        if (slatID != null) {
+                          var slat = appState.slats[slatID]!;
+                          int position = slat.slatCoordinateToPosition[coord]!;
+                          keys.add((slatID, position, intSide));
+                        }
+                      }
+                      if (keys.length >= 2) {
+                        appState.linkHandlesAndPropagate(keys);
+                        appState.clearAssemblySelection();
+                      }
+                    } : null,
                     icon: const Icon(Icons.link, size: 20),
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -339,8 +392,19 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   ),
                   SizedBox(width: 8),
                   IconButton(
-                    tooltip: 'Delete links',
-                    onPressed: null,
+                    tooltip: 'Remove links from selected handles',
+                    onPressed: appState.selectedAssemblyPositions.isNotEmpty ? () {
+                      int intSide = getSlatSideFromLayer(appState.layerMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
+                      for (var coord in appState.selectedAssemblyPositions) {
+                        var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
+                        if (slatID != null) {
+                          var slat = appState.slats[slatID]!;
+                          int position = slat.slatCoordinateToPosition[coord]!;
+                          appState.unlinkHandle((slatID, position, intSide));
+                        }
+                      }
+                      appState.clearAssemblySelection();
+                    } : null,
                     icon: const Icon(Icons.link_off, size: 20),
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -352,8 +416,19 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   ),
                   SizedBox(width: 8),
                   IconButton(
-                    tooltip: 'Block handle placement',
-                    onPressed: null,
+                    tooltip: 'Block/unblock selected handle positions',
+                    onPressed: appState.selectedAssemblyPositions.isNotEmpty ? () {
+                      int intSide = getSlatSideFromLayer(appState.layerMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
+                      for (var coord in appState.selectedAssemblyPositions) {
+                        var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
+                        if (slatID != null) {
+                          var slat = appState.slats[slatID]!;
+                          int position = slat.slatCoordinateToPosition[coord]!;
+                          appState.toggleHandleBlockAndApply((slatID, position, intSide));
+                        }
+                      }
+                      appState.clearAssemblySelection();
+                    } : null,
                     icon: const Icon(Icons.block, size: 20),
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -367,8 +442,33 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               ),
             ],
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 20),
+          // Slat Linker button (icon only)
+          IconButton(
+            tooltip: 'Open Slat Linker',
+            onPressed: () => actionState.activateSlatLinker(),
+            icon: Icon(Icons.mediation, size: 30),
+            style: IconButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.all(8),
+              minimumSize: const Size(40, 40),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: 10),
+      // Row 2: Handle value input | Random/Lock | Honeycomb | Top/Bottom arrows
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
           // Numerical input for default handle value
+          Text("Handle ID", style: TextStyle(fontSize: 14)),
+          SizedBox(width: 10),
           Tooltip(
             message: 'Default handle value for placement',
             child: SizedBox(
@@ -389,12 +489,63 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
             ),
           ),
           SizedBox(width: 8),
+          // Random and Enforce toggle buttons
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Random mode: place random handle values',
+                onPressed: () => actionState.setAssemblyRandomMode(!actionState.assemblyRandomMode),
+                icon: Icon(Icons.shuffle, size: 16),
+                style: IconButton.styleFrom(
+                  backgroundColor: actionState.assemblyRandomMode
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor: actionState.assemblyRandomMode
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  padding: const EdgeInsets.all(4),
+                  minimumSize: const Size(28, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              SizedBox(height: 4),
+              IconButton(
+                tooltip: 'Enforce mode: lock placed handle values',
+                onPressed: () => actionState.setAssemblyEnforceMode(!actionState.assemblyEnforceMode),
+                icon: Icon(Icons.lock, size: 16),
+                style: IconButton.styleFrom(
+                  backgroundColor: actionState.assemblyEnforceMode
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor: actionState.assemblyEnforceMode
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  padding: const EdgeInsets.all(4),
+                  minimumSize: const Size(28, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(width: 8),
+          // Honeycomb pictogram showing handle attachment position
+          HoneycombCustomPainterWidget(
+            color: Colors.grey.shade400,
+            size: 8,
+            highlightColor: Theme.of(context).colorScheme.primary,
+            highlightTop: actionState.assemblyAttachMode == 'top',
+            highlightBottom: actionState.assemblyAttachMode == 'bottom',
+          ),
+          SizedBox(width: 4),
           // Vertical top/bottom toggles
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                tooltip: 'Attach to top',
+                tooltip: 'Attach to top of slat',
                 onPressed: () {
                   setState(() => _handleAttachment = 'top');
                   actionState.updateAssemblyAttachMode('top');
@@ -415,7 +566,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               ),
               SizedBox(height: 4),
               IconButton(
-                tooltip: 'Attach to bottom',
+                tooltip: 'Attach to bottom of slat',
                 onPressed: () {
                   setState(() => _handleAttachment = 'bottom');
                   actionState.updateAssemblyAttachMode('bottom');
@@ -436,233 +587,89 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               ),
             ],
           ),
+          SizedBox(width: 10),
+
         ],
       ),
       SizedBox(height: 15),
 
-      // Slat Linker card (prominent styling)
-      InkWell(
-        onTap: () => actionState.activateSlatLinker(),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+      // Utility buttons - stacked in two columns
+      Row(
+        children: [
+          SizedBox(width: 15),
+          Column(
             children: [
-              Icon(Icons.mediation, size: 28, color: Theme.of(context).colorScheme.primary),
-              SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text("Slat Linker", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text("Define assembly links", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                ],
+              FilledButton.icon(
+                onPressed: () async {
+                  bool readStatus = await appState.updateAssemblyHandlesFromFile(context);
+                  if (!readStatus && context.mounted) {
+                    showWarning(
+                      context,
+                      'Error Reading Assembly Handles',
+                      'Failed to read assembly handles from file. Do your assembly handle positions match the corresponding locations in your slat array?',
+                    );
+                  }
+                  if (readStatus) {
+                    appState.updateDesignHammingValue();
+                    actionState.setAssemblyHandleDisplay(true);
+                  }
+                },
+                icon: Icon(Icons.import_contacts, size: 18),
+                label: Text("File Import"),
+                style: FilledButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  textStyle: TextStyle(fontSize: 14),
+                ),
+              ),
+              SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () {
+                  appState.clearAssemblyHandles();
+                },
+                icon: Icon(Icons.delete_sweep, size: 18),
+                label: Text("Delete All"),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  textStyle: TextStyle(fontSize: 14),
+                ),
               ),
             ],
           ),
-        ),
-      ),
-      SizedBox(height: 15),
-
-      // Utility buttons - stacked in two rows
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FilledButton.icon(
-            onPressed: null, // Non-functional for now
-            icon: Icon(Icons.delete_sweep, size: 18),
-            label: Text("Delete All"),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              textStyle: TextStyle(fontSize: 14),
-            ),
-          ),
-          SizedBox(width: 8),
-          FilledButton.icon(
-            onPressed: null, // Non-functional for now
-            icon: Icon(Icons.link_off, size: 18),
-            label: Text("Delete Links"),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              textStyle: TextStyle(fontSize: 14),
-            ),
+          SizedBox(width: 5),
+          Column(
+            children: [
+              FilledButton.icon(
+                onPressed: () {
+                  appState.syncAllAssemblyHandles();
+                  appState.updateDesignHammingValue();
+                },
+                icon: Icon(Icons.sync, size: 18),
+                label: Text("Sync Handles"),
+                style: FilledButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  textStyle: TextStyle(fontSize: 14),
+                ),
+              ),
+              SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () {
+                  appState.clearAllHandleLinks();
+                },
+                icon: Icon(Icons.link_off, size: 18),
+                label: Text("Delete Links"),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  textStyle: TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      SizedBox(height: 8),
-      FilledButton.icon(
-        onPressed: null, // Non-functional for now
-        icon: Icon(Icons.import_contacts, size: 18),
-        label: Text("File Import"),
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          textStyle: TextStyle(fontSize: 14),
-        ),
-      ),
       SizedBox(height: 5),
       Divider(thickness: 2, color: Colors.grey.shade300),
-      // Row(
-      //   mainAxisAlignment: MainAxisAlignment.end,
-      //   children: [
-      //     Text("Handle library size", style: TextStyle(fontSize: 16)),
-      //     SizedBox(width: 10),
-      //     Padding(
-      //       padding: const EdgeInsets.only(right: 25.0),
-      //       child: Align(
-      //         alignment: Alignment.centerRight,
-      //         child: SizedBox(
-      //           width: 60,
-      //           child: TextField(
-      //             controller: handleAddTextController,
-      //             focusNode: handleChangeFocusNode,
-      //             keyboardType: TextInputType.number,
-      //             decoration: InputDecoration(
-      //               border: OutlineInputBorder(),
-      //             ),
-      //             textInputAction: TextInputAction.done,
-      //             inputFormatters: <TextInputFormatter>[
-      //               FilteringTextInputFormatter.digitsOnly
-      //             ],
-      //             onSubmitted: (value) {
-      //               _updateHandleCount(serverState);
-      //             },
-      //           ),
-      //         ),
-      //       ),
-      //     ),
-      //   ],
-      // ),
-      // CheckboxListTile(
-      //   contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Reduces spacing
-      //   title: const Text('Prevent slat self-binding', textAlign: TextAlign.center),
-      //   value: serverState.evoParams['split_sequence_handles'] == 'true',
-      //   onChanged: (bool? value) {
-      //     setState(() {
-      //       bool preventSelfComplementarySlats = value ?? false;
-      //       serverState.updateEvoParam("split_sequence_handles", preventSelfComplementarySlats.toString());
-      //     });
-      //   },
-      // ),
-      // SizedBox(height: 10),
-      // Row(
-      //   mainAxisAlignment: MainAxisAlignment.center,
-      //   children: [
-      //     ElevatedButton.icon(
-      //       onPressed: appState.currentlyComputingHamming ? null : () {
-      //         appState.generateRandomAssemblyHandles(int.parse(serverState.evoParams['unique_handle_sequences']!), serverState.evoParams['split_sequence_handles'] == 'true');
-      //         appState.updateDesignHammingValue();
-      //         actionState.setAssemblyHandleDisplay(true);
-      //       },
-      //       icon: Icon(Icons.shuffle, size: 18),
-      //       label: Text("Randomize"),
-      //       style: ElevatedButton.styleFrom(
-      //         padding: EdgeInsets.symmetric(
-      //             horizontal: 16, vertical: 12),
-      //         textStyle: TextStyle(fontSize: 16),
-      //       ),
-      //     ),
-      //     SizedBox(width: 10),
-      //     ElevatedButton.icon(
-      //       onPressed: appState.currentlyComputingHamming ? null : () {
-      //         if (!kIsWeb) {
-      //           actionState.activateEvolveMode();
-      //         } else {
-      //           showDialog<String>(
-      //               context: context,
-      //               builder: (BuildContext context) =>
-      //                   AlertDialog(
-      //                     title:
-      //                     const Text('Assembly Handle Evolution'),
-      //                     content: RichText(
-      //                       text: TextSpan(
-      //                         style: TextStyle(color: Colors.black87, fontSize: 16),
-      //                         children: [
-      //                           const TextSpan(text: 'To run assembly handle evolution, please download the desktop version of the app ('),
-      //                           TextSpan(
-      //                             text: 'https://github.com/mattaq31/Hash-CAD/releases',
-      //                             style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
-      //                             recognizer: TapGestureRecognizer()
-      //                               ..onTap = () {
-      //                                 launchUrl(Uri.parse('https://github.com/mattaq31/Hash-CAD/releases'));
-      //                               },
-      //                           ),
-      //                           const TextSpan(text: ')!'),
-      //                         ],
-      //                       ),
-      //                     ),
-      //                     actions: <Widget>[
-      //                       TextButton(
-      //                         onPressed: () =>
-      //                             Navigator.pop(context, 'OK'),
-      //                         child: const Text('OK'),
-      //                       ),
-      //                     ],
-      //                   ));
-      //         }
-      //       },
-      //       icon: Icon(Icons.auto_awesome, size: 18),
-      //       label: Text("Evolve"),
-      //       style: ElevatedButton.styleFrom(
-      //         padding: EdgeInsets.symmetric(
-      //             horizontal: 16, vertical: 12),
-      //         textStyle: TextStyle(fontSize: 16),
-      //       ),
-      //     ),
-      //   ],
-      // ),
-      // SizedBox(height: 10),
-      // Row(
-      //   mainAxisAlignment: MainAxisAlignment.center,
-      //   children: [
-      //     FilledButton.icon(
-      //       onPressed: () {
-      //         appState.clearAssemblyHandles();
-      //       },
-      //       icon: Icon(Icons.delete_sweep, size: 18),
-      //       label: Text("Delete All"),
-      //       style: ElevatedButton.styleFrom(
-      //         backgroundColor: Colors.red,
-      //         padding:
-      //         EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      //         textStyle: TextStyle(fontSize: 16),
-      //       ),
-      //     ),
-      //     SizedBox(width: 10),
-      //     FilledButton.icon(
-      //       onPressed: () async {
-      //         bool readStatus = await appState.updateAssemblyHandlesFromFile(context);
-      //         if (!readStatus && context.mounted) {
-      //           showWarning(
-      //             context,
-      //             'Error Reading Assembly Handles',
-      //             'Failed to read assembly handles from file. Do your assembly handle positions match the corresponding locations in your slat array?',
-      //           );
-      //         }
-      //         if(readStatus) {
-      //           appState.updateDesignHammingValue();
-      //           actionState.setAssemblyHandleDisplay(true);
-      //         }
-      //       },
-      //       icon: Icon(Icons.import_contacts, size: 18),
-      //       label: Text("File Import"),
-      //       style: ElevatedButton.styleFrom(
-      //         padding:
-      //         EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      //         textStyle: TextStyle(fontSize: 16),
-      //       ),
-      //     ),
-      //   ],
-      // ),
-      // SizedBox(height: 5),
-      // Divider(thickness: 2, color: Colors.grey.shade300),
       Text("Parasitic Interactions", textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.bold)),
@@ -745,12 +752,12 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         ),
       ),
       const SizedBox(height: 10),
-      ElevatedButton.icon(
+      FilledButton.icon(
         onPressed: appState.hammingValueValid || appState.currentlyComputingHamming
             ? null
             : () => appState.updateDesignHammingValue(),
         label: const Text("Recalculate Score"),
-        style: ElevatedButton.styleFrom(
+        style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           textStyle: const TextStyle(fontSize: 16),
         ),

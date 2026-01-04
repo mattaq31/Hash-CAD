@@ -821,4 +821,77 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     saveUndoState();
     notifyListeners();
   }
+
+  /// Syncs all assembly handles by re-propagating each handle through the smart system.
+  /// This ensures all phantoms and links are properly synchronized.
+  void syncAllAssemblyHandles() {
+    Set<HandleKey> processedHandles = {};
+
+    for (var slat in slats.values) {
+      // Skip phantom slats - they get synced through their parents
+      if (slat.phantomParent != null) continue;
+
+      for (int side in [2, 5]) {
+        var handleDict = getHandleDict(slat, side);
+        for (var entry in handleDict.entries.toList()) {
+
+          HandleKey key = (slat.id, entry.key, side);
+          if (processedHandles.contains(key)) continue;
+
+          String handleValue = entry.value['value'].toString();
+          String category = entry.value['category'].toString();
+
+          // Re-apply the handle to propagate through all links and phantoms
+          var updatedHandles = smartSetHandle(slat, entry.key, side, handleValue, category);
+          processedHandles.addAll(updatedHandles);
+        }
+      }
+    }
+
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Returns phantom slat coordinates in Python format for gRPC transfer.
+  /// Key: Python slat ID (e.g., "1-I5-P1"), Value: list of (x, y) coordinates
+  Map<String, List<(int, int)>> getPhantomCoordsForGrpc() {
+    Offset minPos;
+    Offset maxPos;
+    (minPos, maxPos) = extractGridBoundary(slats);
+
+    Map<String, List<(int, int)>> phantomCoords = {};
+    for (var slat in slats.values) {
+      if (slat.phantomParent == null) continue; // Skip non-phantoms
+
+      var layerNumber = layerMap[slat.layer]!['order'] + 1;
+      var pythonSlatId = slat.id.replaceFirst(slat.layer, layerNumber.toString());
+      for (var i = 0; i < slat.maxLength; i++) {
+        var pos = slat.slatPositionToCoordinate[i + 1]!;
+        int x = (pos.dx - minPos.dx).toInt();
+        int y = (pos.dy - minPos.dy).toInt();
+        phantomCoords.putIfAbsent(pythonSlatId, () => []).add((x, y));
+      }
+    }
+    return phantomCoords;
+  }
+
+  /// Returns phantom parent relationships for gRPC transfer.
+  /// Key: phantom slat ID (Python format), Value: parent slat ID (Python format)
+  Map<String, String> getPhantomParentsForGrpc() {
+    Map<String, String> phantomParents = {};
+    for (var slat in slats.values) {
+      if (slat.phantomParent == null) continue;
+
+      var layerNumber = layerMap[slat.layer]!['order'] + 1;
+      var pythonPhantomId = slat.id.replaceFirst(slat.layer, layerNumber.toString());
+
+      var parentSlat = slats[slat.phantomParent]!;
+      var parentLayerNumber = layerMap[parentSlat.layer]!['order'] + 1;
+      var pythonParentId = parentSlat.id.replaceFirst(parentSlat.layer, parentLayerNumber.toString());
+
+      phantomParents[pythonPhantomId] = pythonParentId;
+    }
+    return phantomParents;
+  }
 }

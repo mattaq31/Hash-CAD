@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import '../../crisscross_core/common_utilities.dart';
+import '../alert_window.dart';
 import 'grid_control_contract.dart';
 
 /// Mixin containing keyboard event handlers for GridAndCanvas
 mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
-  Map<ShortcutActivator, VoidCallback> getKeyboardBindings(DesignState appState, ActionState actionState) {
+  Map<ShortcutActivator, VoidCallback> getKeyboardBindings(DesignState appState, ActionState actionState, BuildContext context) {
     return {
       // Rotation shortcut
       SingleActivator(LogicalKeyboardKey.keyR): () {
@@ -114,6 +116,55 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       },
       SingleActivator(LogicalKeyboardKey.keyY, control: true): () {
         appState.undo2DAction(redo: true);
+      },
+
+      // Edit assembly handle shortcut - opens dialog when handles are selected
+      SingleActivator(LogicalKeyboardKey.keyE): () {
+        if (getActionMode(actionState) == 'Assembly-Move' && appState.selectedAssemblyPositions.isNotEmpty) {
+          // Get the first selected handle to populate the dialog
+          var firstCoord = appState.selectedAssemblyPositions.first;
+          var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[firstCoord];
+          if (slatID == null) return;
+
+          var slat = appState.slats[slatID]!;
+          int position = slat.slatCoordinateToPosition[firstCoord]!;
+          int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
+          var handleDict = getHandleDict(slat, integerSlatSide);
+
+          if (!(handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false)) return;
+
+          String currentValue = handleDict[position]!['value'].toString();
+          HandleKey handleKey = (slatID, position, integerSlatSide);
+
+          // Show edit dialog and apply changes
+          showAssemblyHandleEditDialog(context, appState, currentValue, handleKey).then((result) {
+            if (result != null) {
+              appState.hammingValueValid = false;
+              List<Offset> positionsToUpdate = List.from(appState.selectedAssemblyPositions);
+
+              for (int i = 0; i < positionsToUpdate.length; i++) {
+                var coord = positionsToUpdate[i];
+                var updateSlatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
+                if (updateSlatID == null) continue;
+                var updateSlat = appState.slats[updateSlatID]!;
+                int updatePos = updateSlat.slatCoordinateToPosition[coord]!;
+                var updateHandleDict = getHandleDict(updateSlat, integerSlatSide);
+
+                if (!(updateHandleDict[updatePos]?['category']?.toString().contains('ASSEMBLY') ?? false)) continue;
+
+                String category = updateHandleDict[updatePos]!['category'].toString();
+                bool isLast = (i == positionsToUpdate.length - 1);
+
+                if (result['enforce'] == true) {
+                  appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int);
+                }
+
+                appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
+
+              }
+            }
+          });
+        }
       },
     };
   }

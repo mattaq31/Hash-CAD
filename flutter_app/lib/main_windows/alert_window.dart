@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../crisscross_core/handle_plates.dart';
+import '../crisscross_core/common_utilities.dart';
+import '../app_management/shared_app_state.dart';
 
 
 void showWarning(BuildContext context, String title, String message){
@@ -114,6 +117,7 @@ void showKeyboardShortcutsDialog(BuildContext context) {
               _shortcutItem("'1'", "Switch to 'Add' mode"),
               _shortcutItem("'2'", "Switch to 'Delete' mode"),
               _shortcutItem("'3'", "Switch to 'Edit' mode"),
+              _shortcutItem("'E'", "Edit selected handles while in the Assembly Handles panel"),
               _shortcutItem("'CMD/Ctrl-Z'", "Undo last action"),
               _shortcutItem("'CMD-Shift-Z/Ctrl-Y'", "Redo last action"),
             ],
@@ -334,6 +338,67 @@ Widget _buildSlatPictograph(String id, HashCadPlate plate) {
           ),
         ),
       ],
+    ),
+  );
+}
+
+/// Shows dialog for editing assembly handle value and enforce status.
+/// Returns a map with 'value' (int) and 'enforce' (bool), or null if cancelled.
+Future<Map<String, dynamic>?> showAssemblyHandleEditDialog(
+  BuildContext context,
+  DesignState appState,
+  String currentValue,
+  HandleKey handleKey,
+) async {
+  final controller = TextEditingController(text: currentValue);
+  bool enforce = appState.assemblyLinkManager.getEnforceValue(handleKey) != null &&
+      appState.assemblyLinkManager.getEnforceValue(handleKey)! > 0;
+
+  return showDialog<Map<String, dynamic>>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: const Text('Edit Assembly Handle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: 'Handle Value (1-999)',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            CheckboxListTile(
+              title: const Text('Enforce this value'),
+              subtitle: const Text('Lock this handle to the specified value'),
+              value: enforce,
+              onChanged: (value) {
+                setDialogState(() => enforce = value ?? false);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              int? val = int.tryParse(controller.text);
+              if (val != null && val > 0 && val <= 999) {
+                Navigator.pop(ctx, {'value': val, 'enforce': enforce});
+              }
+            },
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
     ),
   );
 }

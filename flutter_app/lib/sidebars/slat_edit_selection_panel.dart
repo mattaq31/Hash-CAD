@@ -345,7 +345,7 @@ class _SlatEditPanel extends State<SlatEditPanel> {
                 appState.unLinkSelectedPhantoms();
               },
               icon: const Icon(Icons.link_off,
-                  size: 20, color: Colors.black87),
+                  size: 20),
               style: IconButton.styleFrom(
                 backgroundColor: colorScheme.primaryContainer,
                 shape: RoundedRectangleBorder(

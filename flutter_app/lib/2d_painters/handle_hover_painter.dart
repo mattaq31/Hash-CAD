@@ -69,6 +69,7 @@ class HandleHoverPainter extends CustomPainter {
             color: appState.cargoPalette['SEED']!.color,
             printHandles: true,
             crosshatch: !hoverValid);
+
       } else if (isAssemblyMode) {
         // Assembly handle hover drawing
         String attachMode = actionState.assemblyAttachMode;

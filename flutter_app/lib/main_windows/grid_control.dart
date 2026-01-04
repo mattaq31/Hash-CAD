@@ -136,7 +136,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
             onPointerUp: (event) => handlePointerUp(event, appState, actionState, context),
 
             child: CallbackShortcuts(
-              bindings: getKeyboardBindings(appState, actionState), // defines keyboard shortcuts
+              bindings: getKeyboardBindings(appState, actionState, context), // defines keyboard shortcuts
               child: Focus(
                 autofocus: true,
                 focusNode: keyFocusNode,
@@ -150,6 +150,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
                     onScaleUpdate: handleScaleUpdate,
                     onTapDown: (details) => handleTapDown(details, appState, actionState, context),
                     onTapUp: (details) => handleTapUp(details, appState, actionState, context),
+                    onSecondaryTapUp: (details) => handleSecondaryTapUp(details, appState, actionState),
                     child: buildPainterStack(appState, actionState), // the main painters (slats, hover, grid, etc.) are defined in here
                   ),
                 ),

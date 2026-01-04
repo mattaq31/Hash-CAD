@@ -660,6 +660,7 @@ class SlatPainter extends CustomPainter {
               }
             }
 
+
             bool topHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top') || topCategory == '';
             bool bottomHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom') || bottomCategory == '';
             bool topHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
@@ -676,6 +677,15 @@ class SlatPainter extends CustomPainter {
               topBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, selectedLayerTopside == 'H5' ? 5 : 2));
               bottomBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, selectedLayerTopside == 'H5' ? 2 : 5));
             }
+
+            if (topBlocked && appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top'){
+              topHandleSelected = true;
+            }
+
+            if (bottomBlocked && appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom'){
+              bottomHandleSelected = true;
+            }
+
             if (topBlocked){
               topHandleHidden = false;
               topText = '↑X';

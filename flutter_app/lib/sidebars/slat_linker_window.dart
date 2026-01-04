@@ -43,6 +43,7 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
   Set<HandleKey> selectedHandles = {};
   final TextEditingController _slat1Controller = TextEditingController();
   final TextEditingController _slat2Controller = TextEditingController();
+  bool _hasAutoPopulated = false;
 
   @override
   void initState() {
@@ -58,6 +59,40 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
         setState(() => selectedSlat2ID = null);
       }
     });
+  }
+
+  /// Auto-populate slat selectors from selected assembly handles (max 2 unique slats)
+  void _autoPopulateFromSelectedHandles(DesignState appState, ActionState actionState) {
+    if (_hasAutoPopulated) return;
+    if (appState.selectedAssemblyPositions.isEmpty) return;
+
+    Set<String> uniqueSlatIDs = {};
+    for (var coord in appState.selectedAssemblyPositions) {
+      var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
+      if (slatID != null) {
+        // Skip phantom slats - get parent instead
+        var slat = appState.slats[slatID];
+        if (slat != null && slat.phantomParent != null) {
+          slatID = slat.phantomParent;
+        }
+        if (slatID != null) {
+          uniqueSlatIDs.add(slatID);
+        }
+      }
+      if (uniqueSlatIDs.length >= 2) break;
+    }
+
+    final slatList = uniqueSlatIDs.toList();
+    if (slatList.isNotEmpty) {
+      selectedSlat1ID = slatList[0];
+      _slat1Controller.text = slatList[0].replaceFirst('-I', '-');
+    }
+    if (slatList.length > 1) {
+      selectedSlat2ID = slatList[1];
+      _slat2Controller.text = slatList[1].replaceFirst('-I', '-');
+    }
+
+    _hasAutoPopulated = true;
   }
 
   @override
@@ -214,8 +249,13 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
     var actionState = context.watch<ActionState>();
 
     if (!actionState.slatLinkerActive) {
+      // Reset auto-populate flag when window closes so it can run again next time
+      _hasAutoPopulated = false;
       return const SizedBox.shrink();
     }
+
+    // Auto-populate from selected handles when window first opens
+    _autoPopulateFromSelectedHandles(appState, actionState);
 
     // Refresh available slats on every build (reactive to new slats)
     final availableSlats = _getAvailableSlats(appState);

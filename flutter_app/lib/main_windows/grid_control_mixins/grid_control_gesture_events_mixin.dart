@@ -1,7 +1,10 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
+import '../../app_management/server_state.dart';
 import '../../crisscross_core/common_utilities.dart';
 import '../alert_window.dart';
 import 'grid_control_contract.dart';
@@ -143,11 +146,31 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
       int position = slat.slatCoordinateToPosition[coordConvertedPosition]!;
       int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
 
-      String handleValue = actionState.assemblyHandleValue;
+      // Determine handle value - random mode generates fresh value each click
+      String handleValue;
+      if (actionState.assemblyRandomMode) {
+        var serverState = context.read<ServerState>();
+        int maxLibrarySize = int.tryParse(serverState.evoParams['unique_handle_sequences'] ?? '64') ?? 64;
+        handleValue = (Random().nextInt(maxLibrarySize) + 1).toString();
+      } else {
+        handleValue = actionState.assemblyHandleValue;
+      }
+
       String category = actionState.assemblyAttachMode == 'top' ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE';
 
       appState.clearAssemblySelection();
       appState.smartSetHandle(slat, position, integerSlatSide, handleValue, category, requestStateUpdate: true);
+
+      // If enforce mode is on, set the enforced value for this handle
+      if (actionState.assemblyEnforceMode) {
+        HandleKey key = (slatID, position, integerSlatSide);
+        if (slat.phantomParent != null){
+          // if phantom, need to get the original slat ID
+          key = (slat.phantomParent!, position, integerSlatSide);
+        }
+        appState.setHandleEnforcedValue(key, int.parse(handleValue));
+      }
+
       appState.hammingValueValid = false;
 
     } else if (getActionMode(actionState) == 'Assembly-Delete') {
@@ -226,7 +249,12 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
         int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
         var handleDict = getHandleDict(slat, integerSlatSide);
 
-        if (handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false) {
+        // Check if position has an assembly handle OR is a blocked handle (so it can be unblocked)
+        HandleKey handleKey = (slatID, position, integerSlatSide);
+        bool isAssemblyHandle = handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false;
+        bool isBlockedHandle = appState.assemblyLinkManager.handleBlocks.contains(handleKey);
+
+        if (isAssemblyHandle || isBlockedHandle) {
           if (appState.selectedAssemblyPositions.isNotEmpty && !isShiftPressed) {
             appState.clearAssemblySelection();
           }
@@ -236,6 +264,42 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
         }
       } else {
         appState.clearAssemblySelection();
+      }
+    }
+  }
+
+  /// Handle right-click (secondary tap) to select handle and all linked handles
+  Future<void> handleSecondaryTapUp(TapUpDetails details, DesignState appState, ActionState actionState) async {
+    if (getActionMode(actionState) != 'Assembly-Move') return;
+
+    final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
+
+    // Check if there's an assembly handle at this position
+    var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[snappedPosition];
+    if (slatID == null) return;
+
+    var slat = appState.slats[slatID]!;
+    int position = slat.slatCoordinateToPosition[snappedPosition]!;
+    int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
+    var handleDict = getHandleDict(slat, integerSlatSide);
+
+    if (!(handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false)) return;
+
+    // Get all linked handles
+    HandleKey clickedKey = (slatID, position, integerSlatSide);
+    List<HandleKey> linkedHandles = appState.assemblyLinkManager.getLinkedHandles(clickedKey);
+
+    // Clear previous selection and select all linked handles
+    appState.clearAssemblySelection();
+
+    for (var key in linkedHandles) {
+      var linkedSlat = appState.slats[key.$1];
+      // cannot select handles on other layers or sides (at least for now)
+      if(linkedSlat!.layer != appState.selectedLayerKey || key.$3 != integerSlatSide) continue;
+
+      Offset? coord = linkedSlat.slatPositionToCoordinate[key.$2];
+      if (coord != null) {
+        appState.selectAssemblyHandle(coord, addOnly: true);
       }
     }
   }

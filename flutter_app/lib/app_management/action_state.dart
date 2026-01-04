@@ -27,6 +27,8 @@ class ActionState extends ChangeNotifier {
   bool plateValidation;
   double splitScreenDividerWidth = 0.5; // 50% split by default
   bool threeJSViewerActive =  true; // default to true, can be toggled by the user
+  bool assemblyRandomMode; // When true, each click places random handle value
+  bool assemblyEnforceMode; // When true, placed handles are marked as enforced
 
   Map<int, String> panelMap = {
     0: 'slats',
@@ -62,7 +64,9 @@ class ActionState extends ChangeNotifier {
     this.extendSlatTips = true,
     this.viewPhantoms = true,
     this.panelMode = 0,
-    this.cargoAttachMode = 'top'
+    this.cargoAttachMode = 'top',
+    this.assemblyRandomMode = false,
+    this.assemblyEnforceMode = false,
   });
 
   void updateEchoSetting(String setting, dynamic value){
@@ -196,6 +200,16 @@ class ActionState extends ChangeNotifier {
 
   void updateCargoAttachMode(String value){
     cargoAttachMode = value;
+    notifyListeners();
+  }
+
+  void setAssemblyRandomMode(bool value) {
+    assemblyRandomMode = value;
+    notifyListeners();
+  }
+
+  void setAssemblyEnforceMode(bool value) {
+    assemblyEnforceMode = value;
     notifyListeners();
   }
 }

@@ -3,13 +3,26 @@ import 'package:flutter/material.dart';
 class HoneycombPainter extends CustomPainter {
   final Color color;
   final double size;
+  final Color? highlightColor;
+  final bool highlightTop;
+  final bool highlightBottom;
 
-  HoneycombPainter({required this.color, this.size = 20});
+  HoneycombPainter({
+    required this.color,
+    this.size = 20,
+    this.highlightColor,
+    this.highlightTop = false,
+    this.highlightBottom = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
       ..color = color
+      ..style = PaintingStyle.fill;
+
+    final Paint highlightPaint = Paint()
+      ..color = highlightColor ?? color
       ..style = PaintingStyle.fill;
 
     final double dx = this.size * 0.86602540378;
@@ -19,24 +32,30 @@ class HoneycombPainter extends CustomPainter {
     final double offsetY = size.height/2;
 
     // Define the centers of the six circles
+    // Index 4 = bottom circle, Index 5 = top circle
     final List<Offset> centers = [
       Offset(offset - dx, offsetY + this.size/2),
       Offset(offset + dx, offsetY - this.size/2),
       Offset(offset - dx, offsetY - this.size/2),
       Offset(offset + dx, offsetY + this.size/2),
-      Offset(offset, offsetY + this.size),
-      Offset(offset, offsetY - this.size),
+      Offset(offset, offsetY + this.size),  // index 4 = bottom
+      Offset(offset, offsetY - this.size),  // index 5 = top
     ];
 
-    for (var center in centers) {
-      canvas.drawCircle(center, this.size / 2, paint);
+    for (int i = 0; i < centers.length; i++) {
+      final bool isHighlighted = (i == 5 && highlightTop) || (i == 4 && highlightBottom);
+      canvas.drawCircle(centers[i], this.size / 2, isHighlighted ? highlightPaint : paint);
     }
 
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
+  bool shouldRepaint(covariant HoneycombPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.highlightColor != highlightColor ||
+        oldDelegate.highlightTop != highlightTop ||
+        oldDelegate.highlightBottom != highlightBottom ||
+        oldDelegate.size != size;
   }
 }
 
@@ -44,11 +63,17 @@ class HoneycombPainter extends CustomPainter {
 class HoneycombCustomPainterWidget extends StatelessWidget {
   final Color color;
   final double size;
+  final Color? highlightColor;
+  final bool highlightTop;
+  final bool highlightBottom;
 
   const HoneycombCustomPainterWidget({
     super.key,
     required this.color,
     this.size = 15,
+    this.highlightColor,
+    this.highlightTop = false,
+    this.highlightBottom = false,
   });
 
   @override
@@ -64,7 +89,13 @@ class HoneycombCustomPainterWidget extends StatelessWidget {
     final double totalHeight = 3 * size;
     return CustomPaint(
       size: Size(totalWidth, totalHeight),
-      painter: HoneycombPainter(color: color, size: size),
+      painter: HoneycombPainter(
+        color: color,
+        size: size,
+        highlightColor: highlightColor,
+        highlightTop: highlightTop,
+        highlightBottom: highlightBottom,
+      ),
     );
   }
 }
