@@ -1,6 +1,6 @@
 class VersionInfo {
-  static const String version = 'v0.3.0';  // Will be replaced during build process
-  static const String buildNumber = '618';  // Will be replaced during build process
-  static const String buildCommit = 'e811536';  // Will be replaced during build process
-  static const String buildDate = '2025-10-27T13:43:32.991262';  // Will be replaced during build process
+  static const String version = 'v0.4.0';  // Will be replaced during build process
+  static const String buildNumber = '714';  // Will be replaced during build process
+  static const String buildCommit = '5e76d15';  // Will be replaced during build process
+  static const String buildDate = '2026-01-04T22:32:48.704647';  // Will be replaced during build process
 }
