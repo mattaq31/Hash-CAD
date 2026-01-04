@@ -1,7 +1,8 @@
 import numpy as np
 from crisscross.slat_handle_match_evolver.handle_evolution import EvolveManager
 from server_architecture import hamming_evolve_communication_pb2_grpc, hamming_evolve_communication_pb2
-from crisscross.core_functions.megastructures import Megastructure
+from crisscross.core_functions.megastructures import Megastructure, HandleLinkManager
+from crisscross.core_functions.slats import Slat
 import threading
 import time
 
@@ -36,6 +37,66 @@ def coordinate_map_to_tuples(proto_coordinate_map):
         key: [(coord.y, coord.x) for coord in coord_list.coords]
         for key, coord_list in proto_coordinate_map.items()
     }
+
+
+def proto_handle_links_to_structures(proto_handle_links):
+    """
+    Convert HandleLinkData to:
+    - link_manager: HandleLinkManager instance
+    - phantom_slats: dict of {phantom_id: (parent_id, [(y,x), ...])}
+    """
+    link_manager = HandleLinkManager()
+
+    # Process link groups
+    for group in proto_handle_links.linkGroups:
+        group_id = group.groupId
+        try:
+            group_id = int(group_id)
+            link_manager.max_group_id = max(link_manager.max_group_id, group_id)
+        except ValueError:
+            pass  # Keep as string for alphabetic IDs
+
+        for hk in group.handles:
+            key = (hk.slatId, hk.position, hk.side)
+            link_manager.handle_link_to_group[key] = group_id
+            link_manager.handle_group_to_link[group_id].append(key)
+
+        if group.hasEnforcedValue:
+            link_manager.handle_group_to_value[group_id] = group.enforcedValue
+
+    # Process blocked handles
+    for hk in proto_handle_links.blockedHandles:
+        link_manager.handle_blocks.append((hk.slatId, hk.position, hk.side))
+
+    # Process phantom slats
+    # Returns dict: phantom_id -> (parent_id, coords_list)
+    phantom_slats = {}
+    for entry in proto_handle_links.phantomSlats:
+        # Flip x/y for numpy indexing (same as coordinate_map_to_tuples)
+        coords = [(coord.y, coord.x) for coord in entry.coordinates.coords]
+        phantom_slats[entry.phantomSlatId] = (entry.parentSlatId, coords)
+
+    return link_manager, phantom_slats
+
+
+def add_phantom_slats_to_megastructure(megastructure, phantom_slats):
+    """
+    Add phantom slats to megastructure after initial construction.
+    phantom_slats: dict of {phantom_id: (parent_id, [(y,x), ...])}
+    """
+    for phantom_id, (parent_id, coords) in phantom_slats.items():
+        # Parse layer from phantom_id (e.g., "1-I5-P1")
+        # Format is "{layer}-I{slat_id}-P{phantom_num}"
+        layer = int(phantom_id.split('-I')[0])
+        python_parent_id = f'layer{layer}-slat{parent_id.split("-I")[1]}'
+        python_phantom_id = f'{python_parent_id}-phantom{phantom_id.split("-P")[1]}'
+
+        # Create phantom slat with parent reference
+        phantom_slat = Slat(python_phantom_id, layer, coords, phantom_parent=python_parent_id)
+        megastructure.slats[python_phantom_id] = phantom_slat
+
+        # Update phantom_map
+        megastructure.phantom_map[python_parent_id].append(python_phantom_id)
 
 
 class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServicer):
@@ -76,6 +137,15 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
                                                slat_coordinate_dict=slat_coordinates_python,
                                                slat_type_dict=slat_types_python,
                                                connection_angle=request.connectionAngle)
+
+            # Extract link manager and phantom slats from proto
+            link_manager, phantom_slats = proto_handle_links_to_structures(request.handleLinks)
+
+            # Add phantom slats AFTER megastructure creation
+            add_phantom_slats_to_megastructure(main_megastructure, phantom_slats)
+
+            # Apply link manager
+            main_megastructure.link_manager = link_manager
 
             if initial_handle_array is not None:
                 main_megastructure.assign_assembly_handles(initial_handle_array)

@@ -97,9 +97,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
     final double progress = current / total;
 
     // initiates server healthcheck
-    if (!serverState.serverActive &&
-        !serverState.serverCheckInProgress &&
-        !kIsWeb) {
+    if (!serverState.serverActive && !serverState.serverCheckInProgress && !kIsWeb) {
       serverState.startupServerHealthCheck();
     }
 
@@ -532,7 +530,12 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                           appState.getSlatCoords(),
                                           appState.getHandleArray(),
                                           appState.getSlatTypes(),
-                                          appState.gridMode);
+                                          appState.gridMode,
+                                          appState.assemblyLinkManager,
+                                          appState.getSlatCoords(getPhantoms: true),
+                                          appState.getPhantomParentsForGrpc(),
+                                          appState.slats,
+                                          appState.layerMap);
                                     },
                               icon: const Icon(Icons.play_arrow, size: 18),
                               label: const Text("Start"),
@@ -569,8 +572,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                       serverState.stopEvolve().then((result) {
                                         appState.assignAssemblyHandleArray(result, null, null);
                                         appState.updateDesignHammingValue();
-                                        actionState
-                                            .setAssemblyHandleDisplay(true);
+                                        actionState.setAssemblyHandleDisplay(true);
                                       });
                                     },
                               icon: const Icon(Icons.stop_circle, size: 18),
@@ -585,8 +587,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                             ),
                             const SizedBox(width: 12),
                             FilledButton.icon(
-                              onPressed: serverState.hammingMetrics.isEmpty ||
-                                      !serverState.serverActive
+                              onPressed: serverState.hammingMetrics.isEmpty || !serverState.serverActive
                                   ? null
                                   : () async {
                                       // main user dialog box for file selection

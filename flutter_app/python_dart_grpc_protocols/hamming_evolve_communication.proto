@@ -21,6 +21,7 @@ message EvolveRequest {
   map<string, string> slatTypes = 4;   // Mapping from slat identifier (e.g., "slat2-layer1" or "(2,1)") to slat type (e.g., "DB-L")
   string connectionAngle = 5; // "60" or "90"
   map<string, CoordinateList> coordinateMap = 6; // contains precise coordinates for each slat in order, these cannot be inferred from array indices if using non-rod-like slats
+  HandleLinkData handleLinks = 7; // contains phantom slats, link groups, and blocked handles
 }
 
 message Layer3D {
@@ -66,4 +67,33 @@ message CoordinateList {
 message Coordinate {
   int32 x = 1;
   int32 y = 2;
+}
+
+// Handle key: (slatId, position, side)
+message HandleKey {
+  string slatId = 1;      // Python format: "layer1-slat5"
+  int32 position = 2;     // 1-indexed position
+  int32 side = 3;         // 2 or 5
+}
+
+// Phantom slat with parent relationship
+message PhantomSlatEntry {
+  string phantomSlatId = 1;        // e.g., "layer1-slat5-phantom1"
+  string parentSlatId = 2;         // e.g., "layer1-slat5"
+  CoordinateList coordinates = 3;  // Phantom's coordinates
+}
+
+// Link group with optional enforced value
+message HandleLinkGroup {
+  string groupId = 1;
+  repeated HandleKey handles = 2;
+  bool hasEnforcedValue = 3;
+  int32 enforcedValue = 4;
+}
+
+// Complete link/phantom data
+message HandleLinkData {
+  repeated HandleLinkGroup linkGroups = 1;
+  repeated HandleKey blockedHandles = 2;
+  repeated PhantomSlatEntry phantomSlats = 3;  // Phantom slats with coords and parent
 }

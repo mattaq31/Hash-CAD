@@ -174,6 +174,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               setState(() {
                 _updateScope = 'all';
               });
+              serverState.updateEvoParam('update_scope', 'all');
             },
             icon: Icon(Icons.select_all, size: 20),
             style: IconButton.styleFrom(
@@ -196,6 +197,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               setState(() {
                 _updateScope = 'interfaces';
               });
+              serverState.updateEvoParam('update_scope', 'interfaces');
             },
             icon: Icon(Icons.layers, size: 20),
             style: IconButton.styleFrom(

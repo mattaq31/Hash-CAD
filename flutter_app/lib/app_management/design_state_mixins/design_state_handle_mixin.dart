@@ -775,7 +775,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     return slatArray;
   }
 
-  Map<String, List<(int, int)>> getSlatCoords() {
+  Map<String, List<(int, int)>> getSlatCoords({bool getPhantoms = false}) {
     Offset minPos;
     Offset maxPos;
     (minPos, maxPos) = extractGridBoundary(slats);
@@ -783,6 +783,11 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     Map<String, List<(int, int)>> slatCoords = {};
 
     for (var slat in slats.values) {
+
+      if(slat.phantomParent != null && !getPhantoms) continue; // Skip phantom slats
+
+      if (slat.phantomParent == null && getPhantoms) continue; // Skip non-phantom slats
+
       var layerNumber = layerMap[slat.layer]!['order'] + 1;
       var pythonSlatId = slat.id.replaceFirst(slat.layer, layerNumber.toString());
       for (var i = 0; i < slat.maxLength; i++) {
@@ -805,6 +810,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   Map<String, String> getSlatTypes() {
     Map<String, String> slatTypes = {};
     for (var slat in slats.values) {
+      if (slat.phantomParent != null) continue; // skip phantom slats
       var layerNumber = layerMap[slat.layer]!['order'] + 1;
       // replace the layer ID with the layer number
       slatTypes[slat.id.replaceFirst(slat.layer, layerNumber.toString())] = slat.slatType;
@@ -851,29 +857,6 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     hammingValueValid = false;
     saveUndoState();
     notifyListeners();
-  }
-
-  /// Returns phantom slat coordinates in Python format for gRPC transfer.
-  /// Key: Python slat ID (e.g., "1-I5-P1"), Value: list of (x, y) coordinates
-  Map<String, List<(int, int)>> getPhantomCoordsForGrpc() {
-    Offset minPos;
-    Offset maxPos;
-    (minPos, maxPos) = extractGridBoundary(slats);
-
-    Map<String, List<(int, int)>> phantomCoords = {};
-    for (var slat in slats.values) {
-      if (slat.phantomParent == null) continue; // Skip non-phantoms
-
-      var layerNumber = layerMap[slat.layer]!['order'] + 1;
-      var pythonSlatId = slat.id.replaceFirst(slat.layer, layerNumber.toString());
-      for (var i = 0; i < slat.maxLength; i++) {
-        var pos = slat.slatPositionToCoordinate[i + 1]!;
-        int x = (pos.dx - minPos.dx).toInt();
-        int y = (pos.dy - minPos.dy).toInt();
-        phantomCoords.putIfAbsent(pythonSlatId, () => []).add((x, y));
-      }
-    }
-    return phantomCoords;
   }
 
   /// Returns phantom parent relationships for gRPC transfer.

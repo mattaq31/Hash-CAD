@@ -23,6 +23,7 @@ const EvolveRequest$json = {
     {'1': 'slatTypes', '3': 4, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.SlatTypesEntry', '10': 'slatTypes'},
     {'1': 'connectionAngle', '3': 5, '4': 1, '5': 9, '10': 'connectionAngle'},
     {'1': 'coordinateMap', '3': 6, '4': 3, '5': 11, '6': '.evoService.EvolveRequest.CoordinateMapEntry', '10': 'coordinateMap'},
+    {'1': 'handleLinks', '3': 7, '4': 1, '5': 11, '6': '.evoService.HandleLinkData', '10': 'handleLinks'},
   ],
   '3': [EvolveRequest_ParametersEntry$json, EvolveRequest_SlatTypesEntry$json, EvolveRequest_CoordinateMapEntry$json],
 };
@@ -66,11 +67,12 @@ final $typed_data.Uint8List evolveRequestDescriptor = $convert.base64Decode(
     'ZXJ2aWNlLkV2b2x2ZVJlcXVlc3QuU2xhdFR5cGVzRW50cnlSCXNsYXRUeXBlcxIoCg9jb25uZW'
     'N0aW9uQW5nbGUYBSABKAlSD2Nvbm5lY3Rpb25BbmdsZRJSCg1jb29yZGluYXRlTWFwGAYgAygL'
     'MiwuZXZvU2VydmljZS5Fdm9sdmVSZXF1ZXN0LkNvb3JkaW5hdGVNYXBFbnRyeVINY29vcmRpbm'
-    'F0ZU1hcBo9Cg9QYXJhbWV0ZXJzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiAB'
-    'KAlSBXZhbHVlOgI4ARo8Cg5TbGF0VHlwZXNFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YW'
-    'x1ZRgCIAEoCVIFdmFsdWU6AjgBGlwKEkNvb3JkaW5hdGVNYXBFbnRyeRIQCgNrZXkYASABKAlS'
-    'A2tleRIwCgV2YWx1ZRgCIAEoCzIaLmV2b1NlcnZpY2UuQ29vcmRpbmF0ZUxpc3RSBXZhbHVlOg'
-    'I4AQ==');
+    'F0ZU1hcBI8CgtoYW5kbGVMaW5rcxgHIAEoCzIaLmV2b1NlcnZpY2UuSGFuZGxlTGlua0RhdGFS'
+    'C2hhbmRsZUxpbmtzGj0KD1BhcmFtZXRlcnNFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YW'
+    'x1ZRgCIAEoCVIFdmFsdWU6AjgBGjwKDlNsYXRUeXBlc0VudHJ5EhAKA2tleRgBIAEoCVIDa2V5'
+    'EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOAEaXAoSQ29vcmRpbmF0ZU1hcEVudHJ5EhAKA2tleR'
+    'gBIAEoCVIDa2V5EjAKBXZhbHVlGAIgASgLMhouZXZvU2VydmljZS5Db29yZGluYXRlTGlzdFIF'
+    'dmFsdWU6AjgB');
 
 @$core.Deprecated('Use layer3DDescriptor instead')
 const Layer3D$json = {
@@ -200,4 +202,70 @@ const Coordinate$json = {
 /// Descriptor for `Coordinate`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List coordinateDescriptor = $convert.base64Decode(
     'CgpDb29yZGluYXRlEgwKAXgYASABKAVSAXgSDAoBeRgCIAEoBVIBeQ==');
+
+@$core.Deprecated('Use handleKeyDescriptor instead')
+const HandleKey$json = {
+  '1': 'HandleKey',
+  '2': [
+    {'1': 'slatId', '3': 1, '4': 1, '5': 9, '10': 'slatId'},
+    {'1': 'position', '3': 2, '4': 1, '5': 5, '10': 'position'},
+    {'1': 'side', '3': 3, '4': 1, '5': 5, '10': 'side'},
+  ],
+};
+
+/// Descriptor for `HandleKey`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List handleKeyDescriptor = $convert.base64Decode(
+    'CglIYW5kbGVLZXkSFgoGc2xhdElkGAEgASgJUgZzbGF0SWQSGgoIcG9zaXRpb24YAiABKAVSCH'
+    'Bvc2l0aW9uEhIKBHNpZGUYAyABKAVSBHNpZGU=');
+
+@$core.Deprecated('Use phantomSlatEntryDescriptor instead')
+const PhantomSlatEntry$json = {
+  '1': 'PhantomSlatEntry',
+  '2': [
+    {'1': 'phantomSlatId', '3': 1, '4': 1, '5': 9, '10': 'phantomSlatId'},
+    {'1': 'parentSlatId', '3': 2, '4': 1, '5': 9, '10': 'parentSlatId'},
+    {'1': 'coordinates', '3': 3, '4': 1, '5': 11, '6': '.evoService.CoordinateList', '10': 'coordinates'},
+  ],
+};
+
+/// Descriptor for `PhantomSlatEntry`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List phantomSlatEntryDescriptor = $convert.base64Decode(
+    'ChBQaGFudG9tU2xhdEVudHJ5EiQKDXBoYW50b21TbGF0SWQYASABKAlSDXBoYW50b21TbGF0SW'
+    'QSIgoMcGFyZW50U2xhdElkGAIgASgJUgxwYXJlbnRTbGF0SWQSPAoLY29vcmRpbmF0ZXMYAyAB'
+    'KAsyGi5ldm9TZXJ2aWNlLkNvb3JkaW5hdGVMaXN0Ugtjb29yZGluYXRlcw==');
+
+@$core.Deprecated('Use handleLinkGroupDescriptor instead')
+const HandleLinkGroup$json = {
+  '1': 'HandleLinkGroup',
+  '2': [
+    {'1': 'groupId', '3': 1, '4': 1, '5': 9, '10': 'groupId'},
+    {'1': 'handles', '3': 2, '4': 3, '5': 11, '6': '.evoService.HandleKey', '10': 'handles'},
+    {'1': 'hasEnforcedValue', '3': 3, '4': 1, '5': 8, '10': 'hasEnforcedValue'},
+    {'1': 'enforcedValue', '3': 4, '4': 1, '5': 5, '10': 'enforcedValue'},
+  ],
+};
+
+/// Descriptor for `HandleLinkGroup`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List handleLinkGroupDescriptor = $convert.base64Decode(
+    'Cg9IYW5kbGVMaW5rR3JvdXASGAoHZ3JvdXBJZBgBIAEoCVIHZ3JvdXBJZBIvCgdoYW5kbGVzGA'
+    'IgAygLMhUuZXZvU2VydmljZS5IYW5kbGVLZXlSB2hhbmRsZXMSKgoQaGFzRW5mb3JjZWRWYWx1'
+    'ZRgDIAEoCFIQaGFzRW5mb3JjZWRWYWx1ZRIkCg1lbmZvcmNlZFZhbHVlGAQgASgFUg1lbmZvcm'
+    'NlZFZhbHVl');
+
+@$core.Deprecated('Use handleLinkDataDescriptor instead')
+const HandleLinkData$json = {
+  '1': 'HandleLinkData',
+  '2': [
+    {'1': 'linkGroups', '3': 1, '4': 3, '5': 11, '6': '.evoService.HandleLinkGroup', '10': 'linkGroups'},
+    {'1': 'blockedHandles', '3': 2, '4': 3, '5': 11, '6': '.evoService.HandleKey', '10': 'blockedHandles'},
+    {'1': 'phantomSlats', '3': 3, '4': 3, '5': 11, '6': '.evoService.PhantomSlatEntry', '10': 'phantomSlats'},
+  ],
+};
+
+/// Descriptor for `HandleLinkData`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List handleLinkDataDescriptor = $convert.base64Decode(
+    'Cg5IYW5kbGVMaW5rRGF0YRI7CgpsaW5rR3JvdXBzGAEgAygLMhsuZXZvU2VydmljZS5IYW5kbG'
+    'VMaW5rR3JvdXBSCmxpbmtHcm91cHMSPQoOYmxvY2tlZEhhbmRsZXMYAiADKAsyFS5ldm9TZXJ2'
+    'aWNlLkhhbmRsZUtleVIOYmxvY2tlZEhhbmRsZXMSQAoMcGhhbnRvbVNsYXRzGAMgAygLMhwuZX'
+    'ZvU2VydmljZS5QaGFudG9tU2xhdEVudHJ5UgxwaGFudG9tU2xhdHM=');
 

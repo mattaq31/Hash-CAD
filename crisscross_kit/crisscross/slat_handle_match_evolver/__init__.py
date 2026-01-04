@@ -34,26 +34,37 @@ def apply_handle_links(handle_array, link_handles = {}):
         else:
             print("Warning: link_handles value is neither a tuple nor a list. Skipping.")
 
-def generate_random_slat_handles(base_array, unique_sequences=32, link_handles = {}):
+def generate_random_slat_handles(base_array, unique_sequences=32, link_handles = {}, additional_positions=None):
     """
     Generates an array of handles, all randomly selected.
     :param base_array: Megastructure handle positions in a 3D array
     :param unique_sequences: Number of possible handle sequences
     :param link_handles: Dictionary of handles to link together (mostly deprecated in favour of recursive algorithm in Megastructure).  Syntax is {(layer, 'top'/'bottom', (x,y)): (layer, 'top'/'bottom', (x,y))}
+    :param additional_positions: Optional set of (x, y, z) tuples indicating additional positions where handles should be placed beyond interface positions
     :return: 2D array with handle IDs
     """
 
-    handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1))
-    handle_array = np.random.randint(1, unique_sequences + 1, size=handle_array.shape, dtype=np.uint16)
+    handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1), dtype=np.uint16)
+    random_values = np.random.randint(1, unique_sequences + 1, size=handle_array.shape, dtype=np.uint16)
+
     for i in range(handle_array.shape[2]):
-        handle_array[np.any(base_array[..., i:i + 2] == 0, axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
+        # Place handles at interface positions (where adjacent layers both have slats)
+        has_interface = np.all(base_array[..., i:i + 2] != 0, axis=-1)
+        handle_array[has_interface, i] = random_values[has_interface, i]
+
+    # Add handles at additional positions if specified
+    if additional_positions is not None:
+        for (x, y, z) in additional_positions:
+            if 0 <= x < handle_array.shape[0] and 0 <= y < handle_array.shape[1] and 0 <= z < handle_array.shape[2]:
+                if handle_array[x, y, z] == 0:  # Only set if not already set by interface
+                    handle_array[x, y, z] = random_values[x, y, z]
 
     apply_handle_links(handle_array, link_handles)  # this function simply ensures that two handles are the same if they are linked
 
     return handle_array
 
 
-def generate_layer_split_handles(base_array, unique_sequences=32, split_factor=2, link_handles = {}):
+def generate_layer_split_handles(base_array, unique_sequences=32, split_factor=2, link_handles = {}, additional_positions=None):
     """
     Generates an array of handles, with the possible ids split between each layer,
     with the goal of preventing a single slat from being self-complementary.
@@ -61,9 +72,9 @@ def generate_layer_split_handles(base_array, unique_sequences=32, split_factor=2
     :param unique_sequences: Number of possible handle sequences
     :param split_factor: Number of layers to split the handle sequences between
     :param link_handles: Dictionary of handles to link together (mostly deprecated in favour of recursive algorithm in Megastructure).  Syntax is {(layer, 'top'/'bottom', (x,y)): (layer, 'top'/'bottom', (x,y))}
+    :param additional_positions: Optional set of (x, y, z) tuples indicating additional positions where handles should be placed beyond interface positions
     :return: 2D array with handle IDs
     """
-
 
     handle_array = np.zeros((base_array.shape[0], base_array.shape[1], base_array.shape[2] - 1), dtype=np.uint16)
 
@@ -72,16 +83,25 @@ def generate_layer_split_handles(base_array, unique_sequences=32, split_factor=2
 
     handles_per_layer = unique_sequences // split_factor
 
+    # Generate random values for each layer with split ranges
+    random_values = np.zeros_like(handle_array, dtype=np.uint16)
     for i in range(handle_array.shape[2]):
         layer_index = i % split_factor
         h_start = 1 + layer_index * handles_per_layer
         h_end = h_start + handles_per_layer
+        random_values[..., i] = np.random.randint(h_start, h_end, size=(handle_array.shape[0], handle_array.shape[1]), dtype=np.uint16)
 
-        layer_handle_array = np.random.randint(h_start, h_end, size=(handle_array.shape[0], handle_array.shape[1]), dtype=np.uint16)
-        handle_array[..., i] = layer_handle_array
-
+    # Place handles only at interface positions
     for i in range(handle_array.shape[2]):
-        handle_array[np.any(base_array[..., i:i + 2] == 0, axis=-1), i] = 0  # no handles where there are no slats, or no slat connections
+        has_interface = np.all(base_array[..., i:i + 2] != 0, axis=-1)
+        handle_array[has_interface, i] = random_values[has_interface, i]
+
+    # Add handles at additional positions if specified
+    if additional_positions is not None:
+        for (x, y, z) in additional_positions:
+            if 0 <= x < handle_array.shape[0] and 0 <= y < handle_array.shape[1] and 0 <= z < handle_array.shape[2]:
+                if handle_array[x, y, z] == 0:  # Only set if not already set by interface
+                    handle_array[x, y, z] = random_values[x, y, z]
 
     apply_handle_links(handle_array, link_handles)
 

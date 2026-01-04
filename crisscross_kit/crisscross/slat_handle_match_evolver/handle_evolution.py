@@ -26,7 +26,7 @@ class EvolveManager:
                  evolution_generations=200, evolution_population=30, split_sequence_handles=False, sequence_split_factor=2,
                  process_count=None, early_max_valency_stop=None, log_tracking_directory=None, progress_bar_update_iterations=2,
                  mutation_memory_system='off', memory_length=10, repeating_unit_constraints=None,
-                 similarity_score_calculation_frequency=10, remove_duplicates_in_layers=None):
+                 similarity_score_calculation_frequency=10, remove_duplicates_in_layers=None, update_scope='interfaces'):
         """
         Prepares an evolution manager to optimize a handle array for the provided slat array.
         WARNING: Make sure to use the "if __name__ == '__main__':" block to run this class in a script.
@@ -52,6 +52,7 @@ class EvolveManager:
         :param repeating_unit_constraints: Dictionary to define handle link constraints on handle mutations (mainly for use with repeating unit designs).  This is largely depracted now in favour of the Megastructure recursive handle linking system.
         :param similarity_score_calculation_frequency: The duplication risk score will be calculated every x generations.
         This helps speed up the evolution process, since it isn't used for deciding on the best generations to retain.
+        :param update_scope: Either 'interfaces' (default) to only place handles at layer interfaces, or 'all' to also place handles at positions with existing handles in the seed array.
         """
 
         # initial parameter setup
@@ -71,6 +72,13 @@ class EvolveManager:
             self.handle_array = None
         else:
             self.handle_array = seed_handle_array # this variable holds the current best handle array in the system (updated throughout evolution)
+
+        # Store update_scope and extract additional positions from seed handle array if 'all'
+        self.update_scope = update_scope
+        self.additional_positions = None
+        if update_scope == 'all' and self.handle_array is not None:
+            # Extract all non-zero positions from the seed handle array as additional positions
+            self.additional_positions = set(zip(*np.where(self.handle_array != 0)))
 
         self.generational_survivors = int(generational_survivors)
         self.mutation_rate = mutation_rate
@@ -155,12 +163,12 @@ class EvolveManager:
         slat_array_with_phantoms = self.dummy_megastructure.generate_slat_occupancy_grid(category='all')
         if not self.split_sequence_handles or slat_array_with_phantoms.shape[2] < 3:
             for j in range(self.evolution_population):
-                candidate_array = generate_random_slat_handles(slat_array_with_phantoms, self.number_unique_handles, self.repeating_unit_constraints)
+                candidate_array = generate_random_slat_handles(slat_array_with_phantoms, self.number_unique_handles, self.repeating_unit_constraints, additional_positions=self.additional_positions)
                 self.dummy_megastructure.enforce_phantom_links_on_assembly_handle_array(candidate_array)
                 candidate_handle_arrays.append(candidate_array)
         else:
             for j in range(self.evolution_population):
-                candidate_array = generate_layer_split_handles(slat_array_with_phantoms,  self.number_unique_handles, self.sequence_split_factor, self.repeating_unit_constraints)
+                candidate_array = generate_layer_split_handles(slat_array_with_phantoms,  self.number_unique_handles, self.sequence_split_factor, self.repeating_unit_constraints, additional_positions=self.additional_positions)
                 self.dummy_megastructure.enforce_phantom_links_on_assembly_handle_array(candidate_array)
                 candidate_handle_arrays.append(candidate_array)
         if self.handle_array is not None:

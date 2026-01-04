@@ -24,7 +24,7 @@ final Random _rand = Random();
 
 final List<Color> qualitativeCargoColors = [
   Color(0xFF1B9E77), // Teal
-  Color(0xFFD95F02), // Orange
+  Color(0xFFD95F02), // Orange/
   Color(0xFF7570B3), // Purple
   Color(0xFFE7298A), // Pink
   Color(0xFF66A61E), // Green

@@ -4,6 +4,65 @@ import 'package:grpc/grpc.dart';
 import 'hamming_evolve_communication.pbgrpc.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_management/design_state_mixins/design_state_handle_link_mixin.dart';
+import '../crisscross_core/slats.dart';
+
+
+/// Converts handle link manager, phantom coordinates, and phantom parents to proto format.
+HandleLinkData convertHandleLinkData(HandleLinkManager linkManager, Map<String, List<(int, int)>> phantomCoords,
+    Map<String, String> phantomParents, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap) {
+  final result = HandleLinkData();
+
+  // Convert link groups
+  linkManager.handleGroupToLink.forEach((groupId, handleKeys) {
+    final group = HandleLinkGroup()..groupId = groupId.toString();
+
+    for (var key in handleKeys) {
+      var slat = slats[key.$1];
+      if (slat == null) continue;
+      String pythonId = dartToPythonSlatNameConvert(key.$1, layerMap);
+      group.handles.add(HandleKey()
+        ..slatId = pythonId
+        ..position = key.$2
+        ..side = key.$3);
+    }
+
+    if (linkManager.handleGroupToValue.containsKey(groupId)) {
+      group.hasEnforcedValue = true;
+      group.enforcedValue_4 = linkManager.handleGroupToValue[groupId]!;
+    }
+    result.linkGroups.add(group);
+  });
+
+  // Convert blocked handles
+  for (var key in linkManager.handleBlocks) {
+    var slat = slats[key.$1];
+    if (slat == null) continue;
+    String pythonId = dartToPythonSlatNameConvert(key.$1, layerMap);
+    result.blockedHandles.add(HandleKey()
+      ..slatId = pythonId
+      ..position = key.$2
+      ..side = key.$3);
+  }
+
+  // Convert phantom slats
+  phantomCoords.forEach((phantomId, coords) {
+    final entry = PhantomSlatEntry()
+      ..phantomSlatId = phantomId
+      ..parentSlatId = phantomParents[phantomId]!;
+
+    final coordList = CoordinateList();
+    for (var (x, y) in coords) {
+      coordList.coords.add(Coordinate()
+        ..x = x
+        ..y = y);
+    }
+    entry.coordinates = coordList;
+    result.phantomSlats.add(entry);
+  });
+
+  return result;
+}
 
 class CrisscrossClient {
   late HandleEvolveClient stub;
@@ -111,12 +170,20 @@ class CrisscrossClient {
       List<List<List<int>>> handleArray,
       Map<String, String> evoParams,
       Map<String, String> slatTypes,
-      String connectionAngle) async {
+      String connectionAngle,
+      HandleLinkManager linkManager,
+      Map<String, List<(int, int)>> phantomCoords,
+      Map<String, String> phantomParents,
+      Map<String, Slat> slats,
+      Map<String, Map<String, dynamic>> layerMap) async {
 
     List<Layer3D> grpcSlatArray = convertToLayer3D(slatArray);
     List<Layer3D> grpcHandleArray = convertToLayer3D(handleArray);
 
-    final deadline = Duration(days: 365);  // Set deadline to 60 seconds
+    // Convert handle link data (link groups, blocked handles, phantom slats)
+    HandleLinkData linkData = convertHandleLinkData(linkManager, phantomCoords, phantomParents, slats, layerMap);
+
+    final deadline = Duration(days: 365);  // Set deadline to 365 days (effectively infinite)
 
     final callOptions = CallOptions(timeout: deadline);
 
@@ -127,7 +194,8 @@ class CrisscrossClient {
         parameters: evoParams,
         coordinateMap: convertSlatCoords(slatCoords),
         slatTypes: slatTypes,
-        connectionAngle: connectionAngle);
+        connectionAngle: connectionAngle,
+        handleLinks: linkData);
 
     stub.evolveQuery(request, options: callOptions).listen((update) {
       if (kDebugMode) {

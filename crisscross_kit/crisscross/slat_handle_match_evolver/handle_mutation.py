@@ -108,7 +108,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
 
         # The mutation rate is defined as the expected number of mutations in the whole structure.
         # This can be applied using Binomial and poisson statistics: [mutation rate] = [num places to be mutated] * probability
-        positions_to_be_mutated = mask & mask2 # mask and mask2 two are the places where mutations are allowed
+        positions_to_be_mutated = mask & mask2 # mask and mask2 are the places where mutations are allowed
 
         # =============================================================================
         # TWO-PHASE MUTATION WITH LINKED HANDLES
@@ -147,6 +147,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
             # apply unique mask to global positions to be mutated
             positions_to_be_mutated = positions_to_be_mutated & unique_mask
 
+        # TODO: is this truly the best way to apply mutations?  Won't this bias towards fewer mutations if an array is not very full?
         logicforpointmutations = np.random.random(candidate_handle_arrays[0].shape) < mutation_rate / np.sum(positions_to_be_mutated)
         logicforpointmutations = logicforpointmutations & positions_to_be_mutated
 

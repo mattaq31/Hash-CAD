@@ -146,3 +146,15 @@ def convert_np_to_py(data):
 def natural_sort_key(key):
     return [int(text) if text.isdigit() else text.lower()
             for text in re.split(r'(\d+)', key)]
+
+
+def next_capital_letter(current: str) -> str:
+    chars = [ord(c) - ord('A') for c in current]
+    for i in range(len(chars) - 1, -1, -1):
+        if chars[i] < 25:
+            chars[i] += 1
+            return ''.join(chr(ord('A') + c) for c in chars)
+        else:
+            chars[i] = 0
+    # All were 'Z', prepend 'A'
+    return 'A' + ''.join(chr(ord('A') + c) for c in chars)

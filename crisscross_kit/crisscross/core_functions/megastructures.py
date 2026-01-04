@@ -17,6 +17,7 @@ from crisscross.helper_functions.slat_salient_quantities import connection_angle
 from crisscross.graphics.static_plots import create_graphical_slat_view, create_graphical_assembly_handle_view
 from eqcorr2d.slat_standardized_mapping import generate_standardized_slat_handle_array
 from eqcorr2d.eqcorr2d_interface import comprehensive_score_analysis
+from helper_functions import next_capital_letter
 
 # consistent figure formatting between mac, windows and linux
 if platform.system() == 'Darwin':
@@ -26,17 +27,6 @@ elif platform.system() == 'Windows':
 else:
     plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
 
-
-def next_capital_letter(current: str) -> str:
-    chars = [ord(c) - ord('A') for c in current]
-    for i in range(len(chars) - 1, -1, -1):
-        if chars[i] < 25:
-            chars[i] += 1
-            return ''.join(chr(ord('A') + c) for c in chars)
-        else:
-            chars[i] = 0
-    # All were 'Z', prepend 'A'
-    return 'A' + ''.join(chr(ord('A') + c) for c in chars)
 
 def create_default_layer_palette(layer_interface_orientations):
     layer_palette = {}

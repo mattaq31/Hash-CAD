@@ -21,6 +21,7 @@ class EvolveRequest extends $pb.GeneratedMessage {
     $core.Map<$core.String, $core.String>? slatTypes,
     $core.String? connectionAngle,
     $core.Map<$core.String, CoordinateList>? coordinateMap,
+    HandleLinkData? handleLinks,
   }) {
     final $result = create();
     if (slatArray != null) {
@@ -41,6 +42,9 @@ class EvolveRequest extends $pb.GeneratedMessage {
     if (coordinateMap != null) {
       $result.coordinateMap.addAll(coordinateMap);
     }
+    if (handleLinks != null) {
+      $result.handleLinks = handleLinks;
+    }
     return $result;
   }
   EvolveRequest._() : super();
@@ -54,6 +58,7 @@ class EvolveRequest extends $pb.GeneratedMessage {
     ..m<$core.String, $core.String>(4, _omitFieldNames ? '' : 'slatTypes', protoName: 'slatTypes', entryClassName: 'EvolveRequest.SlatTypesEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('evoService'))
     ..aOS(5, _omitFieldNames ? '' : 'connectionAngle', protoName: 'connectionAngle')
     ..m<$core.String, CoordinateList>(6, _omitFieldNames ? '' : 'coordinateMap', protoName: 'coordinateMap', entryClassName: 'EvolveRequest.CoordinateMapEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OM, valueCreator: CoordinateList.create, valueDefaultOrMaker: CoordinateList.getDefault, packageName: const $pb.PackageName('evoService'))
+    ..aOM<HandleLinkData>(7, _omitFieldNames ? '' : 'handleLinks', protoName: 'handleLinks', subBuilder: HandleLinkData.create)
     ..hasRequiredFields = false
   ;
 
@@ -101,6 +106,17 @@ class EvolveRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(6)
   $core.Map<$core.String, CoordinateList> get coordinateMap => $_getMap(5);
+
+  @$pb.TagNumber(7)
+  HandleLinkData get handleLinks => $_getN(6);
+  @$pb.TagNumber(7)
+  set handleLinks(HandleLinkData v) { setField(7, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasHandleLinks() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearHandleLinks() => clearField(7);
+  @$pb.TagNumber(7)
+  HandleLinkData ensureHandleLinks() => $_ensure(6);
 }
 
 class Layer3D extends $pb.GeneratedMessage {
@@ -610,6 +626,314 @@ class Coordinate extends $pb.GeneratedMessage {
   $core.bool hasY() => $_has(1);
   @$pb.TagNumber(2)
   void clearY() => clearField(2);
+}
+
+/// Handle key: (slatId, position, side)
+class HandleKey extends $pb.GeneratedMessage {
+  factory HandleKey({
+    $core.String? slatId,
+    $core.int? position,
+    $core.int? side,
+  }) {
+    final $result = create();
+    if (slatId != null) {
+      $result.slatId = slatId;
+    }
+    if (position != null) {
+      $result.position = position;
+    }
+    if (side != null) {
+      $result.side = side;
+    }
+    return $result;
+  }
+  HandleKey._() : super();
+  factory HandleKey.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory HandleKey.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HandleKey', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'slatId', protoName: 'slatId')
+    ..a<$core.int>(2, _omitFieldNames ? '' : 'position', $pb.PbFieldType.O3)
+    ..a<$core.int>(3, _omitFieldNames ? '' : 'side', $pb.PbFieldType.O3)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  HandleKey clone() => HandleKey()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  HandleKey copyWith(void Function(HandleKey) updates) => super.copyWith((message) => updates(message as HandleKey)) as HandleKey;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static HandleKey create() => HandleKey._();
+  HandleKey createEmptyInstance() => create();
+  static $pb.PbList<HandleKey> createRepeated() => $pb.PbList<HandleKey>();
+  @$core.pragma('dart2js:noInline')
+  static HandleKey getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HandleKey>(create);
+  static HandleKey? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get slatId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set slatId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasSlatId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSlatId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get position => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set position($core.int v) { $_setSignedInt32(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasPosition() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPosition() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get side => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set side($core.int v) { $_setSignedInt32(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSide() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSide() => clearField(3);
+}
+
+/// Phantom slat with parent relationship
+class PhantomSlatEntry extends $pb.GeneratedMessage {
+  factory PhantomSlatEntry({
+    $core.String? phantomSlatId,
+    $core.String? parentSlatId,
+    CoordinateList? coordinates,
+  }) {
+    final $result = create();
+    if (phantomSlatId != null) {
+      $result.phantomSlatId = phantomSlatId;
+    }
+    if (parentSlatId != null) {
+      $result.parentSlatId = parentSlatId;
+    }
+    if (coordinates != null) {
+      $result.coordinates = coordinates;
+    }
+    return $result;
+  }
+  PhantomSlatEntry._() : super();
+  factory PhantomSlatEntry.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory PhantomSlatEntry.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'PhantomSlatEntry', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'phantomSlatId', protoName: 'phantomSlatId')
+    ..aOS(2, _omitFieldNames ? '' : 'parentSlatId', protoName: 'parentSlatId')
+    ..aOM<CoordinateList>(3, _omitFieldNames ? '' : 'coordinates', subBuilder: CoordinateList.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  PhantomSlatEntry clone() => PhantomSlatEntry()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  PhantomSlatEntry copyWith(void Function(PhantomSlatEntry) updates) => super.copyWith((message) => updates(message as PhantomSlatEntry)) as PhantomSlatEntry;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PhantomSlatEntry create() => PhantomSlatEntry._();
+  PhantomSlatEntry createEmptyInstance() => create();
+  static $pb.PbList<PhantomSlatEntry> createRepeated() => $pb.PbList<PhantomSlatEntry>();
+  @$core.pragma('dart2js:noInline')
+  static PhantomSlatEntry getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PhantomSlatEntry>(create);
+  static PhantomSlatEntry? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get phantomSlatId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set phantomSlatId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasPhantomSlatId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPhantomSlatId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get parentSlatId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set parentSlatId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasParentSlatId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearParentSlatId() => clearField(2);
+
+  @$pb.TagNumber(3)
+  CoordinateList get coordinates => $_getN(2);
+  @$pb.TagNumber(3)
+  set coordinates(CoordinateList v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasCoordinates() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCoordinates() => clearField(3);
+  @$pb.TagNumber(3)
+  CoordinateList ensureCoordinates() => $_ensure(2);
+}
+
+/// Link group with optional enforced value
+class HandleLinkGroup extends $pb.GeneratedMessage {
+  factory HandleLinkGroup({
+    $core.String? groupId,
+    $core.Iterable<HandleKey>? handles,
+    $core.bool? hasEnforcedValue,
+    $core.int? enforcedValue_4,
+  }) {
+    final $result = create();
+    if (groupId != null) {
+      $result.groupId = groupId;
+    }
+    if (handles != null) {
+      $result.handles.addAll(handles);
+    }
+    if (hasEnforcedValue != null) {
+      $result.hasEnforcedValue = hasEnforcedValue;
+    }
+    if (enforcedValue_4 != null) {
+      $result.enforcedValue_4 = enforcedValue_4;
+    }
+    return $result;
+  }
+  HandleLinkGroup._() : super();
+  factory HandleLinkGroup.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory HandleLinkGroup.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HandleLinkGroup', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'groupId', protoName: 'groupId')
+    ..pc<HandleKey>(2, _omitFieldNames ? '' : 'handles', $pb.PbFieldType.PM, subBuilder: HandleKey.create)
+    ..aOB(3, _omitFieldNames ? '' : 'hasEnforcedValue', protoName: 'hasEnforcedValue')
+    ..a<$core.int>(4, _omitFieldNames ? '' : 'enforcedValue', $pb.PbFieldType.O3, protoName: 'enforcedValue')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  HandleLinkGroup clone() => HandleLinkGroup()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  HandleLinkGroup copyWith(void Function(HandleLinkGroup) updates) => super.copyWith((message) => updates(message as HandleLinkGroup)) as HandleLinkGroup;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static HandleLinkGroup create() => HandleLinkGroup._();
+  HandleLinkGroup createEmptyInstance() => create();
+  static $pb.PbList<HandleLinkGroup> createRepeated() => $pb.PbList<HandleLinkGroup>();
+  @$core.pragma('dart2js:noInline')
+  static HandleLinkGroup getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HandleLinkGroup>(create);
+  static HandleLinkGroup? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get groupId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set groupId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasGroupId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGroupId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<HandleKey> get handles => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get hasEnforcedValue => $_getBF(2);
+  @$pb.TagNumber(3)
+  set hasEnforcedValue($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasHasEnforcedValue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHasEnforcedValue() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get enforcedValue_4 => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set enforcedValue_4($core.int v) { $_setSignedInt32(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasEnforcedValue_4() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEnforcedValue_4() => clearField(4);
+}
+
+/// Complete link/phantom data
+class HandleLinkData extends $pb.GeneratedMessage {
+  factory HandleLinkData({
+    $core.Iterable<HandleLinkGroup>? linkGroups,
+    $core.Iterable<HandleKey>? blockedHandles,
+    $core.Iterable<PhantomSlatEntry>? phantomSlats,
+  }) {
+    final $result = create();
+    if (linkGroups != null) {
+      $result.linkGroups.addAll(linkGroups);
+    }
+    if (blockedHandles != null) {
+      $result.blockedHandles.addAll(blockedHandles);
+    }
+    if (phantomSlats != null) {
+      $result.phantomSlats.addAll(phantomSlats);
+    }
+    return $result;
+  }
+  HandleLinkData._() : super();
+  factory HandleLinkData.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory HandleLinkData.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HandleLinkData', package: const $pb.PackageName(_omitMessageNames ? '' : 'evoService'), createEmptyInstance: create)
+    ..pc<HandleLinkGroup>(1, _omitFieldNames ? '' : 'linkGroups', $pb.PbFieldType.PM, protoName: 'linkGroups', subBuilder: HandleLinkGroup.create)
+    ..pc<HandleKey>(2, _omitFieldNames ? '' : 'blockedHandles', $pb.PbFieldType.PM, protoName: 'blockedHandles', subBuilder: HandleKey.create)
+    ..pc<PhantomSlatEntry>(3, _omitFieldNames ? '' : 'phantomSlats', $pb.PbFieldType.PM, protoName: 'phantomSlats', subBuilder: PhantomSlatEntry.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  HandleLinkData clone() => HandleLinkData()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  HandleLinkData copyWith(void Function(HandleLinkData) updates) => super.copyWith((message) => updates(message as HandleLinkData)) as HandleLinkData;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static HandleLinkData create() => HandleLinkData._();
+  HandleLinkData createEmptyInstance() => create();
+  static $pb.PbList<HandleLinkData> createRepeated() => $pb.PbList<HandleLinkData>();
+  @$core.pragma('dart2js:noInline')
+  static HandleLinkData getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HandleLinkData>(create);
+  static HandleLinkData? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<HandleLinkGroup> get linkGroups => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.List<HandleKey> get blockedHandles => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.List<PhantomSlatEntry> get phantomSlats => $_getList(2);
 }
 
 
