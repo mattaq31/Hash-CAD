@@ -31,31 +31,25 @@ Future<void> exportSlatsToSvg({
     if (layerMap[slat.layer]?['hidden'] == true) continue;
 
     // Gather ordered coordinates like in slat_painter.dart
-    final entries = slat.slatPositionToCoordinate.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final entries = slat.slatPositionToCoordinate.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
     if (entries.isEmpty) continue;
 
-    final coords = entries
-        .map((e) => appState.convertCoordinateSpacetoRealSpace(e.value))
-        .toList(growable: false);
+    final coords = entries.map((e) => appState.convertCoordinateSpacetoRealSpace(e.value)).toList(growable: false);
 
     // Compute tip extensions just like drawSlat in painter
     final slatExtendFront = calculateSlatExtend(coords[0], coords[1], gridSize);
-    final slatExtendBack = calculateSlatExtend(
-        coords[coords.length - 2], coords.last, gridSize);
+    final slatExtendBack = calculateSlatExtend(coords[coords.length - 2], coords.last, gridSize);
 
     // Build full list of points to encode into path 'd'
     final List<Offset> pathPoints = [];
     if (actionState.extendSlatTips) {
-      pathPoints.add(Offset(
-          coords.first.dx - slatExtendFront.dx, coords.first.dy - slatExtendFront.dy));
+      pathPoints.add(Offset(coords.first.dx - slatExtendFront.dx, coords.first.dy - slatExtendFront.dy));
     } else {
       pathPoints.add(coords.first);
     }
     pathPoints.addAll(coords.skip(1));
     if (actionState.extendSlatTips) {
-      pathPoints.add(Offset(
-          coords.last.dx + slatExtendBack.dx, coords.last.dy + slatExtendBack.dy));
+      pathPoints.add(Offset(coords.last.dx + slatExtendBack.dx, coords.last.dy + slatExtendBack.dy));
     }
 
     // Track bounds (for viewBox) across all path points
@@ -99,16 +93,20 @@ Future<void> exportSlatsToSvg({
     builder.attribute('xmlns', 'http://www.w3.org/2000/svg');
     builder.attribute('width', width.toStringAsFixed(2));
     builder.attribute('height', height.toStringAsFixed(2));
-    builder.attribute('viewBox',
-        '${viewX.toStringAsFixed(2)} ${viewY.toStringAsFixed(2)} ${width.toStringAsFixed(2)} ${height.toStringAsFixed(2)}');
+    builder.attribute('viewBox', '${viewX.toStringAsFixed(2)} ${viewY.toStringAsFixed(2)} ${width.toStringAsFixed(2)} ${height.toStringAsFixed(2)}');
+
+    final orderedLayers = layerGroups.entries.toList()
+      ..sort((a, b) {
+        final orderA = layerMap[a.key]?['order'] as num? ?? double.maxFinite;
+        final orderB = layerMap[b.key]?['order'] as num? ?? double.maxFinite;
+        return orderA.compareTo(orderB);
+      });
 
     // Add each layer group
-    for (final entry in layerGroups.entries) {
-      final layerName = entry.key;
-      final paths = entry.value;
+    for (final entry in orderedLayers) {
       builder.element('g', nest: () {
-        builder.attribute('id', layerName);
-        for (final path in paths) {
+        builder.attribute('id', entry.key);
+        for (final path in entry.value) {
           builder.xml(path.toXmlString());
         }
       });
