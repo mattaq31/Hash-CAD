@@ -10,6 +10,8 @@ import '../app_management/action_state.dart';
 
 import '../crisscross_core/seed.dart';
 
+const double kHandleTextMinScale = 2.14;
+
 bool isColorDark(Color color) {
   // Convert color brightness to 0-255 scale
   double brightness = (color.r * 0.299 + color.g * 0.587 + color.b * 0.114);
@@ -726,11 +728,17 @@ class SlatPainter extends CustomPainter {
 
             if (!topHandleHidden) {
               drawHandleMarker(rectTop, topColor, topCategory, true, topHandleSelected);
-              drawText(topText, Offset(position.dx, position.dy - halfHeight / 2), isColorDark(topColor) ? Colors.white : Colors.black,  halfHeight * 0.8);
+              if (scale >= kHandleTextMinScale) {
+                drawText(topText, Offset(position.dx, position.dy - halfHeight / 2),
+                    isColorDark(topColor) ? Colors.white : Colors.black, halfHeight * 0.8);
+              }
             }
             if (!bottomHandleHidden) {
               drawHandleMarker(rectBottom, bottomColor, bottomCategory, false, bottomHandleSelected);
-              drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2), isColorDark(bottomColor) ? Colors.white : Colors.black, halfHeight * 0.8);
+              if (scale >= kHandleTextMinScale) {
+                drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2),
+                    isColorDark(bottomColor) ? Colors.white : Colors.black, halfHeight * 0.8);
+              }
             }
 
             canvas.drawLine(
