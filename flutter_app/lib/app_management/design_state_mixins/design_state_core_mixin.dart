@@ -196,6 +196,7 @@ mixin DesignStateCoreMixin on ChangeNotifier {
       seedRoster = newState.seedRoster;
       assemblyLinkManager = newState.assemblyLinkManager;
       gridMode = newState.gridMode;
+      phantomMap = newState.phantomMap;
       if (!cargoPalette.containsKey(cargoAdditionType)) {
         cargoAdditionType = null;
       }
