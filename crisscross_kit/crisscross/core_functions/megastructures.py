@@ -28,6 +28,7 @@ else:
     plt.rcParams.update({'font.sans-serif': 'DejaVu Sans'}) # should work with linux
 
 
+
 def create_default_layer_palette(layer_interface_orientations):
     layer_palette = {}
     cmap = mpl.colormaps['Dark2']
