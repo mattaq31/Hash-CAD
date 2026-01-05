@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from helper_functions import next_capital_letter
+from crisscross.helper_functions import next_capital_letter
 
 
 class HandleLinkManager:
