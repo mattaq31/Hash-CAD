@@ -150,9 +150,9 @@ class HandleLinkManager:
         group_2 = self.handle_link_to_group.get(key_2, None)
 
         if group_1 is None and group_2 is None:
-            # create new group using alphabetic ID (never saved to file)
-            new_group = next_capital_letter(self.next_group_assignment)
-            self.next_group_assignment = new_group
+            # create new group using numeric ID (saved to file)
+            new_group = self.max_group_id + 1
+            self.max_group_id += 1
             self.handle_link_to_group[key_1] = new_group
             self.handle_link_to_group[key_2] = new_group
             self.handle_group_to_link[new_group].extend([key_1, key_2])

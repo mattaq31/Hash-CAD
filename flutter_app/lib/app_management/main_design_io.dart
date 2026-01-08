@@ -280,7 +280,7 @@ void exportDesign(Map<String, Slat> slats,
     colorIndex += 1;
   }
 
-  // Finally, export slat type metadata to a separate sheet for easy editing
+  // export slat type metadata to a separate sheet for easy editing
   Sheet slatTypeSheet = excel['slat_types'];
   slatTypeSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer');
   slatTypeSheet.cell(CellIndex.indexByString('B1')).value = TextCellValue('Slat ID');

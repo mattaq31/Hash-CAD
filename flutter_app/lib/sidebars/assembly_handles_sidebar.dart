@@ -481,15 +481,17 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                 focusNode: defaultHandleFocusNode,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
+                textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 ),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (value) => _updateDefaultHandleCount(actionState),
+                inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+                onSubmitted: (value) => _updateDefaultHandleCount(actionState),
               ),
             ),
           ),
+
           SizedBox(width: 8),
           // Random and Enforce toggle buttons
           Column(

@@ -160,9 +160,9 @@ class HandleLinkManager {
     var group2 = handleLinkToGroup[key2];
 
     if (group1 == null && group2 == null) {
-      // Create new group using alphabetic ID (never saved to file)
-      var newGroup = nextCapitalLetter(nextGroupAssignment);
-      nextGroupAssignment = newGroup;
+      // Create new group using numeric ID (saved to file)
+      var newGroup = maxGroupId + 1;
+      maxGroupId += 1;
       handleLinkToGroup[key1] = newGroup;
       handleLinkToGroup[key2] = newGroup;
       handleGroupToLink[newGroup] = [key1, key2];

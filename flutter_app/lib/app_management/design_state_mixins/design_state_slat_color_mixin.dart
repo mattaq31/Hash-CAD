@@ -51,7 +51,6 @@ mixin DesignStateSlatColorMixin on ChangeNotifier {
     }
     // update the uniqueSlatColorsByLayer map
     uniqueSlatColorsByLayer[layerKey]![oldColorIndex] = newColor;
-
     notifyListeners();
   }
 

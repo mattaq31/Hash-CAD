@@ -264,7 +264,12 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
           var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
           Map<Offset, Offset> coordinateTransferMap = {};
           for (var pos in appState.selectedAssemblyPositions) {
-            coordinateTransferMap[pos] = pos + convCoordHoverPosition - convCoordAnchor;
+
+            var newPos = pos + convCoordHoverPosition - convCoordAnchor;
+            if(pos == newPos){ // no movement should not cause any changes
+              continue;
+            }
+            coordinateTransferMap[pos] = newPos;
           }
           appState.moveAssemblyHandle(coordinateTransferMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
           appState.clearAssemblySelection();
