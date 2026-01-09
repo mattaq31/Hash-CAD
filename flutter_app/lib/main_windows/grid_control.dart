@@ -169,18 +169,22 @@ class _GridAndCanvasState extends State<GridAndCanvas>
           left: actionState.isSideBarCollapsed ? 72 + 15 : 72 + 330 + 10,
           child: Tooltip(
             message: 'Export Slat Design to SVG Image',
-            waitDuration: Duration(milliseconds: 500), // Optional: delay before showing
+            waitDuration: Duration(milliseconds: 500),
             child: FloatingActionButton.small(
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Icon(Icons.camera), // Placeholder icon
-              onPressed: () {
-                exportSlatsToSvg(
-                  slats: appState.slats.values.toList(),
-                  layerMap: appState.layerMap,
-                  appState: appState,
-                  actionState: actionState
-                );
+              child: Icon(Icons.camera),
+              onPressed: () async {
+                final options = await showSvgExportDialog(context, actionState);
+                if (options != null) {
+                  exportSlatsToSvg(
+                    slats: appState.slats.values.toList(),
+                    layerMap: appState.layerMap,
+                    appState: appState,
+                    actionState: actionState,
+                    exportOptions: options,
+                  );
+                }
               },
             ),
         ),

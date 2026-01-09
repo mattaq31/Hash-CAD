@@ -1,13 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hash_cad/graphics/crosshatch_shader.dart';
-import '../crisscross_core/seed.dart';
 import 'dart:math';
 
-bool _isColorDark(Color color) {
-  double brightness = (color.r * 0.299 + color.g * 0.587 + color.b * 0.114);
-  return brightness < 0.5;
-}
+import '../graphics/crosshatch_shader.dart';
+import '../crisscross_core/seed.dart';
+import 'slat_painter.dart';
 
 
 void paintSeedFromArray(Canvas canvas, Map<int, Offset> coordinates, double gridSize,
@@ -172,7 +169,7 @@ class SeedPainter extends CustomPainter {
       text: TextSpan(
         text: seed.ID,
         style: TextStyle(
-          color: _isColorDark(color) ? Colors.white : Colors.black,
+          color: isColorDark(color) ? Colors.white : Colors.black,
           fontFamily: 'Roboto',
           fontSize: gridSize * 0.9,
           fontWeight: FontWeight.bold,
