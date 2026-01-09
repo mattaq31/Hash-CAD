@@ -16,6 +16,8 @@ import 'floating_main_title.dart';
 import '../drag_and_drop/design_drop_target.dart';
 import '../app_management/action_state.dart';
 import '../app_management/server_state.dart';
+import '../app_management/update_state.dart';
+import '../dialogs/update_dialog.dart';
 
 
 class SplitScreen extends StatefulWidget {
@@ -50,7 +52,23 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
       else if (kDebugMode){
         serverNotifier.launchClients(50055);
       }
+
+      // Check for updates on startup (silent check - respects "skip this version")
+      _checkForUpdatesOnStartup();
     });
+  }
+
+  /// Check for updates on app startup
+  Future<void> _checkForUpdatesOnStartup() async {
+    if (kIsWeb) return; // No updates on web
+
+    final updateState = Provider.of<UpdateState>(context, listen: false);
+    final hasUpdate = await updateState.checkForUpdates(silent: true);
+
+    if (hasUpdate && mounted) {
+      // Show the update dialog
+      showUpdateDialog(context);
+    }
   }
 
   @override
@@ -194,19 +212,59 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                           'assets/main_icon.png',
                           height: 80, // Adjust the height as needed
                         ),
-                        Text(
-                          VersionInfo.version,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          VersionInfo.buildCommit,
-                          style: TextStyle(
-                            fontSize: 8,
-                            color: Colors.grey[400],
-                          ),
+                        // Version display with update indicator
+                        Consumer<UpdateState>(
+                          builder: (context, updateState, child) {
+                            return Tooltip(
+                              message: updateState.updateAvailable
+                                  ? 'Update available! Click to update'
+                                  : 'Click to check for updates',
+                              child: InkWell(
+                                onTap: () => showUpdateDialog(context, isManualCheck: !updateState.updateAvailable),
+                                borderRadius: BorderRadius.circular(4),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            VersionInfo.version,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: updateState.updateAvailable ? Colors.green : Colors.grey[600],
+                                              fontWeight: updateState.updateAvailable ? FontWeight.bold : FontWeight.normal,
+                                            ),
+                                          ),
+                                          if (updateState.updateAvailable) ...[
+                                            const SizedBox(width: 2),
+                                            const Icon(Icons.arrow_upward, color: Colors.green, size: 10),
+                                          ],
+                                        ],
+                                      ),
+                                      Text(
+                                        VersionInfo.buildCommit,
+                                        style: TextStyle(
+                                          fontSize: 8,
+                                          color: Colors.grey[400],
+                                        ),
+                                      ),
+                                      if (updateState.updateAvailable)
+                                        Text(
+                                          'Update available',
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            color: Colors.green[700],
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(height: 8),
                       ],

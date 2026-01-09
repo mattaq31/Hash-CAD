@@ -8,6 +8,7 @@ import 'main_windows/window_manager.dart'
     if (dart.library.js_interop) 'main_windows/web_window_manager.dart';
 import '../app_management/action_state.dart';
 import '../app_management/server_state.dart';
+import '../app_management/update_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,8 @@ Future<void> main() async {
         },
       ),
       ChangeNotifierProvider(create: (context) => ActionState()),
-      ChangeNotifierProvider(create: (context) => ServerState())
+      ChangeNotifierProvider(create: (context) => ServerState()),
+      ChangeNotifierProvider(create: (context) => UpdateState()),
     ],
     child: MaterialApp(
       home: SplitScreen(),

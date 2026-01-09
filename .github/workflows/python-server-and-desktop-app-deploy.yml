@@ -279,6 +279,13 @@ jobs:
       - name: List downloaded files
         run: ls -R artifacts
 
+      - name: Generate SHA256 checksums
+        run: |
+          cd artifacts
+          sha256sum Hash-CAD-windows.zip Hash-CAD-linux.tar.gz Hash-CAD-macOS.zip > SHA256SUMS
+          echo "Generated checksums:"
+          cat SHA256SUMS
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -291,6 +298,7 @@ jobs:
               artifacts/Hash-CAD-windows.zip
               artifacts/Hash-CAD-linux.tar.gz
               artifacts/Hash-CAD-macOS.zip
+              artifacts/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
