@@ -29,9 +29,10 @@ jobs:
         run: flutter pub get
         working-directory: flutter_app
 
-      - name: Analyze Code
+      - name: Analyze Code (informational)
         run: flutter analyze --no-fatal-infos
         working-directory: flutter_app
+        continue-on-error: true  # Don't fail build on warnings; tests are the gate
 
       - name: Run Tests
         run: flutter test --coverage

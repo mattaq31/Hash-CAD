@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hash_cad/crisscross_core/slats.dart';
 
 /// Creates test slat coordinates for a horizontal slat at given origin.
-/// Returns Map<int, Offset> with positions 1 through [length].
+/// Returns Map with positions 1 through length.
 Map<int, Offset> createTestSlatCoordinates(Offset origin, {int length = 32}) {
   final coords = <int, Offset>{};
   for (int i = 1; i <= length; i++) {
