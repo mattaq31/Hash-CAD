@@ -9,6 +9,7 @@ import '../crisscross_core/handle_plates.dart';
 import 'slat_undo_stack.dart';
 
 // Mixin imports
+import 'design_state_mixins/design_state_contract.dart';
 import 'design_state_mixins/design_state_core_mixin.dart';
 import 'design_state_mixins/design_state_file_io_mixin.dart';
 import 'design_state_mixins/design_state_layer_mixin.dart';
@@ -76,6 +77,7 @@ class HoverPreview {
 /// Go to the individual mixin files for the bulk of the code
 class DesignState extends ChangeNotifier
     with
+        DesignStateContract,
         DesignStateCoreMixin,
         DesignStateFileIOMixin,
         DesignStateLayerMixin,

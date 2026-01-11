@@ -2,44 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/seed.dart';
-import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
 import '../../main_windows/alert_window.dart';
 import '../shared_app_state.dart';
+import 'design_state_contract.dart';
 
 /// Mixin containing seed attachment and removal operations for DesignState
-mixin DesignStateSeedMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
-
-  Map<String, Map<String, dynamic>> get layerMap;
-
-  Map<String, Map<Offset, String>> get occupiedGridPoints;
-
-  Map<String, Map<Offset, String>> get occupiedCargoPoints;
-
-  Map<(String, String, Offset), Seed> get seedRoster;
-
-  String get nextSeedID;
-
-  set nextSeedID(String value);
-
-  // Methods from other mixins
-  void saveUndoState();
-
-  bool layerNumberValid(int layerOrder);
-
-  String? getLayerByOrder(int order);
-
-  Offset convertRealSpacetoCoordinateSpace(Offset inputPosition);
-
-  Offset convertCoordinateSpacetoRealSpace(Offset inputPosition);
-
-  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false});
-
-  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false});
+mixin DesignStateSeedMixin on ChangeNotifier, DesignStateContract {
 
   /// Checks if a coordinate belongs to an active seed in the roster.
   /// Returns the seed key (layerID, slatSide, firstCoordinate) if found, null otherwise.
+  @override
   (String, String, Offset)? isHandlePartOfActiveSeed(String layerID, String slatSide, Offset coordinate) {
     Offset realSpaceCoord = convertCoordinateSpacetoRealSpace(coordinate);
     for (var seedEntry in seedRoster.entries) {
@@ -54,6 +27,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
   }
 
   /// Returns all coordinate positions (in coordinate space) for a given seed.
+  @override
   List<Offset> getAllSeedHandleCoordinates((String, String, Offset) seedKey) {
     if (!seedRoster.containsKey(seedKey)) return [];
     return seedRoster[seedKey]!.coordinates.values.map((coord) => convertRealSpacetoCoordinateSpace(coord)).toList();
@@ -61,6 +35,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
 
   /// Removes a seed from the roster but keeps handles as isolated seed handles.
   /// Handles retain their values (e.g., "A-1-1") and 'SEED' category.
+  @override
   void dissolveSeed((String, String, Offset) seedKey, {bool skipStateUpdate = false}) {
     // Simply remove from seedRoster - handles remain on slats with their original values
     // The occupiedCargoPoints entries also remain unchanged
@@ -74,6 +49,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void attachSeed(String layerID, String slatSide, Map<int, Offset> coordinates, BuildContext context) {
     /// Adds a seed to the design.  This involves:
     /// 1) adding the appropriate handles to all involved slats,
@@ -174,6 +150,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
 
   /// Scans for isolated seed handles that form a valid 5x16 pattern and reinstates them as seeds.
   /// Called after cargo movement to check if handles have reformed a seed.
+  @override
   void checkAndReinstateSeeds(String layerID, String slatSide, {bool skipStateUpdate = false}) {
     int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
 
@@ -291,6 +268,7 @@ mixin DesignStateSeedMixin on ChangeNotifier {
     }
   }
 
+  @override
   void removeSeed(String layerID, String slatSide, Offset coordinate) {
     /// Removes a seed from the design.  This involves: 1) remove the handles from the related slats,
     /// 2) removing the blocks from the slat and cargo occupancy grids and 3)
@@ -333,13 +311,10 @@ mixin DesignStateSeedMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  Map<String, Map<int, String>> get phantomMap;
-
-  Set<(String, Offset)> deleteHandleWithPhantomPropagation(Slat slat, int position, int side);
-
   /// Removes a single seed handle without affecting the seed roster.
   /// Used when dissolving a seed and removing individual handles.
   /// Propagates deletion through phantom network.
+  @override
   void removeSingleSeedHandle(String slatID, String slatSide, Offset coordinate, {bool skipStateUpdate = false}) {
     var slat = slats[slatID]!;
     int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);

@@ -2,54 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/cargo.dart';
-import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
+import 'design_state_contract.dart';
 
 /// Mixin containing cargo type management and cargo attachment operations for DesignState
-mixin DesignStateCargoMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
+mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
 
-  Map<String, Map<String, dynamic>> get layerMap;
+  /// Removes a handle from a slat without any propagation.
+  void _removeHandleFromSlat(Slat slat, int position, int side) {
+    var handleDict = getHandleDict(slat, side);
+    handleDict.remove(position);
+    slat.placeholderList.remove('handle-$position-h$side');
+  }
 
-  Map<String, Map<Offset, String>> get occupiedGridPoints;
-
-  Map<String, Map<Offset, String>> get occupiedCargoPoints;
-
-  Map<String, Cargo> get cargoPalette;
-
-  int get cargoAddCount;
-
-  set cargoAddCount(int value);
-
-  String? get cargoAdditionType;
-
-  set cargoAdditionType(String? value);
-
-  List<Offset> get selectedHandlePositions;
-
-  set selectedHandlePositions(List<Offset> value);
-
-  String get selectedLayerKey;
-
-  // Methods from other mixins
-  void saveUndoState();
-
-  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false});
-
-  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false});
-
-  void removeSeed(String layerID, String slatSide, Offset coordinate);
-
-  void clearSelection();
-
-  void _removeHandleFromSlat(Slat slat, int position, int side);
-
+  @override
   void addCargoType(Cargo cargo) {
     cargoPalette[cargo.name] = cargo;
     saveUndoState();
     notifyListeners();
   }
 
+  @override
   void deleteCargoType(String cargoName) {
     // need to remove all cargo of this type from the slats and from the cargo occupancy map (otherwise will error out)
     for (var slat in slats.values) {
@@ -71,6 +44,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   Cargo getCargoFromCoordinate(Offset coordinate, String layerID, String slatSide) {
     String cargoName = occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]![coordinate]!;
     if (cargoName.contains('-')){
@@ -79,6 +53,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     return cargoPalette[cargoName]!;
   }
 
+  @override
   void deleteAllCargo() {
     // need to remove all cargo of this type from the slats and from the cargo occupancy map (otherwise will error out)
     for (var slat in slats.values) {
@@ -97,15 +72,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  // Methods from seed mixin
-  (String, String, Offset)? isHandlePartOfActiveSeed(String layerID, String slatSide, Offset coordinate);
-
-  void dissolveSeed((String, String, Offset) seedKey, {bool skipStateUpdate = false});
-
-  void checkAndReinstateSeeds(String layerID, String slatSide, {bool skipStateUpdate = false});
-
-  void removeSingleSeedHandle(String slatID, String slatSide, Offset coordinate, {bool skipStateUpdate = false});
-
+  @override
   void moveCargo(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide, {bool skipStateUpdate = false}) {
     int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
 
@@ -233,6 +200,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void updateCargoAddCount(int value) {
     /// Updates the number of cargo to be added with the next 'add' click
     if (cargoAdditionType == 'SEED') {
@@ -243,6 +211,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void selectCargoType(String ID) {
     if (cargoAdditionType == ID) {
       cargoAdditionType = null;
@@ -252,6 +221,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void selectHandle(Offset coordinate, {bool addOnly = false}) {
     /// Selects or deselects cargo handles
     if (selectedHandlePositions.contains(coordinate) && !addOnly) {
@@ -265,6 +235,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void attachCargo(Cargo cargo, String layerID, String slatSide, Map<int, Offset> coordinates,
       {bool skipStateUpdate = false}) {
     String layerSideKey = generateLayerSideKey(layerID, slatSide);
@@ -303,10 +274,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  Map<String, Map<int, String>> get phantomMap;
-
-  Set<(String, Offset)> deleteHandleWithPhantomPropagation(Slat slat, int position, int side);
-
+  @override
   void removeCargo(String slatID, String slatSide, Offset coordinate, {bool skipStateUpdate = false}) {
     var slat = slats[slatID]!;
     int integerSlatSide = getSlatSideFromLayer(layerMap, slat.layer, slatSide);
@@ -334,10 +302,7 @@ mixin DesignStateCargoMixin on ChangeNotifier {
     notifyListeners();
   }
 
-  bool layerNumberValid(int layerOrder);
-
-  String? getLayerByOrder(int order);
-
+  @override
   void removeSelectedCargo(String slatSide) {
     String layerID = selectedLayerKey;
 

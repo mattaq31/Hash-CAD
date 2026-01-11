@@ -1,64 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
-import 'design_state_handle_link_mixin.dart';
+import 'design_state_contract.dart';
 
 /// Mixin containing slat CRUD operations for DesignState
-mixin DesignStateSlatMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
+mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
 
-  Map<String, Map<String, dynamic>> get layerMap;
-
-  Map<String, Map<Offset, String>> get occupiedGridPoints;
-
-  Map<String, Map<Offset, String>> get occupiedCargoPoints;
-
-  Map<String, Map<int, String>> get phantomMap;
-
-  HandleLinkManager get assemblyLinkManager;
-
-  List<String> get selectedSlats;
-
-  set selectedSlats(List<String> value);
-
-  List<Offset> get selectedHandlePositions;
-
-  set selectedHandlePositions(List<Offset> value);
-
-  String get slatAdditionType;
-
-  set slatAdditionType(String value);
-
-  int get slatAddCount;
-
-  set slatAddCount(int value);
-
-  bool get hammingValueValid;
-
-  set hammingValueValid(bool value);
-
-  // Methods from other mixins
-  void saveUndoState();
-
-  // Methods from seed mixin
-  (String, String, Offset)? isHandlePartOfActiveSeed(String layerID, String slatSide, Offset coordinate);
-
-  void dissolveSeed((String, String, Offset) seedKey, {bool skipStateUpdate = false});
-
-  void checkAndReinstateSeeds(String layerID, String slatSide, {bool skipStateUpdate = false});
-
-  bool layerNumberValid(int layerOrder);
-
-  String? getLayerByOrder(int order);
-
-  void clearSelection();
-
+  @override
   void setSlatAdditionType(String type) {
     slatAdditionType = type;
     notifyListeners();
   }
 
+  @override
   void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
     /// Adds slats to the design
     for (var slat in slatCoordinates.entries) {
@@ -77,6 +31,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates, {bool skipStateUpdate = false, requestFlip = false}) {
     /// Updates the position of a slat
     /// Uses three-phase approach to prevent data loss when movement paths overlap
@@ -185,6 +140,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates,
       {bool requestFlip = false}) {
     /// Updates the position of multiple slats
@@ -199,6 +155,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void removeSlat(String ID, {bool skipStateUpdate = false}) {
     /// Removes a slat from the design
     if (!skipStateUpdate) clearSelection();
@@ -279,6 +236,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void removeSlats(List<String> IDs) {
     /// Remove multiple slats from the design
     if (IDs.isEmpty) return;
@@ -293,6 +251,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void flipSlat(String ID) {
     /// Flips a slat's direction
     if (slats[ID]!.slatType == 'tube') {
@@ -309,6 +268,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void flipSlats(List<String> IDs) {
     /// Flips multiple slats' direction
     for (var ID in IDs) {
@@ -326,6 +286,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void selectSlat(String ID, {bool addOnly = false}) {
     /// Selects or deselects a slat
 
@@ -342,6 +303,7 @@ mixin DesignStateSlatMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void updateSlatAddCount(int value) {
     /// Updates the number of slats to be added with the next 'add' click
     slatAddCount = value;

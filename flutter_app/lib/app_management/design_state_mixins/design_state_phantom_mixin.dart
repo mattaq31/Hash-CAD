@@ -1,43 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
-import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
 import '../shared_app_state.dart';
-import 'design_state_handle_link_mixin.dart';
+import 'design_state_contract.dart';
 
 /// Mixin containing phantom slat operations for DesignState
-mixin DesignStatePhantomMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
+mixin DesignStatePhantomMixin on ChangeNotifier, DesignStateContract {
 
-  Map<String, Map<String, dynamic>> get layerMap;
-
-  Map<String, Map<Offset, String>> get occupiedGridPoints;
-
-  Map<String, Map<int, String>> get phantomMap;
-
-  List<String> get selectedSlats;
-
-  String get selectedLayerKey;
-
-  String get gridMode;
-
-  bool get hammingValueValid;
-
-  set hammingValueValid(bool value);
-
-  void clearSelection();
-  void removeSlat(String ID, {bool skipStateUpdate = false});
-
-  HandleLinkManager get assemblyLinkManager;
-
-  // Methods from other mixins
-  void saveUndoState();
-
-  bool layerNumberValid(int layerOrder);
-
-  String? getLayerByOrder(int order);
-
+  @override
   void addPhantomSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates, Map<int, Slat> referenceSlats) {
     /// Adds phantom slats (which are linked to real slats)
     for (var iterID in slatCoordinates.keys) {
@@ -64,6 +35,7 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void removeAllPhantomSlats() {
     // removes all phantom slats from the design
     List<String> phantomSlatIDs = [];
@@ -82,6 +54,7 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void clearPhantomSlatSelection() {
     // clears selection of phantom slats
     List<String> phantomSlatIDs = [];
@@ -98,6 +71,7 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   bool selectionHasPhantoms() {
     bool hasPhantoms = false;
 
@@ -110,6 +84,7 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     return hasPhantoms;
   }
 
+  @override
   bool selectionInvolvesPhantoms() {
     bool hasPhantoms = false;
 
@@ -122,6 +97,7 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     return hasPhantoms;
   }
 
+  @override
   void spawnAndPlacePhantomSlats() {
     List<Offset> allCoordinates = [];
     for (var slatID in selectedSlats) {
@@ -201,6 +177,7 @@ mixin DesignStatePhantomMixin on ChangeNotifier {
     addPhantomSlats(selectedLayerKey, phantomSlatCoordinates, referenceSlats);
   }
 
+  @override
   void unLinkSelectedPhantoms() {
     // Removes phantom slats and replaces them with normal slats with linked handles (linked to the reference)
 

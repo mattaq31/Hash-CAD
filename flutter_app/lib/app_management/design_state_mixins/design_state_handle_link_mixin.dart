@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/common_utilities.dart';
 import '../shared_app_state.dart';
+import 'design_state_contract.dart';
 
 
 String dartToPythonSlatNameConvert(String name, Map<String, Map<String, dynamic>> layerMap){
@@ -453,23 +454,9 @@ class HandleLinkManager {
 }
 
 /// Mixin providing HandleLinkManager access in DesignState
-mixin DesignStateHandleLinkMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
-  Map<String, Map<String, dynamic>> get layerMap;
-  bool get hammingValueValid;
-  set hammingValueValid(bool value);
-
-  // Methods from other mixins
-  void saveUndoState();
-  Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false});
-  Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false});
-
-  // The link manager instance
-  HandleLinkManager get assemblyLinkManager;
-  set assemblyLinkManager(HandleLinkManager value);
-
+mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
   /// Clears all handle links and blocks
+  @override
   void clearAllHandleLinks() {
     assemblyLinkManager.clearAll();
     saveUndoState();
@@ -477,17 +464,20 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   }
 
   /// Imports handle link data from Excel format
+  @override
   void importHandleLinks(List<List<dynamic>> data) {
     assemblyLinkManager.importFromExcelData(data, slats, layerMap);
     notifyListeners();
   }
 
   /// Exports handle link data to Excel format
+  @override
   List<List<dynamic>> exportHandleLinks() {
     return assemblyLinkManager.exportToExcelData(slats, layerMap);
   }
 
   /// Links multiple handles together and notifies listeners
+  @override
   void linkHandles(List<HandleKey> keys) {
     assemblyLinkManager.linkMultiple(keys);
     saveUndoState();
@@ -495,6 +485,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   }
 
   /// Removes a link from a handle and notifies listeners
+  @override
   void unlinkHandle(HandleKey key) {
     assemblyLinkManager.removeLink(key);
     saveUndoState();
@@ -502,6 +493,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   }
 
   /// Toggles block status on a handle and notifies listeners
+  @override
   void toggleHandleBlock(HandleKey key) {
     if (assemblyLinkManager.handleBlocks.contains(key)) {
       assemblyLinkManager.removeBlock(key);
@@ -513,6 +505,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   }
 
   /// Sets enforced value on a handle and notifies listeners
+  @override
   void setHandleEnforcedValue(HandleKey key, int value) {
     assemblyLinkManager.setEnforcedValue(key, value);
     saveUndoState();
@@ -521,6 +514,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
 
   /// Links multiple handles and propagates handle values to all linked handles.
   /// If any of the handles has an existing assembly value, that value is propagated to all.
+  @override
   void linkHandlesAndPropagate(List<HandleKey> keys) {
     if (keys.length < 2) return;
 
@@ -556,6 +550,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   }
 
   /// Toggles block status on a handle and applies the change (deletes handle if blocking).
+  @override
   void toggleHandleBlockAndApply(HandleKey key) {
     var slat = slats[key.$1];
     if (slat == null) return;
@@ -575,6 +570,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier {
   }
 
   /// Sets enforced value on a handle's group and propagates to all linked handles.
+  @override
   void setHandleEnforcedValueAndApply(HandleKey key, int value) {
     var slat = slats[key.$1];
     if (slat == null) return;

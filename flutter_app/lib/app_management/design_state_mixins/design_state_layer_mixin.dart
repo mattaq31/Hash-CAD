@@ -1,89 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../../crisscross_core/slats.dart';
-import '../../crisscross_core/seed.dart';
-import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
 import '../../main_windows/alert_window.dart';
 import '../shared_app_state.dart';
-import 'design_state_handle_link_mixin.dart';
+import 'design_state_contract.dart';
 
 /// Mixin containing layer management operations for DesignState
-mixin DesignStateLayerMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
+mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
 
-  Map<String, Map<String, dynamic>> get layerMap;
-
-  Map<String, Map<Offset, String>> get occupiedGridPoints;
-
-  Map<String, Map<Offset, String>> get occupiedCargoPoints;
-
-  Map<(String, String, Offset), Seed> get seedRoster;
-
-  HandleLinkManager get assemblyLinkManager;
-
-  List<String> get colorPalette;
-
-  String get selectedLayerKey;
-
-  set selectedLayerKey(String value);
-
-  List<String> get selectedSlats;
-
-  set selectedSlats(List<String> value);
-
-  List<Offset> get selectedHandlePositions;
-
-  List<Offset> get selectedAssemblyPositions;
-
-  set selectedHandlePositions(List<Offset> value);
-  set selectedAssemblyPositions(List<Offset> value);
-
-  String get nextLayerKey;
-
-  set nextLayerKey(String value);
-
-  int get nextColorIndex;
-
-  set nextColorIndex(int value);
-
-  Map<(String, int), Offset> get multiSlatGenerators;
-
-  set multiSlatGenerators(Map<(String, int), Offset> value);
-
-  Map<(String, int), Offset> get multiSlatGeneratorsAlternate;
-
-  set multiSlatGeneratorsAlternate(Map<(String, int), Offset> value);
-
-  bool get standardTilt;
-
-  set standardTilt(bool value);
-
-  String get slatAddDirection;
-
-  set slatAddDirection(String value);
-
-  String get gridMode;
-
-  // Methods from other mixins
-  void saveUndoState();
-
-  bool layerNumberValid(int layerOrder);
-
-  String? getLayerByOrder(int order);
-
-  /// Gets the layer ID for an adjacent layer (above for 'top', below for 'bottom'),
-  /// or null if out of bounds.
+  @override
   String? getAdjacentLayer(String layerID, String slatSide) {
     int adjacentOrder = getAdjacentLayerOrder(layerMap, layerID, slatSide);
     if (!layerNumberValid(adjacentOrder)) return null;
     return getLayerByOrder(adjacentOrder);
   }
 
-  String flipSlatSide(String side);
-
-  Offset convertRealSpacetoCoordinateSpace(Offset inputPosition);
-
+  @override
   void updateActiveLayer(String value) {
     /// Updates the active layer
     selectedLayerKey = value;
@@ -91,6 +23,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void cycleActiveLayer(bool upDirection) {
     /// Cycles through the layer list and sets the selected layer (either up or down)
     if (upDirection) {
@@ -104,6 +37,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void updateLayerColor(String layer, Color color) {
     /// Updates the color of a layer
     layerMap[layer] = {
@@ -113,6 +47,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void clearSelection() {
     /// Clears all selections
     selectedSlats = [];
@@ -121,6 +56,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void rotateLayerDirection(String layerKey) {
     /// Rotates the direction of a layer through all available directions
     if (gridMode == '90') {
@@ -149,6 +85,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void flipLayer(String layer, BuildContext context) {
     /// flips the H2-H5 direction of a layer
 
@@ -234,12 +171,14 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void flipLayerVisibility(String layer) {
     /// Changes the visibility of a layer on the 2D grid
     layerMap[layer]?['hidden'] = !layerMap[layer]?['hidden'];
     notifyListeners();
   }
 
+  @override
   void flipMultiSlatGenerator() {
     /// Multi-slat generation can be flipped to achieve different placement systems
     Map<(String, int), Offset> settingsTransfer = Map.from(multiSlatGenerators);
@@ -249,6 +188,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void flipSlatAddDirection() {
     /// Slat placement can be flipped to adjust the positions of handles
     if (slatAddDirection == 'down') {
@@ -259,6 +199,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void deleteLayer(String layer) {
     /// Deletes a layer from the design entirely
     if (!layerMap.containsKey(layer)) {
@@ -299,6 +240,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void reOrderLayers(List<String> newOrder, BuildContext context) {
     /// Reorders the positions of the layers based on a new order
 
@@ -374,6 +316,7 @@ mixin DesignStateLayerMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void addLayer() {
     /// Adds an entirely new layer to the design
     layerMap[nextLayerKey] = {

@@ -1,23 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../crisscross_core/slats.dart';
+import 'design_state_contract.dart';
 
 /// Mixin containing slat color management operations for DesignState
-mixin DesignStateSlatColorMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
+mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
 
-  List<String> get selectedSlats;
-
-  String get selectedLayerKey;
-
-  Map<String, List<Color>> get uniqueSlatColorsByLayer;
-
-  Map<String, Map<int, String>> get phantomMap;
-
-  // Methods from other mixins
-  void saveUndoState();
-
+  @override
   void assignColorToSelectedSlats(Color color) {
     /// Assigns a color to all selected slats (only non-phantom slats can be edited directly)
     for (var slatID in selectedSlats) {
@@ -41,6 +29,7 @@ mixin DesignStateSlatColorMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void editSlatColorSearch(String layerKey, int oldColorIndex, Color newColor) {
     /// Edits the color of all slats of a specific color
     Color oldColor = uniqueSlatColorsByLayer[layerKey]![oldColorIndex];
@@ -54,6 +43,7 @@ mixin DesignStateSlatColorMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void removeSlatColorFromLayer(String layerKey, int colorIndex) {
     /// Removes a specific color from the list of unique slat colors in a layer
     Color colorToRemove = uniqueSlatColorsByLayer[layerKey]![colorIndex];
@@ -67,6 +57,7 @@ mixin DesignStateSlatColorMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void clearAllSlatColors() {
     /// Clears the color of all slats
     for (var slat in slats.values) {
@@ -78,6 +69,7 @@ mixin DesignStateSlatColorMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void clearSlatColorsFromLayer(String layer) {
     /// Clears the color of all slats in a specific layer
     for (var slat in slats.values) {

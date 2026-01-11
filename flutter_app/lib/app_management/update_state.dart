@@ -83,7 +83,9 @@ class UpdateState extends ChangeNotifier {
 
   /// Dismiss the update dialog without skipping
   void dismiss() {
-    _setStatus(UpdateStatus.idle);
+    if (_status != UpdateStatus.available) {
+      _setStatus(UpdateStatus.idle);
+    }
   }
 
   /// Reset error state

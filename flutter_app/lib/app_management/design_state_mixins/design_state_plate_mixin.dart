@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../crisscross_core/slats.dart';
-import '../../crisscross_core/handle_plates.dart';
 import '../main_design_io.dart';
+import 'design_state_contract.dart';
 
 /// Mixin containing plate import and handle assignment operations for DesignState
-mixin DesignStatePlateMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
+mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
 
-  PlateLibrary get plateStack;
-
+  @override
   void importPlates() async {
     await importPlatesFromFile(plateStack);
 
@@ -19,18 +15,21 @@ mixin DesignStatePlateMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void removePlate(String plateName) {
     plateStack.removePlate(plateName);
     notifyListeners();
   }
 
+  @override
   void removeAllPlates() {
     plateStack.clear();
     notifyListeners();
   }
 
+  @override
   void plateAssignAllHandles() {
-    void assignHandleIfPresent(Slat slat, int posn, int side, Map<int, Map<String, dynamic>> handles) {
+    void assignHandleIfPresent(slat, int posn, int side, Map<int, Map<String, dynamic>> handles) {
       if (!handles.containsKey(posn)) {
         if (plateStack.contains('FLAT', posn, side, 'BLANK')) {
           final data = plateStack.getOligoData('FLAT', posn, side, 'BLANK');

@@ -4,57 +4,15 @@ import 'dart:math';
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/parasitic_valency.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
-import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
 import '../main_design_io.dart';
 import 'design_state_handle_link_mixin.dart';
+import 'design_state_contract.dart';
 
 /// Mixin containing handle assignment and assembly handle operations for DesignState
-mixin DesignStateHandleMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
+mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
 
-  Map<String, Map<String, dynamic>> get layerMap;
-
-  Map<String, Map<Offset, String>> get occupiedGridPoints;
-
-  Map<String, Map<int, String>> get phantomMap;
-
-  String get selectedLayerKey;
-
-  double get gridSize;
-
-  String get gridMode;
-
-  int get currentMaxValency;
-
-  set currentMaxValency(int value);
-
-  double get currentEffValency;
-
-  set currentEffValency(double value);
-
-  bool get hammingValueValid;
-
-  set hammingValueValid(bool value);
-
-  bool get currentlyComputingHamming;
-
-  set currentlyComputingHamming(bool value);
-
-  // Access to link manager from other mixin
-  HandleLinkManager get assemblyLinkManager;
-
-  // Selection state for assembly handles
-  List<Offset> get selectedAssemblyPositions;
-  set selectedAssemblyPositions(List<Offset> value);
-
-  // Methods from other mixins
-  void saveUndoState();
-
-  String? getLayerByOrder(int order);
-
-  void undo2DAction({bool redo = false});
-
+  @override
   bool handleWithinBounds(Slat slat, int position, int side, String layerID){
 
     int topSide = getSlatSideFromLayer(layerMap, layerID, 'top');
@@ -69,6 +27,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   }
 
 
+  @override
   Set<HandleKey> smartSetHandle(Slat slat, int position, int side, String handlePayload, String category, {bool requestStateUpdate = false}) {
 
     Set<HandleKey> slatsUpdated = {};
@@ -209,6 +168,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   /// Cascade mode: Also deletes all linked handles and their layer attachments.
   ///
   /// Returns a set of all coordinates that were affected (for batch updating occupancy maps).
+  @override
   Set<(String, Offset)> smartDeleteHandle(Slat slat, int position, int side, {bool cascadeDelete = false, bool requestStateUpdate = false}) {
     if (slat.phantomParent != null) {
       // For phantom slats, redirect to parent
@@ -353,6 +313,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   }
 
   /// Selects or deselects an assembly handle at the given coordinate.
+  @override
   void selectAssemblyHandle(Offset coordinate, {bool addOnly = false}) {
     if (selectedAssemblyPositions.contains(coordinate) && !addOnly) {
       selectedAssemblyPositions.remove(coordinate);
@@ -363,11 +324,13 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   }
 
   /// Clears all selected assembly handle positions.
+  @override
   void clearAssemblySelection() {
     selectedAssemblyPositions.clear();
     notifyListeners();
   }
 
+  @override
   void deleteSelectedHandles(String slatSide){
     int integerSlatSide = getSlatSideFromLayer(layerMap, selectedLayerKey, slatSide);
     for (var coord in selectedAssemblyPositions) {
@@ -381,6 +344,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   }
 
   /// Moves assembly handles from source to destination coordinates, preserving links.
+  @override
   void moveAssemblyHandle(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide) {
     int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
 
@@ -448,6 +412,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   /// Deletes a handle through phantom network only (no link manager, no layer attachments).
   /// Used for cargo and seed handles which don't use the link manager.
   /// Returns a set of all affected (layerID, coordinate) pairs for batch occupancy map updates.
+  @override
   Set<(String, Offset)> deleteHandleWithPhantomPropagation(Slat slat, int position, int side) {
     Set<(String, Offset)> affectedCoordinates = {};
     Set<String> visited = {};
@@ -484,6 +449,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
   }
 
   // assigns a full handle array to the design slats - assumes that handles -> antihandles -> handles -> etc. is the correct mapping
+  @override
   void assignAssemblyHandleArray(List<List<List<int>>> handleArray, Offset? minPos, Offset? maxPos) {
 
     if (minPos == null || maxPos == null) {
@@ -533,6 +499,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     }
   }
 
+  @override
   void updateDesignHammingValue() async {
     currentlyComputingHamming = true;
     notifyListeners();
@@ -556,6 +523,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void generateRandomAssemblyHandles(int uniqueHandleCount, bool splitLayerHandles, {bool allAvailableHandles = false}) {
     Offset minPos;
     Offset maxPos;
@@ -628,6 +596,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   Future<bool> updateAssemblyHandlesFromFile(BuildContext context) async {
     /// Reads assembly handles from a file and applies them to the slats (e.g. generated after evolution)
     bool readStatus = await importAssemblyHandlesFromFileIntoSlatArray(slats, layerMap, gridSize);
@@ -646,6 +615,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     return true;
   }
 
+  @override
   void fullHandleValidationWithWarning(BuildContext context){
     List<String> warnings = [];
 
@@ -679,6 +649,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   /// Checks if imported handles violate link manager constraints.
   /// Returns a warning message if violations exist, null otherwise.
+  @override
   String? checkLinkManagerConstraints() {
     List<String> violations = [];
 
@@ -731,6 +702,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   /// Checks if phantom slats have handles that don't match their parents.
   /// Returns a warning message if inconsistencies exist, null otherwise.
+  @override
   String? checkPhantomSlatConsistency() {
     List<String> inconsistencies = [];
 
@@ -767,6 +739,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     return 'Phantom slat inconsistencies detected (handles may need syncing):\n• ${inconsistencies.take(5).join('\n• ')}${inconsistencies.length > 5 ? '\n• ...and ${inconsistencies.length - 5} more' : ''}';
   }
 
+  @override
   List<List<List<int>>> getSlatArray() {
     Offset minPos;
     Offset maxPos;
@@ -775,6 +748,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     return slatArray;
   }
 
+  @override
   Map<String, List<(int, int)>> getSlatCoords({bool getPhantoms = false}) {
     Offset minPos;
     Offset maxPos;
@@ -800,6 +774,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     return slatCoords;
   }
 
+  @override
   List<List<List<int>>> getHandleArray() {
     Offset minPos;
     Offset maxPos;
@@ -807,6 +782,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     return extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
   }
 
+  @override
   Map<String, String> getSlatTypes() {
     Map<String, String> slatTypes = {};
     for (var slat in slats.values) {
@@ -818,6 +794,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
     return slatTypes;
   }
 
+  @override
   void clearAssemblyHandles() {
     /// Removes all handles from the slats
     for (var slat in slats.values) {
@@ -830,6 +807,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   /// Syncs all assembly handles by re-propagating each handle through the smart system.
   /// This ensures all phantoms and links are properly synchronized.
+  @override
   void syncAllAssemblyHandles() {
     Set<HandleKey> processedHandles = {};
 
@@ -861,6 +839,7 @@ mixin DesignStateHandleMixin on ChangeNotifier {
 
   /// Returns phantom parent relationships for gRPC transfer.
   /// Key: phantom slat ID (Python format), Value: parent slat ID (Python format)
+  @override
   Map<String, String> getPhantomParentsForGrpc() {
     Map<String, String> phantomParents = {};
     for (var slat in slats.values) {

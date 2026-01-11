@@ -1,70 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../crisscross_core/slats.dart';
-import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/seed.dart';
-import '../slat_undo_stack.dart';
 import '../main_design_io.dart';
 import '../shared_app_state.dart';
+import '../slat_undo_stack.dart';
+import 'design_state_contract.dart';
 import 'design_state_handle_link_mixin.dart';
 
 /// Mixin containing file import/export and undo/redo operations for DesignState
-mixin DesignStateFileIOMixin on ChangeNotifier {
-  // Required state
-  Map<String, Slat> get slats;
-  set slats(Map<String, Slat> value);
-  Map<String, Map<String, dynamic>> get layerMap;
-  set layerMap(Map<String, Map<String, dynamic>> value);
-  Map<String, Cargo> get cargoPalette;
-  set cargoPalette(Map<String, Cargo> value);
-  Map<String, Map<Offset, String>> get occupiedCargoPoints;
-  set occupiedCargoPoints(Map<String, Map<Offset, String>> value);
-  Map<(String, String, Offset), Seed> get seedRoster;
-  set seedRoster(Map<(String, String, Offset), Seed> value);
-  Map<String, Map<Offset, String>> get occupiedGridPoints;
-  set occupiedGridPoints(Map<String, Map<Offset, String>> value);
-  Map<String, Map<int, String>> get phantomMap;
-  set phantomMap(Map<String, Map<int, String>> value);
-  Map<String, List<Color>> get uniqueSlatColorsByLayer;
-  double get gridSize;
-  String get gridMode;
-  set gridMode(String value);
-  String get designName;
-  set designName(String value);
-  String get selectedLayerKey;
-  set selectedLayerKey(String value);
-  String get nextLayerKey;
-  set nextLayerKey(String value);
-  String get nextSeedID;
-  set nextSeedID(String value);
-  int get nextColorIndex;
-  set nextColorIndex(int value);
-  List<String> get colorPalette;
-  bool get currentlyLoadingDesign;
-  set currentlyLoadingDesign(bool value);
-  String? get cargoAdditionType;
-  set cargoAdditionType(String? value);
-  bool get hammingValueValid;
-  set hammingValueValid(bool value);
-  SlatUndoStack get undoStack;
-  set undoStack(SlatUndoStack value);
-
-  HandleLinkManager get assemblyLinkManager;
-  set assemblyLinkManager(HandleLinkManager value);
-
-  // Methods from other mixins
-  void resetDefaults();
-  void updateDesignHammingValue();
-  void saveUndoState();
-  Offset convertCoordinateSpacetoRealSpace(Offset inputPosition);
-  void fullHandleValidationWithWarning(BuildContext context);
-
+mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
+  @override
   void exportCurrentDesign() async {
     /// Exports the current design to an excel file
     exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, assemblyLinkManager, gridSize, gridMode, designName);
   }
 
+  @override
   void importNewDesign(BuildContext context, {String? fileName, Uint8List? fileBytes}) async {
     currentlyLoadingDesign = true;
     notifyListeners();
@@ -246,6 +198,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void clearAll() {
     slats = {};
     layerMap = {
@@ -279,10 +232,4 @@ mixin DesignStateFileIOMixin on ChangeNotifier {
     saveUndoState();
     notifyListeners();
   }
-
-
-  // Helper methods that need to be declared as abstract in this mixin
-  // since they're implemented in other mixins
-  bool layerNumberValid(int layerOrder);
-  String? getLayerByOrder(int order);
 }
