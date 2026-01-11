@@ -184,7 +184,7 @@ class SeedPainter extends CustomPainter {
     if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
       baselineOffset = textPainter.height;
     } else {
-      baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
+      baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic);
     }
 
     final labelRect = Rect.fromCenter(

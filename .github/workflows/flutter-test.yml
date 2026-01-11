@@ -1,0 +1,38 @@
+name: Flutter Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'flutter_app/**'
+      - '.github/workflows/flutter-test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'flutter_app/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.21.0
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+        working-directory: flutter_app
+
+      - name: Analyze Code
+        run: flutter analyze --no-fatal-infos
+        working-directory: flutter_app
+
+      - name: Run Tests
+        run: flutter test --coverage
+        working-directory: flutter_app
