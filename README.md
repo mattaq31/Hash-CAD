@@ -12,18 +12,18 @@
   <a href="https://github.com/mattaq31/Hash-CAD/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
   </a>
-<a href="https://hash-cad.readthedocs.io/en/latest/">
-  <img src="https://img.shields.io/badge/docs-Read%20the%20Docs-8CA1AF.svg?style=flat">
-</a>
 </p>
 
 <p align="center">
 <a href="https://pypi.org/project/crisscross_kit/">
-  <img src="https://img.shields.io/pypi/v/crisscross_kit.svg?label=PyPI%20Crisscross%20Kit%20Latest">
+  <img src="https://img.shields.io/pypi/v/crisscross_kit.svg?label=PyPI%20Crisscross%20Kit%20Latest&logo=python&logoColor=white">
 </a>
   <a href="https://pypi.org/project/crisscross_kit/">
-    <img src="https://img.shields.io/pypi/dm/crisscross_kit.svg?label=PyPI%20downloads">
+    <img src="https://img.shields.io/pypi/dm/crisscross_kit.svg?label=PyPI%20downloads&logo=python&logoColor=white">
   </a>
+<a href="https://hash-cad.readthedocs.io/en/latest/">
+  <img src="https://img.shields.io/badge/docs-Read%20the%20Docs-8CA1AF.svg?style=flat&logo=python&logoColor=white">
+</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 <a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/flutter-test.yml">
   <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/flutter-test.yml?branch=main&label=Tests&style=flat&logo=flutter&logoColor=white" alt="Flutter Tests Status">
 </a>
-  <img src="https://img.shields.io/github/downloads/mattaq31/Hash-CAD/total" alt="GitHub all releases">
+  <img src="https://img.shields.io/github/downloads/mattaq31/Hash-CAD/total?label=Downloads&logo=flutter&logoColor=white&style=flat" alt="GitHub all releases">
 </p>
 
 <p align="center">
