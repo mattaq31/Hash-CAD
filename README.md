@@ -68,13 +68,32 @@ Details TBC.
 - [Stella (Siyuan) Wang](https://www.linkedin.com/in/siyuan-stella-wang-311936247/) - Developed initial megastructure assembly and hamming distance calculation protocols, and implemented various custom megastructure design systems in the final codebase.
 - [Corey Becker](https://www.linkedin.com/in/corey-becker-b75656204/) - Developed initial prototype GUI using a combined javascript-python server and laid the foundation for the final #-CAD interface.
 
-Experimental validation of #-CAD was carried out by the entire crisscross origami team, which also included [Huangchen Cui](https://www.linkedin.com/in/huangchen-cui-642b33314/), [Yichen Zhao](https://www.linkedin.com/in/yichen-zhao-83410493/) and [Minke Nijenhuis](https://www.linkedin.com/in/minkenijenhuis/).
+Experimental validation of #-CAD was carried out by the entire crisscross origami team, which also included:
+- [Huangchen Cui](https://www.linkedin.com/in/huangchen-cui-642b33314/)
+- [Yichen Zhao](https://www.linkedin.com/in/yichen-zhao-83410493/)
+- [Minke Nijenhuis](https://www.linkedin.com/in/minkenijenhuis/)
+- [Su Hyun Seok](https://www.linkedin.com/in/su-hyun-seok-10096755/)
+- [Julie Finkel](https://www.linkedin.com/in/julie-finkel/)  
 
-For more details of everyone's coding contributions, please check the graphs [here](https://github.com/mattaq31/Hash-CAD/graphs/contributors).
+All the above team members contributed to beta-testing and test-trialling the app during its development!
 
-Contributions from the open-source community are welcome!  In particular, we are looking for help with introducing unit tests to both the Python and Flutter packages!
+Development of the evolutionary algorithm was accelerated by the use of Harvard Medical School's O2 High Performance Compute Cluster.
 
-Funding details TBC.
+This project was supported by various funding sources:
+
+- A UK Medical Research Council Precision Medicine Transition Fellowship awarded to Matthew Aquilina (grant number MR/N013166/1)
+- The Dana-Farber Cancer Institute's Claudia Adams Barr Program for Cancer Research 
+- A Wyss Institute Northpond Alliance Director's Fund Award awarded to Matthew Aquilina
+- The German Research Foundation (Deutsche Forschungsgemeinschaft, DFG) through the Walter Benjamin Programme (project number 553862611, awarded to Florian Katzmeier)
+- The U.S. Department of Energy, Office of Science, Basic Energy Sciences, Biomolecular Materials Program (Award No. DE-SC0024136)
+- The Carlsberg Foundation (grant CF23-1125, awarded to Minke Nijenhuis)
+- A Sloan foundation grant (grant ID G-2021-16495)
+- The Harvard College Research Program (funding Corey Becker)
+- The Korea-US Collaborative Research Fund (KUCRF) funded by the Ministry of Science and ICT and Ministry of Health & Welfare, Republic of Korea (grant RS-2024-00468463)
+- The Novo Nordisk Foundation (grant NNF23OC0084494)
+- The Wyss Institute's Molecular Robotics Initiative 
+
+For more details of everyone's coding contributions, please check the graphs [here](https://github.com/mattaq31/Hash-CAD/graphs/contributors). Contributions from the open-source community are welcome! 
 
 ## Literature Citation
 Coming soon!
