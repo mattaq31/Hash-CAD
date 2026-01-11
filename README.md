@@ -19,12 +19,13 @@
   <a href="https://pypi.org/project/crisscross_kit/">
     <img src="https://img.shields.io/pypi/dm/crisscross_kit.svg?label=PyPI%20downloads">
   </a>
+</p>
+<p align="center">
+<a href="https://github.com/mattaq31/Hash-CAD/releases">
+  <img src="https://img.shields.io/github/v/tag/mattaq31/Hash-CAD?label=Latest%20Desktop%20Version&logo=flutter&logoColor=white&style=flat">
+</a>
 <a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/flutter-web-deploy.yml">
   <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/flutter-web-deploy.yml?label=Web&style=flat&logo=flutter&logoColor=white" alt="Web CI Status">
-</a>
-
-<a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/python-server-and-desktop-app-deploy.yml">
-  <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/python-server-and-desktop-app-deploy.yml?label=Desktop&style=flat&logo=flutter&logoColor=white" alt="Desktop CI Status">
 </a>
 <a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/flutter-test.yml">
   <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/flutter-test.yml?branch=main&label=Tests&style=flat&logo=flutter&logoColor=white" alt="Flutter Tests Status">
