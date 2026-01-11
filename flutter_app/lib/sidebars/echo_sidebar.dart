@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../app_management/shared_app_state.dart';
 import '../crisscross_core/handle_plates.dart';
-import '../main_windows/alert_window.dart';
+import '../dialogs/alert_window.dart';
 import '../echo_and_experimental_helpers/echo_export.dart';
 import '../app_management/action_state.dart';
 

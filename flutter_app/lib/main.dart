@@ -20,6 +20,7 @@ Future<void> main() async {
         create: (context) {
           final designState = DesignState();
           designState.initializeUndoStack(); // Ensures undo stack starts with the initial state
+          designState.loadAssemblyHandleColors(); // Load persisted handle colors
           return designState;
         },
       ),

@@ -526,14 +526,14 @@ class SlatPainter extends CustomPainter {
                 shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
                 color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
               } else if (category.contains('ASSEMBLY')) {
-                if(appState.assemblyLinkManager.handleLinkToGroup.containsKey((slat.id, handleIndex, sideName))){
-                  color = Colors.purple;
-                }
-                else if (slat.phantomParent != null) {
-                  color = Colors.red;
-                }
-                else {
-                  color = Colors.green;
+                if (appState.assemblyLinkManager.handleLinkToGroup.containsKey((slat.id, handleIndex, sideName))) {
+                  color = appState.assemblyHandleLinkedColor;
+                } else if (slat.phantomParent != null) {
+                  color = category == 'ASSEMBLY_ANTIHANDLE' ? appState.assemblyHandlePhantomAntiColor : appState.assemblyHandlePhantomColor;
+                } else if (category == 'ASSEMBLY_ANTIHANDLE') {
+                  color = appState.assemblyHandleAntiHandleColor;
+                } else {
+                  color = appState.assemblyHandleHandleColor;
                 }
               } else if (category == 'SEED') {
                 color = appState.cargoPalette['SEED']!.color;
@@ -691,12 +691,12 @@ class SlatPainter extends CustomPainter {
             if (topBlocked){
               topHandleHidden = false;
               topText = '↑X';
-              topColor = Colors.grey;
+              topColor = appState.assemblyHandleBlockedColor;
             }
             if (bottomBlocked){
               bottomHandleHidden = false;
               bottomText = '↓X';
-              bottomColor = Colors.grey;
+              bottomColor = appState.assemblyHandleBlockedColor;
             }
 
             if (topHandleHidden && bottomHandleHidden) {

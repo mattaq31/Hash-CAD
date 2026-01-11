@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'update_preferences.dart';
+import 'app_preferences.dart';
 import 'update_service.dart';
 import 'version_tracker.dart';
 
@@ -14,7 +14,7 @@ enum UpdateStatus {
 
 /// State management for app updates
 class UpdateState extends ChangeNotifier {
-  final UpdatePreferences _preferences = UpdatePreferences();
+  final AppPreferences _preferences = AppPreferences();
 
   UpdateStatus _status = UpdateStatus.idle;
   ReleaseInfo? _latestRelease;
@@ -38,15 +38,22 @@ class UpdateState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Check for available updates
+  /// Check for available updates (respects hourly interval for silent checks)
   Future<bool> checkForUpdates({bool silent = false}) async {
     if (kIsWeb) return false;
+
+    // For silent checks, respect the hourly interval
+    if (silent) {
+      final shouldCheck = await _preferences.shouldCheckForUpdates();
+      if (!shouldCheck) return false;
+    }
 
     _setStatus(UpdateStatus.checking);
     _errorMessage = null;
 
     final service = UpdateService();
     final release = await service.fetchLatestRelease();
+    _preferences.setLastCheckTime(DateTime.now());
 
     if (release == null) {
       _errorMessage = 'Could not fetch release information';

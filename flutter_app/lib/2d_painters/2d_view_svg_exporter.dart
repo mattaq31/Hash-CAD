@@ -386,11 +386,13 @@ void _addHandleMarkers(
       } else if (category.contains('ASSEMBLY')) {
         if (!exportAssembly) return;
         if (appState.assemblyLinkManager.handleLinkToGroup.containsKey((slat.id, handleIndex, sideName))) {
-          color = Colors.purple;
+          color = appState.assemblyHandleLinkedColor;
         } else if (slat.phantomParent != null) {
-          color = Colors.red;
+          color = category == 'ASSEMBLY_ANTIHANDLE' ? appState.assemblyHandlePhantomAntiColor : appState.assemblyHandlePhantomColor;
+        } else if (category == 'ASSEMBLY_ANTIHANDLE') {
+          color = appState.assemblyHandleAntiHandleColor;
         } else {
-          color = Colors.green;
+          color = appState.assemblyHandleHandleColor;
         }
       } else if (category == 'SEED') {
         if (!exportCargo) return;
@@ -426,12 +428,12 @@ void _addHandleMarkers(
     // Handle blocks
     if (topBlocked && exportAssembly) {
       topText = 'X';
-      topColor = Colors.grey;
+      topColor = appState.assemblyHandleBlockedColor;
       showTop = true;
     }
     if (bottomBlocked && exportAssembly) {
       bottomText = 'X';
-      bottomColor = Colors.grey;
+      bottomColor = appState.assemblyHandleBlockedColor;
       showBottom = true;
     }
 

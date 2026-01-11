@@ -11,7 +11,7 @@ import '../app_management/server_state.dart';
 import '../crisscross_core/common_utilities.dart';
 import '../graphics/honeycomb_pictogram.dart';
 import 'layer_manager.dart';
-import '../main_windows/alert_window.dart';
+import '../dialogs/alert_window.dart';
 
 
 Color getValencyColor(int valency) {

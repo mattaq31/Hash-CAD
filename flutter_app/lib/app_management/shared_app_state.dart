@@ -7,6 +7,7 @@ import '../crisscross_core/seed.dart';
 import '../crisscross_core/handle_plates.dart';
 
 import 'slat_undo_stack.dart';
+import 'app_preferences.dart';
 
 // Mixin imports
 import 'design_state_mixins/design_state_contract.dart';
@@ -277,6 +278,65 @@ class DesignState extends ChangeNotifier
 
   @override
   PlateLibrary plateStack = PlateLibrary();
+
+  // Assembly handle colors (customizable, persisted via AppPreferences)
+  final AppPreferences _appPreferences = AppPreferences();
+  Color assemblyHandleHandleColor = AssemblyHandleColors.defaultHandle;
+  Color assemblyHandleAntiHandleColor = AssemblyHandleColors.defaultAntiHandle;
+  Color assemblyHandlePhantomColor = AssemblyHandleColors.defaultPhantom;
+  Color assemblyHandlePhantomAntiColor = AssemblyHandleColors.defaultPhantomAnti;
+  Color assemblyHandleLinkedColor = AssemblyHandleColors.defaultLinked;
+  Color assemblyHandleBlockedColor = AssemblyHandleColors.defaultBlocked;
+
+  /// Load assembly handle colors from preferences (call during initialization)
+  Future<void> loadAssemblyHandleColors() async {
+    final colors = await _appPreferences.getAssemblyHandleColors();
+    assemblyHandleHandleColor = colors['handle']!;
+    assemblyHandleAntiHandleColor = colors['antiHandle']!;
+    assemblyHandlePhantomColor = colors['phantom']!;
+    assemblyHandlePhantomAntiColor = colors['phantomAnti']!;
+    assemblyHandleLinkedColor = colors['linked']!;
+    assemblyHandleBlockedColor = colors['blocked']!;
+    notifyListeners();
+  }
+
+  /// Update a specific assembly handle color
+  Future<void> setAssemblyHandleColor(String key, Color color) async {
+    switch (key) {
+      case 'handle':
+        assemblyHandleHandleColor = color;
+        break;
+      case 'antiHandle':
+        assemblyHandleAntiHandleColor = color;
+        break;
+      case 'phantom':
+        assemblyHandlePhantomColor = color;
+        break;
+      case 'phantomAnti':
+        assemblyHandlePhantomAntiColor = color;
+        break;
+      case 'linked':
+        assemblyHandleLinkedColor = color;
+        break;
+      case 'blocked':
+        assemblyHandleBlockedColor = color;
+        break;
+    }
+    await _appPreferences.setAssemblyHandleColor(key, color);
+    notifyListeners();
+  }
+
+  /// Reset all assembly handle colors to defaults
+  Future<void> resetAssemblyHandleColors() async {
+    assemblyHandleHandleColor = AssemblyHandleColors.defaultHandle;
+    assemblyHandleAntiHandleColor = AssemblyHandleColors.defaultAntiHandle;
+    assemblyHandlePhantomColor = AssemblyHandleColors.defaultPhantom;
+    assemblyHandlePhantomAntiColor = AssemblyHandleColors.defaultPhantomAnti;
+    assemblyHandleLinkedColor = AssemblyHandleColors.defaultLinked;
+    assemblyHandleBlockedColor = AssemblyHandleColors.defaultBlocked;
+    await _appPreferences.resetAssemblyHandleColors();
+    notifyListeners();
+  }
 
   /// updates the grid type (60 or 90) - this method stays in the main class
   /// because it needs to call clearAll which is in FileIOMixin

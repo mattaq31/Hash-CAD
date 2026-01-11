@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
-import '../../main_windows/alert_window.dart';
+import '../../dialogs/alert_window.dart';
 import '../shared_app_state.dart';
 import 'design_state_contract.dart';
 

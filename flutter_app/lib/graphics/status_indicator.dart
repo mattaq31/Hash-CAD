@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 class StatusIndicator extends StatelessWidget {
   final List<String> lines;
+  final Widget? additionalContent;
 
-  const StatusIndicator({super.key, required this.lines});
+  const StatusIndicator({super.key, required this.lines, this.additionalContent});
 
   @override
   Widget build(BuildContext context) {
@@ -21,24 +22,26 @@ class StatusIndicator extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Column(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            for (final line in lines)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: Text(
-                      line,
-                      textAlign: TextAlign.right,
-                      style: textStyle,
-                    ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final line in lines)
+                  Text(
+                    line,
+                    textAlign: TextAlign.right,
+                    style: textStyle,
                   ),
-                ],
-              ),
+              ],
+            ),
+            if (additionalContent != null) ...[
+              const SizedBox(width: 12),
+              additionalContent!,
+            ],
           ],
         ),
       ),
