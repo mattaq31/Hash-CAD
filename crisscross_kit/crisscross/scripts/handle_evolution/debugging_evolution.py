@@ -9,11 +9,11 @@ if __name__ == '__main__':
     test_slat_array, unique_slats_per_layer = generate_standard_square_slats(slat_count)  # standard square
     handle_array = generate_random_slat_handles(test_slat_array, 64)
 
-    # megastructure = Megastructure(slat_array=test_slat_array)
-    # megastructure.assign_assembly_handles(handle_array)
+    megastructure = Megastructure(slat_array=test_slat_array)
+    megastructure.assign_assembly_handles(handle_array)
 
 
-    megastructure = Megastructure(import_design_file='/Users/matt/Desktop/test_evolve.xlsx')
+    #megastructure = Megastructure(import_design_file='/Users/matt/Desktop/test_evolve.xlsx')
 
     print('Original Results:')
     print(megastructure.get_parasitic_interactions())
