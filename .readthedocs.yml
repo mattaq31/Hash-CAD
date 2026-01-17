@@ -7,12 +7,12 @@ build:
   jobs:
     post_checkout:
       # Download Flutter SDK (includes Dart) for dartdoc generation
-      - git clone https://github.com/flutter/flutter.git -b stable --depth 1 $READTHEDOCS_VIRTUALENV_PATH/flutter
+      - git clone https://github.com/flutter/flutter.git -b stable --depth 1 $HOME/flutter
     pre_build:
       # Generate Flutter API docs with dartdoc
-      - export PATH="$PATH:$READTHEDOCS_VIRTUALENV_PATH/flutter/bin"
-      - cd flutter_app && $READTHEDOCS_VIRTUALENV_PATH/flutter/bin/flutter pub get
-      - cd flutter_app && $READTHEDOCS_VIRTUALENV_PATH/flutter/bin/dart doc --output=../docs/docs/flutter-api
+      - export PATH="$PATH:$HOME/flutter/bin"
+      - cd flutter_app && $HOME/flutter/bin/flutter pub get
+      - cd flutter_app && $HOME/flutter/bin/dart doc --output=../docs/docs/flutter-api
 
 python:
   install:
