@@ -17,7 +17,7 @@ build:
 python:
   install:
     - method: pip
-      path: .
+      path: ./crisscross_kit
     - requirements: ./docs/requirements.txt
 
 mkdocs:
