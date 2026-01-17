@@ -5,12 +5,9 @@ build:
   tools:
     python: "3.11"
   jobs:
-    post_checkout:
-      # Download Flutter SDK (includes Dart) for dartdoc generation
-      - git clone https://github.com/flutter/flutter.git -b stable --depth 1 $HOME/flutter
     pre_build:
-      # Generate Flutter API docs with dartdoc
-      - export PATH="$PATH:$HOME/flutter/bin"
+      # Download Flutter SDK and generate Dart API docs
+      - git clone https://github.com/flutter/flutter.git -b stable --depth 1 $HOME/flutter
       - cd flutter_app && $HOME/flutter/bin/flutter pub get
       - cd flutter_app && $HOME/flutter/bin/dart doc --output=../docs/docs/flutter-api
 
