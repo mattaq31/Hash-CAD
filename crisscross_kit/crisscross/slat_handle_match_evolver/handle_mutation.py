@@ -147,7 +147,10 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
             # apply unique mask to global positions to be mutated
             positions_to_be_mutated = positions_to_be_mutated & unique_mask
 
-        # TODO: is this truly the best way to apply mutations?  Won't this bias towards fewer mutations if an array is not very full?
+        # this part needs an explanation because it is a bit subtle. We want that the mutation rate is the exptected total number of mutations in a megastructure.
+        # so this meas first we calculate the probability of mutation per position as mutation_rate / total number of possible mutation positions so lets say rate 3 and 1 slat so 3/32 mutation probabilty
+        # then we apply this mutation to all locations in the candidate handle array. This will have many more mutations than we actually want
+        # then in the last step we remove the ones that are actually not at the positions we want to mutate. This way we ensure that the expected number of mutations is the mutation rate specified.
         logicforpointmutations = np.random.random(candidate_handle_arrays[0].shape) < mutation_rate / np.sum(positions_to_be_mutated)
         logicforpointmutations = logicforpointmutations & positions_to_be_mutated
 
