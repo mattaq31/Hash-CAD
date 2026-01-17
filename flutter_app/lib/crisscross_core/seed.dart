@@ -1,12 +1,13 @@
+/// Seed entity class for nucleation structures in crisscross assembly.
+
 import 'package:flutter/material.dart';
 
 import '../2d_painters/helper_functions.dart';
 import 'dart:math';
 
 
+/// quick generation of basic seed coordinates for model seeds (not to be used in actual coordinate system)
 Map<int, Offset> generateBasicSeedCoordinates(int cols, int rows, double jump, bool tiltMode, bool invertMode){
-  /// quick generation of basic seed coordinates for model seeds (not to be used in actual coordinate system)
-
   final Map<int, Offset> coordinates = {};
 
   double y60Jump = jump / 2;

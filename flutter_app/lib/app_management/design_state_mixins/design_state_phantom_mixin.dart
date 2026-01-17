@@ -8,9 +8,9 @@ import 'design_state_contract.dart';
 /// Mixin containing phantom slat operations for DesignState
 mixin DesignStatePhantomMixin on ChangeNotifier, DesignStateContract {
 
+  /// Adds phantom slats (which are linked to real slats)
   @override
   void addPhantomSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates, Map<int, Slat> referenceSlats) {
-    /// Adds phantom slats (which are linked to real slats)
     for (var iterID in slatCoordinates.keys) {
       Slat slat = referenceSlats[iterID]!;
       Map<int, Offset> coords = slatCoordinates[iterID]!;

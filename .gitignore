@@ -111,6 +111,11 @@ venv.bak/
 
 # mkdocs documentation
 /crisscross_kit/docs/site
+/docs/site/
+/docs/docs/flutter-api/
+
+# dartdoc output
+/flutter_app/doc/
 
 # mypy
 .mypy_cache/

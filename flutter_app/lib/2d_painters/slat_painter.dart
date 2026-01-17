@@ -18,9 +18,8 @@ bool isColorDark(Color color) {
   return brightness < 0.5; // You can adjust this threshold if needed
 }
 
+/// Paints a slat and takes care of adjustments such as drawing aids, tip extensions, etc.
 void drawSlat(List<Offset> coords, Canvas canvas, DesignState appState, ActionState actionState, Paint slatPaint, bool phantomSlat){
-  /// Paints a slat and takes care of adjustments such as drawing aids, tip extensions, etc.
-
   Offset slatExtendFront = calculateSlatExtend(coords[0], coords[1], appState.gridSize);
   Offset slatExtendBack = calculateSlatExtend(coords[coords.length - 2], coords.last, appState.gridSize);
 

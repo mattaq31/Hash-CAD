@@ -49,14 +49,13 @@ mixin DesignStateSeedMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Adds a seed to the design.  This involves:
+  /// 1) adding the appropriate handles to all involved slats,
+  /// 2) adding blocks to the occupancy grids and
+  /// 3) adding an entry to the seed roster that groups all the
+  /// coordinates together (makes it easy to delete the seed in one go later).
   @override
   void attachSeed(String layerID, String slatSide, Map<int, Offset> coordinates, BuildContext context) {
-    /// Adds a seed to the design.  This involves:
-    /// 1) adding the appropriate handles to all involved slats,
-    /// 2) adding blocks to the occupancy grids and
-    /// 3) adding an entry to the seed roster that groups all the
-    /// coordinates together (makes it easy to delete the seed in one go later).
-
     for (var coord in coordinates.values) {
       if (!occupiedGridPoints.containsKey(layerID) || !occupiedGridPoints[layerID]!.containsKey(coord)) {
         // no slat at this position - cannot place a seed without full occupancy of all handles
@@ -268,11 +267,11 @@ mixin DesignStateSeedMixin on ChangeNotifier, DesignStateContract {
     }
   }
 
+  /// Removes a seed from the design.  This involves: 1) remove the handles from the related slats,
+  /// 2) removing the blocks from the slat and cargo occupancy grids and 3)
+  /// removing the seed and its related coordinates from the seed roster.
   @override
   void removeSeed(String layerID, String slatSide, Offset coordinate) {
-    /// Removes a seed from the design.  This involves: 1) remove the handles from the related slats,
-    /// 2) removing the blocks from the slat and cargo occupancy grids and 3)
-    /// removing the seed and its related coordinates from the seed roster.
     (String, String, Offset)? seedToRemove;
     int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
 

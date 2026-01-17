@@ -1,3 +1,5 @@
+/// Cargo entity class for attaching payloads to slats.
+
 import 'package:flutter/material.dart';
 
 String generateShortName(String name) {

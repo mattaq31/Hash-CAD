@@ -41,17 +41,39 @@ from collections import Counter
 def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, connection_angle,
                                  do_worst=False, fudge_dg=10, request_similarity_score=True):
     """
+    Compute all relevant match count metrics for a megastructure's slat handles.
+
     When provided with a megastructure's slat handles/antihandles and connection graphs, this function computes
     all relevant match count metrics including worst match, mean log score, similarity score, and a compensated match histogram.
-    :param handle_dict: Dictionary of slat handle arrays (can be 1D or 2D).
-    :param antihandle_dict: Dictionary of slat antihandle arrays (can be 1D or 2D).
+
+    :param handle_dict: Dictionary mapping slat identifiers to handle arrays (can be 1D or 2D uint8 arrays).
+    :type handle_dict: dict[Any, numpy.ndarray]
+    :param antihandle_dict: Dictionary mapping slat identifiers to antihandle arrays (can be 1D or 2D uint8 arrays).
+    :type antihandle_dict: dict[Any, numpy.ndarray]
     :param match_counts: Dictionary with counts of expected matches due to connections between slats.
-    :param connection_graph: Dictionary mapping match types to lists of (handle_key, antihandle_key) pairs that are expected to match due to connections.
-    :param connection_angle: Either '60' or '90' indicating the connection geometry.
-    :param do_worst: Set to true to return which slat pairs contributed to the worst match score.
-    :param fudge_dg: Fudge factor for mean log score computation.
+        Keys are match counts (int), values are the number of such matches expected.
+    :type match_counts: dict[int, int]
+    :param connection_graph: Dictionary mapping match types to lists of (handle_key, antihandle_key) pairs
+        that are expected to match due to connections.
+    :type connection_graph: dict[int, list[tuple]]
+    :param connection_angle: Either '60' or '90' indicating the connection geometry (triangular or square grid).
+    :type connection_angle: str
+    :param do_worst: If True, return which slat pairs contributed to the worst match score. Defaults to False.
+    :type do_worst: bool
+    :param fudge_dg: Fudge factor for mean log score computation. Defaults to 10.
+    :type fudge_dg: float
     :param request_similarity_score: If True, computes a similarity score to check for slat duplication risk.
-    :return: Dictionary with all data.
+        Defaults to True.
+    :type request_similarity_score: bool
+    :returns: Dictionary containing:
+
+        - ``worst_match_score`` (int): The highest non-zero match count in the compensated histogram.
+        - ``mean_log_score`` (float): Logarithmic weighted score normalized by number of pairs.
+        - ``match_histogram`` (numpy.ndarray): Compensated histogram of match counts.
+        - ``uncompensated_match_histogram`` (numpy.ndarray): Raw histogram before connection compensation.
+        - ``similarity_score`` (int, optional): Highest match count within handle/antihandle sets (if requested).
+        - ``worst_slat_combos`` (list, optional): List of (handle_key, antihandle_key, count) tuples (if do_worst=True).
+    :rtype: dict
     """
     # runs the match comparison computation using our eqcorr2D C function
     if do_worst:
@@ -95,8 +117,18 @@ def comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, con
     return data_dict
 
 def compensate_histogram(hist, connection_hist):
-    """Subtract the connection occupancy from the total histogram safely.
+    """
+    Subtract the connection occupancy from the total histogram safely.
+
     Handles unequal lengths by padding the shorter array with zeros.
+
+    :param hist: The total match histogram to compensate.
+    :type hist: numpy.ndarray
+    :param connection_hist: Histogram of expected matches due to slat connections.
+    :type connection_hist: numpy.ndarray
+    :returns: Compensated histogram with connection matches subtracted.
+    :rtype: numpy.ndarray
+    :raises ValueError: If subtraction results in negative values (over-subtraction).
     """
     hist = np.asarray(hist, dtype=int)
     connection_hist = np.asarray(connection_hist, dtype=int)
@@ -121,8 +153,15 @@ def compensate_histogram(hist, connection_hist):
     return comphist
 
 def make_connection_histogram(connection_graph):
-    """Return a histogram where each index corresponds to a key in connection_graph,
-    and the value is the number of connections (list length) for that key."""
+    """
+    Create a histogram from a connection graph.
+
+    :param connection_graph: Dictionary mapping match types (int) to lists of connection pairs.
+    :type connection_graph: dict[int, list]
+    :returns: Histogram where each index corresponds to a match type and the value
+        is the number of connections for that type.
+    :rtype: numpy.ndarray
+    """
 
     max_key = max(connection_graph.keys())
     con_hist = np.zeros(max_key + 1, dtype=int)
@@ -135,7 +174,8 @@ def make_connection_histogram(connection_graph):
 def wrap_eqcorr2d(handle_dict, antihandle_dict,
                   mode='classic', hist=True, local_histogram=False, report_full=False,
                    do_smart=False):
-    """Run eqcorr2d on all handle/antihandle pairs, optionally across rotations.
+    """
+    Run eqcorr2d on all handle/antihandle pairs, optionally across rotations.
 
     This function is the preferred high-level entry point. It accepts two
     dictionaries mapping arbitrary keys (e.g., slat ids) to binary occupancy
@@ -143,59 +183,48 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
     antihandles for the requested angle set, and then aggregates all outputs
     into a single, well-structured result dictionary.
 
-    Parameters
-    - handle_dict: dict[key -> np.ndarray]
-        Binary arrays (uint8), either 1D with shape (L,) or 2D with shape (H, W).
-        Non-zeros mark occupied positions. Each array is converted to C-contiguous
-        uint8 and reshaped to (1, L) for 1D inputs.
-    - antihandle_dict: dict[key -> np.ndarray]
-        Same rules as handle_dict.
-    - mode: str
-        One of 'classic', 'square_grid', or 'triangle_grid'. Determines which
-        rotation group is considered:
-        • classic: [0, 180]
-        • square_grid: [0, 90, 180, 270]
-        • triangle_grid: [0, 60, 120, 180, 240, 300]
-    - hist: bool
-        If True, request histogram accumulation from the C engine. The top-level
-        'hist_total' returned here is the sum across all considered rotations.
-    - report_full: bool
-        If True, per-rotation raw outputs (engine-dependent) are included under
-        result['rotations'][angle]['full'].
-    - report_worst: bool
-        If True, the C engine tracks worst pairs per rotation; this function then
-        converts those index pairs into key pairs and, when hist=True, aggregates
-        the globally worst key combinations across all rotations.
-    - do_smart: bool
-        Heuristic compute saver. For square/triangle grids, 90°/270° (and the
-        non-axial 60° steps) are only evaluated for pairs where at least one
-        operand is truly 2D (H >= 2 and W >= 2). 0°/180° are always evaluated.
+    :param handle_dict: Dictionary mapping keys to binary arrays (uint8), either 1D with shape (L,)
+        or 2D with shape (H, W). Non-zeros mark occupied positions. Each array is converted to
+        C-contiguous uint8 and reshaped to (1, L) for 1D inputs.
+    :type handle_dict: dict[Any, numpy.ndarray]
+    :param antihandle_dict: Same rules as handle_dict, but for the opposing handle set.
+    :type antihandle_dict: dict[Any, numpy.ndarray]
+    :param mode: Rotation mode determining which angles are computed:
 
-    Returns
-    dict with the following shape:
-    {
-      'angles': list[int],                # angles actually computed
-      'hist_total': np.ndarray|None,      # summed histogram if hist=True, else None
-      'rotations': {
-          angle: {
-              'hist': np.ndarray|None,        # per-rotation histogram (if hist)
-              'full': Any|None,               # per-rotation raw payload (if report_full)
-              'worst_pairs_idx': list|None,   # engine index pairs (if report_worst)
-              'worst_pairs_keys': list|None,  # same pairs mapped to (handle_key, antihandle_key)
-          },
-          ...
-      },
-      'worst_keys_combos': list|None      # all worst key-pairs at the global worst matchtype
-    }
+        - ``'classic'``: [0, 180] degrees only
+        - ``'square_grid'``: [0, 90, 180, 270] degrees
+        - ``'triangle_grid'``: [0, 60, 120, 180, 240, 300] degrees
 
-    Notes
-    - The low-level C engine always computes a single orientation. Rotations are
-      handled here by pre-rotating the antihandle arrays B_rot[angle].
-    - For triangle_grid, rotations are performed via rotate_array_tri60 which
-      maps indices on a triangular lattice. Resultting shapes can change; arrays
-      are kept contiguous and in uint8.
-    - When hist=False, 'worst_keys_combos' is left as None, because selecting a
-      global worst requires the histograms to identify the worst matchtype bin.
+        Defaults to ``'classic'``.
+    :type mode: str
+    :param hist: If True, request histogram accumulation from the C engine.
+        The top-level ``'hist_total'`` returned is the sum across all considered rotations.
+        Defaults to True.
+    :type hist: bool
+    :param local_histogram: If True, compute per-pair histograms in addition to the global histogram.
+        Results stored in ``'local_hist_total'``. Defaults to False.
+    :type local_histogram: bool
+    :param report_full: If True, per-rotation raw outputs are included under
+        ``result['rotations'][angle]['full']``. Defaults to False.
+    :type report_full: bool
+    :param do_smart: Heuristic compute saver. For square/triangle grids, 90°/270° (and the
+        non-axial 60° steps) are only evaluated for pairs where at least one operand is truly
+        2D (H >= 2 and W >= 2). 0°/180° are always evaluated. Defaults to False.
+    :type do_smart: bool
+    :returns: Dictionary containing:
+
+        - ``angles`` (list[int]): Angles actually computed.
+        - ``hist_total`` (numpy.ndarray or None): Summed histogram if hist=True.
+        - ``rotations`` (dict): Per-rotation data (if report_full=True).
+        - ``handle_keys`` (list): Keys from handle_dict in order.
+        - ``anti_handle_keys`` (list): Keys from antihandle_dict in order.
+        - ``local_hist_total`` (numpy.ndarray or None): 3D array (nA, nB, L) if local_histogram=True.
+    :rtype: dict
+
+    .. note::
+        The low-level C engine always computes a single orientation. Rotations are
+        handled by pre-rotating the antihandle arrays before calling the C engine.
+        For triangle_grid, rotations are performed via :func:`rotate_array_tri60`.
     """
 
     def ensure_2d_uint8(arr):
@@ -333,8 +362,13 @@ def wrap_eqcorr2d(handle_dict, antihandle_dict,
     }
 
 def get_worst_match(c_results):
-    """Return the worst (highest non-zero) matchtype from a result.
-    Supports both the new dict return from wrap_eqcorr2d and the legacy tuple.
+    """
+    Return the worst (highest non-zero) matchtype from a result.
+
+    :param c_results: Result dictionary from :func:`wrap_eqcorr2d` containing ``'hist_total'``.
+    :type c_results: dict
+    :returns: The highest non-zero bin index in the histogram, or None if histogram is empty.
+    :rtype: int or None
     """
 
     hist = c_results.get('hist_total')
@@ -348,8 +382,18 @@ def get_worst_match(c_results):
     return worst
 
 def get_sum_score(c_results, fudge_dg=10):
-    """Compute a weighted sum score from histogram.
-    Accepts both the new dict return and the legacy tuple.
+    """
+    Compute an exponentially weighted sum score from histogram.
+
+    The score is computed as: sum(count * exp(fudge_dg * matchtype)) for all bins.
+
+    :param c_results: Result dictionary from :func:`wrap_eqcorr2d` containing ``'hist_total'``.
+    :type c_results: dict
+    :param fudge_dg: Exponential weighting factor. Higher values penalize high match counts more.
+        Defaults to 10.
+    :type fudge_dg: float
+    :returns: Weighted sum score.
+    :rtype: float
     """
     if isinstance(c_results, dict):
         hist = c_results.get('hist_total')
@@ -363,9 +407,18 @@ def get_sum_score(c_results, fudge_dg=10):
     return summe
 
 def get_seperate_worst_lists(c_results):
-    """Return separate lists of worst handle and antihandle identifiers.
-    Accepts both new dict and legacy tuple results.
-    For the new dict, worst_keys_combos are already keys, not indices.
+    """
+    Return separate lists of worst handle and antihandle identifiers.
+
+    Extracts the handle and antihandle keys that contributed to the worst (highest)
+    match count bin.
+
+    :param c_results: Result dictionary from :func:`wrap_eqcorr2d` containing
+        ``'hist_total'``, ``'handle_keys'``, ``'anti_handle_keys'``, and ``'local_hist_total'``.
+    :type c_results: dict
+    :returns: Tuple of (handle_list, antihandle_list) where each list contains the keys
+        that contributed to the worst match bin. Returns (None, None) if required data is missing.
+    :rtype: tuple[list, list] or tuple[None, None]
     """
     worst = get_worst_match(c_results)
     handle_keys = c_results.get('handle_keys')
@@ -387,11 +440,16 @@ def get_seperate_worst_lists(c_results):
 
 def get_worst_keys_combos(c_results):
     """
-    Return a list of (handle_key, antihandle_key) tuples that contributed
-    to the global worst histogram bin.
+    Return a list of key pairs that contributed to the global worst histogram bin.
 
-    Relies only on the Python-side 'local_hist_total' 3D array
-    of shape (nA, nB, L) and the key lists.
+    Relies on the ``'local_hist_total'`` 3D array of shape (nA, nB, L) and the key lists.
+
+    :param c_results: Result dictionary from :func:`wrap_eqcorr2d` containing
+        ``'hist_total'``, ``'handle_keys'``, ``'anti_handle_keys'``, and ``'local_hist_total'``.
+    :type c_results: dict
+    :returns: List of (handle_key, antihandle_key, count) tuples for pairs that
+        contributed to the worst match bin. Returns None if required data is missing.
+    :rtype: list[tuple] or None
     """
     worst = get_worst_match(c_results)
     handle_keys = c_results.get('handle_keys')
@@ -412,6 +470,24 @@ def get_worst_keys_combos(c_results):
     return combos
 
 def get_compensated_worst_keys_combos(c_results, connection_graph):
+    """
+    Return worst key pairs after compensating for expected connections.
+
+    Similar to :func:`get_worst_keys_combos`, but subtracts expected matches from the
+    connection graph to identify truly problematic pairs.
+
+    :param c_results: Result dictionary from :func:`wrap_eqcorr2d` containing
+        ``'hist_total'``, ``'handle_keys'``, ``'anti_handle_keys'``, and ``'local_hist_total'``.
+    :type c_results: dict
+    :param connection_graph: Dictionary mapping match types to lists of expected
+        (handle_key, antihandle_key) connection pairs.
+    :type connection_graph: dict[int, list[tuple]]
+    :returns: List of (handle_key, antihandle_key, adjusted_count) tuples for pairs
+        that contributed to the worst match bin after compensation.
+    :rtype: list[tuple]
+    :raises ValueError: If over-subtraction is detected (more skips than actual matches).
+    :raises RuntimeError: If expected skips don't match found pairs.
+    """
     worst = get_worst_match(c_results)
     handle_keys = c_results['handle_keys']
     anti_keys   = c_results['anti_handle_keys']
@@ -456,19 +532,35 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
     return combos
 
 def get_similarity_hist(handle_dict, antihandle_dict, mode='square_grid', do_smart=True):
-    """Build a library-level similarity histogram (handles+antihandles).
+    """
+    Build a library-level similarity histogram (handles+antihandles).
 
-    This helper runs wrap_eqcorr2d twice, once within the handle set and once
+    This helper runs :func:`wrap_eqcorr2d` twice, once within the handle set and once
     within the antihandle set, then sums the resulting histograms. Finally it
     subtracts a simple self-match correction so that exact self-pairs do not
     inflate the counts.
 
-    Notes
-    - Only the aggregated histogram is returned in the output dict (under
-      'hist_total'). Per-rotation details are not computed here.
-    - The self-match correction subtracts one count at matchtype = number of
-      nonzeros for each individual array. This assumes the engine would count a
-      self-pair as a perfect overlap at that bin.
+    :param handle_dict: Dictionary mapping keys to handle arrays.
+    :type handle_dict: dict[Any, numpy.ndarray]
+    :param antihandle_dict: Dictionary mapping keys to antihandle arrays.
+    :type antihandle_dict: dict[Any, numpy.ndarray]
+    :param mode: Rotation mode for comparisons. One of ``'classic'``, ``'square_grid'``,
+        or ``'triangle_grid'``. Defaults to ``'square_grid'``.
+    :type mode: str
+    :param do_smart: If True, skip unnecessary rotation computations for 1D arrays.
+        Defaults to True.
+    :type do_smart: bool
+    :returns: Dictionary containing:
+
+        - ``hist_total`` (numpy.ndarray): Combined similarity histogram with self-match correction.
+        - ``angles`` (list): Empty list (no per-rotation info for this helper).
+        - ``rotations`` (dict): Empty dict.
+        - ``worst_keys_combos`` (None): Not computed for similarity analysis.
+    :rtype: dict
+
+    .. note::
+        The self-match correction subtracts one count at matchtype = number of
+        nonzeros for each individual array.
     """
     # Compute pairwise stats within the handle set
     res_hh = wrap_eqcorr2d(handle_dict, handle_dict,

@@ -1,3 +1,5 @@
+/// Slat entity class representing DNA origami slats with handles.
+
 import 'package:flutter/material.dart';
 
 
@@ -47,19 +49,19 @@ class Slat {
       centerCoordinate = calculateCenter(slatCoordinates.values.toList());
   }
 
+  /// Sets a unique color for the slat, used for visualization.
   void setColor(Color color) {
-    /// Sets a unique color for the slat, used for visualization.
     uniqueColor = color;
   }
 
+  /// Clears the unique color of the slat.
   void clearColor() {
-    /// Clears the unique color of the slat.
     uniqueColor = null;
   }
 
+  /// Sets the ID of the reference slat this slat is associated with (or clear it).
+  /// Setting this also implies this slat is a phantom slat.
   void setPhantom(String newPhantom) {
-    /// Sets the ID of the reference slat this slat is associated with (or clear it).
-    /// Setting this also implies this slat is a phantom slat.
     phantomParent = newPhantom;
   }
 
@@ -69,8 +71,8 @@ class Slat {
     centerCoordinate = calculateCenter(slatCoordinates.values);
   }
 
+  /// Reverses a slat, keeping all handles in the same physical position but changing their logical order.
   void reverseDirection() {
-    /// Reverses a slat, keeping all handles in the same physical position but changing their logical order.
     Map<int, Offset> newSlatPositionToCoordinate = {};
     Map<Offset, int> newSlatCoordinateToPosition = {};
 
@@ -99,9 +101,8 @@ class Slat {
     h5Handles = newH5Handles;
   }
 
+  /// Assigns a placeholder to the slat, instead of a full handle.
   void setPlaceholderHandle(int handleId, int slatSide, String value, String category) {
-    /// Assigns a placeholder to the slat, instead of a full handle.
-
     // TODO: MORE STREAMLINED PLACEMENT LOGIC and REDUNDANCY/ERROR HANDLING
     if (handleId < 1 || handleId > maxLength) {
       throw Exception('Handle ID out of range');
@@ -118,9 +119,8 @@ class Slat {
     placeholderList.add('handle-$handleId-h$slatSide');
   }
 
+  /// Updates a placeholder handle with the actual handle.
   void updatePlaceholderHandle(int handleId, int slatSide, String sequence, String well, String plateName, String value, String category, int concentration) {
-    /// Updates a placeholder handle with the actual handle.
-
     String inputId = 'handle-$handleId-h$slatSide';
     if (!placeholderList.contains(inputId)) {
       throw Exception('Handle ID not found in placeholder list');
@@ -135,8 +135,8 @@ class Slat {
     }
   }
 
+  /// Defines the full details of a handle on a slat.
   void setHandle(int handleId, int slatSide, String sequence, String well, String plateName, String value, String category, int concentration) {
-    /// Defines the full details of a handle on a slat.
     if (handleId < 1 || handleId > maxLength) {
       throw Exception('Handle ID out of range');
     }
@@ -159,16 +159,15 @@ class Slat {
     return placeholderList.contains('handle-$handleID-h$slatSide');
   }
 
+  /// Removes all handles from the slat.
   void clearAllHandles(){
-    /// Removes all handles from the slat.
     h2Handles.clear();
     h5Handles.clear();
     placeholderList.clear();
   }
 
+  /// Removes all assembly handles from the slat.
   void clearAssemblyHandles() {
-    /// Removes all assembly handles from the slat.
-
     // Collect keys to remove from h2Handles
     final keysToRemoveH2 = h2Handles.entries
         .where((entry) => entry.value['category'].contains('ASSEMBLY'))
@@ -194,9 +193,8 @@ class Slat {
     }
   }
 
+  /// Calculates the molecular weight of the slat, based on the handles assigned.
   double getMolecularWeight() {
-    /// Calculates the molecular weight of the slat, based on the handles assigned.
-
     int totalBases = 0;
 
     if (h2Handles.length < maxLength || h5Handles.length < maxLength) {

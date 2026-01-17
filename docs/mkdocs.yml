@@ -1,5 +1,5 @@
-site_name: Crisscross Python Kit Documentation
-site_description: A comprehensive Python package for designing, editing, and exporting DNA megastructures
+site_name: 'Documentation for #-CAD and Python Crisscross Libraries'
+site_description: CAD and scripting systems for DNA sequence and megastructure design
 repo_url: https://github.com/mattaq31/Hash-CAD
 repo_name: mattaq31/Hash-CAD
 
@@ -21,13 +21,16 @@ theme:
   features:
     - navigation.instant
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
+    - navigation.indexes
     - navigation.top
     - search.highlight
     - search.share
     - toc.follow
     - content.code.copy
+    - content.icons
   icon:
     repo: fontawesome/brands/github
 
@@ -52,15 +55,6 @@ plugins:
             line_length: 88
             signature_crossrefs: true
             show_signature_annotations: true
-            backlinks: tree
-            parameter_headings: true
-            relative_crossrefs: true
-            scoped_crossrefs: true
-            show_inheritance_diagram: true
-            show_root_full_path: false
-            show_symbol_type_heading: true
-            show_symbol_type_toc: true
-            summary: true
 
 markdown_extensions:
   - admonition
@@ -79,17 +73,44 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Crisscross Module:
-    - Overview: crisscross/quick_start.md
+  - User Guide:
+    - user-guide/index.md
+    - Installation: user-guide/installation.md
+    - Designing Slats: user-guide/slat-design.md
+    - Assembly Handles: user-guide/assembly-handles.md
+    - Cargo & Seeds: user-guide/cargo-seeds.md
+    - Echo Export: user-guide/echo-export.md
+    - Handle Linking: user-guide/handle-linking.md
+
+  - crisscross:
+    - crisscross/index.md
     - Core Functions: crisscross/core-functions.md
     - Echo Export: crisscross/echo-export.md
     - Lab Helpers: crisscross/lab-helpers.md
-    - Graphics & Visualization: crisscross/graphics.md
+    - Graphics: crisscross/graphics.md
     - Plate Handling: crisscross/plate-handling.md
-    - Assembly Handle Optimization: crisscross/assembly-optimization.md
+    - Assembly Optimization: crisscross/assembly-optimization.md
     - Helper Functions: crisscross/helper-functions.md
-  - Orthoseq Generator Module:
-    - Overview: orthoseq/overview.md
-    - Function Documentation: orthoseq/library_reference.md
-  - Full API Reference:
-    - Complete API: api/complete.md
+    - For Developers: crisscross/for-developers.md
+
+  - OrthoSeq:
+    - orthoseq/index.md
+    - Complete API Reference: orthoseq/library-reference.md
+
+  - eqcorr2d:
+    - eqcorr2d/index.md
+    - Python API Reference: eqcorr2d/library-reference.md
+    - C Engine Reference: eqcorr2d/c-api-reference.md
+
+  - '#-CAD Developer':
+    - flutter-dev/index.md
+    - Getting Started: flutter-dev/getting-started.md
+    - State Management: flutter-dev/state-management.md
+    - Grid Control: flutter-dev/grid-control.md
+    - gRPC Integration: flutter-dev/grpc-integration.md
+    - Components: flutter-dev/components.md
+
+  - Complete API:
+    - api-reference/index.md
+    - Python API for all packages: api-reference/python-complete.md
+    - '#-CAD Dart API': flutter-api/index.html

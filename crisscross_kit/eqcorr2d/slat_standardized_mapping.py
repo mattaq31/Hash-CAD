@@ -10,14 +10,30 @@ this_folder = str(Path(__file__).resolve().parents[0])
 
 def convert_to_triangular(coord):
     """
-    Equation applied: x(new) = (x+y)/2, y(new) = -x
+    Convert Cartesian coordinates to triangular lattice coordinates.
+
+    Applies the transformation: x(new) = (x+y)/2, y(new) = -x
+
+    :param coord: Tuple of (y, x) Cartesian coordinates.
+    :type coord: tuple[int, int]
+    :returns: Tuple of (y_new, x_new) triangular coordinates.
+    :rtype: tuple[int, int]
     """
+    # TODO: confirm if it's x/y or y/x...
     return -int(coord[1]), int((coord[0] + coord[1]) / 2)
 
 
 def convert_triangular_coords_to_array(coords):
     """
-    Converts a list of triangular coordinates into a numpy array.
+    Convert a list of triangular coordinates into a numpy array.
+
+    Creates a 2D array where each coordinate position contains its 1-based index.
+    Coordinates are shifted so the minimum values become 0.
+
+    :param coords: List of (x, y) coordinate tuples in triangular space.
+    :type coords: list[tuple[int, int]]
+    :returns: 2D array with coordinate positions marked by their 1-based indices.
+    :rtype: numpy.ndarray
     """
 
     # Find min in each dimension
@@ -43,11 +59,19 @@ def convert_triangular_coords_to_array(coords):
 
 def generate_standardized_slat_handle_array(slat_1D_array, slat_type):
     """
-    Given a list of slat handles in order, assign handles to their corresponding standardized slat shape, which can then
-    be used downstream in handle match strength calculations.
-    :param slat_1D_array: 1D numpy array containing slat handles
-    :param slat_type: Slat type shape to use for matching
-    :return: Updated 2D numpy array containing slat handles in standardized shape
+    Map slat handles to a standardized 2D shape for match calculations.
+
+    Given a list of slat handles in order, assigns handles to their corresponding
+    standardized slat shape, which can then be used downstream in handle match
+    valency calculations.
+
+    :param slat_1D_array: 1D numpy array containing slat handle values in order.
+    :type slat_1D_array: numpy.ndarray
+    :param slat_type: Slat type identifier (e.g., 'DB-L-120', 'DB-L-60', 'DB-R-60', 'DB-R-120').
+        Must be a key in :data:`standardized_slat_mappings`.
+    :type slat_type: str
+    :returns: 2D numpy array containing slat handles arranged in standardized shape.
+    :rtype: numpy.ndarray
     """
     standardized_handle_array = standardized_slat_mappings[slat_type].copy()
     for position, value in enumerate(slat_1D_array):

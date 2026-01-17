@@ -200,9 +200,9 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Updates the number of cargo to be added with the next 'add' click
   @override
   void updateCargoAddCount(int value) {
-    /// Updates the number of cargo to be added with the next 'add' click
     if (cargoAdditionType == 'SEED') {
       cargoAddCount = 1;
     } else {
@@ -221,9 +221,9 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Selects or deselects cargo handles
   @override
   void selectHandle(Offset coordinate, {bool addOnly = false}) {
-    /// Selects or deselects cargo handles
     if (selectedHandlePositions.contains(coordinate) && !addOnly) {
       selectedHandlePositions.remove(coordinate);
     } else {

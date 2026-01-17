@@ -1,8 +1,8 @@
 # Complete API Reference
 
-This page contains the complete API documentation for both the Crisscross and Orthoseq Generator modules.
+This page contains the complete API documentation for all python modules.
 
-## Crisscross Module
+## crisscross Module
 
 ### Core Functions
 
@@ -14,6 +14,9 @@ This page contains the complete API documentation for both the Crisscross and Or
 
 #### Slats
 ::: crisscross.core_functions.slats
+
+#### Link Manager
+::: crisscross.core_functions.handle_link_manager
 
 #### Slat Design
 ::: crisscross.core_functions.slat_design
@@ -32,22 +35,22 @@ This page contains the complete API documentation for both the Crisscross and Or
 #### Static Plots
 ::: crisscross.graphics.static_plots
 
-### Assembly Handle Optimization
+### Slat Handle Match Evolver
 
 #### Handle Evolution
-::: crisscross.assembly_handle_optimization.handle_evolution
+::: crisscross.slat_handle_match_evolver.handle_evolution
 
-#### Hamming Compute
-::: crisscross.assembly_handle_optimization.hamming_compute
+#### Tubular Slat Match Compute
+::: crisscross.slat_handle_match_evolver.tubular_slat_match_compute
 
 #### Handle Mutation
-::: crisscross.assembly_handle_optimization.handle_mutation
+::: crisscross.slat_handle_match_evolver.handle_mutation
 
 #### Random Hamming Optimizer
-::: crisscross.assembly_handle_optimization.random_hamming_optimizer
+::: crisscross.slat_handle_match_evolver.random_hamming_optimizer
 
 #### Handle Evolution with Optuna
-::: crisscross.assembly_handle_optimization.handle_evolve_with_optuna
+::: crisscross.slat_handle_match_evolver.handle_evolve_with_optuna
 
 ### Plate Mapping
 
@@ -109,3 +112,13 @@ This page contains the complete API documentation for both the Crisscross and Or
 
 #### Helper Functions
 ::: orthoseq_generator.helper_functions
+
+## eqcorr2d Module
+
+The C API is documented [here](../eqcorr2d/c-api-reference.md), while the python modules are available below.
+
+::: eqcorr2d.eqcorr2d_interface
+
+::: eqcorr2d.slat_standardized_mapping
+
+::: eqcorr2d.rot60

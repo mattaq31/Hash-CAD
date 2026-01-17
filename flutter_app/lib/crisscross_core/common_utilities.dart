@@ -1,3 +1,5 @@
+/// Common utilities, typedefs, and helper functions for crisscross operations.
+
 import 'slats.dart';
 
 /// Typedef for handle key (slatID, position, side) - matches Python convention

@@ -3,29 +3,28 @@ import numpy as np
 
 
 def rotate_coords_tri60(i: np.ndarray, j: np.ndarray, k: int = 1):
-    """Rotate lattice coordinates by k×60° on a triangular (axial) grid.
+    """
+    Rotate lattice coordinates by k×60° on a triangular (axial) grid.
 
     This implements the closed-form rotations for the axial coordinate system
     commonly used with triangular/hexagonal grids. It is fully vectorized and
     supports broadcasting; i and j can be scalars or arrays of the same shape.
 
     The six distinct rotations (k mod 6) are:
-      R:   (i, j) -> (-j,      i + j)
-      R^2: (i, j) -> (-(i+j),  i)
-      R^3: (i, j) -> (-i,     -j)
-      R^4: (i, j) -> (j,      -i - j)
-      R^5: (i, j) -> (i + j,  -i)
-      R^0: identity (i, j)
 
-    Parameters
-    - i, j: np.ndarray or scalars
-        Axial indices of equal shape (or broadcastable) representing row/col in
-        the triangular lattice embedding used by this project.
-    - k: int
-        Number of 60° steps (can be any integer; reduced mod 6 internally).
+    - R:   (i, j) -> (-j,      i + j)
+    - R^2: (i, j) -> (-(i+j),  i)
+    - R^3: (i, j) -> (-i,     -j)
+    - R^4: (i, j) -> (j,      -i - j)
+    - R^5: (i, j) -> (i + j,  -i)
+    - R^0: identity (i, j)
 
-    Returns
-    - x, y: rotated coordinates with the same broadcasted shape as inputs.
+    :param i: Row indices in the axial coordinate system. Can be scalar or array.
+    :param j: Column indices in the axial coordinate system. Must be broadcastable with ``i``.
+    :param k: Number of 60° rotation steps. Can be any integer; reduced mod 6 internally.
+        Defaults to 1.
+    :returns: Tuple (x, y) of rotated coordinates with the same broadcasted shape as inputs.
+    :rtype: tuple[numpy.ndarray, numpy.ndarray]
     """
     k_mod = ((k % 6) + 6) % 6
     if k_mod == 0:
@@ -44,32 +43,27 @@ def rotate_coords_tri60(i: np.ndarray, j: np.ndarray, k: int = 1):
 
 
 def rotate_array_tri60(arr: np.ndarray, k: int = 1, map_only_nonzero: bool = False, return_shift: bool = False):
-    """Rotate a 2D occupancy array by k×60° on a triangular lattice.
+    """
+    Rotate a 2D occupancy array by k×60° on a triangular lattice.
 
     The array is assumed to live on axial coordinates (i=row, j=col). Rotation
     is implemented by transforming indices, shifting them to be non-negative,
     and scattering values into a tightly sized output array.
 
-    Parameters
-    - arr: np.ndarray
-        2D input array (e.g., uint8 occupancy). The dtype and sparsity are
+    :param arr: 2D input array (e.g., uint8 occupancy). The dtype and sparsity are
         preserved in the output; shape generally changes with rotation.
-    - k: int
-        Number of 60° steps. Any integer; reduced mod 6 internally.
-    - map_only_nonzero: bool
-        If True, only the non-zero entries are transformed and written, which is
-        typically faster for sparse integer masks.
-    - return_shift: bool
-        If True, returns a tuple (rotated, shift_x, shift_y) where shift_* are
-        the offsets added to make all indices >= 0.
+    :param k: Number of 60° rotation steps. Any integer; reduced mod 6 internally.
+        Defaults to 1.
+    :param map_only_nonzero: If True, only non-zero entries are transformed and written,
+        which is typically faster for sparse integer masks. Defaults to False.
+    :param return_shift: If True, returns a tuple (rotated, shift_x, shift_y) where
+        shift_* are the offsets added to make all indices >= 0. Defaults to False.
+    :returns: Rotated array, optionally with integer shifts if ``return_shift=True``.
+    :rtype: numpy.ndarray or tuple[numpy.ndarray, int, int]
 
-    Returns
-    - out: np.ndarray or (np.ndarray, int, int)
-        Rotated array; optionally also the integer shifts.
-
-    Notes
-    - Because rotation is done in index space, the output shape depends on k and
-      the input's footprint on the lattice. Expect different bounding boxes.
+    .. note::
+        Because rotation is done in index space, the output shape depends on k and
+        the input's footprint on the lattice. Expect different bounding boxes.
     """
     H, W = arr.shape
 

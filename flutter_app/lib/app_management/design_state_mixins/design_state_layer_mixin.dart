@@ -15,17 +15,17 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     return getLayerByOrder(adjacentOrder);
   }
 
+  /// Updates the active layer
   @override
   void updateActiveLayer(String value) {
-    /// Updates the active layer
     selectedLayerKey = value;
     clearSelection();
     notifyListeners();
   }
 
+  /// Cycles through the layer list and sets the selected layer (either up or down)
   @override
   void cycleActiveLayer(bool upDirection) {
-    /// Cycles through the layer list and sets the selected layer (either up or down)
     if (upDirection) {
       selectedLayerKey = layerMap.keys
           .firstWhere((key) => layerMap[key]!['order'] == (layerMap[selectedLayerKey]!['order'] + 1) % layerMap.length);
@@ -37,9 +37,9 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Updates the color of a layer
   @override
   void updateLayerColor(String layer, Color color) {
-    /// Updates the color of a layer
     layerMap[layer] = {
       ...?layerMap[layer],
       "color": color,
@@ -47,18 +47,18 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Clears all selections
   @override
   void clearSelection() {
-    /// Clears all selections
     selectedSlats = [];
     selectedHandlePositions = [];
     selectedAssemblyPositions = [];
     notifyListeners();
   }
 
+  /// Rotates the direction of a layer through all available directions
   @override
   void rotateLayerDirection(String layerKey) {
-    /// Rotates the direction of a layer through all available directions
     if (gridMode == '90') {
       if (layerMap[layerKey]?['direction'] == 90) {
         layerMap[layerKey]?['direction'] = 180;
@@ -85,10 +85,9 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// flips the H2-H5 direction of a layer
   @override
   void flipLayer(String layer, BuildContext context) {
-    /// flips the H2-H5 direction of a layer
-
     // The flip operation can be invalid if a seed is transferred to a location where slats are already present.
     // To prevent this, need to check the slat occupancy map prior to allowing the flip to occur.
     final seedKeysToFlip = <(String, String, Offset)>[];
@@ -171,16 +170,16 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Changes the visibility of a layer on the 2D grid
   @override
   void flipLayerVisibility(String layer) {
-    /// Changes the visibility of a layer on the 2D grid
     layerMap[layer]?['hidden'] = !layerMap[layer]?['hidden'];
     notifyListeners();
   }
 
+  /// Multi-slat generation can be flipped to achieve different placement systems
   @override
   void flipMultiSlatGenerator() {
-    /// Multi-slat generation can be flipped to achieve different placement systems
     Map<(String, int), Offset> settingsTransfer = Map.from(multiSlatGenerators);
     multiSlatGenerators = Map.from(multiSlatGeneratorsAlternate);
     multiSlatGeneratorsAlternate = settingsTransfer;
@@ -188,9 +187,9 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Slat placement can be flipped to adjust the positions of handles
   @override
   void flipSlatAddDirection() {
-    /// Slat placement can be flipped to adjust the positions of handles
     if (slatAddDirection == 'down') {
       slatAddDirection = 'up';
     } else {
@@ -199,9 +198,9 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Deletes a layer from the design entirely
   @override
   void deleteLayer(String layer) {
-    /// Deletes a layer from the design entirely
     if (!layerMap.containsKey(layer)) {
       return; // Ensure the layer exists before deleting
     }
@@ -240,10 +239,9 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Reorders the positions of the layers based on a new order
   @override
   void reOrderLayers(List<String> newOrder, BuildContext context) {
-    /// Reorders the positions of the layers based on a new order
-
     // since layers have moved, seed occupancy map needs to be updated, and potentially move should be cancelled if a clash can occur
 
     // first, create a fake new layer map
@@ -316,9 +314,9 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Adds an entirely new layer to the design
   @override
   void addLayer() {
-    /// Adds an entirely new layer to the design
     layerMap[nextLayerKey] = {
       "direction": layerMap.values.last['direction'],
       "DBDirection": layerMap.values.last['direction'], // temporary alternative drawing system

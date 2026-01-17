@@ -26,7 +26,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     // the localPosition can be used to focus the zoom in the direction of the pointer
     // think of it this way:
     // the 'localPosition' is the x/y coordinate of the pointer in terms of a 'world scale'
-    // however, the actually offset of the current view will have changed throughout use
+    // however, the actual offset of the current view will have changed throughout use
     // to find the new offset, first find the focus point of the current offset i.e. subtract the localPosition from the current offset
     // next, translate this focus point into the new scale system by multiplying by the new scale and dividing by the old one
     // finally, subtracting this focus point from the pointer coordinates in 'world scale' will result in the coordinates of the new

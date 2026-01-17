@@ -604,9 +604,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
   }
 
+  /// Creates or updates a handle graphic in the 3D scene.
   void positionHandleInstance(String slatName, String name, Offset position, Color color, double zOrder, String topSide, String handleSide, String handleType, bool updateOnly){
-    /// Creates or updates a handle graphic in the 3D scene.
-
     double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
 
     if (handleType == 'CARGO'){
@@ -656,8 +655,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     instanceManager[instanceType]!.setColor(name, color);
   }
 
+  /// Adds, deletes or updates all handles for a slat (both H2 and H5)
   void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette) {
-    /// Adds, deletes or updates all handles for a slat (both H2 and H5)
     final handleName = '${slat.id}-handle-$handlePosition-$handleSide';
 
     if (!handleIDs.containsKey(slat.id)) {
@@ -696,9 +695,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   }
 
 
+  /// Adds, updates or removes assembly handles from the 3D scene based on the current state of the slat.
   void manageHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette) {
-    /// Adds, updates or removes assembly handles from the 3D scene based on the current state of the slat.
-
     final topSide = (layerMap[baseSlat.layer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
     final color = layerMap[baseSlat.layer]?['color'].value & 0x00FFFFFF;
     final order = layerMap[baseSlat.layer]?['order'].toDouble();

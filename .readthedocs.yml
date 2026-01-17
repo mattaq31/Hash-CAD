@@ -4,12 +4,21 @@ build:
   os: ubuntu-24.04
   tools:
     python: "3.11"
+  jobs:
+    post_checkout:
+      # Download Flutter SDK (includes Dart) for dartdoc generation
+      - git clone https://github.com/flutter/flutter.git -b stable --depth 1 $READTHEDOCS_VIRTUALENV_PATH/flutter
+    pre_build:
+      # Generate Flutter API docs with dartdoc
+      - export PATH="$PATH:$READTHEDOCS_VIRTUALENV_PATH/flutter/bin"
+      - cd flutter_app && $READTHEDOCS_VIRTUALENV_PATH/flutter/bin/flutter pub get
+      - cd flutter_app && $READTHEDOCS_VIRTUALENV_PATH/flutter/bin/dart doc --output=../docs/docs/flutter-api
 
 python:
   install:
     - method: pip
-      path: ./crisscross_kit
-    - requirements: ./crisscross_kit/docs/requirements.txt
+      path: .
+    - requirements: ./docs/requirements.txt
 
 mkdocs:
-  configuration: ./crisscross_kit/docs/mkdocs.yml
+  configuration: ./docs/mkdocs.yml

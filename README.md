@@ -40,25 +40,64 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/version_0_2_1.png" alt="Hash-CAD in action" style="width: 80%; margin: 0.5%;">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/bird_edit.png" alt="Hash-CAD in action" style="width: 80%; margin: 0.5%;">
+</p>
+<p align="center">
+  <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/megastar_edit.png" alt="Hash-CAD in action" style="width: 80%; margin: 0.5%;">
 </p>
 
-## Main CAD Interface
-Details TBC.
+## \#-CAD
+
+\#-CAD provides a graphical interface for designing crisscross megastructures with features including:
+
+- **2D Grid Design**: Intuitive slat placement on square or hexagonal grids
+- **Handle Optimization**: Evolutionary algorithm for optimal assembly handle sequence selection from a finite library
+- **3D Visualization**: Real-time 3D rendering of a design
+- **Cargo and Seed Placement**: Free-form editing of cargo handle placement
+- **Handle Linking**: The ability to link handles or generate duplicates to build repeating unit designs
+- **Echo Export**: Direct export to Echo Liquid Handler command sheets
+- **(Experimental) Double-Barrel slats** - The ability to design and optimize megastructures using double-barrel 2x16 slats (alongside the standard 1x32 slats) 
+
+For comprehensive usage instructions, see the [User Guide](https://hash-cad.readthedocs.io/user-guide/).
 
 ### Installation
-Details TBC.
 
-### Usage Guide
-Details TBC.
+**Desktop Application**: Download the latest release for your platform from [GitHub Releases](https://github.com/mattaq31/Hash-CAD/releases).
+
+| Platform | Download                      |
+|----------|-------------------------------|
+| macOS | `Hash-CAD-macOS.zip`          |
+| Windows | `Hash-CAD-windows.zip`  |
+| Linux | `Hash-CAD-linux.tar.gz` |
+
+**Web Application**: Simply open the application URL [here](https://www.hash-cad.com).
+
+For detailed installation instructions, see the [Installation Guide](https://hash-cad.readthedocs.io/user-guide/installation/).
+
+### TLDR Usage Guide
+
+1. **Create or load a design**: Start fresh or import an existing `.xlsx` design file
+2. **Design your slat layout**: Place slats on the 2D grid to form your megastructure.  Slats must crisscross each other on different layers to produce a valid design.
+3. **Optimize handles**: Run the evolutionary algorithm to optimize handle sequence selection.
+4. **Add cargo and seeds**: Place functional elements on your design and select the seed binding position (requires a total of 5x16 handles).
+5. **Export**: Generate Echo commands or save for Python processing.
+
+See the full [User Guide](https://hash-cad.readthedocs.io/user-guide/) for more details.
 
 ## Crisscross Python API & Orthogonal Sequence Generation
-Please check the main python [readme](https://github.com/mattaq31/Crisscross-Design/blob/main/crisscross_kit/README.md) for more details on installation and usage of our joint python libraries for crisscross design and handle library orthogonal sequence generation.
 
-Alternatively, check our online documentation [here](https://hash-cad.readthedocs.io/en/latest/) on readthedocs.io.
+  The `crisscross` python API can be used to manipulate megastructures programmatically, and its file format is fully compatible with that of #-CAD. The Python interface provides more flexibility and customizability when compared to #-CAD, at the cost of a steeper learning curve.
 
-## #-CAD Bundled Python Server
-Details TBC.
+  The bundled `orthoseq_generator` package helps you find sets of **orthogonally binding DNA sequence pairs**. The main focus is on selecting sequences based on **thermodynamic binding energy**, not sequence diversity (as commonly used in barcoding).
+### Installation
+
+Simply install via pip (requires Python 3.11+):
+
+```bash
+pip install crisscross_kit
+```
+
+Please check our [docs](https://hash-cad.readthedocs.io/en/latest/) for more details on installation and usage of our joint python libraries for crisscross design and handle library orthogonal sequence generation.
 
 ## Development & Support
 \#-CAD was developed in the [William Shih Lab](https://www.shih.hms.harvard.edu) at the Dana-Farber Cancer Institute and the Wyss Institute at Harvard University.  The following contributed to the codebase:

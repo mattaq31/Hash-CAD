@@ -1,3 +1,5 @@
+/// Main application state management for megastructure designs.
+
 import 'package:flutter/material.dart';
 import 'dart:math';
 

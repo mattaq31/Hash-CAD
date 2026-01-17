@@ -1,3 +1,5 @@
+/// Handle plate library for DNA source plate mapping and lookup.
+
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
 

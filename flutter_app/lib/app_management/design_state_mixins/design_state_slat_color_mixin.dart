@@ -5,9 +5,9 @@ import 'design_state_contract.dart';
 /// Mixin containing slat color management operations for DesignState
 mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
 
+  /// Assigns a color to all selected slats (only non-phantom slats can be edited directly)
   @override
   void assignColorToSelectedSlats(Color color) {
-    /// Assigns a color to all selected slats (only non-phantom slats can be edited directly)
     for (var slatID in selectedSlats) {
       if (slats.containsKey(slatID) && slats[slatID]!.phantomParent == null) {
         slats[slatID]!.uniqueColor = color;
@@ -29,9 +29,9 @@ mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Edits the color of all slats of a specific color
   @override
   void editSlatColorSearch(String layerKey, int oldColorIndex, Color newColor) {
-    /// Edits the color of all slats of a specific color
     Color oldColor = uniqueSlatColorsByLayer[layerKey]![oldColorIndex];
     for (var slat in slats.values) {
       if (slat.layer == layerKey && slat.uniqueColor == oldColor) {
@@ -43,9 +43,9 @@ mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Removes a specific color from the list of unique slat colors in a layer
   @override
   void removeSlatColorFromLayer(String layerKey, int colorIndex) {
-    /// Removes a specific color from the list of unique slat colors in a layer
     Color colorToRemove = uniqueSlatColorsByLayer[layerKey]![colorIndex];
     for (var slat in slats.values) {
       if (slat.layer == layerKey && slat.uniqueColor == colorToRemove) {
@@ -57,9 +57,9 @@ mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Clears the color of all slats
   @override
   void clearAllSlatColors() {
-    /// Clears the color of all slats
     for (var slat in slats.values) {
       slat.clearColor();
     }
@@ -69,9 +69,9 @@ mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Clears the color of all slats in a specific layer
   @override
   void clearSlatColorsFromLayer(String layer) {
-    /// Clears the color of all slats in a specific layer
     for (var slat in slats.values) {
       if (slat.layer == layer) {
         slat.clearColor();

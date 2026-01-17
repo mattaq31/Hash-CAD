@@ -1,6 +1,6 @@
 # OrthoSeq Generator API Documentation
 
-The below contains documentation for all relevant functions available for import with the orthoseq_generator package.
+The below contains documentation for all relevant functions available for import within the `orthoseq_generator` package.
 
 ## Sequence Computations
 ::: orthoseq_generator.sequence_computations

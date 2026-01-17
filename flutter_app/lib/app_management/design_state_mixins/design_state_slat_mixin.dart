@@ -12,9 +12,9 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Adds slats to the design
   @override
   void addSlats(String layer, Map<int, Map<int, Offset>> slatCoordinates) {
-    /// Adds slats to the design
     for (var slat in slatCoordinates.entries) {
       slats['$layer-I${layerMap[layer]?["next_slat_id"]}'] = Slat(
           layerMap[layer]?["next_slat_id"], '$layer-I${layerMap[layer]?["next_slat_id"]}', layer, slat.value,
@@ -31,11 +31,10 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Updates the position of a slat
+  /// Uses three-phase approach to prevent data loss when movement paths overlap
   @override
   void updateSlatPosition(String slatID, Map<int, Offset> slatCoordinates, {bool skipStateUpdate = false, requestFlip = false}) {
-    /// Updates the position of a slat
-    /// Uses three-phase approach to prevent data loss when movement paths overlap
-
     String layer = slatID.split('-')[0];
 
     // Track which seeds are affected by this move (for dissolution)
@@ -140,10 +139,10 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Updates the position of multiple slats
   @override
   void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates,
       {bool requestFlip = false}) {
-    /// Updates the position of multiple slats
     for (int i = 0; i < slatIDs.length; i++) {
       String slatID = slatIDs[i];
       Map<int, Offset> slatCoordinates = allCoordinates[i];
@@ -155,9 +154,9 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Removes a slat from the design
   @override
   void removeSlat(String ID, {bool skipStateUpdate = false}) {
-    /// Removes a slat from the design
     if (!skipStateUpdate) clearSelection();
     String layer = ID.split('-')[0];
 
@@ -236,9 +235,9 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Remove multiple slats from the design
   @override
   void removeSlats(List<String> IDs) {
-    /// Remove multiple slats from the design
     if (IDs.isEmpty) return;
 
     clearSelection();
@@ -251,9 +250,9 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Flips a slat's direction
   @override
   void flipSlat(String ID) {
-    /// Flips a slat's direction
     if (slats[ID]!.slatType == 'tube') {
       // double barrel flips are currently blocked
       slats[ID]!.reverseDirection();
@@ -268,9 +267,9 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Flips multiple slats' direction
   @override
   void flipSlats(List<String> IDs) {
-    /// Flips multiple slats' direction
     for (var ID in IDs) {
       if (slats[ID]!.slatType == 'tube') {
         // double barrel flips are currently blocked
@@ -287,9 +286,8 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
   }
 
   @override
+  /// Selects or deselects a slat
   void selectSlat(String ID, {bool addOnly = false}) {
-    /// Selects or deselects a slat
-
     if (ID == 'SEED') return; // Prevent selecting 'SEED' as a slat ID
 
     if (selectedSlats.contains(ID) && !addOnly) {
@@ -303,9 +301,9 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Updates the number of slats to be added with the next 'add' click
   @override
   void updateSlatAddCount(int value) {
-    /// Updates the number of slats to be added with the next 'add' click
     slatAddCount = value;
     notifyListeners();
   }

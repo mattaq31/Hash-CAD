@@ -340,20 +340,20 @@ void exportDesign(Map<String, Slat> slats,
   }
 }
 
+/// The Excel package has an annoying variable format which needs to be
+/// confirmed to be a certain type before Dart allows you to
+/// access the internal value.  This function can be used to read in integers.
 int readExcelInt(Sheet workSheet, String cell){
-  /// The Excel package has an annoying variable format which needs to be
-  /// confirmed to be a certain type before Dart allows you to
-  /// access the internal value.  This function can be used to read in integers.
   var cellValue = workSheet.cell(CellIndex.indexByString(cell)).value;
   return(cellValue is IntCellValue)
       ? cellValue.value
       : 0;
 }
 
+/// The Excel package has an annoying variable format which needs to be
+/// confirmed to be a certain type before Dart allows you to
+/// access the internal value.  This function can be used to read in doubles.
 double readExcelDouble(Sheet workSheet, String cell){
-  /// The Excel package has an annoying variable format which needs to be
-  /// confirmed to be a certain type before Dart allows you to
-  /// access the internal value.  This function can be used to read in doubles.
   var cellValue = workSheet.cell(CellIndex.indexByString(cell)).value;
   return(cellValue is IntCellValue)
       ? cellValue.value.toDouble()
@@ -362,10 +362,10 @@ double readExcelDouble(Sheet workSheet, String cell){
       : 0.0;
 }
 
+/// The Excel package has an annoying variable format which needs to be
+/// confirmed to be a certain type before Dart allows you to
+/// access the internal value.  This function can be used to read in strings.
 String readExcelString(Sheet workSheet, String cell){
-  /// The Excel package has an annoying variable format which needs to be
-  /// confirmed to be a certain type before Dart allows you to
-  /// access the internal value.  This function can be used to read in strings.
   var cellValue = workSheet.cell(CellIndex.indexByString(cell)).value;
   return (cellValue is TextCellValue)
       ? cellValue.value.text ?? ''
@@ -373,10 +373,9 @@ String readExcelString(Sheet workSheet, String cell){
 }
 
 
+/// extracts assembly handles from a pre-opened excel workbook and assigns them to slats
+/// An extra flag (rowColFlipped) is used to determine whether the row/column order should be flipped when reading from Excel (to match with internal representations)
 bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slatArray, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, double minX, double minY, bool rowColFlipped){
-  /// extracts assembly handles from a pre-opened excel workbook and assigns them to slats
-  /// An extra flag (rowColFlipped) is used to determine whether the row/column order should be flipped when reading from Excel (to match with internal representations)
-
   for (var table in excelFile.tables.keys.where((key) =>
       key.startsWith('handle_interface_'))) {
     // runs through each handle layer sheet

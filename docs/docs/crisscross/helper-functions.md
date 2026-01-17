@@ -9,3 +9,7 @@ Basic tools for designing DNA slats.
 General utility functions.
 
 ::: crisscross.helper_functions
+
+## Slat basic physical properties
+
+::: crisscross.helper_functions.slat_salient_quantities

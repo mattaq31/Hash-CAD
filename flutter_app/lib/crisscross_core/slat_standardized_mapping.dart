@@ -1,7 +1,5 @@
 import 'dart:math';
-
-// Convenience alias for readability
-typedef IntGrid = List<List<int>>;
+import 'parasitic_valency.dart';
 
 /// Convert a square-grid coordinate (row=x, col=y) to triangular coordinates.
 /// Python reference: convert_to_triangular(coord) -> (-y, (x+y)/2)

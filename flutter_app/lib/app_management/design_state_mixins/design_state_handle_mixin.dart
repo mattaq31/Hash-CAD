@@ -794,9 +794,9 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
     return slatTypes;
   }
 
+  /// Removes all handles from the slats
   @override
   void clearAssemblyHandles() {
-    /// Removes all handles from the slats
     for (var slat in slats.values) {
       slat.clearAssemblyHandles();
     }

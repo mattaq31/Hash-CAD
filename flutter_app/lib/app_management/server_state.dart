@@ -1,3 +1,5 @@
+/// Server communication state for gRPC Python backend integration.
+
 import '../grpc_client_architecture/client_entry.dart';
 import '../grpc_client_architecture/health.pbgrpc.dart';
 import 'main_design_io.dart';

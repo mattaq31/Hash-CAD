@@ -1,9 +1,7 @@
-# Orthogonal Sequence Generator
-
+# Orthogonal Sequence Generator (OrthoSeq)
 ## Problem It Solves
-
 This tool helps you find sets of **orthogonally binding DNA sequence pairs**. The main focus is on selecting sequences based on **thermodynamic binding energy**, not sequence diversity (as commonly used in barcoding).
-The tool allows to specify an on-target binding energy range and an off-target binding limit.
+The tool allows you to specify an on-target binding energy range and an off-target binding limit.
 
 Orthogonality here means:  
 - Each sequence binds strongly to its intended partner (**on-target**)  
@@ -18,15 +16,24 @@ To maximize the number of orthogonal sequences found under given constraints, we
 The algorithm works best for sequences up to **13 or 14 nucleotides** long (plus optional fixed 5' and 3' extensions, defined by the user).
 
 ---
+## Installation
 
+This package is automatically installed when you install the main `crisscross_kit` package as below:
+
+```bash
+pip install crisscross_kit
+```
+
+You will also need to install the `nupack` package separately from [here](https://www.nupack.org/download/overview).  `Nupack` will work directly in a MacOS or Linux environment, but will require the Windows Subsystem for Linux (WSL) to run on Windows.
+
+---
 ## Basic Use
 
-Installation instructions can be found in the main `README.md` file located in the main [`crisscross_kit`](https://github.com/mattaq31/Hash-CAD) folder. You should manually download the entire [`Hash-CAD project`](https://github.com/mattaq31/Hash-CAD) from GitHub to access example scripts demonstrating how to use the tool.
+You can manually download example [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) from GitHub demonstrating how to use the tool.
 
-Once installed, you can copy the scripts from the downloaded subfolder `.../crisscross_kit/orthoseq_generator/scripts` into any directory you like and add that directory to your `PATH` environment variable.
+Once downloaded, you can move the scripts into any directory you like and add that directory to your `PATH` environment variable.
 
 There are four scripts that are typically executed in sequence:
-
 
 ---
 
@@ -239,7 +246,7 @@ The `legacy/` directory includes two self-contained scripts for finding orthogon
    - Derives the independent set (orthogonal sequences) and saves them to for example `independent_sequences.txt` in `results`.
 
 **Output & Folders**  
-- The lecacy scripts are self-contained and have their own pre_compute_library
+- The legacy scripts are self-contained and have their own pre_compute_library
 - The `results` folder is created automatically in the legacy directory and contains the found orthogonal sequences in for example`independent_sequences.txt`.  
 - The `pre_computed_energies` folder is created automatically and contains the cached `.pkl` energy files.  
 - The off-target energies (here `subset_data_7mers96to101.pkl`) are saved in the same folder as the script.

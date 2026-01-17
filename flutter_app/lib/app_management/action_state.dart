@@ -1,3 +1,5 @@
+/// User action and display settings state management.
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
