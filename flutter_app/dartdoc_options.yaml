@@ -2,7 +2,7 @@ dartdoc:
   name: Hash-CAD Flutter App
   description: Flutter application for DNA megastructure design
   header:
-    - doc/custom_header.html
+    - dartdoc_resources/custom_header.html
   showUndocumentedCategories: true
   include:
     # Only document barrel files at lib/ root
