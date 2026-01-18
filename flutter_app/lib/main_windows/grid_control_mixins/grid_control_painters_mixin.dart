@@ -26,6 +26,8 @@ mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridContro
             appState.gridMode,
             scale < 0.5 ? false : actionState.displayGrid,
             actionState.displayBorder,
+            zoomBoundsFlashOpacity,
+            actionState.isSideBarCollapsed ? 80.0 : 72.0 + 330.0,
           ),
           child: Container(),
         ),

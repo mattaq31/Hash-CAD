@@ -35,7 +35,8 @@ class _GridAndCanvasState extends State<GridAndCanvas>
         GridControlMouseEventsMixin<GridAndCanvas>,
         GridControlGestureEventsMixin<GridAndCanvas>,
         GridControlKeyboardEventsMixin<GridAndCanvas>,
-        GridControlPaintersMixin<GridAndCanvas> {
+        GridControlPaintersMixin<GridAndCanvas>,
+        TickerProviderStateMixin<GridAndCanvas> {
 
   // Scale parameters
   @override
@@ -97,6 +98,36 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   Offset? dragBoxStart;
   @override
   Offset? dragBoxEnd;
+
+  // Zoom bounds flash animation
+  late AnimationController _zoomBoundsFlashController;
+  @override
+  double zoomBoundsFlashOpacity = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoomBoundsFlashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _zoomBoundsFlashController.addListener(() {
+      setState(() {
+        zoomBoundsFlashOpacity = 1.0 - _zoomBoundsFlashController.value;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _zoomBoundsFlashController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void triggerZoomBoundsFlash() {
+    _zoomBoundsFlashController.forward(from: 0.0);
+  }
 
   /// Updates the coordinates for the hover slat preview
   @override

@@ -54,6 +54,10 @@ mixin GridControlContract<T extends StatefulWidget> on State<T> {
   Offset? get dragBoxEnd;
   set dragBoxEnd(Offset? value);
 
+  // Zoom bounds flash - in main grid_control file
+  double get zoomBoundsFlashOpacity;
+  void triggerZoomBoundsFlash();
+
   // === Methods from GridControlHelpersMixin ===
   (double, Offset) scrollZoomCalculator(PointerScrollEvent event, {double zoomFactor = 0.2});
   bool checkCoordinateOccupancy(DesignState appState, ActionState actionState, List<Offset> coordinates);

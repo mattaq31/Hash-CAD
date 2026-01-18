@@ -12,11 +12,17 @@ import 'grid_control_contract.dart';
 mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   void handlePointerSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent && !dragBoxActive) {
+      final oldScale = scale;
       setState(() {
         var (calcScale, calcOffset) = scrollZoomCalculator(event);
         scale = calcScale;
         offset = calcOffset;
       });
+      // Trigger flash if we hit the bounds
+      if ((oldScale == minScale && event.scrollDelta.dy > 0) ||
+          (oldScale == maxScale && event.scrollDelta.dy < 0)) {
+        triggerZoomBoundsFlash();
+      }
     }
   }
 

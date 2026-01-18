@@ -9,8 +9,10 @@ class GridPainter extends CustomPainter {
   final String gridSystem;
   final bool drawGrid;
   final bool drawBorder;
+  final double zoomBoundsFlashOpacity;
+  final double flashLeftInset;
 
-  GridPainter(this.scale, this.canvasOffset, this.gridSize, this.gridSystem, this.drawGrid, this.drawBorder);
+  GridPainter(this.scale, this.canvasOffset, this.gridSize, this.gridSystem, this.drawGrid, this.drawBorder, this.zoomBoundsFlashOpacity, this.flashLeftInset);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -98,10 +100,25 @@ class GridPainter extends CustomPainter {
     }
 
     canvas.restore();
+
+    // Draw zoom bounds flash overlay (in screen space, after restore)
+    if (zoomBoundsFlashOpacity > 0) {
+      final flashPaint = Paint()
+        ..color = Colors.red.withValues(alpha: 0.4 * zoomBoundsFlashOpacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 16.0;
+      final rect = Rect.fromLTRB(flashLeftInset + 8, 8, size.width - 8, size.height - 8);
+      canvas.drawRect(rect, flashPaint);
+    }
   }
 
   @override
   bool shouldRepaint(covariant GridPainter oldDelegate) {
-    return false;
+    return oldDelegate.zoomBoundsFlashOpacity != zoomBoundsFlashOpacity ||
+        oldDelegate.flashLeftInset != flashLeftInset ||
+        oldDelegate.scale != scale ||
+        oldDelegate.canvasOffset != canvasOffset ||
+        oldDelegate.drawGrid != drawGrid ||
+        oldDelegate.drawBorder != drawBorder;
   }
 }

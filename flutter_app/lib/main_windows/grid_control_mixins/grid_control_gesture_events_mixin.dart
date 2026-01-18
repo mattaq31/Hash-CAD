@@ -24,7 +24,14 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
     }
     setState(() {
       // this scaling system is identical to the one used for the mouse wheel zoom
-      final newScale = (initialScale * details.scale).clamp(minScale, maxScale);
+      final rawScale = initialScale * details.scale;
+      final newScale = rawScale.clamp(minScale, maxScale);
+
+      // Trigger flash if we hit the bounds
+      if (rawScale != newScale && (rawScale < minScale || rawScale > maxScale)) {
+        triggerZoomBoundsFlash();
+      }
+
       if (newScale == initialScale) {
         offset = initialPanOffset + (details.focalPoint - initialGestureFocalPoint);
       } else {
