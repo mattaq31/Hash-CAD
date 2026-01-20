@@ -84,6 +84,15 @@ class HandleLinkManager {
     handleBlocks.remove(key);
   }
 
+  /// Clears the enforced value for the group containing the given handle.
+  /// The handle remains in its group (links are preserved), only the enforcement is removed.
+  void clearEnforcedValue(HandleKey key) {
+    var group = handleLinkToGroup[key];
+    if (group != null) {
+      handleGroupToValue.remove(group);
+    }
+  }
+
   /// Removes a link from a handle.
   void removeLink(HandleKey key) {
     var group = handleLinkToGroup[key];
@@ -325,6 +334,7 @@ class HandleLinkManager {
 
   /// Exports link data to Excel sheet format.
   /// Returns list of rows, where each slat has 6 rows.
+  /// Slats are sorted by layer order, then by slat numeric ID.
   List<List<dynamic>> exportToExcelData(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap) {
     List<List<dynamic>> output = [];
 
@@ -336,12 +346,18 @@ class HandleLinkManager {
       }
     }
 
-    for (var entry in slats.entries) {
-      if (entry.value.phantomParent != null) continue; // no phantom slats
+    // Sort slats by layer order, then by slat numeric ID
+    var sortedSlats = slats.entries.where((e) => e.value.phantomParent == null).toList();
+    sortedSlats.sort((a, b) {
+      int layerOrderA = layerMap[a.value.layer]?['order'] ?? 0;
+      int layerOrderB = layerMap[b.value.layer]?['order'] ?? 0;
+      if (layerOrderA != layerOrderB) return layerOrderA.compareTo(layerOrderB);
+      return a.value.numericID.compareTo(b.value.numericID);
+    });
+
+    for (var entry in sortedSlats) {
       var slatId = entry.key;
       var slat = entry.value;
-
-      if (slat.phantomParent != null) continue;
 
       // Layer-Slat Name row
       output.add([dartToPythonSlatNameConvert(slatId, layerMap), ...List.filled(maxSlatLen, null)]);

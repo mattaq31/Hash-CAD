@@ -368,6 +368,8 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       String handleCategory = handleDict[donorPosition]!['category'];
       Offset toCoord = coordinateTransferMap[fromCoord]!;
 
+      if (toCoord == fromCoord) continue; // no movement
+
       if (!occupiedGridPoints[layerID]!.containsKey(toCoord)) continue; // No receiver slat present
 
       var receiverSlatID = occupiedGridPoints[layerID]![toCoord]!;

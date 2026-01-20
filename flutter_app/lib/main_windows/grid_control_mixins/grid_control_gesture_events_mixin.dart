@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app_management/shared_app_state.dart';
@@ -164,6 +165,10 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
       }
 
       String category = actionState.assemblyAttachMode == 'top' ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE';
+
+      // Clear any existing enforcement on this handle to allow manual override
+      HandleKey targetKey = (slat.phantomParent ?? slatID, position, integerSlatSide);
+      appState.assemblyLinkManager.clearEnforcedValue(targetKey);
 
       appState.clearAssemblySelection();
       appState.smartSetHandle(slat, position, integerSlatSide, handleValue, category, requestStateUpdate: true);

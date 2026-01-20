@@ -698,6 +698,19 @@ class SlatPainter extends CustomPainter {
               bottomColor = appState.assemblyHandleBlockedColor;
             }
 
+            // Check for enforced values
+            bool topEnforced = false;
+            bool bottomEnforced = false;
+            if (!topBlocked && !bottomBlocked) {
+              String slatKeyId = slat.phantomParent ?? slat.id;
+              int topSide = selectedLayerTopside == 'H5' ? 5 : 2;
+              int bottomSide = selectedLayerTopside == 'H5' ? 2 : 5;
+              var topEnforcedValue = appState.assemblyLinkManager.getEnforceValue((slatKeyId, handleIndex, topSide));
+              var bottomEnforcedValue = appState.assemblyLinkManager.getEnforceValue((slatKeyId, handleIndex, bottomSide));
+              topEnforced = topEnforcedValue != null && topEnforcedValue > 0;
+              bottomEnforced = bottomEnforcedValue != null && bottomEnforcedValue > 0;
+            }
+
             if (topHandleHidden && bottomHandleHidden) {
               continue; // Skip drawing if both handles are hidden
             }
@@ -725,18 +738,35 @@ class SlatPainter extends CustomPainter {
               textPainter.paint(canvas, actualOffset);
             }
 
+            // Helper to draw enforced value indicator (dot at top-left corner)
+            void drawEnforcedIndicator(Rect rect, Color fontColor) {
+              final dotRadius = rect.width * 0.05;
+              final paint = Paint()
+                ..color = fontColor
+                ..style = PaintingStyle.fill;
+              canvas.drawCircle(
+                Offset(rect.left + dotRadius + 0.5, rect.top + dotRadius + 0.5),
+                dotRadius,
+                paint,
+              );
+            }
+
             if (!topHandleHidden) {
               drawHandleMarker(rectTop, topColor, topCategory, true, topHandleSelected);
+              final topFontColor = isColorDark(topColor) ? Colors.white : Colors.black;
+              if (topEnforced) drawEnforcedIndicator(rectTop, topFontColor);
               if (scale >= kHandleTextMinScale) {
                 drawText(topText, Offset(position.dx, position.dy - halfHeight / 2),
-                    isColorDark(topColor) ? Colors.white : Colors.black, halfHeight * 0.8);
+                    topFontColor, halfHeight * 0.8);
               }
             }
             if (!bottomHandleHidden) {
               drawHandleMarker(rectBottom, bottomColor, bottomCategory, false, bottomHandleSelected);
+              final bottomFontColor = isColorDark(bottomColor) ? Colors.white : Colors.black;
+              if (bottomEnforced) drawEnforcedIndicator(rectBottom, bottomFontColor);
               if (scale >= kHandleTextMinScale) {
                 drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2),
-                    isColorDark(bottomColor) ? Colors.white : Colors.black, halfHeight * 0.8);
+                    bottomFontColor, halfHeight * 0.8);
               }
             }
 
