@@ -58,7 +58,7 @@
 - **Echo Export**: Direct export to Echo Liquid Handler command sheets
 - **(Experimental) Double-Barrel slats** - The ability to design and optimize megastructures using double-barrel 2x16 slats (alongside the standard 1x32 slats) 
 
-For comprehensive usage instructions, see the [User Guide](https://hash-cad.readthedocs.io/user-guide/).
+For comprehensive usage instructions, see the [User Guide](https://hash-cad.readthedocs.io/en/latest/user-guide/).
 
 ### Installation
 
