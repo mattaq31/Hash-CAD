@@ -112,7 +112,7 @@ Experimental validation of #-CAD was carried out by the entire crisscross origam
 - [Yichen Zhao](https://www.linkedin.com/in/yichen-zhao-83410493/)
 - [Minke Nijenhuis](https://www.linkedin.com/in/minkenijenhuis/)
 - [Su Hyun Seok](https://www.linkedin.com/in/su-hyun-seok-10096755/)
-- [Julie Finkel](https://www.linkedin.com/in/julie-finkel/)  
+- [Julie Finkel](https://www.linkedin.com/in/julie-finkel/)
 
 All the above team members contributed to beta-testing and test-trialling the app during its development!
 
@@ -135,4 +135,8 @@ This project was supported by various funding sources:
 For more details of everyone's coding contributions, please check the graphs [here](https://github.com/mattaq31/Hash-CAD/graphs/contributors). Contributions from the open-source community are welcome! 
 
 ## Literature Citation
+
 Coming soon!
+
+Accompanying data and a large set of examples is available at our Zenodo deposition [here](https://zenodo.org/records/17914052).
+
