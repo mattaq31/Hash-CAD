@@ -72,7 +72,7 @@ For comprehensive usage instructions, see the [User Guide](https://hash-cad.read
 
 **Web Application**: Simply open the application URL [here](https://www.hash-cad.com).
 
-For detailed installation instructions, see the [Installation Guide](https://hash-cad.readthedocs.io/user-guide/installation/).
+For detailed installation instructions, see the [Installation Guide](https://hash-cad.readthedocs.io/en/latest/user-guide/installation/).
 
 ### TLDR Usage Guide
 
@@ -82,7 +82,7 @@ For detailed installation instructions, see the [Installation Guide](https://has
 4. **Add cargo and seeds**: Place functional elements on your design and select the seed binding position (requires a total of 5x16 handles).
 5. **Export**: Generate Echo commands or save for Python processing.
 
-See the full [User Guide](https://hash-cad.readthedocs.io/user-guide/) for more details.
+See the full [User Guide](https://hash-cad.readthedocs.io/en/latest/user-guide/) for more details.
 
 ## Crisscross Python API & Orthogonal Sequence Generation
 
