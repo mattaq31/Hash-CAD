@@ -47,14 +47,10 @@ def proto_handle_links_to_structures(proto_handle_links):
     """
     link_manager = HandleLinkManager()
 
-    # Process link groups
+    # Process link groups (all groups are now numeric)
     for group in proto_handle_links.linkGroups:
-        group_id = group.groupId
-        try:
-            group_id = int(group_id)
-            link_manager.max_group_id = max(link_manager.max_group_id, group_id)
-        except ValueError:
-            pass  # Keep as string for alphabetic IDs
+        group_id = int(group.groupId)  # Always numeric now
+        link_manager.max_group_id = max(link_manager.max_group_id, group_id)
 
         for hk in group.handles:
             key = (hk.slatId, hk.position, hk.side)

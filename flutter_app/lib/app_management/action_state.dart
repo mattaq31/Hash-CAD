@@ -47,7 +47,7 @@ class ActionState extends ChangeNotifier {
   ActionState({
     this.slatMode = 'Add',
     this.cargoMode = 'Add',
-    this.assemblyMode = 'Add',
+    this.assemblyMode = 'Move',
     this.assemblyHandleValue = '1',
     this.assemblyAttachMode = 'top',
     this.displayAssemblyHandles = false,

@@ -392,9 +392,6 @@ class Megastructure:
             if enforce_order is None or enforce_order == handle_val: # no problems, can return
                 return
 
-            if enforce_order != 0 and 'ASSEMBLY' not in category:
-                return # only assembly handles can be enforced to non-zero values
-
             for access_key in traversal_tree:
                 slat_key, position, side = access_key
                 slat = self.slats[slat_key]
@@ -1565,7 +1562,7 @@ class Megastructure:
                         val = self.link_manager.handle_group_to_value.get(group)
 
                     val_row.append(val if val is not None else "")
-                    group_row.append(group if (group is not None and not isinstance(group, str)) else "")
+                    group_row.append(group if group is not None else "")
 
                 val_row.extend([None] * (max_slat_len - slat.max_length))
                 group_row.extend([None] * (max_slat_len - slat.max_length))

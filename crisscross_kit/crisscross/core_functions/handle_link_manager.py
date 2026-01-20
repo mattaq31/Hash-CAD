@@ -2,8 +2,6 @@ from collections import defaultdict
 
 import numpy as np
 
-from crisscross.helper_functions import next_capital_letter
-
 
 class HandleLinkManager:
     """
@@ -25,10 +23,7 @@ class HandleLinkManager:
     Handle keys use the convention: (slat_name, position, helix_side)
     Example: ('layer1-slat5', 3, 2) means position 3 on H2 side of layer1-slat5.
 
-    Group IDs use two separate namespaces to avoid collisions:
-    - Numeric (1, 2, 3...): User-defined groups from spreadsheet
-    - Alphabetic ('A', 'B', 'C'...): Auto-generated groups for enforced values
-    Alphabetic groups are never saved to file (export_design checks for string keys).
+    All group IDs are numeric integers, persisted to file on export.
     """
     def __init__(self, handle_link_df=None):
         # read handle linking information from sheet (if available)
@@ -36,38 +31,64 @@ class HandleLinkManager:
         self.handle_group_to_link = defaultdict(list)
         self.handle_group_to_value = defaultdict(int)
         self.handle_blocks = []
-        self.next_group_assignment = 'A'  # alphabetic IDs for auto-generated groups (never saved to file)
-        self.max_group_id = 0  # tracks highest numeric group ID from spreadsheet
+        self.max_group_id = 0  # tracks highest numeric group ID
 
         if handle_link_df is not None:
+            # Two-pass algorithm to avoid group ID collisions
+
+            # PASS 1: Find max group ID across all data
+            for i in range(0, len(handle_link_df), 6):
+                for index_jump in [3, 5]:  # group columns are at offset 3 (h5) and 5 (h2)
+                    for group in handle_link_df.iloc[i + index_jump][1:]:
+                        try:
+                            if not np.isnan(group):
+                                self.max_group_id = max(self.max_group_id, int(group))
+                        except (TypeError, ValueError):
+                            pass  # Skip non-numeric values
+
+            # PASS 2: Process data and assign new IDs to enforced-only values
             for i in range(0, len(handle_link_df), 6):
                 slat_name = handle_link_df.iloc[i, 0]
                 for side, index_jump in zip([5, 2], [2, 4]):
                     for index, (enforce_val, group) in enumerate(zip(handle_link_df.iloc[i + index_jump][1:], handle_link_df.iloc[i + index_jump + 1][1:])):
 
                         key = (slat_name, index + 1, side)  # for slat links, convention is (slat_name, position, helix_side)
-                        if np.isnan(enforce_val) and np.isnan(group): continue  # full skip
+
+                        # Check for NaN values
+                        enforce_is_nan = False
+                        group_is_nan = False
+                        try:
+                            enforce_is_nan = np.isnan(enforce_val)
+                        except (TypeError, ValueError):
+                            pass
+                        try:
+                            group_is_nan = np.isnan(group)
+                        except (TypeError, ValueError):
+                            pass
+
+                        if enforce_is_nan and group_is_nan:
+                            continue  # full skip
 
                         if enforce_val == 0:  # just add to block list and move on
                             self.handle_blocks.append(key)
 
-                        elif not np.isnan(enforce_val) and np.isnan(group):  # no special group, just enforce a specific value at this position
-                            # Create auto-generated group using alphabetic ID (never overlaps with numeric user groups)
-                            group = next_capital_letter(self.next_group_assignment)
-                            self.next_group_assignment = group
-                            self.handle_group_to_value[group] = enforce_val
-                            self.handle_group_to_link[group].append(key)
-                            self.handle_link_to_group[key] = group
+                        elif not enforce_is_nan and group_is_nan:  # no special group, just enforce a specific value at this position
+                            # Assign new numeric ID (avoids collision via two-pass algorithm)
+                            self.max_group_id += 1
+                            new_group = self.max_group_id
+                            self.handle_group_to_value[new_group] = int(enforce_val)
+                            self.handle_group_to_link[new_group].append(key)
+                            self.handle_link_to_group[key] = new_group
 
-                        elif not np.isnan(group):  # set a specific group link
-                            self.handle_link_to_group[key] = group
-                            self.handle_group_to_link[group].append(key)
-                            if not np.isnan(enforce_val):
-                                if group in self.handle_group_to_value and self.handle_group_to_value[group] != enforce_val:
+                        elif not group_is_nan:  # set a specific group link
+                            group_int = int(group)
+                            self.handle_link_to_group[key] = group_int
+                            self.handle_group_to_link[group_int].append(key)
+                            if not enforce_is_nan:
+                                if group_int in self.handle_group_to_value and self.handle_group_to_value[group_int] != int(enforce_val):
                                     raise RuntimeError('Cannot enforce multiple values to the same slat handle group.'
                                                        '  Check the slat_handle_links sheet.')
-                                self.handle_group_to_value[group] = enforce_val
-                            self.max_group_id = max(self.max_group_id, group)
+                                self.handle_group_to_value[group_int] = int(enforce_val)
 
     def get_enforce_value(self, access_key):
         if access_key in self.handle_blocks:
@@ -175,5 +196,4 @@ class HandleLinkManager:
         self.handle_group_to_link = defaultdict(list)
         self.handle_group_to_value = defaultdict(int)
         self.handle_blocks = []
-        self.next_group_assignment = 'A'
         self.max_group_id = 0

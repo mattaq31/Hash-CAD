@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/common_utilities.dart';
-import '../shared_app_state.dart';
 import 'design_state_contract.dart';
 
 
@@ -39,27 +38,21 @@ String pythonToDartSlatNameConvert(String name, Map<String, Map<String, dynamic>
 /// Handle keys use the convention: (slatID, position, helixSide)
 /// Example: ('A-I5', 3, 2) means position 3 on H2 side of A-I5.
 ///
-/// Group IDs use two separate namespaces to avoid collisions:
-/// - Numeric (1, 2, 3...): User-defined groups from spreadsheet
-/// - Alphabetic ('A', 'B', 'C'...): Auto-generated groups for enforced values
-/// Alphabetic groups are never saved to file.
+/// All group IDs are numeric integers, persisted to file on export.
 class HandleLinkManager {
-  /// Maps handle key → group ID
-  Map<HandleKey, dynamic> handleLinkToGroup = {};
+  /// Maps handle key → group ID (always int)
+  Map<HandleKey, int> handleLinkToGroup = {};
 
   /// Maps group ID → list of handle keys
-  Map<dynamic, List<HandleKey>> handleGroupToLink = {};
+  Map<int, List<HandleKey>> handleGroupToLink = {};
 
   /// Maps group ID → enforced value
-  Map<dynamic, int> handleGroupToValue = {};
+  Map<int, int> handleGroupToValue = {};
 
   /// List of blocked handle positions
   List<HandleKey> handleBlocks = [];
 
-  /// Next alphabetic group ID for auto-generated groups (never saved to file)
-  String nextGroupAssignment = 'A';
-
-  /// Tracks highest numeric group ID from spreadsheet
+  /// Tracks highest numeric group ID
   int maxGroupId = 0;
 
   HandleLinkManager();
@@ -127,7 +120,7 @@ class HandleLinkManager {
   }
 
   /// Removes an entire handle link group.
-  void removeGroup(dynamic groupId) {
+  void removeGroup(int groupId) {
     if (handleGroupToLink.containsKey(groupId)) {
       for (var key in handleGroupToLink[groupId]!) {
         handleLinkToGroup.remove(key);
@@ -139,7 +132,7 @@ class HandleLinkManager {
 
   /// Merge sourceGroup into targetGroup, moving all keys and enforced values.
   /// Throws if groups have conflicting enforced values.
-  void _mergeGroups(dynamic targetGroup, dynamic sourceGroup) {
+  void _mergeGroups(int targetGroup, int sourceGroup) {
     for (var key in handleGroupToLink[sourceGroup]!) {
       handleLinkToGroup[key] = targetGroup;
       handleGroupToLink[targetGroup]!.add(key);
@@ -177,7 +170,7 @@ class HandleLinkManager {
       handleGroupToLink[group2]!.add(key1);
     } else if (group1 != group2) {
       // Merge group2 into group1
-      _mergeGroups(group1, group2);
+      _mergeGroups(group1!, group2!);
     }
   }
 
@@ -194,9 +187,9 @@ class HandleLinkManager {
   void setEnforcedValue(HandleKey key, int value) {
     var group = handleLinkToGroup[key];
     if (group == null) {
-      // Create a single-handle group with the enforced value
-      var newGroup = nextCapitalLetter(nextGroupAssignment);
-      nextGroupAssignment = newGroup;
+      // Create a single-handle group with numeric ID
+      var newGroup = maxGroupId + 1;
+      maxGroupId = newGroup;
       handleLinkToGroup[key] = newGroup;
       handleGroupToLink[newGroup] = [key];
       handleGroupToValue[newGroup] = value;
@@ -213,7 +206,7 @@ class HandleLinkManager {
   }
 
   /// Returns the group ID for a handle, or null if not in a group.
-  dynamic getGroup(HandleKey key) {
+  int? getGroup(HandleKey key) {
     return handleLinkToGroup[key];
   }
 
@@ -223,7 +216,6 @@ class HandleLinkManager {
     handleGroupToLink.clear();
     handleGroupToValue.clear();
     handleBlocks.clear();
-    nextGroupAssignment = 'A';
     maxGroupId = 0;
   }
 
@@ -234,16 +226,36 @@ class HandleLinkManager {
     newManager.handleGroupToLink = {for (var entry in handleGroupToLink.entries) entry.key: List.from(entry.value)};
     newManager.handleGroupToValue = Map.from(handleGroupToValue);
     newManager.handleBlocks = List.from(handleBlocks);
-    newManager.nextGroupAssignment = nextGroupAssignment;
     newManager.maxGroupId = maxGroupId;
     return newManager;
   }
 
-  /// Imports link data from Excel sheet format.
+  /// Imports link data from Excel sheet format using a two-pass algorithm.
   /// Each slat has 6 rows: [slat_name, Position, h5-val, h5-link-group, h2-val, h2-link-group]
+  ///
+  /// Pass 1: Find the maximum group ID across all data
+  /// Pass 2: Process data, assigning new numeric IDs to enforced-only values
   void importFromExcelData(List<List<dynamic>> data, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap) {
     clearAll();
 
+    // PASS 1: Find max group ID
+    for (int i = 0; i < data.length; i += 6) {
+      if (i >= data.length) break;
+
+      for (var groupRowOffset in [3, 5]) {
+        if (i + groupRowOffset >= data.length) continue;
+        var groupRow = data[i + groupRowOffset];
+
+        for (int pos = 1; pos < groupRow.length; pos++) {
+          var group = _parseNumeric(groupRow[pos]);
+          if (group != null) {
+            maxGroupId = maxGroupId > group.toInt() ? maxGroupId : group.toInt();
+          }
+        }
+      }
+    }
+
+    // PASS 2: Process data and assign new IDs to enforced-only values
     for (int i = 0; i < data.length; i += 6) {
       if (i >= data.length) break;
 
@@ -275,9 +287,9 @@ class HandleLinkManager {
             // Blocked handle
             handleBlocks.add(key);
           } else if (enforceVal != null && group == null) {
-            // Enforce value without explicit group - create auto group
-            var newGroup = nextCapitalLetter(nextGroupAssignment);
-            nextGroupAssignment = newGroup;
+            // Enforce value without explicit group - assign new numeric ID
+            maxGroupId += 1;
+            int newGroup = maxGroupId;
             handleGroupToValue[newGroup] = enforceVal.toInt();
             handleGroupToLink[newGroup] = [key];
             handleLinkToGroup[key] = newGroup;
@@ -294,7 +306,6 @@ class HandleLinkManager {
               }
               handleGroupToValue[groupInt] = enforceVal.toInt();
             }
-            maxGroupId = maxGroupId > groupInt ? maxGroupId : groupInt;
           }
         }
       }
@@ -346,7 +357,7 @@ class HandleLinkManager {
         for (int pos = 1; pos <= slat.maxLength; pos++) {
           HandleKey key = (slatId, pos, side);
           dynamic val;
-          dynamic group;
+          int? group;
 
           // Check if blocked
           if (handleBlocks.contains(key)) {
@@ -354,12 +365,8 @@ class HandleLinkManager {
           }
           // Check if in a group
           else if (handleLinkToGroup.containsKey(key)) {
-            var g = handleLinkToGroup[key];
-            val = handleGroupToValue[g];
-            // Only export numeric group IDs (not alphabetic auto-generated ones)
-            if (g is int) {
-              group = g;
-            }
+            group = handleLinkToGroup[key];
+            val = handleGroupToValue[group];
           }
 
           valRow.add(val ?? '');
