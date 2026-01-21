@@ -111,10 +111,18 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
         }
       }
       if(blocked){
-        // If any handle is blocked, make sure to remove all handles set in this operation
+        // If any handle is blocked, reject this operation by reverting changes
         for (var key in slatsUpdated) {
           Slat targetSlat = slats[key.$1]!;
-          _removeHandleFromSlat(targetSlat, key.$2, key.$3);
+          if (assemblyLinkManager.handleBlocks.contains(key)) {
+            // Restore blocked handle to '0' value
+            var handleDict = getHandleDict(targetSlat, key.$3);
+            String existingCategory = handleDict[key.$2]?['category'] ?? (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
+            targetSlat.setPlaceholderHandle(key.$2, key.$3, '0', existingCategory);
+          } else {
+            // Remove non-blocked handles entirely
+            _removeHandleFromSlat(targetSlat, key.$2, key.$3);
+          }
         }
       }
       // If there's a single enforced value that differs from what we set, apply it
@@ -186,17 +194,21 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       // Cascade: Delete through full propagation (phantoms + links + attachments)
       _propagateDelete(slat.id, position, side, category, visited, affectedCoordinates);
 
-      // Remove all visited keys from link manager
+      // Remove all visited keys from link manager and blocks
       for (var key in visited) {
         assemblyLinkManager.removeLink(key);
+        assemblyLinkManager.removeBlock(key);
       }
     } else {
       // Default: Delete this handle + phantom siblings + layer attachment only
       _deleteWithPhantomAndLayerPropagation(slat, position, side, category, visited, affectedCoordinates);
 
-      // Break link only for the original handle (if ASSEMBLY)
+      // Break link and remove block for all visited keys (if ASSEMBLY)
       if (category.contains('ASSEMBLY')) {
-        assemblyLinkManager.removeLink((slat.id, position, side));
+        for (var key in visited) {
+          assemblyLinkManager.removeLink(key);
+          assemblyLinkManager.removeBlock(key);
+        }
       }
     }
 
@@ -685,7 +697,7 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       }
     }
 
-    // Check blocked handles
+    // Check blocked handles (blocked handles should have value '0')
     for (var key in assemblyLinkManager.handleBlocks) {
       if (!slats.containsKey(key.$1)) continue;
       var slat = slats[key.$1]!;
@@ -693,7 +705,7 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       if (handleDict[key.$2] != null) {
         var value = handleDict[key.$2]!['value'];
         if (value != '0' && value != 0) {
-          violations.add('Blocked handle at ${key.$1} pos ${key.$2} H${key.$3} has value $value (should be empty)');
+          violations.add('Blocked handle at ${key.$1} pos ${key.$2} H${key.$3} has value $value (should be 0)');
         }
       }
     }

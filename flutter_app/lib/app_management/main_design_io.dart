@@ -856,6 +856,14 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER: ${e.toString()}');
   }
 
+  // Create placeholder handles for blocked positions (blocked handles have value '0' with ASSEMBLY category)
+  for (var blockedKey in linkManager.handleBlocks) {
+    var slat = slats[blockedKey.$1];
+    if (slat != null) {
+      String category = blockedKey.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE';
+      slat.setPlaceholderHandle(blockedKey.$2, blockedKey.$3, '0', category);
+    }
+  }
 
   return (slats, layerMap, gridMode, cargoPalette, seedRoster, phantomMap, linkManager, '');
 }

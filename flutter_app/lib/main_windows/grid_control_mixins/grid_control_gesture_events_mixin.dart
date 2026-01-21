@@ -261,12 +261,10 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
         int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
         var handleDict = getHandleDict(slat, integerSlatSide);
 
-        // Check if position has an assembly handle OR is a blocked handle (so it can be unblocked)
-        HandleKey handleKey = (slatID, position, integerSlatSide);
+        // Check if position has an assembly handle (blocked handles now have ASSEMBLY category with value '0')
         bool isAssemblyHandle = handleDict[position]?['category']?.toString().contains('ASSEMBLY') ?? false;
-        bool isBlockedHandle = appState.assemblyLinkManager.handleBlocks.contains(handleKey);
 
-        if (isAssemblyHandle || isBlockedHandle) {
+        if (isAssemblyHandle) {
           if (appState.selectedAssemblyPositions.isNotEmpty && !isShiftPressed) {
             appState.clearAssemblySelection();
           }

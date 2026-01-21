@@ -159,6 +159,16 @@ class Slat {
     return placeholderList.contains('handle-$handleID-h$slatSide');
   }
 
+  /// Removes a handle from the slat at the given position and side.
+  void removeHandle(int position, int side) {
+    if (side == 2) {
+      h2Handles.remove(position);
+    } else if (side == 5) {
+      h5Handles.remove(position);
+    }
+    placeholderList.remove('handle-$position-h$side');
+  }
+
   /// Removes all handles from the slat.
   void clearAllHandles(){
     h2Handles.clear();

@@ -477,16 +477,7 @@ class SlatPainter extends CustomPainter {
           final h5 = slat.h5Handles[handleIndex];
           final h2 = slat.h2Handles[handleIndex];
 
-          // blocks are also visualized on a slat instead of handles
-          bool blockPresent = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, 5)) || appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, 2));
-
-          // also check phantom parent for blocks
-          if(slat.phantomParent != null){
-            blockPresent = appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, 5)) || appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, 2));
-          }
-
-
-          if (h5 == null && h2 == null && !blockPresent) continue;
+          if (h5 == null && h2 == null) continue;
 
           Set<String> categoriesPresent = {
             if (h5 != null) h5["category"],
@@ -494,7 +485,7 @@ class SlatPainter extends CustomPainter {
           };
 
           // the below controls the logic and formatting for placing handle markers on slats
-          if ((actionState.displayAssemblyHandles && (categoriesPresent.contains('ASSEMBLY_HANDLE') || categoriesPresent.contains('ASSEMBLY_ANTIHANDLE'))) || (actionState.displayCargoHandles && (categoriesPresent.contains('CARGO') || categoriesPresent.contains('SEED'))) || blockPresent) {
+          if ((actionState.displayAssemblyHandles && (categoriesPresent.contains('ASSEMBLY_HANDLE') || categoriesPresent.contains('ASSEMBLY_ANTIHANDLE'))) || (actionState.displayCargoHandles && (categoriesPresent.contains('CARGO') || categoriesPresent.contains('SEED')))) {
             String topText = '↑X';
             String bottomText = '↓X';
             Color topColor = Colors.grey;
@@ -509,7 +500,23 @@ class SlatPainter extends CustomPainter {
               final descriptor = handle["value"];
               final isTop = side == "top";
 
-              String shortText = descriptor;
+              // Check if blocked (value is '0')
+              bool isBlocked = descriptor == '0' || descriptor == 0;
+
+              if (isBlocked) {
+                if (isTop) {
+                  topText = '↑X';
+                  topColor = appState.assemblyHandleBlockedColor;
+                  topCategory = category;
+                } else {
+                  bottomText = '↓X';
+                  bottomColor = appState.assemblyHandleBlockedColor;
+                  bottomCategory = category;
+                }
+                return; // Early return for blocked handles
+              }
+
+              String shortText = descriptor.toString();
               Color color = Colors.grey;
 
               if (actionState.plateValidation) {
@@ -664,52 +671,18 @@ class SlatPainter extends CustomPainter {
 
             bool topHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top') || topCategory == '';
             bool bottomHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom') || bottomCategory == '';
+            // Blocked handles now have ASSEMBLY category with value '0', so they pass the category.contains('ASSEMBLY') check
             bool topHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
             bool bottomHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom' && bottomCategory.contains('ASSEMBLY'));
 
-            // blocks handled here
-            bool topBlocked = false;
-            bool bottomBlocked = false;
-            if (slat.phantomParent != null){
-              topBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, selectedLayerTopside == 'H5' ? 5 : 2));
-              bottomBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.phantomParent, handleIndex, selectedLayerTopside == 'H5' ? 2 : 5));
-            }
-            else{
-              topBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, selectedLayerTopside == 'H5' ? 5 : 2));
-              bottomBlocked = appState.assemblyLinkManager.handleBlocks.contains((slat.id, handleIndex, selectedLayerTopside == 'H5' ? 2 : 5));
-            }
-
-            if (topBlocked && appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top'){
-              topHandleSelected = true;
-            }
-
-            if (bottomBlocked && appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom'){
-              bottomHandleSelected = true;
-            }
-
-            if (topBlocked){
-              topHandleHidden = false;
-              topText = '↑X';
-              topColor = appState.assemblyHandleBlockedColor;
-            }
-            if (bottomBlocked){
-              bottomHandleHidden = false;
-              bottomText = '↓X';
-              bottomColor = appState.assemblyHandleBlockedColor;
-            }
-
-            // Check for enforced values
-            bool topEnforced = false;
-            bool bottomEnforced = false;
-            if (!topBlocked && !bottomBlocked) {
-              String slatKeyId = slat.phantomParent ?? slat.id;
-              int topSide = selectedLayerTopside == 'H5' ? 5 : 2;
-              int bottomSide = selectedLayerTopside == 'H5' ? 2 : 5;
-              var topEnforcedValue = appState.assemblyLinkManager.getEnforceValue((slatKeyId, handleIndex, topSide));
-              var bottomEnforcedValue = appState.assemblyLinkManager.getEnforceValue((slatKeyId, handleIndex, bottomSide));
-              topEnforced = topEnforcedValue != null && topEnforcedValue > 0;
-              bottomEnforced = bottomEnforcedValue != null && bottomEnforcedValue > 0;
-            }
+            // Check for enforced values (enforced value of 0 means blocked, so skip those)
+            String slatKeyId = slat.phantomParent ?? slat.id;
+            int topSide = selectedLayerTopside == 'H5' ? 5 : 2;
+            int bottomSide = selectedLayerTopside == 'H5' ? 2 : 5;
+            var topEnforcedValue = appState.assemblyLinkManager.getEnforceValue((slatKeyId, handleIndex, topSide));
+            var bottomEnforcedValue = appState.assemblyLinkManager.getEnforceValue((slatKeyId, handleIndex, bottomSide));
+            bool topEnforced = topEnforcedValue != null && topEnforcedValue > 0;
+            bool bottomEnforced = bottomEnforcedValue != null && bottomEnforcedValue > 0;
 
             if (topHandleHidden && bottomHandleHidden) {
               continue; // Skip drawing if both handles are hidden

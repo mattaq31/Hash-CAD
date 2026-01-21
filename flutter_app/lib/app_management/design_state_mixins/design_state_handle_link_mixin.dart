@@ -572,18 +572,26 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
-  /// Toggles block status on a handle and applies the change (deletes handle if blocking).
+  /// Toggles block status on a handle and applies the change.
+  /// When blocking: Sets handle value to '0' (preserving ASSEMBLY category).
+  /// When unblocking: Removes the handle entry entirely (position becomes available).
   @override
   void toggleHandleBlockAndApply(HandleKey key) {
     var slat = slats[key.$1];
     if (slat == null) return;
 
     if (assemblyLinkManager.handleBlocks.contains(key)) {
-      // Unblock - just remove from blocks list
+      // Unblock - delete the placeholder and remove from blocks list
+      slat.removeHandle(key.$2, key.$3);
       assemblyLinkManager.removeBlock(key);
     } else {
-      // Block - add to blocks and delete the handle
-      smartDeleteHandle(slat, key.$2, key.$3);
+      // Block - get existing category or determine from layer/side
+      var handleDict = getHandleDict(slat, key.$3);
+      String category = handleDict[key.$2]?['category'] ??
+          (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
+
+      // Set value to '0' (preserves category)
+      slat.setPlaceholderHandle(key.$2, key.$3, '0', category);
       assemblyLinkManager.addBlock(key);
     }
 
