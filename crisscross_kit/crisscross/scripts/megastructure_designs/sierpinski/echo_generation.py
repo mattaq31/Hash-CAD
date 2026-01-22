@@ -77,7 +77,9 @@ generate_echo = True
 main_plates = get_cutting_edge_plates(200)
 src_010 = get_plateclass('HashCadPlate', simpsons_mixplate_antihandles_maxed, cargo_plate_folder)
 
+# TODO: the design needs to be updated with phantom slats so this can be removed...
 valency_results = megastructure.get_parasitic_interactions(remove_duplicates_in_layers=[(3, 'antihandles')],)
+
 print(f'Sierpinski core - Max valency: {valency_results["worst_match_score"]}, effective valency: {valency_results["mean_log_score"]}')
 
 

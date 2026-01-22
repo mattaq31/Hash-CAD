@@ -67,24 +67,22 @@ List<List<List<int>>> generateLayerSplitHandles(List<List<List<int>>> baseArray,
 }
 
 
-Map<int, int> getSlatMatchCounts(List<List<List<int>>> slatArray, List<List<List<int>>> handleArray, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Offset minGrid) {
+Map<int, int> getSlatMatchCounts(List<List<List<int>>> handleArray, Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Offset minGrid, Map<String, Map<Offset, String>> occupiedGridPoints) {
 
   // Histogram: {number of matches between a pair: number of slat pairs having that many matches}
   final Map<int, int> matchHistogram = <int, int>{};
   final Set<String> completedSlats = <String>{};
 
-  if (slatArray.isEmpty || handleArray.isEmpty) {
+  if (handleArray.isEmpty) {
     return matchHistogram;
   }
 
-  final layers = slatArray[0][0].length;
+  final layers = layerMap.length;
   if (layers < 1) return matchHistogram;
 
   for (final entry in slats.entries) {
-    if (entry.value.phantomParent != null) {
-      continue; // skip phantom slats
-    }
-    final sKey = entry.key; // expected like A-I1
+
+    final sKey = entry.key; // expected like A-I1 or A-I1-phantom-2
     final slat = entry.value;
 
     // Skip if no coordinates
@@ -110,11 +108,13 @@ Map<int, int> getSlatMatchCounts(List<List<List<int>>> slatArray, List<List<List
         final hasHandle = handleArray[x][y][z] != 0;
         if (!hasHandle) continue;
 
-        final otherSlatId = slatArray[x][y][slatLayer]; // layer above: index slatLayer
-        if (otherSlatId == 0) continue;
+        // Use occupiedGridPoints to get the actual slat key at this position
+        final aboveLayerID = getLayerByOrder(layerMap, slatLayer);
+        final otherKey = occupiedGridPoints[aboveLayerID]?[coord];
+        if (otherKey == null) continue;
 
-        final otherKey = '${getLayerByOrder(layerMap, slatLayer)}-I$otherSlatId';
         if (!completedSlats.contains(otherKey)) {
+          // Keep full key in matchesWithOtherSlats (phantom stripping done later if needed)
           matchesWithOtherSlats[otherKey] = (matchesWithOtherSlats[otherKey] ?? 0) + 1;
         }
       }
@@ -132,18 +132,24 @@ Map<int, int> getSlatMatchCounts(List<List<List<int>>> slatArray, List<List<List
         final hasHandle = handleArray[x][y][z] != 0;
         if (!hasHandle) continue;
 
-        final otherSlatId = slatArray[x][y][slatLayer - 2]; // layer below: index slatLayer - 2
-        if (otherSlatId == 0) continue;
+        // Use occupiedGridPoints to get the actual slat key at this position
+        final belowLayerID = getLayerByOrder(layerMap, slatLayer - 2);
+        final otherKey = occupiedGridPoints[belowLayerID]?[coord];
+        if (otherKey == null) continue;
 
-        final otherKey = '${getLayerByOrder(layerMap, slatLayer - 2)}-I$otherSlatId';
         if (!completedSlats.contains(otherKey)) {
+          // Keep full key in matchesWithOtherSlats (phantom stripping done later if needed)
           matchesWithOtherSlats[otherKey] = (matchesWithOtherSlats[otherKey] ?? 0) + 1;
         }
       }
     }
 
-    // Update global histogram: for each pair counted once
-    for (final count in matchesWithOtherSlats.values) {
+    // Enumerate all matches found and update the overall count
+    // (Matches Python: for k, v in matches_with_other_slats.items())
+    for (final matchEntry in matchesWithOtherSlats.entries) {
+      final count = matchEntry.value;
+      // Strip phantom suffix if needed for connection graph (not used in Dart, but matching Python pattern)
+      // key_without_phantom = k.split('phantom')[0][:-1] if 'phantom' in k else k
       matchHistogram[count] = (matchHistogram[count] ?? 0) + 1;
     }
 
@@ -420,13 +426,13 @@ Map<String, dynamic> parasiticInnerCompute(ParasiticInnerArgs args) {
 
 
 Future<Map<String, dynamic>> parasiticInteractionsCompute(Map<String, Slat> slats,
-    List<List<List<int>>> slatArray, List<List<List<int>>> handleArray,
-    Map<String, Map<String, dynamic>> layerMap, Offset minGrid, String connectionAngle) async {
+    List<List<List<int>>> handleArray,
+    Map<String, Map<String, dynamic>> layerMap, Offset minGrid, String connectionAngle, Map<String, Map<Offset, String>> occupiedGridPoints) async {
   /// Computes the parasitic interactions of the current design in view.
   /// Function not optimized but will be infrequently called so slowdown is expected to be minimal.
   ///  Mimics logic in the eqcorr2d python library.
 
-  if (slatArray.isEmpty || handleArray.isEmpty) {
+  if (handleArray.isEmpty) {
     return {
       'worst_match': 0,
       'mean_log_score': 0.0,
@@ -436,8 +442,8 @@ Future<Map<String, dynamic>> parasiticInteractionsCompute(Map<String, Slat> slat
   final int xSize = handleArray.length;
   final int ySize = handleArray[0].length;
   final int numInterfaces = handleArray[0][0].length; // layers - 1
-  final int numLayers = slatArray[0][0].length;        // actual layers
-  Map<int, int> slatMatchCount = getSlatMatchCounts(slatArray, handleArray, slats, layerMap, minGrid); // actual match counts from design, will be used to compensate histogram
+  final int numLayers = layerMap.length;              // actual layers
+  Map<int, int> slatMatchCount = getSlatMatchCounts(handleArray, slats, layerMap, minGrid, occupiedGridPoints); // actual match counts from design, will be used to compensate histogram
 
   // Step 1: Build per-slat handle arrays from the grid, 1D for tube, 2D for non-tube (DB) slats
   // Represent 1D slats as a single-row 2D array [[...]] so we have a uniform type.

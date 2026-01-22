@@ -41,11 +41,19 @@ List<List<List<int>>> convertSparseSlatBundletoArray(
       }
     }
 
+    // For phantom slats, use the parent's numeric ID (so matching works correctly)
+    int idToStore;
+    if (slat.phantomParent != null) {
+      idToStore = slats[slat.phantomParent]!.numericID;
+    } else {
+      idToStore = slat.numericID;
+    }
+
     for (var i = 0; i < slat.maxLength; i++) {
       var pos = slat.slatPositionToCoordinate[i + 1]!;
       int x = (pos.dx - minGrid.dx).toInt();
       int y = (pos.dy - minGrid.dy).toInt();
-      slatArray[x][y][layerMap[slat.layer]!['order']] = slat.numericID;
+      slatArray[x][y][layerMap[slat.layer]!['order']] = idToStore;
     }
   }
   return slatArray;

@@ -99,6 +99,7 @@ class Megastructure:
             self.slats = slats
             self.slat_grid_coords = slat_grid_coords
             self.original_slat_array = self.generate_slat_occupancy_grid()
+            self.original_phantom_array = self.generate_slat_occupancy_grid(category='phantom_slats')
             self.link_manager = link_manager
         else:
             if slat_array is None:
@@ -141,6 +142,7 @@ class Megastructure:
 
             self.layer_palette = create_default_layer_palette(layer_interface_orientations)
             self.original_slat_array = slat_array
+            self.original_phantom_array = self.generate_slat_occupancy_grid(category='phantom_slats')
             self.link_manager = HandleLinkManager()
 
         if connection_angle not in ['60', '90']:
@@ -624,12 +626,16 @@ class Megastructure:
         """
         Generates a 3D occupancy grid of the slats in the design.
         :param use_original_slat_array: If True, uses the original slat array instead of the current slat state.
-        :param category: 'original_slats', 'phantom_slats' or 'all_slats'
+        :param category: 'original_slats', 'phantom_slats' or 'all_slats' - for phantoms, the phantom parent IDs are used.
         :return: 3D numpy array with slat IDs at each position (X, Y, layer)
         """
 
-        if use_original_slat_array:
+        if use_original_slat_array and category == 'original_slats':
             return self.original_slat_array
+        if use_original_slat_array and category == 'phantom_slats':
+            return self.original_phantom_array
+        elif use_original_slat_array:
+            raise RuntimeError('use_original_slat_array can only be True when category is original_slats or phantom_slats.')
 
         occupancy_grid = np.zeros((self.slat_grid_coords[0], self.slat_grid_coords[1], len(self.layer_palette)), dtype=int)
 
@@ -643,7 +649,7 @@ class Megastructure:
 
                 for y, x in slat.slat_coordinate_to_position.keys():
                     if slat.phantom_parent is not None:
-                        occupancy_grid[y, x, slat.layer - 1] = int(slat.ID.split('phantom')[-1])
+                        occupancy_grid[y, x, slat.layer - 1] = int(slat.phantom_parent.split('slat')[-1])
                     else:
                         occupancy_grid[y, x, slat.layer - 1] = int(slat.ID.split('slat')[-1])
 
@@ -990,8 +996,7 @@ class Megastructure:
 
         return slat_id_animation_classification
 
-    def get_slat_match_counts(self, prepopulated_handle_dict=None, prepopulated_antihandle_dict=None,
-                              use_original_slat_array=False, use_external_handle_array=None):
+    def get_slat_match_counts(self, use_external_handle_array=None):
         """
         Runs through the design and counts how many slats have a certain number of connections (matches) to other slats.
         Useful for computing the hamming distance of a design with variable slat types.
@@ -1004,58 +1009,49 @@ class Megastructure:
         megastructure_match_count = defaultdict(int) # key = number of matches, value = number of slat pairs with that many matches
         completed_slats = set() # just a tracker to prevent duplicate entries
         connection_graph = defaultdict(list)
+        slat_coord_lookup = self._get_coordinate_to_slat_lookup()
 
-        # arrays obtained from design as usual
-        slat_array = self.generate_slat_occupancy_grid(use_original_slat_array=use_original_slat_array)
         if use_external_handle_array:
             handle_array = use_external_handle_array
         else:
-            handle_array = self.generate_assembly_handle_grid()
+            handle_array = self.generate_assembly_handle_grid(category='all_slats') # phantom slat matches also need to be compensated for...
 
         # loops through all slats in the design
         for s_key, slat in self.slats.items():
-            if not slat.non_assembly_slat and slat.phantom_parent is None: # no phantom slats here
+            if not slat.non_assembly_slat:
                 matches_with_other_slats = defaultdict(int)
 
                 # checks slats in the layer above
-                if slat.layer != slat_array.shape[-1]:
-                    # TODO: the prepopulated handle/antihandle dict logic needs to be updated with a better system!
-                    if prepopulated_handle_dict is None or s_key in prepopulated_handle_dict: # skips slats if they've been rejected previously
-                        # runs through all the coordinates of a specific slat
-                        for coordinate in slat.slat_position_to_coordinate.values():
-                            # checks if there's a handle match
-                            if handle_array[coordinate[0], coordinate[1], slat.layer-1] != 0:
-                                other_slat = slat_array[coordinate[0], coordinate[1], slat.layer]
-                                # ignores areas where there are actually no overlapping slats
-                                if other_slat == 0:
-                                    continue
-                                # records match
-                                other_slat_key = get_slat_key(slat.layer+1, other_slat)
+                if slat.layer != len(self.layer_palette):
+                    # runs through all the coordinates of a specific slat
+                    for coordinate in slat.slat_position_to_coordinate.values():
+                        # checks if there's a handle match
+                        if handle_array[coordinate[0], coordinate[1], slat.layer-1] != 0:
 
-                                if prepopulated_antihandle_dict is not None and other_slat_key not in prepopulated_antihandle_dict:  # skips slats if they've been rejected previously
-                                    continue
+                            other_slat_key = slat_coord_lookup.get((coordinate[0], coordinate[1], slat.layer + 1), ('NAN', 0))[0]
 
-                                if other_slat_key not in completed_slats:
-                                    matches_with_other_slats[other_slat_key] += 1
+                            if other_slat_key == 'NAN':
+                                continue
+                            if other_slat_key not in completed_slats:
+                                # only place actual slat IDs in the dict and not phantom IDs (since phantoms are not considered in valency calculations)
+                                matches_with_other_slats[other_slat_key] += 1
 
                 # checks slats in the layer below - same logic as above
                 if slat.layer != 1:
-                    if prepopulated_antihandle_dict is None or s_key in prepopulated_antihandle_dict: # skips slats if they've been rejected previously
-                        for coordinate in slat.slat_position_to_coordinate.values():
-                            if handle_array[coordinate[0], coordinate[1], slat.layer - 2] != 0:
-                                other_slat = slat_array[coordinate[0], coordinate[1], slat.layer - 2]
-                                if other_slat == 0:
-                                    continue
-                                other_slat_key = get_slat_key(slat.layer - 1, other_slat)
+                    for coordinate in slat.slat_position_to_coordinate.values():
+                        if handle_array[coordinate[0], coordinate[1], slat.layer - 2] != 0:
 
-                                if prepopulated_handle_dict is not None and other_slat_key not in prepopulated_handle_dict:  # skips slats if they've been rejected previously
-                                    continue
+                            other_slat_key = slat_coord_lookup.get((coordinate[0], coordinate[1], slat.layer - 1), ('NAN', 0))[0]
+                            if other_slat_key == 'NAN':
+                                continue
+                            if other_slat_key not in completed_slats:
+                                matches_with_other_slats[other_slat_key] += 1
 
-                                if other_slat_key not in completed_slats:
-                                    matches_with_other_slats[other_slat_key] += 1
+
 
                 # enumerates all matches found and updates the overall count
                 for k, v in matches_with_other_slats.items():
+                    key_without_phantom = k.split('phantom')[0][:-1] if 'phantom' in k else k
                     megastructure_match_count[v] += 1
 
                     # due to the way the eqcorr2d slat connection compensation is computed, the handles (lower layer) should always come first
@@ -1063,17 +1059,16 @@ class Megastructure:
                     main_key_layer = slat.layer
                     incoming_key_layer = self.slats[k].layer
                     if main_key_layer < incoming_key_layer:
-                        connection_graph[v].append((s_key, k))
+                        connection_graph[v].append((s_key if slat.phantom_parent is None else slat.phantom_parent, key_without_phantom))
                     else:
-                        connection_graph[v].append((k, s_key))
+                        connection_graph[v].append((key_without_phantom, s_key if slat.phantom_parent is None else slat.phantom_parent))
 
                 # prevents other slats from matching with this slat again
                 completed_slats.add(s_key)
 
         return megastructure_match_count, connection_graph
 
-    def get_bag_of_slat_handles(self, use_original_slat_array=False, use_external_handle_array=None, remove_blank_slats=False,
-                                remove_duplicates_in_layers=None):
+    def get_bag_of_slat_handles(self, use_original_slat_array=False, use_external_handle_array=None, remove_blank_slats=False):
         """
         Obtains two dictionaries - both containing the arrays corresponding to the handle positions of each slat in the
         megastructure (one for handles and one for antihandles).  The keys correspond to the slat ID while the values contain
@@ -1127,52 +1122,9 @@ class Megastructure:
             handle_dict = {k: v for k, v in handle_dict.items() if np.sum(v) > 0}
             antihandle_dict = {k: v for k, v in antihandle_dict.items() if np.sum(v) > 0}
 
-        # TODO: this is highly convoluted - it's supposed to delete duplicate slats that match other parallel slats for the sierpinski design - I would rather have those slats delegated to a specific type rather than corrected in this way
-        if remove_duplicates_in_layers is not None:
-            for layer, category in remove_duplicates_in_layers:
-                slats_in_layer = [s_key for s_key, slat in self.slats.items() if slat.layer == layer]
-                if category == 'handles':
-                    seen_handles = set()
-                    for s_key in slats_in_layer:
-                        if s_key in handle_dict:
-                            handle_tuple = tuple(handle_dict[s_key].tolist())
-                            if handle_tuple in seen_handles:
-                                del handle_dict[s_key]
-                                for coordinate in self.slats[s_key].slat_position_to_coordinate.values():
-                                    # checks if there's a handle match and also deletes that other matching slat
-                                    if handle_array[coordinate[0], coordinate[1], self.slats[s_key].layer - 1] != 0:
-                                        other_slat = slat_array[coordinate[0], coordinate[1], self.slats[s_key].layer]
-                                        if other_slat == 0:
-                                            continue
-                                        other_slat_key = get_slat_key(self.slats[s_key].layer + 1, other_slat)
-                                        if other_slat_key in antihandle_dict:
-                                            del antihandle_dict[other_slat_key]
-                            else:
-                                seen_handles.add(handle_tuple)
-                elif category == 'antihandles':
-                    seen_antihandles = set()
-                    for s_key in slats_in_layer:
-                        if s_key in antihandle_dict:
-                            antihandle_tuple = tuple(antihandle_dict[s_key].tolist())
-                            if antihandle_tuple in seen_antihandles:
-                                del antihandle_dict[s_key]
-                                for coordinate in self.slats[s_key].slat_position_to_coordinate.values():
-                                    # checks if there's a handle match and also deletes that other matching slat
-                                    if handle_array[coordinate[0], coordinate[1], self.slats[s_key].layer - 2] != 0:
-                                        other_slat = slat_array[coordinate[0], coordinate[1], self.slats[s_key].layer - 2]
-                                        if other_slat == 0:
-                                            continue
-                                        other_slat_key = get_slat_key(self.slats[s_key].layer - 1, other_slat)
-                                        if other_slat_key in handle_dict:
-                                            del handle_dict[other_slat_key]
-                            else:
-                                seen_antihandles.add(antihandle_tuple)
-                else:
-                    raise RuntimeError('Category for duplicate removal must be either HANDLE or ANTIHANDLE.')
-
         return handle_dict, antihandle_dict
 
-    def get_parasitic_interactions(self, remove_duplicates_in_layers=None):
+    def get_parasitic_interactions(self):
         """
         Computes the match strength score of the megastructure design based on the assembly handles present.
         4 items are provided in a dictionary:
@@ -1184,11 +1136,11 @@ class Megastructure:
         """
         # TODO: this function also assumes the pattern handle -> antihandle -> handle -> antihandle etc.
         # first extract all handles/antihandles in the design
-        handle_dict, antihandle_dict = self.get_bag_of_slat_handles(remove_blank_slats=True, remove_duplicates_in_layers=remove_duplicates_in_layers)
+        handle_dict, antihandle_dict = self.get_bag_of_slat_handles(remove_blank_slats=True)
 
         # gets the number of matches that are expected in the design based on slat overlaps,
         # these will be removed from the final histogram
-        match_counts, connection_graph = self.get_slat_match_counts(prepopulated_handle_dict=handle_dict, prepopulated_antihandle_dict=antihandle_dict)
+        match_counts, connection_graph = self.get_slat_match_counts()
 
         return comprehensive_score_analysis(handle_dict, antihandle_dict, match_counts, connection_graph, self.connection_angle)
 

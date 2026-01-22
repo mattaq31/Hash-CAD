@@ -524,10 +524,8 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       Offset minPos;
       Offset maxPos;
       (minPos, maxPos) = extractGridBoundary(slats);
-      var handleArray = extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize);
-      List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
-      var valencyResults =
-          await parasiticInteractionsCompute(slats, slatArray, handleArray, layerMap, minPos, gridMode);
+      var handleArray = extractAssemblyHandleArray(slats, layerMap, minPos, maxPos, gridSize, allTypes: true);  // include phantom handles
+      var valencyResults = await parasiticInteractionsCompute(slats, handleArray, layerMap, minPos, gridMode, occupiedGridPoints);
 
       currentMaxValency = valencyResults['worst_match'];
       currentEffValency = valencyResults['mean_log_score'];

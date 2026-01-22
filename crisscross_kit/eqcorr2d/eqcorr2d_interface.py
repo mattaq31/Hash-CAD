@@ -500,18 +500,20 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
         expected_skips = []
     else:
         expected_skips = connection_graph.get(worst, []) # if it's not in there skip nothing
-    skip_counts = Counter(expected_skips)  # multiplicities to skip in this bin. not sure if counter is needed they could be unique already. who knows
+    skip_counts = Counter(expected_skips)  # multiplicities to skip in this bin. There could be duplicates (more than 1) due to phantom slats.
 
+    # IN THIS CONTEXT, A SKIP REFERS TO A MATCH WHICH IS 'SKIPPED' BECAUSE IT IS A TRUE CONNECTION IN THE DESIGN THAT CANNOT BE OPTIMIZED AWAY
     combos = []
     skipped = []
     for i, j in zip(*np.where(worst_slice > 0)):
 
         pair = (handle_keys[i], anti_keys[j])
         count_hist = int(worst_slice[i, j])
-        count_skip = skip_counts.get(pair, 0) # it's either 1 or 0 since connection graph should not have duplicates
+        count_skip = skip_counts.get(pair, 0) # this will be 0 (no matches) or 1 (most cases) but can be more than 1 when phantom slats are involved
 
         if count_skip > 0:
-            skipped.append(pair)
+            for i in range(count_skip): # need to add duplicate values to match the format of the expected skips
+                skipped.append(pair)
 
         # Skip only when the skip list covers all occurrences (==), else keep full count
         if count_skip == count_hist: # if both are 1, skip this pair entirely. count_hist might actually be larger than 1.
@@ -519,7 +521,7 @@ def get_compensated_worst_keys_combos(c_results, connection_graph):
 
         combos.append((pair[0], pair[1], count_hist-count_skip)) # record the difference for bookkeeping
         if count_skip > count_hist:
-            raise ValueError(f"Over-subtraction detected for pair {pair}: We have a deeply routed bug if this happens.")
+            raise ValueError(f"Over-subtraction detected for pair {pair}: We have a deeply rooted bug if this happens.")
     # sanity check to verify all expected skips were found
 
     if len(skipped) != len(expected_skips):

@@ -94,6 +94,8 @@ def add_phantom_slats_to_megastructure(megastructure, phantom_slats):
         # Update phantom_map
         megastructure.phantom_map[python_parent_id].append(python_phantom_id)
 
+    # update original phantom slat array TODO: this is a bit janky, probs best to introduce a real function...
+    megastructure.original_phantom_array =  megastructure.generate_slat_occupancy_grid(category='phantom_slats')
 
 class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServicer):
     def __init__(self):
@@ -144,6 +146,7 @@ class HandleEvolveService(hamming_evolve_communication_pb2_grpc.HandleEvolveServ
             main_megastructure.link_manager = link_manager
 
             if initial_handle_array is not None:
+                main_megastructure.enforce_phantom_links_on_assembly_handle_array(initial_handle_array)
                 main_megastructure.assign_assembly_handles(initial_handle_array)
 
             self.evolve_manager = EvolveManager(main_megastructure, **converted_dict)
