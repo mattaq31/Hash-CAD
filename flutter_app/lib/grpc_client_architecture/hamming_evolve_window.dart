@@ -371,7 +371,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text(
-                                      "Maximum Bound Count",
+                                      "Max Bond Count",
                                       style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold),
@@ -411,7 +411,7 @@ class _HammingEvolveWindowState extends State<HammingEvolveWindow> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text(
-                                      "Effective Bond Count",
+                                      "Eff. Bond Count",
                                       style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold),
