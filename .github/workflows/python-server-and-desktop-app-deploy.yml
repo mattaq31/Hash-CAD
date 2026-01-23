@@ -90,7 +90,7 @@ jobs:
           script-name: main_server.py
           mode: onefile
           include-module: matplotlib.backends.backend_pdf
-          include-package: numpy._core,pandas._libs,pandas._libs.tslibs
+          include-package: numpy._core,pandas._libs,pandas._libs.tslibs,pytz
           include-distribution-metadata: pytz,tzdata,numpy,pandas
           onefile-tempdir-spec: '{HOME}/.nuitka_cache'
           enable-plugins: no-qt
@@ -107,7 +107,7 @@ jobs:
           script-name: main_server.py
           mode: app
           include-module: matplotlib.backends.backend_pdf,numpy._core._exceptions
-          include-package: numpy._core,pandas._libs,pandas._libs.tslibs
+          include-package: numpy._core,pandas._libs,pandas._libs.tslibs,pytz
           include-distribution-metadata: pytz,tzdata,numpy,pandas
           onefile-tempdir-spec: "{HOME}\\.nuitka_cache"
           enable-plugins: no-qt
