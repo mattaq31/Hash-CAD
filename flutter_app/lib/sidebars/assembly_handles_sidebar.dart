@@ -706,13 +706,13 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   crossAxisAlignment: CrossAxisAlignment.end, // right-align text
                   children: const [
                     Text(
-                      "Maximum Valency",
+                      "Maximum Bond Count",
                       textAlign: TextAlign.right,
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 14),
                     Text(
-                      "Effective Valency",
+                      "Effective Bond Count",
                       textAlign: TextAlign.right,
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
