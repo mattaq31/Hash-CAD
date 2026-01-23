@@ -91,6 +91,7 @@ jobs:
           mode: onefile
           include-module: matplotlib.backends.backend_pdf
           include-package: numpy._core,pandas._libs,pandas._libs.tslibs
+          include-distribution-metadata: pytz,tzdata,numpy,pandas
           onefile-tempdir-spec: '{HOME}/.nuitka_cache'
           enable-plugins: no-qt
           working-directory: ./flutter_app/python_server
@@ -107,6 +108,7 @@ jobs:
           mode: app
           include-module: matplotlib.backends.backend_pdf,numpy._core._exceptions
           include-package: numpy._core,pandas._libs,pandas._libs.tslibs
+          include-distribution-metadata: pytz,tzdata,numpy,pandas
           onefile-tempdir-spec: "{HOME}\\.nuitka_cache"
           enable-plugins: no-qt
           working-directory: ./flutter_app/python_server
