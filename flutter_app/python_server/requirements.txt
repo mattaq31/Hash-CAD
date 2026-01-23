@@ -4,6 +4,8 @@ grpcio-health-checking
 nuitka==2.6.8
 matplotlib
 pandas
+pytz
+tzdata
 tqdm
 colorama
 xlsxwriter
