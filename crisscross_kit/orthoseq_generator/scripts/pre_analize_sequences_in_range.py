@@ -31,8 +31,8 @@ if __name__ == "__main__":
     # 2) Generate the full pool of 8-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
     ontarget8mer = sc.create_sequence_pairs_pool(
-        length=8,
-        fivep_ext="TT",
+        length=10,
+        fivep_ext="",
         threep_ext="",
         avoid_gggg=False
     )
@@ -42,11 +42,11 @@ if __name__ == "__main__":
     #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
     hf.choose_precompute_library("8mers.pkl")
-    hf.USE_LIBRARY = True
+    hf.USE_LIBRARY = False
 
     # 4) Select subset within desired on-target energy range (based on first script’s histograms)
-    max_ontarget = -9.6
-    min_ontarget = -10.4
+    max_ontarget = -12
+    min_ontarget = -13
     subset, indices = sc.select_subset_in_energy_range(
         ontarget8mer,
         energy_min=min_ontarget,
@@ -65,5 +65,5 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         on_e_subset,
         off_e_subset,
-        output_path='energy_hist_10_4to9_6.pdf'
+        output_path='energy_random10mers_12to13.pdf'
     )

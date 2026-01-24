@@ -36,22 +36,22 @@ if __name__ == "__main__":
 
     # 2) Generate the full pool of 8-mer handle/antihandle pairs (with 'TT' flanking on 5' end)
     ontarget8mer = sc.create_sequence_pairs_pool(
-        length=8,
-        fivep_ext="TT",
+        length=10,
+        fivep_ext="",
         threep_ext="",
         avoid_gggg=True
     )
 
     # 3) Define energy thresholds based on prior analysis
-    offtarget_limit = -7.4    # Maximum allowed off-target binding strength 
-    max_ontarget = -9.6       # Maximum acceptable on-target binding energy 
-    min_ontarget = -10.4      # Minimum acceptable on-target binding energy 
+    offtarget_limit = -7   # Maximum allowed off-target binding strength
+    max_ontarget = -12       # Maximum acceptable on-target binding energy
+    min_ontarget = -13    # Minimum acceptable on-target binding energy
 
     # 4) Configure and enable the precomputed energy cache.
     #    The specified pickle file will be created inside 'pre_computed_energies' if it doesn't exist.
     #    Existing files are reused automatically to avoid recomputation.
     hf.choose_precompute_library("8mers101.pkl")
-    hf.USE_LIBRARY = True
+    hf.USE_LIBRARY = False
 
     # 5) Run the evolutionary vertex cover algorithm to find an orthogonal set of sequences
     # The subset size is the number of random sequences selected from the provided sequence pairs (ontarget8mer) each generation.
@@ -62,12 +62,12 @@ if __name__ == "__main__":
         offtarget_limit,
         max_ontarget,
         min_ontarget,
-        subsetsize=250,
+        subsetsize=190,
         generations=2000
     )
 
     # 6) Save the selected orthogonal sequences to a file with a name you choose for later use
-    hf.save_sequence_pairs_to_txt(orthogonal_seq_pairs, filename='my_sequences101.txt')
+    hf.save_sequence_pairs_to_txt(orthogonal_seq_pairs, filename='ortho_10mers7.txt')
 
     # 7) Compute and plot the on-target and off-target energy distributions for the selected set
     hf.USE_LIBRARY = False  # Force recomputation to double-check energies. The library might have been corrupted. Better safe than sorry 
@@ -78,5 +78,5 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         onef,
         offef,
-        output_path='result_energy_plot.pdf'
+        output_path='ortho_10mers.pdf'
     )

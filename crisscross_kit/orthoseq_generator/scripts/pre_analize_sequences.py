@@ -36,8 +36,8 @@ if __name__ == "__main__":
     # 2) Generate the full pool of 8-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
     ontarget8mer = sc.create_sequence_pairs_pool(
-        length=8,
-        fivep_ext="TT",
+        length=10,
+        fivep_ext="",
         threep_ext="",
         avoid_gggg=True
     )
@@ -46,8 +46,8 @@ if __name__ == "__main__":
     #    The specified pickle file ('8mers.pkl') will be created automatically during execution
     #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
-    hf.choose_precompute_library("8mers.pkl")
-    hf.USE_LIBRARY = True
+    hf.choose_precompute_library("10mers.pkl")
+    hf.USE_LIBRARY = False
 
     # 4) Randomly sample 250 sequence pairs for a quick pilot analysis
     subset = sc.select_subset(ontarget8mer, max_size=250)
@@ -62,5 +62,5 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         on_e_subset,
         off_e_subset,
-        output_path='energy_hist.pdf'
+        output_path='10mer_random.pdf'
     )
