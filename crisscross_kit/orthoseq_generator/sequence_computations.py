@@ -192,9 +192,13 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         # Define the complex (symmetric if seq1 == seq2)
         if seq1 == seq2:
             complex_obj = Complex([A, A], name='(H1+H1)')
+            mono_obj_A =Complex([A],name='(H1)')
+            homo= True
         else:
             complex_obj = Complex([A, B], name='(H1+H2)')
-
+            mono_obj_A = Complex([A],name='(H1)')
+            mono_obj_B = Complex([B],name='(H2)')
+            homo=False
         # Define model
         model1 = Model(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
 
@@ -206,11 +210,27 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
                 return -1.0
             energy = mfe_list[0].energy
 
+
         elif type == 'total':
-            results = complex_analysis([complex_obj], model=model1, compute=['pfunc'])
-            energy = results[complex_obj].free_energy
-            if energy > 0:
+            # association free energy using partition function (pfunc)
+            # tube reference: dG = G_AB - G_A - G_B  (homodimer: G_AB - 2*G_A)
+
+            if homo:
+                results = complex_analysis([complex_obj, mono_obj_A], model=model1, compute=['pfunc'])
+                G_AB = results[complex_obj].free_energy
+                G_A = results[mono_obj_A].free_energy
+                energy = G_AB - 2.0 * G_A
+            else:
+                results = complex_analysis([complex_obj, mono_obj_A, mono_obj_B], model=model1, compute=['pfunc'])
+                G_AB = results[complex_obj].free_energy
+                G_A = results[mono_obj_A].free_energy
+                G_B = results[mono_obj_B].free_energy
+                energy = G_AB - G_A - G_B
+
+            if energy > -1:
                 energy = -1.0
+
+
 
         else:
             raise ValueError('type must be either "minimum" or "total"')
