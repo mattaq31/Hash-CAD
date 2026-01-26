@@ -10,7 +10,7 @@ Download the latest release for your platform from our [GitHub Releases](https:/
 | Platform | Download                |
 |----------|-------------------------|
 | macOS (Intel & Apple Silicon) | `Hash-CAD-macos.dmg`    |
-| Windows | `Hash-CAD-windows.zip`  |
+| Windows | `Hash-CAD-windows-installer.exe`  |
 | Linux | `Hash-CAD-linux.tar.gz` |
 
 ### MacOS Installation
@@ -21,13 +21,13 @@ Download the latest release for your platform from our [GitHub Releases](https:/
 
 ![macOS Security Settings](https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/installation/macos_security_check.png){ width="600" }
 
-### Windows Installation (we are working on a better install method)
+### Windows Installation
 
-1. Download and extract the `.zip` file
-2. Place the full extracted folder in your program files (or wherever you prefer)
-2. Run `hash_cad.exe` from the extracted folder
+1. Download the `.exe` installer file
+2. Run the installer 
 3. Windows Defender may show a warning; click "More info" then "Run anyway"
-4. You may place the .exe file in your shortcuts (or drag to your status bar) for easier access
+4. Follow the usual on-screen prompts to install the package
+5. Done!
 
 ### Linux Installation (we are working on a better install method)
 
