@@ -13,7 +13,7 @@ if __name__ == '__main__':
     megastructure.assign_assembly_handles(handle_array)
 
 
-    #megastructure = Megastructure(import_design_file='/Users/matt/Desktop/test_evolve.xlsx')
+    # megastructure = Megastructure(import_design_file='/Users/matt/Desktop/test_evolve.xlsx')
 
     print('Original Results:')
     print(megastructure.get_parasitic_interactions())

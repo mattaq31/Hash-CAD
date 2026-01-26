@@ -169,6 +169,29 @@ class EvolveManager:
         if self.handle_array is not None:
             candidate_handle_arrays[0] = self.handle_array
 
+            # Fill missing handle positions in the initial array
+            # Use a random candidate as reference for valid interface positions
+            reference_array = candidate_handle_arrays[1] if len(candidate_handle_arrays) > 1 else candidate_handle_arrays[0]
+            missing_positions = (candidate_handle_arrays[0] == 0) & (reference_array != 0)
+
+            if np.any(missing_positions):
+                # Generate random values for missing positions
+                if not self.split_sequence_handles or slat_array_with_phantoms.shape[2] < 3:
+                    # Random mode: any value from 1 to number_unique_handles
+                    random_fills = np.random.randint(1, self.number_unique_handles + 1, size=candidate_handle_arrays[0].shape, dtype=np.uint16)
+                else:
+                    # Split mode: layer-specific ranges
+                    random_fills = np.zeros_like(candidate_handle_arrays[0], dtype=np.uint16)
+                    handles_per_layer = self.number_unique_handles // self.sequence_split_factor
+                    for i in range(random_fills.shape[2]):
+                        layer_index = i % self.sequence_split_factor
+                        h_start = 1 + layer_index * handles_per_layer
+                        h_end = h_start + handles_per_layer
+                        random_fills[..., i] = np.random.randint(h_start, h_end, size=(random_fills.shape[0], random_fills.shape[1]), dtype=np.uint16)
+
+                candidate_handle_arrays[0][missing_positions] = random_fills[missing_positions]
+                self.dummy_megastructure.enforce_phantom_links_on_assembly_handle_array(candidate_handle_arrays[0])
+
         return candidate_handle_arrays
 
     def single_evolution_step(self):
