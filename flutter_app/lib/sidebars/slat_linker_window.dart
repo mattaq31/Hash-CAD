@@ -268,8 +268,14 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
 
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final windowHeight = screenHeight * 0.33; // Increased for more rows
+    // final windowHeight = screenHeight * 0.33; // Increased for more rows
     final width = 1100.0;
+
+    // Dynamic height based on slat types - double-barrel needs more room (4 rows vs 2)
+    final slat1 = selectedSlat1ID != null ? appState.slats[selectedSlat1ID] : null;
+    final slat2 = selectedSlat2ID != null ? appState.slats[selectedSlat2ID] : null;
+    final hasDoubleBarrel = (slat1 != null && _isDoubleBarrel(slat1.slatType)) || (slat2 != null && _isDoubleBarrel(slat2.slatType));
+    final windowHeight = hasDoubleBarrel ? 450.0 : 400.0;
 
     return Positioned(
       top: 60,
@@ -421,9 +427,12 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
               const Divider(height: 1),
               // Slat visualizations - each takes equal vertical space
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
+                child: GestureDetector(
+                  onTap: _clearSelection,
+                  behavior: HitTestBehavior.translucent,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
                     mainAxisAlignment:  MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -469,6 +478,7 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
                   ),
                 ),
               ),
+            ),
             ],
           ),
         ),
