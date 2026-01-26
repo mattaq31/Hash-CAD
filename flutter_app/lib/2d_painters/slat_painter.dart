@@ -706,7 +706,7 @@ class SlatPainter extends CustomPainter {
               final baselineOffset = textPainter.height;
               final actualOffset = Offset(
                 offset.dx - textPainter.width / 2 - 0.1,
-                offset.dy - baselineOffset / 2 + 0.3,
+                offset.dy - baselineOffset / 2 + 0.2,
               );
               textPainter.paint(canvas, actualOffset);
             }
