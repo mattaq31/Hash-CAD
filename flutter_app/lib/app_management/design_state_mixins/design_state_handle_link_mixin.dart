@@ -585,10 +585,9 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
       slat.removeHandle(key.$2, key.$3);
       assemblyLinkManager.removeBlock(key);
     } else {
-      // Block - get existing category or determine from layer/side
+      // Block - get existing category or determine from layer/side TODO: this logic is highly circumstantial... should decide category based on layer position
       var handleDict = getHandleDict(slat, key.$3);
-      String category = handleDict[key.$2]?['category'] ??
-          (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
+      String category = handleDict[key.$2]?['category'] ??(key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
 
       // Set value to '0' (preserves category)
       slat.setPlaceholderHandle(key.$2, key.$3, '0', category);

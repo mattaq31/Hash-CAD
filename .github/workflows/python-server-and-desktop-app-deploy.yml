@@ -235,9 +235,39 @@ jobs:
           tar -czvf "Hash-CAD-linux.tar.gz"  ./tmp/linux_build_copy
         working-directory: .
 
-      - name: Compress Windows build
+      - name: Install Inno Setup (Windows)
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path ".\flutter_app\build\windows\x64\runner\Release\*" -DestinationPath "Hash-CAD-windows.zip"
+        run: choco install innosetup --yes --no-progress
+        shell: pwsh
+
+      - name: Get Version from pubspec.yaml (Windows)
+        if: runner.os == 'Windows'
+        id: version
+        run: |
+          $version = (Select-String -Path "flutter_app/pubspec.yaml" -Pattern "^version:\s*(.+)$").Matches.Groups[1].Value
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Extracted version: $version"
+        shell: pwsh
+        working-directory: .
+
+      - name: Build Windows Installer with Inno Setup
+        if: runner.os == 'Windows'
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.version.outputs.VERSION }} "flutter_app\windows\installer\hash_cad_setup.iss"
+        shell: pwsh
+        working-directory: .
+
+      - name: Move Windows installer to root
+        if: runner.os == 'Windows'
+        run: |
+          Move-Item -Path "flutter_app\build\windows\installer\Hash-CAD-windows-installer.exe" -Destination "."
+          Get-ChildItem -Path ".\Hash-CAD-windows-installer.exe"
+        shell: pwsh
+        working-directory: .
+
+      - name: Create Windows ZIP fallback
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path ".\flutter_app\build\windows\x64\runner\Release\*" -DestinationPath "Hash-CAD-windows-fallback.zip"
         shell: pwsh
         working-directory: .
 
@@ -248,7 +278,8 @@ jobs:
           path: |
             ./Hash-CAD-macOS.zip
             ./Hash-CAD-linux.tar.gz
-            ./Hash-CAD-windows.zip
+            ./Hash-CAD-windows-installer.exe
+            ./Hash-CAD-windows-fallback.zip
           compression-level: 0
           overwrite: true
 
@@ -284,7 +315,8 @@ jobs:
       - name: Generate SHA256 checksums
         run: |
           cd artifacts
-          sha256sum Hash-CAD-windows.zip Hash-CAD-linux.tar.gz Hash-CAD-macOS.zip > SHA256SUMS
+          # Generate checksums for all release assets
+          sha256sum Hash-CAD-macOS.zip Hash-CAD-linux.tar.gz Hash-CAD-windows-installer.exe Hash-CAD-windows-fallback.zip > SHA256SUMS
           echo "Generated checksums:"
           cat SHA256SUMS
 
@@ -297,9 +329,10 @@ jobs:
           prerelease: true
           generate_release_notes: true
           files: |
-              artifacts/Hash-CAD-windows.zip
-              artifacts/Hash-CAD-linux.tar.gz
               artifacts/Hash-CAD-macOS.zip
+              artifacts/Hash-CAD-linux.tar.gz
+              artifacts/Hash-CAD-windows-installer.exe
+              artifacts/Hash-CAD-windows-fallback.zip
               artifacts/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -55,7 +55,12 @@ class ReleaseInfo {
     if (Platform.isMacOS) {
       return assetUrls['Hash-CAD-macOS.zip'];
     } else if (Platform.isWindows) {
-      return assetUrls['Hash-CAD-windows.zip'];
+      // Prefer the installer, fall back to ZIP
+      if (assetUrls.containsKey('Hash-CAD-windows-installer.exe')) {
+        return assetUrls['Hash-CAD-windows-installer.exe'];
+      }
+      // Fallback to ZIP for manual installation
+      return assetUrls['Hash-CAD-windows-fallback.zip'];
     } else if (Platform.isLinux) {
       return assetUrls['Hash-CAD-linux.tar.gz'];
     }
@@ -68,7 +73,13 @@ class ReleaseInfo {
   /// Get the platform-specific asset filename
   String get platformAssetName {
     if (Platform.isMacOS) return 'Hash-CAD-macOS.zip';
-    if (Platform.isWindows) return 'Hash-CAD-windows.zip';
+    if (Platform.isWindows) {
+      // Prefer installer filename, fall back to ZIP
+      if (assetUrls.containsKey('Hash-CAD-windows-installer.exe')) {
+        return 'Hash-CAD-windows-installer.exe';
+      }
+      return 'Hash-CAD-windows-fallback.zip';
+    }
     if (Platform.isLinux) return 'Hash-CAD-linux.tar.gz';
     return '';
   }
