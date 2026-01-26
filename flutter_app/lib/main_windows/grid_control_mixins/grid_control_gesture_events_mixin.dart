@@ -154,6 +154,14 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
       int position = slat.slatCoordinateToPosition[coordConvertedPosition]!;
       int integerSlatSide = getSlatSideFromLayer(appState.layerMap, slat.layer, actionState.assemblyAttachMode);
 
+      // Block mode: toggle block status instead of placing a handle
+      if (actionState.assemblyBlockMode) {
+        HandleKey key = (slat.phantomParent ?? slatID, position, integerSlatSide);
+        appState.toggleHandleBlockAndApply(key);
+        appState.hammingValueValid = false;
+        return;
+      }
+
       // Determine handle value - random mode generates fresh value each click
       String handleValue;
       if (actionState.assemblyRandomMode) {

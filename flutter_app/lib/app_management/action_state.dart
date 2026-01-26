@@ -31,6 +31,7 @@ class ActionState extends ChangeNotifier {
   bool threeJSViewerActive =  true; // default to true, can be toggled by the user
   bool assemblyRandomMode; // When true, each click places random handle value
   bool assemblyEnforceMode; // When true, placed handles are marked as enforced
+  bool assemblyBlockMode; // When true, clicking places/removes blocks instead of handles
 
   Map<int, String> panelMap = {
     0: 'slats',
@@ -69,6 +70,7 @@ class ActionState extends ChangeNotifier {
     this.cargoAttachMode = 'top',
     this.assemblyRandomMode = false,
     this.assemblyEnforceMode = false,
+    this.assemblyBlockMode = false,
   });
 
   void updateEchoSetting(String setting, dynamic value){
@@ -207,11 +209,26 @@ class ActionState extends ChangeNotifier {
 
   void setAssemblyRandomMode(bool value) {
     assemblyRandomMode = value;
+    if (value) {
+      assemblyBlockMode = false;
+    }
     notifyListeners();
   }
 
   void setAssemblyEnforceMode(bool value) {
     assemblyEnforceMode = value;
+    if (value) {
+      assemblyBlockMode = false;
+    }
+    notifyListeners();
+  }
+
+  void setAssemblyBlockMode(bool value) {
+    assemblyBlockMode = value;
+    if (value) {
+      assemblyRandomMode = false;
+      assemblyEnforceMode = false;
+    }
     notifyListeners();
   }
 }

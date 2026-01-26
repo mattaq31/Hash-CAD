@@ -469,7 +469,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Numerical input for default handle value
-          Text("Handle ID", style: TextStyle(fontSize: 14)),
+          Text("Palette:", style: TextStyle(fontSize: 14)),
           SizedBox(width: 10),
           Tooltip(
             message: 'Default handle value for placement',
@@ -493,9 +493,10 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
           ),
 
           SizedBox(width: 8),
-          // Random and Enforce toggle buttons
-          Column(
+          // Random, Enforce, and Block toggle buttons
+          Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               IconButton(
                 tooltip: 'Random mode: place random handle values',
@@ -514,7 +515,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
-              SizedBox(height: 4),
+              SizedBox(width: 4),
               IconButton(
                 tooltip: 'Enforce mode: lock placed handle values',
                 onPressed: () => actionState.setAssemblyEnforceMode(!actionState.assemblyEnforceMode),
@@ -524,6 +525,24 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.primaryContainer,
                   foregroundColor: actionState.assemblyEnforceMode
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  padding: const EdgeInsets.all(4),
+                  minimumSize: const Size(28, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Block mode: place/remove blocks at positions',
+                onPressed: () => actionState.setAssemblyBlockMode(!actionState.assemblyBlockMode),
+                icon: Icon(Icons.block, size: 16),
+                style: IconButton.styleFrom(
+                  backgroundColor: actionState.assemblyBlockMode
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor: actionState.assemblyBlockMode
                       ? Theme.of(context).colorScheme.onPrimary
                       : null,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
