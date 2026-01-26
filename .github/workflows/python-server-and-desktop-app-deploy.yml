@@ -201,8 +201,9 @@ jobs:
 
       - name: Build Flutter Desktop App (Mac)
         if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
+        timeout-minutes: 30
         run: |
-          flutter build macos --release
+          flutter build macos --release --verbose
         working-directory: flutter_app
 
       - name: Install GLEW for Linux build
