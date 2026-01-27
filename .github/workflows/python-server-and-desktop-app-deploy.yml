@@ -327,7 +327,7 @@ jobs:
           tag_name: ${{ github.ref }}
           name: Release ${{ env.TAG }}
           draft: false
-          prerelease: true
+          prerelease: false
           generate_release_notes: true
           files: |
               artifacts/Hash-CAD-macOS.zip
