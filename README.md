@@ -74,6 +74,8 @@ For comprehensive usage instructions, see the [User Guide](https://hash-cad.read
 
 For detailed installation instructions, see the [Installation Guide](https://hash-cad.readthedocs.io/en/latest/user-guide/installation/).
 
+Quick setup tutorial video also available [here](https://youtu.be/UYyZ-ENyqZ4)!
+
 ### TLDR Usage Guide
 
 1. **Create or load a design**: Start fresh or import an existing `.xlsx` design file
