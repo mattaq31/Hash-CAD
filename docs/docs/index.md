@@ -88,4 +88,4 @@ Developed in the [William Shih Lab](https://www.shih.hms.harvard.edu) at the Dan
 ---
 
 !!! quote "Citation"
-    If you use #-CAD or the various Python libraries in your research, please cite our work (details coming soon).
+    If you use #-CAD or the various Python libraries in your research, please cite our work (#-CAD is currently a preprint, please find the paper [here](http://biorxiv.org/content/early/2026/01/24/2026.01.23.701435.abstract) on BioRxiv).
