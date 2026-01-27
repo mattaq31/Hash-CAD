@@ -37,6 +37,10 @@ Several different design editing modes are available via the sidebar:
 4. **Add cargo and seeds**: Place functional elements on your design
 5. **Export**: Generate Echo commands or save your design for Python processing
 
+### Example Designs
+
+Example designs are available for testing in our GitHub repository [here](https://github.com/mattaq31/Hash-CAD/tree/main/docs/example_designs).
+
 ## Next Steps
 
 - [Installation](installation.md) - Download and install #-CAD
