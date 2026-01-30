@@ -352,7 +352,7 @@ fig.legend(
 CBAR_AX = [0.94, 0.15, 0.02, 0.70]
 cax = fig.add_axes(CBAR_AX)
 cbar = fig.colorbar(last_im, cax=cax)
-cbar.set_label("Parasitic Interactions with Valency 3", fontsize=7)
+cbar.set_label("Parasitic Interactions with Bond Count 3", fontsize=7)
 cbar.ax.tick_params(labelsize=5, length=2, width=0.6, pad=1)
 cbar.ax.yaxis.labelpad = -35
 
