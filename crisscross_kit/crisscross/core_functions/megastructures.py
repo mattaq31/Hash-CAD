@@ -1737,14 +1737,20 @@ class Megastructure:
                 if pd.isna(row[1]):
                     break
                 s_layer = 'Layer ' + row.name.split('-')[0]
-                s_num = row.name.split('-I')[1]
+                s_id_part = row.name.split('-I')[1]  # e.g. '5' or '5-P1'
+                phantom_id = None
+                if '-P' in s_id_part:
+                    s_num, phantom_suffix = s_id_part.split('-P')
+                    phantom_id = int(phantom_suffix)
+                else:
+                    s_num = s_id_part
                 # get layer index from layer_palette by matching ID
                 s_layer_index = None
                 for l_index, l_info in layer_palette.items():
                     if l_info['ID'] == s_layer:
                         s_layer_index = l_index
                         break
-                unique_slat_color_palette[get_slat_key(s_layer_index, s_num)] = row[1]
+                unique_slat_color_palette[get_slat_key(s_layer_index, s_num, phantom_id)] = row[1]
 
             for slat in slats.values():
                 if slat.ID in unique_slat_color_palette:
