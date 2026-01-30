@@ -74,6 +74,8 @@ For comprehensive usage instructions, see the [User Guide](https://hash-cad.read
 
 For detailed installation instructions, see the [Installation Guide](https://hash-cad.readthedocs.io/en/latest/user-guide/installation/).
 
+Quick setup tutorial video also available [here](https://youtu.be/UYyZ-ENyqZ4)!
+
 ### TLDR Usage Guide
 
 1. **Create or load a design**: Start fresh or import an existing `.xlsx` design file
@@ -136,7 +138,21 @@ For more details of everyone's coding contributions, please check the graphs [he
 
 ## Literature Citation
 
-Coming soon!
+#-CAD is currently a preprint - please see details below (link [here](http://biorxiv.org/content/early/2026/01/24/2026.01.23.701435.abstract)):
+
+```bibtex
+@article{aquilinaComputationalFrameworkDesigning2026,
+	title = {A computational framework for designing micron-scale crisscross {DNA} megastructures},
+	url = {http://biorxiv.org/content/early/2026/01/24/2026.01.23.701435.abstract},
+	doi = {10.64898/2026.01.23.701435},
+	abstract = {Crisscross polymerization enables the assembly of hundreds of unique DNA origami 'slats' into micron-sized structures with nanoscale precision. To design these megastructures, thousands of handle sequences from a fixed library must be assigned to individual slats to encode the desired binding architecture. This complexity presents two major challenges: handles must be selected to minimize parasitic interactions that compete with desired assembly, and the fabrication of hundreds of unique slats creates a substantial logistical burden. Here, we develop a unified framework that standardizes the design and fabrication of crisscross megastructures. We use an evolutionary algorithm to optimize handle assignment and minimize parasitic binding between slats, paired with a graph-based algorithm that expands the handle library. Together, these algorithms enable the assembly of large, multi-layered megastructures that otherwise would be produced at negligible yields. We have released this framework as \#-CAD, an open-source graphical application that integrates these algorithms, streamlines laboratory workflows, and makes crisscross DNA origami more broadly accessible.Competing Interest StatementWilliam M. Shih is an inventor on a patent (PCT/US2017/045013) entitled 'Crisscross Cooperative Self-assembly', which is related to the basic principle of crisscross assembly.UK Medical Research Council, MR/N013166/1German Research Foundation (Deutsche Forschungsgemeinschaft, DFG), 553862611U.S. Department of Energy, DE-SC0024136Carlsberg Foundation, CF23-1125Alfred P. Sloan Foundation, https://ror.org/052csg198, G-2021-16495Ministry of Science and ICT and Ministry of Health \&amp; Welfare, Republic of Korea, RS-2024-00468463Novo Nordisk Foundation, https://ror.org/04txyc737, NNF23OC0084494},
+	journal = {bioRxiv},
+	author = {Aquilina, Matthew and Katzmeier, Florian and Nijenhuis, Minke and Wang, Siyuan and Becker, Corey and Zhao, Yichen and Seok, Su Hyun and Finkel, Julie and Cui, Huangchen and Lee, Jaewon and Lee, Seungwoo and Shih, William},
+	month = jan,
+	year = {2026},
+	pages = {2026.01.23.701435},
+}
+```
 
 Accompanying data and a large set of examples is available at our Zenodo deposition [here](https://zenodo.org/records/17914052).
 
