@@ -48,9 +48,10 @@ if __name__ == "__main__":
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
     hf.choose_precompute_library("10mers.pkl")
     hf.USE_LIBRARY = False
+    hf.set_nupack_params(material='dna',celsius=37,sodium=0.05,magnesium=0.025)
 
     # 4) Randomly sample 250 sequence pairs for a quick pilot analysis
-    subset = sc.select_subset(ontarget8mer, max_size=250)
+    subset = sc.select_subset(ontarget8mer, max_size=50)
 
     # 5) Compute on-target (pair-hybridization) energies
     on_e_subset = sc.compute_ontarget_energies(subset)

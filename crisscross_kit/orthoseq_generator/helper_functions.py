@@ -6,8 +6,40 @@ from datetime import datetime
 # Default file name for the energy library
 _precompute_library_filename = None
 
-USE_LIBRARY = True
+USE_LIBRARY = False
+NUPACK_PARAMS = {
+    "MATERIAL": "dna",
+    "CELSIUS": 37,
+    "SODIUM": 0.05,
+    "MAGNESIUM": 0.025
+}
 
+def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
+    NUPACK_PARAMS["MATERIAL"] = material
+    NUPACK_PARAMS["CELSIUS"] = celsius
+    NUPACK_PARAMS["SODIUM"] = sodium
+    NUPACK_PARAMS["MAGNESIUM"] = magnesium
+
+
+
+
+def choose_precompute_library(filename):
+    """
+    Sets the name of the precomputed energy library file.
+
+    Notes
+    -----
+    Updates the global variable used by other functions to locate the correct library.
+
+    :param filename: Name of the pickle file where precomputed energies are or will be stored.
+    :type filename: str
+
+    :returns: None
+    :rtype: None
+    """
+
+    global _precompute_library_filename
+    _precompute_library_filename = filename
 
 
 
@@ -77,23 +109,6 @@ def save_pickle_atomic(data, filepath):
 
 
 
-def choose_precompute_library(filename):
-    """
-    Sets the name of the precomputed energy library file.
-
-    Notes
-    -----
-    Updates the global variable used by other functions to locate the correct library.
-
-    :param filename: Name of the pickle file where precomputed energies are or will be stored.
-    :type filename: str
-
-    :returns: None
-    :rtype: None
-    """
-    
-    global _precompute_library_filename
-    _precompute_library_filename = filename
 
 
 
