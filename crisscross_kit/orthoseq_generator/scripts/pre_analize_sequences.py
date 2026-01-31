@@ -47,6 +47,7 @@ if __name__ == "__main__":
     #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
     hf.choose_precompute_library("10mers.pkl")
+    hf.choose_precompute_library("10mers.pkl")
     hf.USE_LIBRARY = False
     hf.set_nupack_params(material='dna',celsius=37,sodium=0.05,magnesium=0.025)
 
