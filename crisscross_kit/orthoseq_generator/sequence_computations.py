@@ -200,7 +200,12 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
             mono_obj_B = Complex([B],name='(H2)')
             homo=False
         # Define model
-        model1 = Model(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
+        model1 = Model(
+            material=hf.NUPACK_PARAMS["MATERIAL"],
+            celsius=hf.NUPACK_PARAMS["CELSIUS"],
+            sodium=hf.NUPACK_PARAMS["SODIUM"],
+            magnesium=hf.NUPACK_PARAMS["MAGNESIUM"]
+        )
 
         # Run complex analysis only for what's needed
         if type == 'minimum':
@@ -243,7 +248,7 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         return -1.0
 
 
-def _init_worker(lib_filename, use_lib):
+def _init_worker(lib_filename, use_lib, nupack_params):
     """
     Initializes worker processes for parallel energy computations by configuring
     the precompute library filename and cache usage flag.
@@ -258,7 +263,7 @@ def _init_worker(lib_filename, use_lib):
     :rtype: None
     """
     
-    
+    hf.NUPACK_PARAMS= nupack_params
     hf._precompute_library_filename = lib_filename
     hf.USE_LIBRARY = use_lib
     #print("Worker using", _precompute_library_filename, USE_LIBRARY)
@@ -313,7 +318,7 @@ def compute_ontarget_energies(sequence_list):
     print(f"Calculating with {max_workers} cores...")
 
     # parallelize energy computation
-    pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY)
+    pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
     
     with ProcessPoolExecutor(max_workers=max_workers,
                              initializer=_init_worker,
@@ -432,7 +437,7 @@ def compute_offtarget_energies(sequence_pairs):
     def parallel_energy_computation(seqs1, seqs2, energy_matrix, condition):
         max_workers = max(1, os.cpu_count() * 3// 4) # Use only 3 quarters of all possible cores on the maching
         print(f'Calculating with {max_workers} cores...')
-        pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY)
+        pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
 
         with ProcessPoolExecutor(max_workers=max_workers,
                                  initializer=_init_worker,
