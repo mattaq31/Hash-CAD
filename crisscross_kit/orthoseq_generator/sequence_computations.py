@@ -69,6 +69,193 @@ def sorted_key(seq1, seq2):
     return (min(seq1, seq2), max(seq1, seq2))
 
 
+class SequencePairRegistry:
+    """
+    Stateful generator/registry for DNA sequence pairs.
+
+    It generates random core sequences of fixed length, forms the pair
+    (seq, revcom(seq)), applies constraints, and assigns stable integer IDs.
+
+    If a generated pair has been seen before, it returns the previously
+    assigned ID instead of creating a new one.
+    """
+
+    def __init__(
+        self,
+        length=7,
+        fivep_ext="",
+        threep_ext="",
+        unwanted_substrings=None,
+        apply_unwanted_to="core",
+        seed=None,
+    ):
+        """
+        :param length: Length of the core DNA sequence (without flanks).
+        :type length: int
+
+        :param fivep_ext: Optional 5′ flanking sequence prepended to each strand.
+        :type fivep_ext: str
+
+        :param threep_ext: Optional 3′ flanking sequence appended to each strand.
+        :type threep_ext: str
+
+        :param unwanted_substrings: List of substrings that disqualify a sequence.
+                                    Example: ["AAAA", "CCCC", "GGGG", "TTTT"].
+        :type unwanted_substrings: list[str] or None
+
+        :param apply_unwanted_to: Where to apply unwanted_substrings checks.
+                                  - "core": apply only to the random core sequences
+                                  - "full": apply to the full flanked sequences
+        :type apply_unwanted_to: str
+
+        :param seed: Optional RNG seed for reproducibility.
+        :type seed: int or None
+        """
+        self.length = int(length)
+        self.fivep_ext = str(fivep_ext)
+        self.threep_ext = str(threep_ext)
+        self.unwanted_substrings = list(unwanted_substrings) if unwanted_substrings else []
+
+        if apply_unwanted_to not in ("core", "full"):
+            raise ValueError('apply_unwanted_to must be "core" or "full"')
+        self.apply_unwanted_to = apply_unwanted_to
+
+        self._rng = random.Random(seed)
+        self._pair_to_id = {}   # maps canonical pair -> integer ID
+        self._id_to_pair = []   # list of canonical pairs by ID (index == ID)
+
+        self._bases = ("A", "T", "G", "C")
+
+    def _contains_any_substring(self, seq):
+        """
+        Returns True if seq contains any substring from self.unwanted_substrings.
+
+        :param seq: DNA sequence as a string.
+        :type seq: str
+
+        :returns: True if any unwanted substring is found, False otherwise.
+        :rtype: bool
+        """
+        if not self.unwanted_substrings:
+            return False
+        for s in self.unwanted_substrings:
+            if s in seq:
+                return True
+        return False
+
+    def _random_core(self):
+        """
+        Generates one random core sequence of length self.length.
+        """
+        return "".join(self._rng.choice(self._bases) for _ in range(self.length))
+
+    def _make_flanked(self, core_seq):
+        """
+        Returns (seq, rc_seq) with flanks added.
+
+        :param core_seq: Core DNA sequence (unflanked).
+        :type core_seq: str
+
+        :returns: (flanked_seq, flanked_revcom_seq)
+        :rtype: tuple[str, str]
+        """
+        core_rc = revcom(core_seq)
+        seq = f"{self.fivep_ext}{core_seq}{self.threep_ext}"
+        rc_seq = f"{self.fivep_ext}{core_rc}{self.threep_ext}"
+        return seq, rc_seq
+
+    def _make_pair(self, core_seq):
+        """
+        Builds the canonical (sorted) flanked pair from a core sequence.
+        """
+        seq, rc_seq = self._make_flanked(core_seq)
+        return sorted_key(seq, rc_seq)
+
+    def _is_valid(self, core_seq):
+        """
+        Checks constraints on core_seq and its reverse complement.
+
+        The unwanted_substrings constraint can be applied either to:
+        - the core sequences ("core"), or
+        - the full flanked sequences ("full").
+        """
+        core_rc = revcom(core_seq)
+
+        if self.apply_unwanted_to == "core":
+            if self._contains_any_substring(core_seq):
+                return False
+            if self._contains_any_substring(core_rc):
+                return False
+            return True
+
+        # apply_unwanted_to == "full"
+        seq, rc_seq = self._make_flanked(core_seq)
+        if self._contains_any_substring(seq):
+            return False
+        if self._contains_any_substring(rc_seq):
+            return False
+        return True
+
+    def sample_pair(self, max_tries=10_000):
+        """
+        Generates (or reuses) a random sequence pair and returns (pair_id, pair).
+
+        Behavior
+        --------
+        - Draw random core sequences until constraints pass.
+        - Convert to canonical (sorted) flanked pair.
+        - If pair was seen: return existing ID.
+        - Else: assign new ID, store, return it.
+
+        :param max_tries: Maximum attempts before raising an error (prevents infinite loops).
+        :type max_tries: int
+
+        :returns: (pair_id, (seq, rc_seq)) where seq/rc_seq are flanked and sorted.
+        :rtype: tuple[int, tuple[str, str]]
+        """
+        for _ in range(int(max_tries)):
+            core_seq = self._random_core()
+
+            if not self._is_valid(core_seq):
+                continue
+
+            pair = self._make_pair(core_seq)
+
+            existing_id = self._pair_to_id.get(pair)
+            if existing_id is not None:
+                return existing_id, pair
+
+            new_id = len(self._id_to_pair)
+            self._pair_to_id[pair] = new_id
+            self._id_to_pair.append(pair)
+            return new_id, pair
+
+        raise RuntimeError(
+            "Could not generate a valid new sequence pair within max_tries. "
+            "Relax constraints or increase max_tries."
+        )
+
+    def get_pair_by_id(self, pair_id):
+        """
+        Returns the stored pair for a given ID.
+
+        :param pair_id: Integer ID returned by sample_pair.
+        :type pair_id: int
+
+        :returns: (seq, rc_seq) canonical sorted pair.
+        :rtype: tuple[str, str]
+        """
+        return self._id_to_pair[int(pair_id)]
+
+    def __len__(self):
+        """
+        Number of unique pairs stored so far.
+        """
+        return len(self._id_to_pair)
+
+
+
+
 def create_sequence_pairs_pool(length=7, fivep_ext="", threep_ext="", avoid_gggg=True):
 
     """
@@ -506,113 +693,221 @@ def compute_offtarget_energies(sequence_pairs):
             }
 
 
-def select_subset(sequence_pairs, max_size=200):
+def select_subset(sequence_pairs, max_size=200, timeout_s=20):
     """
     Selects a random subset of sequence pairs up to a specified maximum size.
 
+    This function supports two input types:
+    1) A precomputed pool: list of (index, (seq, rc_seq)) tuples.
+       - If pool size > max_size: uses random.sample for efficiency.
+       - Else: returns all pairs.
+    2) A generator/registry object that provides sample_pair().
+       - Repeatedly calls sample_pair() until max_size unique pairs are collected,
+         or timeout_s is reached.
+
     Notes
     -----
-    - If the number of available pairs exceeds `max_size`, randomly samples `max_size` pairs using `random.sample`.
-    - If the number of pairs is less than or equal to `max_size`, returns all pairs.
-    - Uses sampling rather than full shuffling for performance on large datasets.
+    - For list input: uses sampling rather than shuffling for performance.
+    - For registry input: guarantees uniqueness by ID (not by sequence string),
+      so repeated samples do not inflate the subset.
 
-    :param sequence_pairs: List of `(index, (seq, rc_seq))` tuples.
-    :type sequence_pairs: list of tuple
+    Timeout behavior
+    ----------------
+    If timeout_s is reached while using a registry, the function returns the
+    pairs found so far and prints:
+        "Only X of requested Y found (timeout)."
+
+    :param sequence_pairs: Either
+        - list of (index, (seq, rc_seq)) tuples, or
+        - an object with method sample_pair() -> (pair_id, (seq, rc_seq)).
+    :type sequence_pairs: list or object
 
     :param max_size: Maximum number of pairs to select.
     :type max_size: int
 
-    :returns: List of `(seq, rc_seq)` pairs selected.
+    :param timeout_s: Optional timeout in seconds (only used for registry input).
+    :type timeout_s: float or None
+
+    :returns: List of (seq, rc_seq) pairs selected.
     :rtype: list of tuple
     """
-    
-    
-    total = len(sequence_pairs)
+    # Case 1: precomputed list of (index, pair)
+    if isinstance(sequence_pairs, list):
+        total = len(sequence_pairs)
 
-    if total > max_size:
-        selected = random.sample(sequence_pairs, max_size)
-        subset = []
-        for index, pair in selected:
-            subset.append(pair)
-        print(f"Selected random subset of {max_size} pairs from {total} available pairs.")
-    else:
+        if total > max_size:
+            selected = random.sample(sequence_pairs, max_size)
+            subset = []
+            for index, pair in selected:
+                subset.append(pair)
+            print(f"Selected random subset of {max_size} pairs from {total} available pairs.")
+            return subset
+
         subset = []
         for index, pair in sequence_pairs:
             subset.append(pair)
         print(f"Using all {total} available pairs (less than or equal to {max_size}).")
+        return subset
 
+    # Case 2: registry/generator object with sample_pair()
+    if not hasattr(sequence_pairs, "sample_pair"):
+        raise TypeError(
+            "sequence_pairs must be either a list of (index, (seq, rc_seq)) "
+            "or an object with a sample_pair() method."
+        )
+
+    start_t = time.time()
+    seen_ids = set()
+    subset = []
+
+    while len(subset) < max_size:
+        if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+            print(
+                f"Only {len(subset)} of requested {max_size} found (timeout)."
+            )
+            return subset
+
+        pair_id, pair = sequence_pairs.sample_pair()
+
+        if pair_id in seen_ids:
+            continue
+
+        seen_ids.add(pair_id)
+        subset.append(pair)
+
+    print(f"Generated {max_size} unique pairs from registry input.")
     return subset
 
 
-def select_subset_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, max_size=np.inf,
-                                  Use_Library=None, avoid_indices=None):
+import random
+import time
+import numpy as np
+
+
+def select_subset_in_energy_range(
+    sequence_pairs,
+    energy_min=-np.inf,
+    energy_max=np.inf,
+    max_size=np.inf,
+    Use_Library=None,
+    avoid_indices=None,
+    timeout_s=20,
+):
     """
     Selects a random subset of sequence pairs whose on-target energies fall within a given range.
 
+    Supports two input types:
+    1) Precomputed list of (index, (seq, rc_seq)) tuples.
+    2) SequencePairRegistry-like object with sample_pair() method.
+
     Notes
     -----
-    - Randomly samples without full shuffling for performance on large datasets.
-    - Continues until `max_size` pairs are found or all candidates (excluding `avoid_indices`) are tested.
-    - Uses `nupack_compute_energy_precompute_library_fast` with `Use_Library` to compute or fetch energies.
-    - Prints a summary of how many pairs were selected.
+    - Uses random sampling without full shuffling.
+    - Stops when max_size is reached, candidates are exhausted, or timeout occurs.
+    - Keeps returned sequence order aligned with returned indices list.
 
-    :param sequence_pairs: List of `(index, (seq, rc_seq))` tuples.
-    :type sequence_pairs: list of tuple
-
-    :param energy_min: Minimum allowed Gibbs free energy (inclusive).
-    :type energy_min: float
-
-    :param energy_max: Maximum allowed Gibbs free energy (inclusive).
-    :type energy_max: float
-
-    :param max_size: Maximum number of pairs to select.
-    :type max_size: int or float('inf')
-
-    :param Use_Library: Whether to use a precomputed energy library (overrides global setting if not None).
-    :type Use_Library: bool or None
-
-    :param avoid_indices: Set of indices to skip during selection.
-    :type avoid_indices: set or None
-
-    :returns: Tuple `(subset, indices)` where:
-              - `subset` is a list of `(seq, rc_seq)` pairs within the energy range.
-              - `indices` is a list of their corresponding global indices.
-    :rtype: tuple (list of tuple, list of int)
+    Timeout behavior
+    ----------------
+    If timeout_s is reached, returns sequences found so far and prints:
+        "Only X of requested Y found (timeout)."
     """
-    
+
     if Use_Library is None:
         Use_Library = hf.USE_LIBRARY
-    
+
     if avoid_indices is None:
         avoid_indices = set()
 
     subset = []
     indices = []
     tested_indices = set(avoid_indices)
-    
-    
-    # I used shuffel here before. For large numbers of sequence_pairs i.e. around 4^12 shuffel is very slow
-    while len(indices) < max_size and len(tested_indices) < len(sequence_pairs):
-        index, (seq, rc_seq) = random.choice(sequence_pairs)
 
-        if index in tested_indices:
+    start_t = time.time()
+
+    # -------------------------------------------------
+    # CASE 1 — precomputed list input
+    # -------------------------------------------------
+
+    if isinstance(sequence_pairs, list):
+
+        total = len(sequence_pairs)
+
+        while len(indices) < max_size and len(tested_indices) < total:
+
+            if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+                print(
+                    f"Only {len(subset)} of requested {max_size} found (timeout)."
+                )
+                return subset, indices
+
+            index, (seq, rc_seq) = random.choice(sequence_pairs)
+
+            if index in tested_indices:
+                continue
+
+            tested_indices.add(index)
+
+            energy = nupack_compute_energy_precompute_library_fast(
+                seq,
+                rc_seq,
+                type="total",
+                Use_Library=Use_Library,
+            )
+
+            if energy_min <= energy <= energy_max:
+                subset.append((seq, rc_seq))
+                indices.append(index)
+
+        print(
+            f"Selected {len(subset)} sequence pairs with energies in range "
+            f"[{energy_min}, {energy_max}]"
+        )
+
+        return subset, indices
+
+    # -------------------------------------------------
+    # CASE 2 — registry input
+    # -------------------------------------------------
+
+    if not hasattr(sequence_pairs, "sample_pair"):
+        raise TypeError(
+            "sequence_pairs must be either a list of (index, (seq, rc_seq)) "
+            "or an object with a sample_pair() method."
+        )
+
+    while len(indices) < max_size:
+
+        if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+            print(
+                f"Only {len(subset)} of requested {max_size} found (timeout)."
+            )
+            return subset, indices
+
+        pair_id, (seq, rc_seq) = sequence_pairs.sample_pair()
+
+        if pair_id in tested_indices:
             continue
 
-        tested_indices.add(index)
+        tested_indices.add(pair_id)
 
         energy = nupack_compute_energy_precompute_library_fast(
-            seq, rc_seq,
-            type='total',
-            Use_Library=Use_Library
+            seq,
+            rc_seq,
+            type="total",
+            Use_Library=Use_Library,
         )
 
         if energy_min <= energy <= energy_max:
             subset.append((seq, rc_seq))
-            indices.append(index)
+            indices.append(pair_id)
 
-    print(f"Selected {len(subset)} sequence pairs with energies in range [{energy_min}, {energy_max}]")
+    print(
+        f"Selected {len(subset)} sequence pairs with energies in range "
+        f"[{energy_min}, {energy_max}]"
+    )
 
     return subset, indices
+
 
 
 def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, Use_Library=None, avoid_ids=None):

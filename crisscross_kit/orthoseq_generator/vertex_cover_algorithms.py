@@ -421,6 +421,8 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
     non_cover_vertices = set()
     history = set()
 
+
+
     try:
         for i in range(generations):
             # Select sequences with on-target energy in desired range
@@ -434,7 +436,10 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
             )
             # Re-add previously preserved sequences
             sorted_history = sorted(history)
-            extra_pairs = [sequence_pairs[idx][1] for idx in sorted_history]
+            if isinstance(sequence_pairs, list):
+                extra_pairs = [sequence_pairs[idx][1] for idx in sorted_history]
+            else:
+                extra_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted_history]
             subset += extra_pairs
             indices += list(sorted_history)
 
@@ -481,7 +486,11 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
         print("\nInterrupted by user. Saving best result so far...")
 
     # Save final result
-    final_pairs = [sequence_pairs[idx][1] for idx in sorted(non_cover_vertices)]
+    if isinstance(sequence_pairs, list):
+        final_pairs = [sequence_pairs[idx][1] for idx in sorted(non_cover_vertices)]
+    else:
+        final_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted(non_cover_vertices)]
+
     hf.save_sequence_pairs_to_txt(final_pairs)
 
     return final_pairs

@@ -36,23 +36,31 @@ if __name__ == "__main__":
     # 2) Generate the full pool of 8-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
     ontarget8mer = sc.create_sequence_pairs_pool(
-        length=10,
+        length=7,
         fivep_ext="",
         threep_ext="",
         avoid_gggg=True
     )
+
+    sequence_pairs_object = sc.SequencePairRegistry(
+    length=20,
+    fivep_ext="",
+    threep_ext="",
+    unwanted_substrings=["AAAA", "CCCC", "GGGG", "TTTT"],
+    apply_unwanted_to="core",
+    seed=RANDOM_SEED
+)
 
     # 3) Configure and enable the precomputed energy cache.
     #    The specified pickle file ('8mers.pkl') will be created automatically during execution
     #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
     hf.choose_precompute_library("10mers.pkl")
-    hf.choose_precompute_library("10mers.pkl")
     hf.USE_LIBRARY = False
     hf.set_nupack_params(material='dna',celsius=37,sodium=0.05,magnesium=0.025)
 
     # 4) Randomly sample 250 sequence pairs for a quick pilot analysis
-    subset = sc.select_subset(ontarget8mer, max_size=50)
+    subset = sc.select_subset(sequence_pairs_object, max_size=50)
 
     # 5) Compute on-target (pair-hybridization) energies
     on_e_subset = sc.compute_ontarget_energies(subset)

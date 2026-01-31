@@ -31,11 +31,21 @@ if __name__ == "__main__":
     # 2) Generate the full pool of 8-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
     ontarget8mer = sc.create_sequence_pairs_pool(
-        length=10,
+        length=7,
         fivep_ext="",
         threep_ext="",
         avoid_gggg=False
     )
+
+    sequence_pairs_object = sc.SequencePairRegistry(
+        length=20,
+        fivep_ext="",
+        threep_ext="",
+        unwanted_substrings=["AAAA", "CCCC", "GGGG", "TTTT"],
+        apply_unwanted_to="core",
+        seed=RANDOM_SEED
+    )
+
 
     # 3) Configure and enable the precomputed energy cache.
     #    The specified pickle file ('8mers.pkl') will be created automatically during execution
@@ -45,14 +55,14 @@ if __name__ == "__main__":
     hf.USE_LIBRARY = False
 
     # 4) Select subset within desired on-target energy range (based on first script’s histograms)
-    max_ontarget = -12
-    min_ontarget = -13
+    max_ontarget = -23
+    min_ontarget = -27
     subset, indices = sc.select_subset_in_energy_range(
-        ontarget8mer,
+        sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,
-        max_size=250,
-        Use_Library=True
+        max_size=50,
+        Use_Library=False
     )
 
     # 5) Compute on-target energies for the restricted subset
