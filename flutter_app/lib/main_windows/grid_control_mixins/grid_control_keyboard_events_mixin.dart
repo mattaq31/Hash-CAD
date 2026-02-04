@@ -100,21 +100,21 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       },
 
       // Undo shortcuts (platform-specific)
-      SingleActivator(LogicalKeyboardKey.keyZ, control: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, control: true, includeRepeats: false): () {
         appState.undo2DAction();
       },
-      SingleActivator(LogicalKeyboardKey.keyZ, meta: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, includeRepeats: false): () {
         appState.undo2DAction();
       },
 
       // Redo shortcuts
-      SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true, includeRepeats: false): () {
         appState.undo2DAction(redo: true);
       },
-      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true, includeRepeats: false): () {
         appState.undo2DAction(redo: true);
       },
-      SingleActivator(LogicalKeyboardKey.keyY, control: true): () {
+      SingleActivator(LogicalKeyboardKey.keyY, control: true, includeRepeats: false): () {
         appState.undo2DAction(redo: true);
       },
 
