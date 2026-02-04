@@ -100,21 +100,21 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       },
 
       // Undo shortcuts (platform-specific)
-      SingleActivator(LogicalKeyboardKey.keyZ, control: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, control: true, includeRepeats: false): () {
         appState.undo2DAction();
       },
-      SingleActivator(LogicalKeyboardKey.keyZ, meta: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, includeRepeats: false): () {
         appState.undo2DAction();
       },
 
       // Redo shortcuts
-      SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true, includeRepeats: false): () {
         appState.undo2DAction(redo: true);
       },
-      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true): () {
+      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true, includeRepeats: false): () {
         appState.undo2DAction(redo: true);
       },
-      SingleActivator(LogicalKeyboardKey.keyY, control: true): () {
+      SingleActivator(LogicalKeyboardKey.keyY, control: true, includeRepeats: false): () {
         appState.undo2DAction(redo: true);
       },
 
@@ -155,11 +155,15 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
                 String category = updateHandleDict[updatePos]!['category'].toString();
                 bool isLast = (i == positionsToUpdate.length - 1);
 
-                if (result['enforce'] == true) {
-                  appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int);
+                if (result['enforceInPlace'] == true) {
+                  int currentValue = int.parse(updateHandleDict[updatePos]!['value'].toString());
+                  appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), currentValue, requestStateUpdate: isLast);
+                } else {
+                  if (result['enforce'] == true) {
+                    appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int, requestStateUpdate: false);
+                  }
+                  appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
                 }
-
-                appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
 
               }
             }
