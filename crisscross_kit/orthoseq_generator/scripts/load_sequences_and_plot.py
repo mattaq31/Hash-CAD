@@ -23,7 +23,7 @@ from orthoseq_generator import sequence_computations as sc
 if __name__ == "__main__":
     # 1) Load sequence pairs from file (make sure the correct file name is provided). 
     # The file needs to be located in the results folder. This is where run_sequence_search script saves it. 
-    sequence_pairs = hf.load_sequence_pairs_from_txt('the_old_32_seq.txt')
+    sequence_pairs = hf.load_sequence_pairs_from_txt('stell_2.txt')
 
     # 2) Optional: Enable precomputed energy cache for faster performance
     hf.choose_precompute_library("my_new_cache.pkl")

@@ -11,7 +11,10 @@ from matplotlib.ticker import AutoMinorLocator
 from orthoseq_generator import helper_functions as hf
 import time
 
+import logging
 
+logger = logging.getLogger("orthoseq")
+logger.addHandler(logging.NullHandler())
 
 
 
@@ -501,6 +504,7 @@ def compute_ontarget_energies(sequence_list):
     # Announce what is about to happen
     print(f"Computing on-target energies for {len(sequence_list)} sequences...")
 
+
     max_workers = max(1, os.cpu_count() * 3 // 4)
     print(f"Calculating with {max_workers} cores...")
 
@@ -641,6 +645,7 @@ def compute_offtarget_energies(sequence_pairs):
 
     # Parallelize handle-handle energy computation
     print(f'Computing off-target energies for handle-handle interactions')
+    logger.info(f"Computing off-target energies for handle-handle interactions")
     parallel_energy_computation(handles, handles, crosscorrelated_handle_handle_energies, lambda i, j: j <= i)
 
     # Parallelize antihandle-antihandle energy computation
@@ -974,7 +979,8 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
 
 
 
-def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_path=None):
+def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_path=None, show_plot=True, 
+                                 vlines=None):
     """
     Plots histograms comparing on-target and off-target Gibbs free energy distributions.
 
@@ -1001,6 +1007,13 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
 
     :param output_path: File path to save the plot; if None, the plot is only displayed.
     :type output_path: str or None
+
+    :param show_plot: Whether to call plt.show() to display the plot.
+    :type show_plot: bool
+
+    :param vlines: Dictionary of vertical lines to draw. Keys are labels, values are x-positions.
+                   Special keys: 'min_ontarget', 'max_ontarget', 'offtarget_limit'.
+    :type vlines: dict or None
 
     :returns: Dictionary of summary statistics:
               - 'mean_on'  : Mean of on-target energies  
@@ -1039,6 +1052,12 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
         # Determine common bin edges
     combined_min = min(np.min(on_energies), np.min(off_energies))
     combined_max = max(np.max(on_energies), np.max(off_energies))
+    
+    if vlines:
+        for val in vlines.values():
+            combined_min = min(combined_min, val)
+            combined_max = max(combined_max, val)
+            
     bin_edges = np.linspace(combined_min, combined_max, bins + 1)
 
 
@@ -1067,6 +1086,15 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
         color=color_on, edgecolor='black', linewidth=2, density=True
     )
 
+    # Draw vertical lines if requested
+    if vlines:
+        if 'min_ontarget' in vlines:
+            ax.axvline(vlines['min_ontarget'], color='blue', linestyle='--', linewidth=3, label='Min On-Target')
+        if 'max_ontarget' in vlines:
+            ax.axvline(vlines['max_ontarget'], color='blue', linestyle='--', linewidth=3, label='Max On-Target')
+        if 'offtarget_limit' in vlines:
+            ax.axvline(vlines['offtarget_limit'], color='red', linestyle='--', linewidth=3, label='Off-Target Limit')
+
     ax.set_xlabel('Gibbs free energy (kcal/mol)', fontsize=FONTSIZE_LABELS)
     ax.set_ylabel('Normalized frequency', fontsize=FONTSIZE_LABELS)
     ax.set_title('On-target vs Off-target Energy Distribution', fontsize=FONTSIZE_TITLE, pad=10)
@@ -1090,7 +1118,9 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     plt.tight_layout()
     if output_path:
         plt.savefig(output_path)
-    plt.show()
+    
+    if show_plot:
+        plt.show()
 
     # Print statistics
     print("\nSummary statistics:")
@@ -1153,7 +1183,7 @@ if __name__ == "__main__":
     t4 = time.time()
     print(t4-t3)
     
-    stats = plot_on_off_target_histograms(on_e_subset, off_e_subset, output_path='dump/energy_hist.pdf')
+    stats = plot_on_off_target_histograms(on_e_subset, off_e_subset, output_path='dump/energy_hist.pdf', show_plot=True)
     
 
 
