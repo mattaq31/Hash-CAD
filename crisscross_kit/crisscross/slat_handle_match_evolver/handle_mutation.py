@@ -131,6 +131,12 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         if mutation_mask is not None:
 
             localized_mut_mask = mutation_mask * positions_to_be_mutated # zero out positions that are not allowed to be mutated
+
+            # if the mutation mask and input mask have no overlap (in the case of a large number of blocked positions), simply mutate somewhere randomly instead
+            if np.sum(localized_mut_mask) == 0:
+                positions_to_be_mutated = mask & np.full(candidate_handle_arrays[0].shape, True, dtype=bool)
+                localized_mut_mask = mutation_mask * positions_to_be_mutated
+
             # Flatten, get first index of each unique value
             flat = localized_mut_mask.ravel()
             nz_idx = np.flatnonzero(flat != 0)
@@ -151,6 +157,7 @@ def mutate_handle_arrays(slat_array, candidate_handle_arrays,
         # so this meas first we calculate the probability of mutation per position as mutation_rate / total number of possible mutation positions so lets say rate 3 and 1 slat so 3/32 mutation probabilty
         # then we apply this mutation to all locations in the candidate handle array. This will have many more mutations than we actually want
         # then in the last step we remove the ones that are actually not at the positions we want to mutate. This way we ensure that the expected number of mutations is the mutation rate specified.
+
         logicforpointmutations = np.random.random(candidate_handle_arrays[0].shape) < mutation_rate / np.sum(positions_to_be_mutated)
         logicforpointmutations = logicforpointmutations & positions_to_be_mutated
 
