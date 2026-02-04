@@ -155,11 +155,15 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
                 String category = updateHandleDict[updatePos]!['category'].toString();
                 bool isLast = (i == positionsToUpdate.length - 1);
 
-                if (result['enforce'] == true) {
-                  appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int);
+                if (result['enforceInPlace'] == true) {
+                  int currentValue = int.parse(updateHandleDict[updatePos]!['value'].toString());
+                  appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), currentValue, requestStateUpdate: isLast);
+                } else {
+                  if (result['enforce'] == true) {
+                    appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int, requestStateUpdate: false);
+                  }
+                  appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
                 }
-
-                appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
 
               }
             }

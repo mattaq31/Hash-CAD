@@ -527,12 +527,14 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
-  /// Sets enforced value on a handle and notifies listeners
+  /// Sets enforced value on a handle and optionally notifies listeners
   @override
-  void setHandleEnforcedValue(HandleKey key, int value) {
+  void setHandleEnforcedValue(HandleKey key, int value, {bool requestStateUpdate = true}) {
     assemblyLinkManager.setEnforcedValue(key, value);
-    saveUndoState();
-    notifyListeners();
+    if (requestStateUpdate) {
+      saveUndoState();
+      notifyListeners();
+    }
   }
 
   /// Links multiple handles and propagates handle values to all linked handles.
