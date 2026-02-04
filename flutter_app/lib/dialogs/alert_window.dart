@@ -343,7 +343,11 @@ Widget _buildSlatPictograph(String id, HashCadPlate plate) {
 }
 
 /// Shows dialog for editing assembly handle value and enforce status.
-/// Returns a map with 'value' (int) and 'enforce' (bool), or null if cancelled.
+/// Returns a map with:
+/// - 'value' (int): The new handle value (ignored if enforceInPlace is true)
+/// - 'enforce' (bool): Whether to enforce the value
+/// - 'enforceInPlace' (bool): If true, enforce current values without changing them
+/// Returns null if cancelled.
 Future<Map<String, dynamic>?> showAssemblyHandleEditDialog(
   BuildContext context,
   DesignState appState,
@@ -353,6 +357,7 @@ Future<Map<String, dynamic>?> showAssemblyHandleEditDialog(
   final controller = TextEditingController(text: currentValue);
   bool enforce = appState.assemblyLinkManager.getEnforceValue(handleKey) != null &&
       appState.assemblyLinkManager.getEnforceValue(handleKey)! > 0;
+  bool enforceInPlace = false;
 
   return showDialog<Map<String, dynamic>>(
     context: context,
@@ -371,14 +376,26 @@ Future<Map<String, dynamic>?> showAssemblyHandleEditDialog(
                 border: OutlineInputBorder(),
               ),
               autofocus: true,
+              enabled: !enforceInPlace,
             ),
             const SizedBox(height: 16),
             CheckboxListTile(
               title: const Text('Enforce this value'),
               subtitle: const Text('Lock this handle to the specified value'),
-              value: enforce,
+              value: enforceInPlace || enforce,
+              onChanged: enforceInPlace
+                  ? null
+                  : (value) {
+                      setDialogState(() => enforce = value ?? false);
+                    },
+            ),
+            const SizedBox(height: 16),
+            CheckboxListTile(
+              title: const Text('Enforce in-place'),
+              subtitle: const Text('Lock selected handles to their current values'),
+              value: enforceInPlace,
               onChanged: (value) {
-                setDialogState(() => enforce = value ?? false);
+                setDialogState(() => enforceInPlace = value ?? false);
               },
             ),
           ],
@@ -390,9 +407,13 @@ Future<Map<String, dynamic>?> showAssemblyHandleEditDialog(
           ),
           FilledButton(
             onPressed: () {
-              int? val = int.tryParse(controller.text);
-              if (val != null && val > 0 && val <= 999) {
-                Navigator.pop(ctx, {'value': val, 'enforce': enforce});
+              if (enforceInPlace) {
+                Navigator.pop(ctx, {'value': 0, 'enforce': true, 'enforceInPlace': true});
+              } else {
+                int? val = int.tryParse(controller.text);
+                if (val != null && val > 0 && val <= 999) {
+                  Navigator.pop(ctx, {'value': val, 'enforce': enforce, 'enforceInPlace': false});
+                }
               }
             },
             child: const Text('Apply'),

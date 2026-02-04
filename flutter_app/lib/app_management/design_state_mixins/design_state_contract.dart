@@ -213,7 +213,7 @@ mixin DesignStateContract on ChangeNotifier {
   void linkHandles(List<HandleKey> keys);
   void unlinkHandle(HandleKey key);
   void toggleHandleBlock(HandleKey key);
-  void setHandleEnforcedValue(HandleKey key, int value);
+  void setHandleEnforcedValue(HandleKey key, int value, {bool requestStateUpdate = true});
   void linkHandlesAndPropagate(List<HandleKey> keys);
   void toggleHandleBlockAndApply(HandleKey key);
   void setHandleEnforcedValueAndApply(HandleKey key, int value);
