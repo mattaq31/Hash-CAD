@@ -29,6 +29,10 @@ from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.vertex_cover_algorithms import evolutionary_vertex_cover
 
+
+
+
+
 if __name__ == "__main__":
     # 1) Set a random seed for reproducibility 
     RANDOM_SEED = 42
@@ -72,7 +76,7 @@ if __name__ == "__main__":
         offtarget_limit,
         max_ontarget,
         min_ontarget,
-        subsetsize=100,
+        subsetsize=20,
         generations=3
     )
 

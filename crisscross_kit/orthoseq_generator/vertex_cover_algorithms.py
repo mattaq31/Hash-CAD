@@ -6,6 +6,13 @@ import random
 from collections import defaultdict
 
 
+import logging
+
+logger = logging.getLogger("orthoseq")
+logger.addHandler(logging.NullHandler())
+#logging.getLogger("nupack").setLevel(logging.ERROR)
+
+
 
 def heuristic_vertex_cover_optimized2(E, preserve_V=None):
         """
@@ -360,7 +367,7 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
 
 
 
-def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, subsetsize=200, generations=100):
+def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, subsetsize=200, generations=100, stop_event=None):
     
     """
     Evolves an independent set of sequences from a set of candidate sequence pairs by
@@ -376,20 +383,21 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
        - `non_cover_vertices`: best independent set so far (sequences not in the cover).
        - `history`: indices to avoid reselection, preserving diversity.  
     2. For each of `generations` iterations:
-       a. Select a random subset of sequences whose on-target energies lie within
+       a. Check if `stop_event` is set. If so, break.
+       b. Select a random subset of sequences whose on-target energies lie within
           [`min_ontarget`, `max_ontarget`], excluding those in `history`.  
-       b. Re-add any sequences from `history` to ensure good candidates are retained.  
-       c. Assert that there are no duplicate indices.  
-       d. Compute off-target energies for the subset.  
-       e. Build the off-target interaction graph (edges where energy < `offtarget_limit`).  
-       f. Apply the multi-start, iterative vertex-cover heuristic to find `removed_vertices`.  
-       g. Derive the new independent set: all selected indices minus `removed_vertices`.  
-       h. If this independent set is at least as large as the previous best:
+       c. Re-add any sequences from `history` to ensure good candidates are retained.  
+       d. Assert that there are no duplicate indices.  
+       e. Compute off-target energies for the subset.  
+       f. Build the off-target interaction graph (edges where energy < `offtarget_limit`).  
+       g. Apply the multi-start, iterative vertex-cover heuristic to find `removed_vertices`.  
+       h. Derive the new independent set: all selected indices minus `removed_vertices`.  
+       i. If this independent set is at least as large as the previous best:
           - Update `non_cover_vertices`.
           - Clear `history` if strictly larger.  
-       i. If its size ≥ 95% of the best, add its indices (deduplicated) to `history`.  
-       j. Print generation summary statistics.  
-    3. On user interrupt (Ctrl+C), exit gracefully and proceed to save the current best.  
+       j. If its size ≥ 95% of the best, add its indices (deduplicated) to `history`.  
+       k. Print generation summary statistics.  
+    3. On user interrupt (Ctrl+C) or `stop_event`, exit gracefully and proceed to save the current best.  
     4. After all generations or interruption, save the final independent set to a text file.
 
     Notes
@@ -414,6 +422,9 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
     :param generations: Number of evolutionary iterations to perform.
     :type generations: int
 
+    :param stop_event: Optional threading.Event to stop the search.
+    :type stop_event: threading.Event
+
     :returns: Final list of (seq, rc_seq) pairs forming the best independent set.
     :rtype: list of tuple
     """
@@ -425,6 +436,9 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
 
     try:
         for i in range(generations):
+            if stop_event is not None and stop_event.is_set():
+                print("Stop event detected. Stopping search...")
+                break
             # Select sequences with on-target energy in desired range
             subset, indices = sc.select_subset_in_energy_range(
                 sequence_pairs,
@@ -476,6 +490,12 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
                 history.update(new_non_cover_vertices)
 
             print(
+                f"Generation {i + 1:2d} | "
+                f"Current: {len(new_non_cover_vertices):3d} | "
+                f"Best: {len(non_cover_vertices):3d} | "
+                f"History size: {len(history):3d}"
+            )
+            logger.info(
                 f"Generation {i + 1:2d} | "
                 f"Current: {len(new_non_cover_vertices):3d} | "
                 f"Best: {len(non_cover_vertices):3d} | "
