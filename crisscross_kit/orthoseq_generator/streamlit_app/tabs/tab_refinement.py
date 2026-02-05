@@ -4,25 +4,26 @@ import threading
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.streamlit_app import plotly_utils as pu
 
-def _refine_worker(registry, min_on, max_on, refine_size, out_q):
+def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out_q):
     try:
         subset, indices = sc.select_subset_in_energy_range(
             registry,
             energy_min=float(min_on),
             energy_max=float(max_on),
+            self_energy_min=float(self_energy_limit),
             max_size=refine_size,
             Use_Library=False
         )
 
         if not subset:
-            out_q.put(("done", None, None, "No sequences found in the specified on-target range."))
+            out_q.put(("done", None, None, None, "No sequences found in the specified on-target range."))
             return
 
-        on_e = sc.compute_ontarget_energies(subset)
+        on_e, self_e_a, self_e_b = sc.compute_ontarget_energies(subset)
         off_e = sc.compute_offtarget_energies(subset)
-        out_q.put(("done", on_e, off_e, None))
+        out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), None))
     except Exception as e:
-        out_q.put(("done", None, None, repr(e)))
+        out_q.put(("done", None, None, None, repr(e)))
 
 def render_refinement_tab(registry_factory, nupack_params):
     st.header("Step 2: Off-Target Threshold Selection")
@@ -44,6 +45,7 @@ def render_refinement_tab(registry_factory, nupack_params):
                 st.session_state.registry,
                 float(st.session_state.min_ontarget),
                 float(st.session_state.max_ontarget),
+                float(st.session_state.self_energy_limit),
                 int(st.session_state.refine_size),
                 st.session_state.refine_queue,
             ),
@@ -55,7 +57,7 @@ def render_refinement_tab(registry_factory, nupack_params):
         st.rerun()
 
     if st.session_state.refine_running and (not st.session_state.refine_queue.empty()):
-        msg, on_e, off_e, err = st.session_state.refine_queue.get()
+        msg, on_e, off_e, self_e, err = st.session_state.refine_queue.get()
 
         st.session_state.refine_running = False
         st.session_state.busy = False
@@ -63,10 +65,12 @@ def render_refinement_tab(registry_factory, nupack_params):
         if err is not None:
             st.session_state.on_e_range = None
             st.session_state.off_e_range = None
+            st.session_state.self_e_range = None
             st.error(f"Refinement analysis failed: {err}")
         else:
             st.session_state.on_e_range = on_e
             st.session_state.off_e_range = off_e
+            st.session_state.self_e_range = self_e
 
         st.rerun()
 
@@ -75,7 +79,8 @@ def render_refinement_tab(registry_factory, nupack_params):
     # Read-only display of committed on-target range
     st.info(
         f"Fixed on-target range (committed from Tab 1): "
-        f"[{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol"
+        f"[{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
+        f"Committed self-energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
     refine_size = st.number_input(
@@ -110,6 +115,7 @@ def render_refinement_tab(registry_factory, nupack_params):
                 "Draft Off-Target Limit (kcal/mol)",
                 step=None,
                 key="draft_offtarget_limit",
+                value=float(st.session_state.draft_offtarget_limit),
                 disabled=st.session_state.busy
             )
         with col_y:
@@ -125,3 +131,13 @@ def render_refinement_tab(registry_factory, nupack_params):
             off_limit=float(st.session_state.draft_offtarget_limit)  # draft, editable field above
         )
         st.plotly_chart(fig, width="stretch", key="refine_chart_static")
+
+        if st.session_state.self_e_range is not None:
+            st.markdown("---")
+            st.subheader("Self-Energy Distribution")
+
+            self_fig = pu.create_self_energy_histogram(
+                st.session_state.self_e_range,
+                self_limit=float(st.session_state.self_energy_limit)
+            )
+            st.plotly_chart(self_fig, width="stretch", key="refine_self_chart_static")
