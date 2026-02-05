@@ -146,6 +146,7 @@ def find_uncovered_edges(E, vertex_cover):
     :type vertex_cover: set
 
     :returns: Edges (u, v) from `E` for which neither u nor v is in `vertex_cover`.
+              Self-edges (u == v) are included if u is not in the cover.
     :rtype: set
     """
     uncovered_edges = set()
@@ -367,7 +368,7 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
 
 
 
-def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, subsetsize=200, generations=100, stop_event=None):
+def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget,self_energy_limit, subsetsize=200, generations=100, stop_event=None):
     
     """
     Evolves an independent set of sequences from a set of candidate sequence pairs by
@@ -416,6 +417,9 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
     :param min_ontarget: Lower bound for acceptable on-target energy.
     :type min_ontarget: float
 
+    :param self_energy_limit: Minimum acceptable self-energy for each strand.
+    :type self_energy_limit: float
+
     :param subsetsize: Number of sequences to sample per generation.
     :type subsetsize: int
 
@@ -444,6 +448,7 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
                 sequence_pairs,
                 energy_min=min_ontarget,
                 energy_max=max_ontarget,
+                self_energy_min=self_energy_limit,
                 max_size=subsetsize,
                 Use_Library=True,
                 avoid_indices=history
@@ -548,7 +553,16 @@ if __name__ == "__main__":
     hf.choose_precompute_library("my_new_cache.pkl")  # filename setter you already have
     hf.USE_LIBRARY = True
     # Run the heuristic vertex cover algorithm
-    orthogonal_seq_pairs = evolutionary_vertex_cover(ontarget7mer, offtarget_limit, max_ontarget, min_ontarget, subsetsize=50, generations= 3)
+    self_energy_limit = -2.0
+    orthogonal_seq_pairs = evolutionary_vertex_cover(
+        ontarget7mer,
+        offtarget_limit,
+        max_ontarget,
+        min_ontarget,
+        self_energy_limit,
+        subsetsize=50,
+        generations=3
+    )
     hf.save_sequence_pairs_to_txt(orthogonal_seq_pairs, filename='my_sequences.txt')
     
     print(hf.load_sequence_pairs_from_txt('my_sequences.txt'))

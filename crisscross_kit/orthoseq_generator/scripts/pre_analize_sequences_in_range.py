@@ -9,7 +9,7 @@ Purpose:
 
 Main Steps:
     1. Set a fixed random seed for reproducibility.
-    2. Generate all 8-mer sequence pairs (without filtering by 'GGGG' if you want the full range).
+    2. Generate all 7-mer sequence pairs (without filtering by 'GGGG' if you want the full range).
     3. Point to the same precomputed energy cache.
     4. Select a random subset of up to 250 pairs whose on-target energies lie within [min_ontarget, max_ontarget].
     5. Compute on- and off-target energies for that restricted pool.
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
 
-    # 2) Generate the full pool of 8-mer handle/antihandle pairs,
+    # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
     ontarget8mer = sc.create_sequence_pairs_pool(
         length=7,
@@ -61,12 +61,13 @@ if __name__ == "__main__":
         sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,
+        self_energy_min=-2,
         max_size=50,
         Use_Library=False
     )
 
     # 5) Compute on-target energies for the restricted subset
-    on_e_subset = sc.compute_ontarget_energies(subset)
+    on_e_subset,self_e_A,self_e_B = sc.compute_ontarget_energies(subset)
 
     # 6) Compute off-target energies for the same subset
     off_e_subset = sc.compute_offtarget_energies(subset)
@@ -77,3 +78,5 @@ if __name__ == "__main__":
         off_e_subset,
         output_path='energy_random10mers_12to13.pdf'
     )
+
+    self_stats =sc.plot_self_energy_histogram([self_e_A,self_e_B],bins=30, output_path='10mer_self_energies.pdf')

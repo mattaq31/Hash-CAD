@@ -1,4 +1,5 @@
 import pickle
+import os
 import itertools
 from nupack import *
 import numpy as np
@@ -327,11 +328,15 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
 
     Notes
     -----
-    - Uses a local cache to avoid redundant NUPACK calls when provided with `Use_Library=True`. The input variable overwrites the global state. 
-    - Energies are stored under a sorted key so (seq1, seq2) and (seq2, seq1) map identically. Saving is not done here
-    - This function is called by multiprocessing. Each instance loads its own precompute library once from file. 
+    - Uses a local cache to avoid redundant NUPACK calls when `Use_Library=True`. If the
+      argument is None, the global setting in `hf.USE_LIBRARY` is used.
+    - Energies are stored under a sorted key so (seq1, seq2) and (seq2, seq1) map identically.
+      This function does not write back to disk; cache updates are handled by callers.
+    - Called by multiprocessing; each worker loads its own cache copy once from file.
     - Does not write to the cache during multiprocessing to prevent conflicts.
-    - All energies larger than -1 kcal/mol are mapped to -1 kcal/mol. 0 is used in other routines as an idicator that the energy has not been computed. -1 kcal/mol is already extremely weak. (virtually no interaction) 
+    - All energies larger than -1 kcal/mol are mapped to -1 kcal/mol. 0 is used in other
+      routines as an indicator that the energy has not been computed. -1 kcal/mol is already
+      extremely weak (virtually no interaction).
     - Model parameters are fixed at 37°C, sodium=0.05 M, magnesium=0.025 M; change with a fresh cache.
 
     :param seq1: First DNA sequence.
@@ -346,8 +351,10 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
     :param Use_Library: If True, use and load the precompute cache; defaults to global setting.
     :type Use_Library: bool or None
 
-    :returns: Gibbs free energy in kcal/mol, or -1.0 kcal/mol if no interaction or on error.
-    :rtype: float
+    :returns: Tuple `(energy, G_A, G_B)` where `energy` is the association free energy
+              (kcal/mol). For homodimers, `G_B == G_A`. If NUPACK returns no MFE or
+              an exception occurs, the function returns `-1.0` (scalar) instead.
+    :rtype: tuple[float, float, float] or float
     """
     
     
@@ -404,6 +411,8 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
             if len(mfe_list) == 0:
                 return -1.0
             energy = mfe_list[0].energy
+            G_A=0
+            G_B=0
 
 
         elif type == 'total':
@@ -414,6 +423,7 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
                 results = complex_analysis([complex_obj, mono_obj_A], model=model1, compute=['pfunc'])
                 G_AB = results[complex_obj].free_energy
                 G_A = results[mono_obj_A].free_energy
+                G_B = G_A
                 energy = G_AB - 2.0 * G_A
             else:
                 results = complex_analysis([complex_obj, mono_obj_A, mono_obj_B], model=model1, compute=['pfunc'])
@@ -430,7 +440,7 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         else:
             raise ValueError('type must be either "minimum" or "total"')
 
-        return energy
+        return energy, G_A, G_B
 
     except Exception as e:
         print(f"The following error occurred: {e}")
@@ -473,11 +483,11 @@ def compute_pair_energy_on(i, seq, rc_seq):
     :param rc_seq: Reverse complement sequence.
     :type rc_seq: str
 
-    :returns: Tuple containing the index and its computed Gibbs free energy.
-    :rtype: tuple (int, float)
+    :returns: Tuple `(i, pair_energy, self_energy_seq, self_energy_rc_seq)`.
+    :rtype: tuple[int, float, float, float]
     """
-    
-    return i, nupack_compute_energy_precompute_library_fast(seq, rc_seq)
+    pair_e, self_e1, self_e2 = nupack_compute_energy_precompute_library_fast(seq,rc_seq)
+    return i, pair_e, self_e1, self_e2
 
 
 def compute_ontarget_energies(sequence_list):
@@ -494,13 +504,14 @@ def compute_ontarget_energies(sequence_list):
     :param sequence_list: List of tuples, each containing a sequence and its reverse complement.
     :type sequence_list: list of tuple
 
-    :returns: NumPy array of Gibbs free energies (kcal/mol) for each sequence pair.
-    :rtype: numpy.ndarray
+    :returns: Tuple of NumPy arrays `(pair_energies, self_energies_seq, self_energies_rc_seq)`.
+    :rtype: tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]
     """
 
     # Preallocate array for better performance
     energies = np.zeros(len(sequence_list))
-
+    self_energies_seq= np.zeros(len(sequence_list))
+    self_energies_rc_seq= np.zeros(len(sequence_list))
     # Announce what is about to happen
     print(f"Computing on-target energies for {len(sequence_list)} sequences...")
 
@@ -519,8 +530,10 @@ def compute_ontarget_energies(sequence_list):
             futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq))
 
         for future in tqdm(as_completed(futures), total=len(futures)):
-            i, energy = future.result()
+            i, energy,self_e_seq, self_e_rc_seq = future.result()
             energies[i] = energy
+            self_energies_seq[i] = self_e_seq
+            self_energies_rc_seq[i] = self_e_rc_seq
 
     # update the precompute library if required
     if hf.USE_LIBRARY:
@@ -542,7 +555,7 @@ def compute_ontarget_energies(sequence_list):
             hf.save_pickle_atomic(library1, file_name)
             print("saved stuff")
 
-    return energies
+    return energies, self_energies_seq, self_energies_rc_seq
 
 
 
@@ -566,7 +579,8 @@ def compute_pair_energy_off(i, j, seq1, seq2):
      :returns: Tuple `(i, j, energy)` where `energy` is the computed Gibbs free energy.
      :rtype: tuple (int, int, float)
      """
-    return i, j, nupack_compute_energy_precompute_library_fast(seq1, seq2)
+    bind_energy , _, _ = nupack_compute_energy_precompute_library_fast(seq1, seq2)
+    return i, j, bind_energy
 
 
 def compute_offtarget_energies(sequence_pairs):
@@ -793,6 +807,7 @@ def select_subset_in_energy_range(
     sequence_pairs,
     energy_min=-np.inf,
     energy_max=np.inf,
+    self_energy_min=-np.inf,
     max_size=np.inf,
     Use_Library=None,
     avoid_indices=None,
@@ -815,6 +830,34 @@ def select_subset_in_energy_range(
     ----------------
     If timeout_s is reached, returns sequences found so far and prints:
         "Only X of requested Y found (timeout)."
+
+    :param sequence_pairs: List of (index, (seq, rc_seq)) tuples or registry with sample_pair().
+    :type sequence_pairs: list or object
+
+    :param energy_min: Minimum acceptable on-target (association) energy.
+    :type energy_min: float
+
+    :param energy_max: Maximum acceptable on-target (association) energy.
+    :type energy_max: float
+
+    :param self_energy_min: Minimum acceptable self-energy for each strand.
+    :type self_energy_min: float
+
+    :param max_size: Maximum number of pairs to return.
+    :type max_size: int
+
+    :param Use_Library: Whether to use the precomputed energy library (overrides global if not None).
+    :type Use_Library: bool or None
+
+    :param avoid_indices: Indices to avoid when sampling.
+    :type avoid_indices: set or None
+
+    :param timeout_s: Timeout in seconds; returns early if exceeded.
+    :type timeout_s: float or None
+
+    :returns: Tuple `(subset, indices)` where `subset` is a list of `(seq, rc_seq)` pairs
+              and `indices` are their corresponding global IDs.
+    :rtype: tuple[list[tuple[str, str]], list[int]]
     """
 
     if Use_Library is None:
@@ -852,14 +895,14 @@ def select_subset_in_energy_range(
 
             tested_indices.add(index)
 
-            energy = nupack_compute_energy_precompute_library_fast(
+            energy, self_e_seq, self_e_rc_seq = nupack_compute_energy_precompute_library_fast(
                 seq,
                 rc_seq,
                 type="total",
                 Use_Library=Use_Library,
             )
 
-            if energy_min <= energy <= energy_max:
+            if energy_min <= energy <= energy_max and (self_e_seq >= self_energy_min) and (self_e_rc_seq >= self_energy_min):
                 subset.append((seq, rc_seq))
                 indices.append(index)
 
@@ -895,20 +938,20 @@ def select_subset_in_energy_range(
 
         tested_indices.add(pair_id)
 
-        energy = nupack_compute_energy_precompute_library_fast(
+        energy, self_e_seq, self_e_rc_seq  = nupack_compute_energy_precompute_library_fast(
             seq,
             rc_seq,
             type="total",
             Use_Library=Use_Library,
         )
 
-        if energy_min <= energy <= energy_max:
+        if energy_min <= energy <= energy_max and (self_e_seq >= self_energy_min) and (self_e_rc_seq >= self_energy_min):
             subset.append((seq, rc_seq))
             indices.append(pair_id)
 
     print(
         f"Selected {len(subset)} sequence pairs with energies in range "
-        f"[{energy_min}, {energy_max}]"
+        f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
     )
 
     return subset, indices
@@ -966,7 +1009,7 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
         if ID in avoid_ids:
             continue
 
-        energy = nupack_compute_energy_precompute_library_fast(
+        energy,_,_ = nupack_compute_energy_precompute_library_fast(
             seq, rc_seq, type='total', Use_Library=Use_Library
         )
 
@@ -1143,6 +1186,100 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
         'min_off': min_off,
     }
 
+
+def plot_self_energy_histogram(self_energies, bins=30, output_path=None, show_plot=True):
+    """
+    Plots a histogram of self-energies (e.g., G_A and G_B combined).
+
+    Notes
+    -----
+    - Accepts a single array-like, a tuple/list of arrays (e.g., (G_A, G_B)),
+      or a dict of arrays; all values are flattened and concatenated.
+    - Uses the same visual style as plot_on_off_target_histograms.
+    - Prints summary statistics after plotting.
+
+    :param self_energies: Array-like, tuple/list of arrays, or dict of arrays.
+    :type self_energies: array-like or tuple/list or dict
+
+    :param bins: Number of bins for histogram.
+    :type bins: int
+
+    :param output_path: File path to save the plot; if None, the plot is only displayed.
+    :type output_path: str or None
+
+    :param show_plot: Whether to call plt.show() to display the plot.
+    :type show_plot: bool
+    """
+    if isinstance(self_energies, dict):
+        values = [np.ravel(v) for v in self_energies.values()]
+        combined = np.concatenate(values) if values else np.array([])
+    elif isinstance(self_energies, (list, tuple)) and len(self_energies) > 1:
+        combined = np.concatenate([np.ravel(v) for v in self_energies])
+    else:
+        combined = np.ravel(self_energies)
+
+    # --- Centralized style settings ---
+    LINEWIDTH_AXIS = 2.5
+    TICK_WIDTH = 2.5
+    TICK_LENGTH = 6
+    FONTSIZE_TICKS = 16
+    FONTSIZE_LABELS = 19
+    FONTSIZE_TITLE = 19
+    FONTSIZE_LEGEND = 16
+    FIGSIZE = (12, 5.5)  # Wide aspect ratio
+    color_self = '#1f77b4'  # dark blue
+
+    # Compute statistics
+    mean_self = np.mean(combined)
+    std_self = np.std(combined)
+    min_self = np.min(combined)
+    max_self = np.max(combined)
+
+    # Plot
+    fig, ax = plt.subplots(figsize=FIGSIZE)
+    ax.hist(
+        combined, bins=bins, alpha=0.8, label='Self-energies',
+        color=color_self, edgecolor='black', linewidth=2, density=True
+    )
+
+    ax.set_xlabel('Gibbs free energy (kcal/mol)', fontsize=FONTSIZE_LABELS)
+    ax.set_ylabel('Normalized frequency', fontsize=FONTSIZE_LABELS)
+    ax.set_title('Self-Energy Distribution', fontsize=FONTSIZE_TITLE, pad=10)
+
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    ax.tick_params(axis='x', which='minor', length=4, width=1.2)
+
+    ax.tick_params(
+        axis='both',
+        which='major',
+        labelsize=FONTSIZE_TICKS,
+        width=TICK_WIDTH,
+        length=TICK_LENGTH
+    )
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(LINEWIDTH_AXIS)
+
+    ax.legend(fontsize=FONTSIZE_LEGEND)
+
+    plt.tight_layout()
+    if output_path:
+        plt.savefig(output_path)
+    if show_plot:
+        plt.show()
+
+    print("\nSummary statistics:")
+    print(f"Mean Self Energy:  {mean_self:.3f} kcal/mol")
+    print(f"Std Dev Self:      {std_self:.3f} kcal/mol")
+    print(f"Min Self Energy:   {min_self:.3f} kcal/mol")
+    print(f"Max Self Energy:   {max_self:.3f} kcal/mol")
+
+    return {
+        'mean_self': mean_self,
+        'std_self': std_self,
+        'min_self': min_self,
+        'max_self': max_self,
+    }
 
 
 if __name__ == "__main__":

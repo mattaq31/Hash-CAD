@@ -30,7 +30,7 @@ if __name__ == "__main__":
     hf.USE_LIBRARY = False  # Set to True to use the cache, False to force recomputation
 
     # 3) Compute on-target energies (self-hybridization)
-    on_e = sc.compute_ontarget_energies(sequence_pairs)
+    on_e,_,_ = sc.compute_ontarget_energies(sequence_pairs)
 
     # 4) Compute off-target energies (cross-hybridization)
     off_e = sc.compute_offtarget_energies(sequence_pairs)

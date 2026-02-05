@@ -38,7 +38,7 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
 
-    # 2) Generate the full pool of 8-mer handle/antihandle pairs (with 'TT' flanking on 5' end)
+    # 2) Generate the full pool of 7-mer handle/antihandle pairs (no flanks here).
     ontarget8mer = sc.create_sequence_pairs_pool(
         length=7,
         fivep_ext="",
@@ -58,9 +58,10 @@ if __name__ == "__main__":
 
     # 3) Define energy thresholds based on prior analysis
 
-    max_ontarget = -23  # Maximum allowed off-target binding strength
-    min_ontarget = -27 # Minimum acceptable on-target binding energy
+    max_ontarget = -23  # Maximum acceptable on-target binding energy
+    min_ontarget = -27  # Minimum acceptable on-target binding energy
     offtarget_limit = -7.5
+    self_energy_limit = -2.0
     # 4) Configure and enable the precomputed energy cache.
     #    The specified pickle file will be created inside 'pre_computed_energies' if it doesn't exist.
     #    Existing files are reused automatically to avoid recomputation.
@@ -76,8 +77,9 @@ if __name__ == "__main__":
         offtarget_limit,
         max_ontarget,
         min_ontarget,
-        subsetsize=20,
-        generations=3
+        self_energy_limit,
+        subsetsize=100,
+        generations=10
     )
 
     # 6) Save the selected orthogonal sequences to a file with a name you choose for later use
@@ -86,7 +88,7 @@ if __name__ == "__main__":
     # 7) Compute and plot the on-target and off-target energy distributions for the selected set
     hf.USE_LIBRARY = False  # Force recomputation to double-check energies. The library might have been corrupted. Better safe than sorry 
 
-    onef = sc.compute_ontarget_energies(orthogonal_seq_pairs)
+    onef, self_e_A, self_e_B = sc.compute_ontarget_energies(orthogonal_seq_pairs)
     offef = sc.compute_offtarget_energies(orthogonal_seq_pairs)
 
     stats = sc.plot_on_off_target_histograms(
@@ -94,3 +96,5 @@ if __name__ == "__main__":
         offef,
         output_path='ortho_10mers.pdf'
     )
+
+    self_stats = sc.plot_self_energy_histogram([self_e_A, self_e_B], bins=30, output_path='final_10mer_self_energies.pdf')

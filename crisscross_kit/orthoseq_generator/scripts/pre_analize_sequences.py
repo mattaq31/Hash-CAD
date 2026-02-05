@@ -13,10 +13,10 @@ Purpose:
 
 Main Steps:
     1. Set a fixed random seed for reproducibility.
-    2. Generate all 8-mer sequence pairs (and their reverse complements), filtering out any
+    2. Generate all 7-mer sequence pairs (and their reverse complements), filtering out any
        with four identical bases in a row.
     3. Point to (and enable) a precomputed energy cache to speed up repeated runs.
-    4. Randomly sample up to 250 sequence pairs from the pool.
+    4. Randomly sample up to 50 sequence pairs from the pool.
     5. Compute on-target energies (pair-hybridization) and off-target energies (cross-hybridization).
     6. Plot and save the histograms of both distributions to 'energy_hist.pdf', printing summary stats.
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
 
-    # 2) Generate the full pool of 8-mer handle/antihandle pairs,
+    # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
     ontarget8mer = sc.create_sequence_pairs_pool(
         length=7,
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     subset = sc.select_subset(sequence_pairs_object, max_size=50)
 
     # 5) Compute on-target (pair-hybridization) energies
-    on_e_subset = sc.compute_ontarget_energies(subset)
+    on_e_subset, self_e_a, self_e_b = sc.compute_ontarget_energies(subset)
 
     # 6) Compute off-target (cross-hybridization) energies
     off_e_subset = sc.compute_offtarget_energies(subset)
@@ -73,4 +73,11 @@ if __name__ == "__main__":
         on_e_subset,
         off_e_subset,
         output_path='10mer_random.pdf'
+    )
+
+    # 8) Plot self-energy distribution (G_A + G_B combined)
+    self_stats = sc.plot_self_energy_histogram(
+        [self_e_a, self_e_b],
+        bins=30,
+        output_path='10mer_self_energies.pdf'
     )
