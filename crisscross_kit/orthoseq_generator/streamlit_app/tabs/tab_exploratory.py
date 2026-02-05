@@ -8,14 +8,18 @@ from orthoseq_generator.streamlit_app.state_manager import START_MIN_ON, START_M
 def _pilot_worker(registry, pilot_size, out_q):
     try:
         subset = sc.select_subset(registry, max_size=pilot_size)
-        on_e = sc.compute_ontarget_energies(subset)
+        on_e, self_e_a, self_e_b = sc.compute_ontarget_energies(subset)
         off_e = sc.compute_offtarget_energies(subset)
-        out_q.put(("done", on_e, off_e, None))
+        out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), None))
     except Exception as e:
-        out_q.put(("done", None, None, repr(e)))
+        out_q.put(("done", None, None, None, repr(e)))
 
 def render_exploratory_tab(registry_factory, nupack_params):
     st.header("Step 1: Pilot Analysis")
+
+    if st.session_state.get("sync_self_energy_draft", False) or "draft_self_energy_limit_input" not in st.session_state:
+        st.session_state.draft_self_energy_limit_input = float(st.session_state.self_energy_limit)
+        st.session_state.sync_self_energy_draft = False
 
     if st.session_state.run_compute_1 and not st.session_state.pilot_running:
         st.session_state.run_compute_1 = False
@@ -39,7 +43,7 @@ def render_exploratory_tab(registry_factory, nupack_params):
         st.rerun()
 
     if st.session_state.pilot_running and (not st.session_state.pilot_queue.empty()):
-        msg, on_e, off_e, err = st.session_state.pilot_queue.get()
+        msg, on_e, off_e, self_e, err = st.session_state.pilot_queue.get()
 
         st.session_state.pilot_running = False
         st.session_state.busy = False
@@ -47,10 +51,12 @@ def render_exploratory_tab(registry_factory, nupack_params):
         if err is not None:
             st.session_state.on_e_pilot = None
             st.session_state.off_e_pilot = None
+            st.session_state.self_e_pilot = None
             st.error(f"Pilot analysis failed: {err}")
         else:
             st.session_state.on_e_pilot = on_e
             st.session_state.off_e_pilot = off_e
+            st.session_state.self_e_pilot = self_e
 
         st.rerun()
 
@@ -119,3 +125,30 @@ def render_exploratory_tab(registry_factory, nupack_params):
             float(st.session_state.draft_max_ontarget),
         )
         st.plotly_chart(fig, width="stretch", key="pilot_chart_static")
+
+        if st.session_state.self_e_pilot is not None:
+            st.markdown("---")
+            st.subheader("Select Self-Energy Limit (Draft)")
+            st.write("Set a minimum self-energy threshold, then commit it for Tabs 2 and 3.")
+
+            col_s1, col_s2 = st.columns([1, 1])
+            with col_s1:
+                st.number_input(
+                    "Draft Self-Energy Limit (kcal/mol)",
+                    step=None,
+                    key="draft_self_energy_limit_input",
+                    disabled=st.session_state.busy
+                )
+            with col_s2:
+                if st.button("Use This Self-Energy Limit", key="btn_commit_self_energy", disabled=st.session_state.busy):
+                    committed_limit = float(st.session_state.draft_self_energy_limit_input)
+                    st.session_state.self_energy_limit = committed_limit
+                    st.session_state.sync_self_energy_draft = True
+                    st.success("Self-energy limit transferred to Tabs 2 and 3.")
+                    #st.rerun()
+
+            self_fig = pu.create_self_energy_histogram(
+                st.session_state.self_e_pilot,
+                self_limit=float(st.session_state.draft_self_energy_limit_input)
+            )
+            st.plotly_chart(self_fig, width="stretch", key="pilot_self_chart_static")

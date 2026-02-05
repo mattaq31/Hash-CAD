@@ -6,6 +6,7 @@ import queue
 START_MIN_ON = -13.0
 START_MAX_ON = -10.0
 START_OFFTARGET = -7.5
+START_SELF_ENERGY = -2.0
 
 def init_session_state():
     if "busy" not in st.session_state:
@@ -29,11 +30,15 @@ def init_session_state():
         st.session_state.on_e_pilot = None
     if "off_e_pilot" not in st.session_state:
         st.session_state.off_e_pilot = None
+    if "self_e_pilot" not in st.session_state:
+        st.session_state.self_e_pilot = None
     
     if "on_e_range" not in st.session_state:
         st.session_state.on_e_range = None
     if "off_e_range" not in st.session_state:
         st.session_state.off_e_range = None
+    if "self_e_range" not in st.session_state:
+        st.session_state.self_e_range = None
 
     if "orthogonal_seq_pairs" not in st.session_state:
         st.session_state.orthogonal_seq_pairs = None
@@ -49,6 +54,8 @@ def init_session_state():
         st.session_state.max_ontarget = START_MAX_ON
     if "offtarget_limit" not in st.session_state:
         st.session_state.offtarget_limit = START_OFFTARGET
+    if "self_energy_limit" not in st.session_state:
+        st.session_state.self_energy_limit = START_SELF_ENERGY
 
     # Drafts
     if "draft_min_ontarget" not in st.session_state:
@@ -57,6 +64,8 @@ def init_session_state():
         st.session_state.draft_max_ontarget = float(st.session_state.max_ontarget)
     if "draft_offtarget_limit" not in st.session_state:
         st.session_state.draft_offtarget_limit = float(st.session_state.offtarget_limit)
+    if "draft_self_energy_limit" not in st.session_state:
+        st.session_state.draft_self_energy_limit = float(st.session_state.self_energy_limit)
 
     # Queues and buffers
     if "search_queue" not in st.session_state:
@@ -91,3 +100,5 @@ def init_session_state():
         st.session_state.final_cache_ready = False
     if "final_fig" not in st.session_state:
         st.session_state.final_fig = None
+    if "final_self_fig" not in st.session_state:
+        st.session_state.final_self_fig = None

@@ -8,7 +8,7 @@ from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.vertex_cover_algorithms import evolutionary_vertex_cover
 from orthoseq_generator.streamlit_app import plotly_utils as pu
 
-def _search_worker(registry, offtarget_limit, max_on, min_on, subsetsize, generations, stop_event, out_q):
+def _search_worker(registry, offtarget_limit, max_on, min_on, self_energy_limit, subsetsize, generations, stop_event, out_q):
     start_time = time.time()
     try:
         res = evolutionary_vertex_cover(
@@ -16,6 +16,7 @@ def _search_worker(registry, offtarget_limit, max_on, min_on, subsetsize, genera
             offtarget_limit,
             max_on,
             min_on,
+            self_energy_limit,
             subsetsize=subsetsize,
             generations=generations,
             stop_event=stop_event
@@ -30,7 +31,8 @@ def render_search_tab(registry_factory, nupack_params):
 
     st.info(
         f"Committed on-target range: [{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
-        f"Committed off-target limit: {st.session_state.offtarget_limit:.2f} kcal/mol"
+        f"Committed off-target limit: {st.session_state.offtarget_limit:.2f} kcal/mol\n\n"
+        f"Committed self-energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
     # Inputs (locked while running)
@@ -99,11 +101,13 @@ def render_search_tab(registry_factory, nupack_params):
         # Reset final-plot cache for new run
         st.session_state.final_cache_ready = False
         st.session_state.final_fig = None
+        st.session_state.final_self_fig = None
 
         registry = st.session_state.registry
         offtarget_limit = float(st.session_state.offtarget_limit)
         max_on = float(st.session_state.max_ontarget)
         min_on = float(st.session_state.min_ontarget)
+        self_energy_limit = float(st.session_state.self_energy_limit)
         subsetsize = int(st.session_state.subset_size_search)
         generations_ = int(st.session_state.generations)
         stop_event = st.session_state.stop_event
@@ -113,7 +117,7 @@ def render_search_tab(registry_factory, nupack_params):
 
         t = threading.Thread(
             target=_search_worker,
-            args=(registry, offtarget_limit, max_on, min_on, subsetsize, generations_, stop_event, out_q),
+            args=(registry, offtarget_limit, max_on, min_on, self_energy_limit, subsetsize, generations_, stop_event, out_q),
             daemon=True
         )
         st.session_state.search_thread = t
@@ -180,7 +184,7 @@ def render_search_tab(registry_factory, nupack_params):
         if not st.session_state.final_cache_ready:
             st.session_state.busy = True
             with st.spinner("Computing final energies for visualization..."):
-                on_final = sc.compute_ontarget_energies(orthogonal_seq_pairs)
+                on_final, self_e_a, self_e_b = sc.compute_ontarget_energies(orthogonal_seq_pairs)
                 off_final = sc.compute_offtarget_energies(orthogonal_seq_pairs)
 
                 st.session_state.final_fig = pu.create_interactive_histogram(
@@ -190,9 +194,15 @@ def render_search_tab(registry_factory, nupack_params):
                     float(st.session_state.max_ontarget),
                     off_limit=float(st.session_state.offtarget_limit)
                 )
+                st.session_state.final_self_fig = pu.create_self_energy_histogram(
+                    [self_e_a, self_e_b],
+                    self_limit=float(st.session_state.self_energy_limit)
+                )
                 st.session_state.final_cache_ready = True
                 st.session_state.busy = False
             st.rerun()
 
         if st.session_state.final_fig is not None:
             st.plotly_chart(st.session_state.final_fig, width="stretch", key="final_chart_static")
+        if st.session_state.final_self_fig is not None:
+            st.plotly_chart(st.session_state.final_self_fig, width="stretch", key="final_self_chart_static")
