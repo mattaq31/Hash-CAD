@@ -15,6 +15,30 @@ NUPACK_PARAMS = {
 }
 
 def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
+    """
+    Updates global NUPACK parameters used for all energy computations.
+
+    Notes
+    -----
+    These values are read by functions in `sequence_computations` when building
+    a NUPACK `Model`. If you change parameters, you should also choose a new
+    precompute library filename to avoid mixing incompatible energies.
+
+    :param material: NUPACK material type (e.g., "dna").
+    :type material: str
+
+    :param celsius: Temperature in Celsius.
+    :type celsius: float
+
+    :param sodium: Sodium concentration in M.
+    :type sodium: float
+
+    :param magnesium: Magnesium concentration in M.
+    :type magnesium: float
+
+    :returns: None
+    :rtype: None
+    """
     NUPACK_PARAMS["MATERIAL"] = material
     NUPACK_PARAMS["CELSIUS"] = celsius
     NUPACK_PARAMS["SODIUM"] = sodium
@@ -204,6 +228,11 @@ def load_sequence_pairs_from_txt(filename,use_default_results_folder=True):
 
     :param filename: Name of the text file to load.
     :type filename: str
+
+    :param use_default_results_folder: If True, interpret `filename` relative to the
+                                       default results folder; otherwise treat it as
+                                       an absolute or relative path.
+    :type use_default_results_folder: bool
 
     :returns: List of (sequence, reverse_complement) tuples loaded from the file.
     :rtype: list of tuple
