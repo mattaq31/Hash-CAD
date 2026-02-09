@@ -55,14 +55,14 @@ if __name__ == "__main__":
     hf.USE_LIBRARY = False
 
     # 4) Select subset within desired on-target energy range (based on first script’s histograms)
-    max_ontarget = -23
-    min_ontarget = -27
+    max_ontarget = -10
+    min_ontarget = -30
     subset, indices = sc.select_subset_in_energy_range(
         sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,
         self_energy_min=-2,
-        max_size=50,
+        max_size=2,
         Use_Library=False
     )
 

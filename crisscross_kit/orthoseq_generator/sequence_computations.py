@@ -514,7 +514,7 @@ def compute_ontarget_energies(sequence_list):
     self_energies_rc_seq= np.zeros(len(sequence_list))
     # Announce what is about to happen
     print(f"Computing on-target energies for {len(sequence_list)} sequences...")
-
+    logger.info(f"Computing on-target energies for {len(sequence_list)} sequences.")
 
     max_workers = max(1, os.cpu_count() * 3 // 4)
     print(f"Calculating with {max_workers} cores...")
@@ -659,15 +659,20 @@ def compute_offtarget_energies(sequence_pairs):
 
     # Parallelize handle-handle energy computation
     print(f'Computing off-target energies for handle-handle interactions')
-    logger.info(f"Computing off-target energies for handle-handle interactions")
+    computations = int(len(handles) * (len(handles)+1)/2)
+    logger.info(f"Computing off-target energies for {computations} plus-plus interactions")
     parallel_energy_computation(handles, handles, crosscorrelated_handle_handle_energies, lambda i, j: j <= i)
 
     # Parallelize antihandle-antihandle energy computation
-    print(f'Computing off-target energies for antihandle-antihandle interactions')
+    print(f'Computing off-target energies for minus-minus interactions')
+    computations = int(len(antihandles) * (len(antihandles) + 1) / 2)
+    logger.info(f"Computing off-target energies for {computations} minus-minus interactions")
     parallel_energy_computation(antihandles, antihandles, crosscorrelated_antihandle_antihandle_energies, lambda i, j: j <= i)
 
     # Parallelize handle-antihandle energy computation
     print(f'Computing off-target energies for handle-antihandle interactions')
+    computations = len(handles) * (len(antihandles))-len(handles)
+    logger.info(f"Computing off-target energies for {computations} plus-minus interactions")
     parallel_energy_computation(handles, antihandles, crosscorrelated_handle_antihandle_energies, lambda i, j: j != i)
 
 
@@ -784,6 +789,7 @@ def select_subset(sequence_pairs, max_size=200, timeout_s=20):
             print(
                 f"Only {len(subset)} of requested {max_size} found (timeout)."
             )
+            logger.info(f"Only {len(subset)} of requested {max_size} found (timeout = {timeout_s}s).")
             return subset
 
         pair_id, pair = sequence_pairs.sample_pair()
@@ -795,6 +801,7 @@ def select_subset(sequence_pairs, max_size=200, timeout_s=20):
         subset.append(pair)
 
     print(f"Generated {max_size} unique pairs from registry input.")
+    logger.info(f"Selected requested {max_size} sequence pairs.")
     return subset
 
 
@@ -886,6 +893,7 @@ def select_subset_in_energy_range(
                 print(
                     f"Only {len(subset)} of requested {max_size} found (timeout)."
                 )
+                logger.info(f"Only {len(subset)} of requested {max_size} found for given parameters (timeout = {timeout_s}s).")
                 return subset, indices
 
             index, (seq, rc_seq) = random.choice(sequence_pairs)
@@ -911,6 +919,7 @@ def select_subset_in_energy_range(
             f"[{energy_min}, {energy_max}]"
         )
 
+
         return subset, indices
 
     # -------------------------------------------------
@@ -929,6 +938,7 @@ def select_subset_in_energy_range(
             print(
                 f"Only {len(subset)} of requested {max_size} found (timeout)."
             )
+            logger.info(f"Only {len(subset)} of requested {max_size} found for given parameters (timeout = {timeout_s}s).")
             return subset, indices
 
         pair_id, (seq, rc_seq) = sequence_pairs.sample_pair()
@@ -953,6 +963,7 @@ def select_subset_in_energy_range(
         f"Selected {len(subset)} sequence pairs with energies in range "
         f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
     )
+    logger.info(f"Selected {len(subset)} sequence pairs with on-target energies in range [{energy_min}, {energy_max}] and secondary-structure energy above {self_energy_min}.")
 
     return subset, indices
 
@@ -1273,6 +1284,9 @@ def plot_self_energy_histogram(self_energies, bins=30, output_path=None, show_pl
     print(f"Std Dev Self:      {std_self:.3f} kcal/mol")
     print(f"Min Self Energy:   {min_self:.3f} kcal/mol")
     print(f"Max Self Energy:   {max_self:.3f} kcal/mol")
+
+
+
 
     return {
         'mean_self': mean_self,

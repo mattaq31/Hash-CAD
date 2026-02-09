@@ -57,13 +57,14 @@ def render_exploratory_tab(registry_factory, nupack_params):
             st.session_state.on_e_pilot = on_e
             st.session_state.off_e_pilot = off_e
             st.session_state.self_e_pilot = self_e
+            #print(on_e)
 
         st.rerun()
 
     st.write("Generate a random sample of sequence pairs to see the general energy distribution.")
 
     pilot_size = st.number_input(
-        "Pilot Sample Size", 
+        "Sample Size",
         min_value=10, 
         max_value=1000, 
         value=50, 
@@ -71,7 +72,11 @@ def render_exploratory_tab(registry_factory, nupack_params):
         disabled=st.session_state.busy
     )
 
-    if st.button("Run Pilot Analysis", key="btn_run_pilot", disabled=st.session_state.busy):
+    if st.button(
+            "Run Pilot Analysis",
+            key="btn_run_pilot",
+            disabled=(st.session_state.busy or st.session_state.input_invalid)
+    ):
         st.session_state.run_compute_1 = True
         st.session_state.busy = True
         st.rerun()
@@ -84,14 +89,14 @@ def render_exploratory_tab(registry_factory, nupack_params):
             and st.session_state.off_e_pilot is not None
     ):
         st.markdown("---")
-        st.subheader("Select On-Target Energy Range (Draft)")
-        st.write("Set min and max manually. Then commit it for Tab 2.")
+        st.subheader("Select On-Target Energy Range")
+        st.write("Set minimum and maximum and hit \"Use This Range\" to transfer the values to the next tabs")
 
         col_a, col_b, col_c = st.columns([1, 1, 1])
 
         with col_a:
             st.number_input(
-                "Min On-Target (kcal/mol)",
+                "Min On-Target Energy (kcal/mol)",
                 step=None,
                 key="draft_min_ontarget",
                 value=START_MIN_ON,
@@ -100,7 +105,7 @@ def render_exploratory_tab(registry_factory, nupack_params):
 
         with col_b:
             st.number_input(
-                "Max On-Target (kcal/mol)",
+                "Max On-Target Energy (kcal/mol)",
                 step=None,
                 key="draft_max_ontarget",
                 value=START_MAX_ON,
@@ -115,7 +120,7 @@ def render_exploratory_tab(registry_factory, nupack_params):
                 st.session_state.min_ontarget = min(a, b)
                 st.session_state.max_ontarget = max(a, b)
 
-                st.success("Range Transferred to Tab 2")
+                st.success("Range Transferred")
 
         # Plot reflects draft range
         fig = pu.create_interactive_histogram(
@@ -128,23 +133,24 @@ def render_exploratory_tab(registry_factory, nupack_params):
 
         if st.session_state.self_e_pilot is not None:
             st.markdown("---")
-            st.subheader("Select Self-Energy Limit (Draft)")
-            st.write("Set a minimum self-energy threshold, then commit it for Tabs 2 and 3.")
+            st.subheader("Select Minimum Secondary-Structure Energy")
+            st.write("Set minimum and hit \"Use This Value\" to transfer the value to the next tabs")
 
             col_s1, col_s2 = st.columns([1, 1])
             with col_s1:
                 st.number_input(
-                    "Draft Self-Energy Limit (kcal/mol)",
+                    "Min Secondary-Structure Energy (kcal/mol)",
                     step=None,
                     key="draft_self_energy_limit_input",
+                    value=float(st.session_state.draft_self_energy_limit_input),
                     disabled=st.session_state.busy
                 )
             with col_s2:
-                if st.button("Use This Self-Energy Limit", key="btn_commit_self_energy", disabled=st.session_state.busy):
+                if st.button("Use This Value", key="btn_commit_self_energy", disabled=st.session_state.busy):
                     committed_limit = float(st.session_state.draft_self_energy_limit_input)
                     st.session_state.self_energy_limit = committed_limit
                     st.session_state.sync_self_energy_draft = True
-                    st.success("Self-energy limit transferred to Tabs 2 and 3.")
+                    st.success("Value Transferred")
                     #st.rerun()
 
             self_fig = pu.create_self_energy_histogram(
