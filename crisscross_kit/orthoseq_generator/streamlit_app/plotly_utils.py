@@ -124,7 +124,7 @@ def create_self_energy_histogram(self_energies, self_limit=None, bins=60):
     if combined.size == 0:
         fig = go.Figure()
         fig.update_layout(
-            title="Self-Energy Distribution",
+            title="Secondary-Structure Energy Distribution",
             xaxis_title="Gibbs free energy (kcal/mol)",
             yaxis_title="Normalized frequency",
             template="plotly_white",
@@ -175,7 +175,7 @@ def create_self_energy_histogram(self_energies, self_limit=None, bins=60):
     fig.update_layout(
         shapes=shapes,
         barmode="overlay",
-        title="Self-Energy Distribution",
+        title="Secondary-Structure Energy Distribution",
         xaxis_title="Gibbs free energy (kcal/mol)",
         yaxis_title="Normalized frequency",
         template="plotly_white",

@@ -3,12 +3,22 @@ import random
 import threading
 import time
 import os
-from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
+from orthoseq_generator import helper_functions as hf
 from orthoseq_generator.vertex_cover_algorithms import evolutionary_vertex_cover
 from orthoseq_generator.streamlit_app import plotly_utils as pu
 
-def _search_worker(registry, offtarget_limit, max_on, min_on, self_energy_limit, subsetsize, generations, stop_event, out_q):
+def _search_worker(
+    registry,
+    offtarget_limit,
+    max_on,
+    min_on,
+    self_energy_limit,
+    subsetsize,
+    generations,
+    stop_event,
+    out_q,
+):
     start_time = time.time()
     try:
         res = evolutionary_vertex_cover(
@@ -21,30 +31,35 @@ def _search_worker(registry, offtarget_limit, max_on, min_on, self_energy_limit,
             generations=generations,
             stop_event=stop_event
         )
-        out_q.put(("done", res, time.time() - start_time, None))
+        if not res:
+            out_q.put(("done", None, time.time() - start_time, "No sequences found before termination."))
+        else:
+            out_q.put(("done", res, time.time() - start_time, None))
     except Exception as e:
         out_q.put(("done", None, time.time() - start_time, repr(e)))
 
 def render_search_tab(registry_factory, nupack_params):
     st.header("Step 3: Orthogonal Sequence Search")
     st.write("All parameters are committed. Run the algorithm.")
+    if st.session_state.search_error:
+        st.error(f"Search failed: {st.session_state.search_error}")
 
     st.info(
-        f"Committed on-target range: [{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
-        f"Committed off-target limit: {st.session_state.offtarget_limit:.2f} kcal/mol\n\n"
-        f"Committed self-energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
+        f"Committed on-target energy range: [{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
+        f"Committed off-target energy limit: {st.session_state.offtarget_limit:.2f} kcal/mol\n\n"
+        f"Committed secondary-structure energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
     # Inputs (locked while running)
     st.number_input(
-        "Subset Size per Generation",
-        value=100,
+        "Number of New Sequence Pairs per Generation",
+        value=175,
         key="subset_size_search",
         disabled=st.session_state.search_running
     )
     st.number_input(
         "Number of Generations",
-        value=3,
+        value=50,
         key="generations",
         disabled=st.session_state.search_running
     )
@@ -65,6 +80,7 @@ def render_search_tab(registry_factory, nupack_params):
                     st.session_state.search_running
                     or st.session_state.run_compute_3
                     or st.session_state.busy
+                    or st.session_state.input_invalid
                     or final_analysis_pending
                 )
         ):
@@ -84,9 +100,9 @@ def render_search_tab(registry_factory, nupack_params):
     # ------------------------------------------------------------
     if st.session_state.run_compute_3 and not st.session_state.search_running:
         st.session_state.run_compute_3 = False
+        st.session_state.search_error = None
 
-        if st.session_state.registry is None:
-            st.session_state.registry = registry_factory()
+        st.session_state.registry = registry_factory()
 
         random.seed(nupack_params['random_seed'])
         nupack_params['sync_func']()
@@ -112,12 +128,21 @@ def render_search_tab(registry_factory, nupack_params):
         generations_ = int(st.session_state.generations)
         stop_event = st.session_state.stop_event
         out_q = st.session_state.search_queue
-
         st.session_state.search_running = True
 
         t = threading.Thread(
             target=_search_worker,
-            args=(registry, offtarget_limit, max_on, min_on, self_energy_limit, subsetsize, generations_, stop_event, out_q),
+            args=(
+                registry,
+                offtarget_limit,
+                max_on,
+                min_on,
+                self_energy_limit,
+                subsetsize,
+                generations_,
+                stop_event,
+                out_q,
+            ),
             daemon=True
         )
         st.session_state.search_thread = t
@@ -138,11 +163,12 @@ def render_search_tab(registry_factory, nupack_params):
         if err is not None:
             st.session_state.search_completed = False
             st.session_state.orthogonal_seq_pairs = None
-            st.error(f"Search failed: {err}")
+            st.session_state.search_error = err
         else:
             st.session_state.search_completed = True
             st.session_state.orthogonal_seq_pairs = res
             st.session_state.search_duration = float(dur)
+            st.session_state.search_error = None
 
         st.rerun()
 

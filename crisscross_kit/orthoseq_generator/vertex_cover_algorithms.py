@@ -368,7 +368,16 @@ def iterative_vertex_cover_multi(V, E, preserve_V=None, num_vertices_to_remove=1
 
 
 
-def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget,self_energy_limit, subsetsize=200, generations=100, stop_event=None):
+def evolutionary_vertex_cover(
+    sequence_pairs,
+    offtarget_limit,
+    max_ontarget,
+    min_ontarget,
+    self_energy_limit,
+    subsetsize=200,
+    generations=100,
+    stop_event=None,
+):
     
     """
     Evolves an independent set of sequences from a set of candidate sequence pairs by
@@ -433,6 +442,36 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
     :rtype: list of tuple
     """
 
+    seq_length = getattr(sequence_pairs, "length", None)
+    fivep_ext = getattr(sequence_pairs, "fivep_ext", None)
+    threep_ext = getattr(sequence_pairs, "threep_ext", None)
+    unwanted = getattr(sequence_pairs, "unwanted_substrings", None)
+    apply_to = getattr(sequence_pairs, "apply_unwanted_to", None)
+
+    material = hf.NUPACK_PARAMS.get("MATERIAL")
+    celsius = hf.NUPACK_PARAMS.get("CELSIUS")
+    sodium = hf.NUPACK_PARAMS.get("SODIUM")
+    magnesium = hf.NUPACK_PARAMS.get("MAGNESIUM")
+
+    logger.info(
+        "Search start params: "
+        f"length: {seq_length}, "
+        f"5\' extension: {fivep_ext!r}, "
+        f"3\' extension: {threep_ext!r}, "
+        f"unwanted: {unwanted}, "
+        f"apply to: {apply_to}, "
+        f"material: {material}, "
+        f"celsius: {celsius}, "
+        f"sodium: {sodium}, "
+        f"magnesium: {magnesium}, "
+        f"min on-target: {min_ontarget}, "
+        f"max on-ontarget: {max_ontarget}, "
+        f"min off-target: {offtarget_limit}, "
+        f"min secondary-structure: {self_energy_limit}, "
+        f"new pairs per generation: {subsetsize}, "
+        f"generations: {generations}"
+    )
+
     non_cover_vertices = set()
     history = set()
 
@@ -462,6 +501,12 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
             subset += extra_pairs
             indices += list(sorted_history)
 
+            if not indices:
+                msg = "No sequences found in the requested energy range (timeout or constraints too strict)."
+                print(msg)
+                logger.warning(msg)
+                break
+
             # Ensure no duplicate indices
             assert len(indices) == len(set(indices)), (
                 f"Duplicate index found! "
@@ -470,13 +515,18 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
             )
 
             # Compute off-target energies and build interaction graph
+
             off_e_subset = sc.compute_offtarget_energies(subset)
+            logger.info(f"Building incompatibility graph...")
             Edges = build_edges(off_e_subset, indices, offtarget_limit)
 
             # Find sequences to remove via vertex-cover heuristic
+            multistart = 30
+            logger.info(f"Running vertex cover heuristic. Trying {multistart} independent starts.")
             removed_vertices = iterative_vertex_cover_multi(
                 indices, Edges,
                 preserve_V=history,
+                multistart=multistart,
                 num_vertices_to_remove=len(indices) // 2
             )
 
@@ -495,16 +545,16 @@ def evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min
                 history.update(new_non_cover_vertices)
 
             print(
-                f"Generation {i + 1:2d} | "
-                f"Current: {len(new_non_cover_vertices):3d} | "
-                f"Best: {len(non_cover_vertices):3d} | "
-                f"History size: {len(history):3d}"
+                f"Generation: {i + 1:2d} | "
+                f"Current number of pairs: {len(new_non_cover_vertices):3d} | "
+                f"Largest number of pairs: {len(non_cover_vertices):3d} | "
+                f"Carry over pairs: {len(history):3d}"
             )
             logger.info(
-                f"Generation {i + 1:2d} | "
-                f"Current: {len(new_non_cover_vertices):3d} | "
-                f"Best: {len(non_cover_vertices):3d} | "
-                f"History size: {len(history):3d}"
+                f"Generation: {i + 1:2d} | "
+                f"Current number of pairs: {len(new_non_cover_vertices):3d} | "
+                f"Largest number of pairs: {len(non_cover_vertices):3d} | "
+                f"Carry over pairs:  {len(history):3d}"
             )
 
     except KeyboardInterrupt:

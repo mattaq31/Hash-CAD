@@ -13,6 +13,8 @@ def init_session_state():
         st.session_state.busy = False
     if "stop_event" not in st.session_state:
         st.session_state.stop_event = threading.Event()
+    if "input_invalid" not in st.session_state:
+        st.session_state.input_invalid = False
     
     # Computation flags
     if "run_compute_1" not in st.session_state:
@@ -95,6 +97,8 @@ def init_session_state():
         st.session_state.refine_running = False
     if "refine_thread" not in st.session_state:
         st.session_state.refine_thread = None
+    if "refine_error" not in st.session_state:
+        st.session_state.refine_error = None
     
     if "final_cache_ready" not in st.session_state:
         st.session_state.final_cache_ready = False
@@ -102,3 +106,10 @@ def init_session_state():
         st.session_state.final_fig = None
     if "final_self_fig" not in st.session_state:
         st.session_state.final_self_fig = None
+    if "search_error" not in st.session_state:
+        st.session_state.search_error = None
+
+    if "selection_helper_assoc_fig" not in st.session_state:
+        st.session_state.selection_helper_assoc_fig = None
+    if "selection_helper_secondary_fig" not in st.session_state:
+        st.session_state.selection_helper_secondary_fig = None
