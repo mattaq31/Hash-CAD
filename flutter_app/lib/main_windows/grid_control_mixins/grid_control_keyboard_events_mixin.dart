@@ -14,8 +14,11 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       // Rotation shortcut
       SingleActivator(LogicalKeyboardKey.keyR): () {
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
-          // moveRotationStepsRequested += 1;
-          // TODO: reinstate this system when confirmed
+          setState(() {
+            moveRotationSteps += 1;
+            var (_, newHoverValid) = hoverCalculator(lastPointerPosition, appState, actionState, true);
+            hoverValid = newHoverValid;
+          });
         } else {
           appState.rotateLayerDirection(appState.selectedLayerKey);
         }
@@ -30,15 +33,10 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
           setHoverCoordinates(appState);
         }
       },
-      // flip shortcut for 60deg layers
+      // flip shortcut (T key only works in move mode now)
       SingleActivator(LogicalKeyboardKey.keyT): () {
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
           moveFlipRequested = !moveFlipRequested;
-        } else {
-          appState.flipSlatAddDirection();
-        }
-        if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
-          setHoverCoordinates(appState);
         }
       },
       // delete shortcut (when in move mode)

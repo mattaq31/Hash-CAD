@@ -49,8 +49,6 @@ mixin DesignStateContract on ChangeNotifier {
   set nextColorIndex(int value);
   int get slatAddCount;
   set slatAddCount(int value);
-  String get slatAddDirection;
-  set slatAddDirection(String value);
   Color get uniqueSlatColor;
   set uniqueSlatColor(Color value);
   int get currentMaxValency;
@@ -121,7 +119,6 @@ mixin DesignStateContract on ChangeNotifier {
   void flipLayer(String layer, BuildContext context);
   void flipLayerVisibility(String layer);
   void flipMultiSlatGenerator();
-  void flipSlatAddDirection();
   void deleteLayer(String layer);
   void reOrderLayers(List<String> newOrder, BuildContext context);
   void addLayer();
@@ -133,7 +130,7 @@ mixin DesignStateContract on ChangeNotifier {
   void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates, {bool requestFlip = false});
   void removeSlat(String ID, {bool skipStateUpdate = false});
   void removeSlats(List<String> IDs);
-  void flipSlat(String ID);
+  void flipSlat(String ID, {bool skipStateUpdate = false});
   void flipSlats(List<String> IDs);
   void selectSlat(String ID, {bool addOnly = false});
   void updateSlatAddCount(int value);

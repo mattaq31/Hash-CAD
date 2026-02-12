@@ -14,18 +14,12 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
     // slats added to a persistent list here
     Map<int, Map<int, Offset>> incomingSlats = {};
 
-    int direction;
-    if (appState.slatAdditionType == 'tube') {
-      direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
-    } else {
-      direction = appState.layerMap[appState.selectedLayerKey]!["DBDirection"];
-    }
+    int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
 
     Offset cursorCoordinate, slatMultiJump, slatInnerJump;
-    double transposeDirection = appState.slatAddDirection == 'down' ? 1 : -1;
 
-    var multiGenerator = appState.slatAdditionType == 'tube' ? appState.multiSlatGenerators : appState.multiSlatGeneratorsDB;
-    var directionGenerator = appState.slatAdditionType == 'tube' ? appState.slatDirectionGenerators : appState.slatDirectionGeneratorsDB;
+    var multiGenerator = appState.multiSlatGenerators;
+    var directionGenerator = appState.slatDirectionGenerators;
 
     if (realSpaceFormat) {
       cursorCoordinate = cursorPoint;
@@ -45,10 +39,7 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
 
     int shearOffset = 0;
     double dbSign = 1;
-    if (appState.slatAdditionType == 'tube') {
-      slatMultiJump = slatMultiJump * transposeDirection;
-      slatInnerJump = slatInnerJump * transposeDirection;
-    } else {
+    if (appState.slatAdditionType != 'tube') {
       if (appState.slatAdditionType == 'DB-R-60' || appState.slatAdditionType == 'DB-R-120' || appState.slatAdditionType == 'DB-R') {
         dbSign = -1;
       }
@@ -84,7 +75,6 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
     // cargo added to a persistent list here
     Map<int, Offset> incomingCargo = {};
     int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
-    double transposeDirection = appState.slatAddDirection == 'down' ? 1 : -1;
     Offset cursorCoordinate, multiJump;
     if (realSpaceFormat) {
       cursorCoordinate = cursorPoint;
@@ -98,8 +88,6 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
       multiJump = appState.slatDirectionGenerators[(appState.gridMode, direction)]!;
     }
 
-    multiJump = multiJump * transposeDirection;
-
     for (int j = 0; j < appState.cargoAddCount; j++) {
       incomingCargo[j] = cursorCoordinate + (multiJump * j.toDouble());
     }
@@ -111,7 +99,6 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
     // seed handles added to a persistent list here
     Map<int, Offset> incomingHandles = {};
     int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
-    double transposeDirection = appState.slatAddDirection == 'down' ? 1 : -1;
 
     Offset cursorCoordinate, heightMultiJump, widthMultiJump;
     if (realSpaceFormat) {
@@ -128,12 +115,6 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
       heightMultiJump = appState.slatDirectionGenerators[(appState.gridMode, direction)]!;
       widthMultiJump = appState.multiSlatGenerators[(appState.gridMode, direction)]!;
     }
-    if (appState.gridMode == '90') {
-      // TODO: investigate whether having a full flip is of interest in 60 degree mode too...
-      heightMultiJump = heightMultiJump * transposeDirection;
-    }
-
-    widthMultiJump = widthMultiJump * transposeDirection;
 
     for (int i = 0; i < appState.seedOccupancyDimensions['width']!; i++) {
       for (int j = 0; j < appState.seedOccupancyDimensions['height']!; j++) {

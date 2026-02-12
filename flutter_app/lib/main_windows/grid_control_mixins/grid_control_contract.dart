@@ -38,8 +38,12 @@ mixin GridControlContract<T extends StatefulWidget> on State<T> {
   set slatMoveAnchor(Offset value);
   bool get dragActive;
   set dragActive(bool value);
+  Offset get lastPointerPosition;
+  set lastPointerPosition(Offset value);
   bool get moveFlipRequested;
   set moveFlipRequested(bool value);
+  int get moveRotationSteps;
+  set moveRotationSteps(int value);
   bool get isShiftPressed;
   set isShiftPressed(bool value);
   bool get isCtrlPressed;
