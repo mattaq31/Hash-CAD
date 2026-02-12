@@ -1,10 +1,32 @@
 import 'package:flutter/material.dart';
 
+import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
 import '../../crisscross_core/slats.dart';
 import 'design_state_contract.dart';
 
 /// Mixin containing slat CRUD operations for DesignState
 mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
+
+  /// Re-syncs phantom handles by re-propagating each assembly handle from the parent
+  /// through the smartSetHandle system, ensuring phantom tree and link manager consistency.
+  void _resyncPhantomHandles(String parentID) {
+    Set<HandleKey> processedHandles = {};
+    Slat parentSlat = slats[parentID]!;
+
+    for (int side in [2, 5]) {
+      var handleDict = side == 5 ? parentSlat.h5Handles : parentSlat.h2Handles;
+      for (var entry in handleDict.entries.toList()) {
+        HandleKey key = (parentID, entry.key, side);
+        if (processedHandles.contains(key)) continue;
+        if (!entry.value['category'].toString().contains('ASSEMBLY')) continue;
+
+        String handleValue = entry.value['value'].toString();
+        String category = entry.value['category'].toString();
+        var updatedHandles = smartSetHandle(parentSlat, entry.key, side, handleValue, category);
+        processedHandles.addAll(updatedHandles);
+      }
+    }
+  }
 
   @override
   void setSlatAdditionType(String type) {
@@ -112,12 +134,11 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     occupiedGridPoints[layer]?.addAll({for (var offset in slatCoordinates.values) offset: slatID});
 
     if (requestFlip && slats[slatID]!.slatType == 'tube') {
-      // double barrel flips are currently blocked
       slats[slatID]!.reverseDirection();
-      if (phantomMap.containsKey(slatID)) {
-        for (var phantomID in phantomMap[slatID]!.values) {
-          slats[phantomID]!.reverseDirection();
-        }
+      // Re-sync phantom handles via smartSetHandle propagation from the parent
+      if (phantomMap.containsKey(slatID) || slats[slatID]!.phantomParent != null) {
+        String parentID = slats[slatID]!.phantomParent ?? slatID;
+        _resyncPhantomHandles(parentID);
       }
     }
 
@@ -250,36 +271,26 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
-  /// Flips a slat's direction
+  /// Flips a slat's direction (tube slats only — DB slats would change chirality)
   @override
-  void flipSlat(String ID) {
-    if (slats[ID]!.slatType == 'tube') {
-      // double barrel flips are currently blocked
-      slats[ID]!.reverseDirection();
-
-      if (phantomMap.containsKey(ID)) {
-        for (var phantomID in phantomMap[ID]!.values) {
-          slats[phantomID]!.reverseDirection();
-        }
-      }
+  void flipSlat(String ID, {bool skipStateUpdate = false}) {
+    if (slats[ID]!.slatType != 'tube') return;
+    slats[ID]!.reverseDirection();
+    // Re-sync phantom handles via smartSetHandle propagation from the parent
+    if (phantomMap.containsKey(ID) || slats[ID]!.phantomParent != null) {
+      String parentID = slats[ID]!.phantomParent ?? ID;
+      _resyncPhantomHandles(parentID);
     }
+    if (skipStateUpdate) return;
     saveUndoState();
     notifyListeners();
   }
 
-  /// Flips multiple slats' direction
+  /// Flips multiple slats' direction (tube slats only — DB slats would change chirality)
   @override
   void flipSlats(List<String> IDs) {
     for (var ID in IDs) {
-      if (slats[ID]!.slatType == 'tube') {
-        // double barrel flips are currently blocked
-        slats[ID]!.reverseDirection();
-        if (phantomMap.containsKey(ID)) {
-          for (var phantomID in phantomMap[ID]!.values) {
-            slats[phantomID]!.reverseDirection();
-          }
-        }
-      }
+      flipSlat(ID, skipStateUpdate: true);
     }
     saveUndoState();
     notifyListeners();

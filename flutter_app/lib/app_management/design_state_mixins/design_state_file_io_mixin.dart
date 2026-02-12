@@ -204,7 +204,6 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     layerMap = {
       'A': {
         "direction": gridMode == '90' ? 90 : 120, // slat default direction
-        "DBDirection": gridMode == '90' ? 90 : 120, // temporary alternative drawing system
         'order': 0, // draw order - has to be updated when layers are moved
         'top_helix': 'H5',
         'bottom_helix': 'H2',
@@ -215,7 +214,6 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
       },
       'B': {
         "direction": 180,
-        "DBDirection": 180, // temporary alternative drawing system
         'next_slat_id': 1,
         'top_helix': 'H5',
         'bottom_helix': 'H2',

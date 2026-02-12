@@ -59,29 +59,10 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
   /// Rotates the direction of a layer through all available directions
   @override
   void rotateLayerDirection(String layerKey) {
-    if (gridMode == '90') {
-      if (layerMap[layerKey]?['direction'] == 90) {
-        layerMap[layerKey]?['direction'] = 180;
-      } else {
-        layerMap[layerKey]?['direction'] = 90;
-      }
-      layerMap[layerKey]?['DBDirection'] += 90; // fully rotates around the entire range of possible angles
-    } else if (gridMode == '60') {
-      if (layerMap[layerKey]?['direction'] == 180) {
-        layerMap[layerKey]?['direction'] = 120;
-      } else if (layerMap[layerKey]?['direction'] == 120) {
-        layerMap[layerKey]?['direction'] = 240;
-      } else {
-        layerMap[layerKey]?['direction'] = 180;
-      }
-      layerMap[layerKey]?['DBDirection'] += 60; // fully rotates around the entire range of possible angles
-    } else {
-      throw Exception('Invalid grid mode: $gridMode');
-    }
-
-    if (layerMap[layerKey]?['DBDirection'] == 360) {
-      layerMap[layerKey]?['DBDirection'] = 0;
-    }
+    int step = gridMode == '90' ? 90 : 60;
+    int current = layerMap[layerKey]?['direction'];
+    int next = (current + step) % 360;
+    layerMap[layerKey]?['direction'] = next;
     notifyListeners();
   }
 
@@ -180,21 +161,11 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
   /// Multi-slat generation can be flipped to achieve different placement systems
   @override
   void flipMultiSlatGenerator() {
-    Map<(String, int), Offset> settingsTransfer = Map.from(multiSlatGenerators);
+    Map<(String, int), Offset> transfer = Map.from(multiSlatGenerators);
     multiSlatGenerators = Map.from(multiSlatGeneratorsAlternate);
-    multiSlatGeneratorsAlternate = settingsTransfer;
-    standardTilt = !standardTilt;
-    notifyListeners();
-  }
+    multiSlatGeneratorsAlternate = transfer;
 
-  /// Slat placement can be flipped to adjust the positions of handles
-  @override
-  void flipSlatAddDirection() {
-    if (slatAddDirection == 'down') {
-      slatAddDirection = 'up';
-    } else {
-      slatAddDirection = 'down';
-    }
+    standardTilt = !standardTilt;
     notifyListeners();
   }
 
@@ -319,7 +290,6 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
   void addLayer() {
     layerMap[nextLayerKey] = {
       "direction": layerMap.values.last['direction'],
-      "DBDirection": layerMap.values.last['direction'], // temporary alternative drawing system
       'next_slat_id': 1,
       'slat_count': 0,
       'top_helix': 'H5',
