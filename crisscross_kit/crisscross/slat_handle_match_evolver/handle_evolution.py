@@ -66,7 +66,7 @@ class EvolveManager:
         self.slat_array = megastructure.generate_slat_occupancy_grid()
         self.repeating_unit_constraints = {} if repeating_unit_constraints is None else repeating_unit_constraints
 
-        seed_handle_array = megastructure.generate_assembly_handle_grid()
+        seed_handle_array = megastructure.generate_assembly_handle_grid(category='all_slats')
 
         if np.sum(seed_handle_array) == 0:
             self.handle_array = None
