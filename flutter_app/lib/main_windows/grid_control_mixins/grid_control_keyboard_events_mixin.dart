@@ -159,6 +159,8 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
                 } else {
                   if (result['enforce'] == true) {
                     appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int, requestStateUpdate: false);
+                  } else {
+                    appState.assemblyLinkManager.clearEnforcedValue((updateSlatID, updatePos, integerSlatSide));
                   }
                   appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
                 }
