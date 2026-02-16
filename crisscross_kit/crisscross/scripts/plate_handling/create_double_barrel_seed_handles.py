@@ -50,7 +50,7 @@ for row in range(1,17):
         new_plate_dict['sequence'].append(full_seq)
         new_plate_dict['well'].append(well)
         new_plate_dict['description'].append(f'Seed Handle For Slat Position {pos}, Side h2, 8064 Seed ID {seed_cargo}')
-        new_plate_dict['concentration'].append(500)
+        new_plate_dict['concentration'].append(200)
 
 # TODO: generate a plate layout to place inside P3643
 # TODO: What to do if there are any duplicate wells in the future?
