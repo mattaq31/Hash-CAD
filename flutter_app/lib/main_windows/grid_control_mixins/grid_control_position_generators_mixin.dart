@@ -116,6 +116,10 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
       widthMultiJump = appState.multiSlatGenerators[(appState.gridMode, direction)]!;
     }
 
+    if (seedTransposed) {
+      widthMultiJump = -widthMultiJump;
+    }
+
     for (int i = 0; i < appState.seedOccupancyDimensions['width']!; i++) {
       for (int j = 0; j < appState.seedOccupancyDimensions['height']!; j++) {
         incomingHandles[1 + (i * appState.seedOccupancyDimensions['height']! + j)] =

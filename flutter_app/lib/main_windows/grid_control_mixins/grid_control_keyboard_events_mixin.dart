@@ -33,10 +33,14 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
           setHoverCoordinates(appState);
         }
       },
-      // flip shortcut (T key only works in move mode now)
+      // flip shortcut (T key works in move mode for slats, and in cargo-add mode for seed transpose)
       SingleActivator(LogicalKeyboardKey.keyT): () {
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
           moveFlipRequested = !moveFlipRequested;
+        } else if (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED') {
+          setState(() {
+            seedTransposed = !seedTransposed;
+          });
         }
       },
       // delete shortcut (when in move mode)

@@ -50,6 +50,8 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   bool moveFlipRequested = false;
   @override
   int moveRotationSteps = 0;
+  @override
+  bool seedTransposed = false;
 
   // Current scale and offset (zoom and move)
   @override

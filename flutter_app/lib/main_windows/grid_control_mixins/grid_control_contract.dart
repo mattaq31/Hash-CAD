@@ -44,6 +44,8 @@ mixin GridControlContract<T extends StatefulWidget> on State<T> {
   set moveFlipRequested(bool value);
   int get moveRotationSteps;
   set moveRotationSteps(int value);
+  bool get seedTransposed;
+  set seedTransposed(bool value);
   bool get isShiftPressed;
   set isShiftPressed(bool value);
   bool get isCtrlPressed;
