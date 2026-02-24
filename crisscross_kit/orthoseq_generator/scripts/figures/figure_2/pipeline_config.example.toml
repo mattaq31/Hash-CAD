@@ -1,6 +1,6 @@
 [compute]
 enabled = true
-lengths = [5]
+lengths = [7]
 range_sigmas = [1]
 random_seed = 42
 fivep_ext = ""
@@ -9,6 +9,7 @@ avoid_gggg = false
 use_library = false
 
 [compare]
+enabled = false
 # If compute.enabled = false, provide existing PKL paths here
 # pkl_paths = ["results/short_seq_5mer_sigma0p5_subset.pkl"]
 
