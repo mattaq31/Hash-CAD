@@ -25,6 +25,7 @@ Main Steps:
 '''
 
 import random
+from seqwalk import design
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 
@@ -35,27 +36,22 @@ if __name__ == "__main__":
 
     # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
-    ontarget8mer = sc.create_sequence_pairs_pool(
-        length=7,
+    seqwalk_cores = design.max_size(10, 5, alphabet="ACGT",RCfree=True)
+    sequence_pairs_object = sc.SequencePairRegistry(
+        length=10,
         fivep_ext="",
         threep_ext="",
-        avoid_gggg=True
+        unwanted_substrings=[],
+        apply_unwanted_to="core",
+        seed=RANDOM_SEED,
+        preselected_cores=seqwalk_cores,
     )
-
-    sequence_pairs_object = sc.SequencePairRegistry(
-    length=20,
-    fivep_ext="",
-    threep_ext="",
-    unwanted_substrings=["AAAA", "CCCC", "GGGG", "TTTT"],
-    apply_unwanted_to="core",
-    seed=RANDOM_SEED
-)
 
     # 3) Configure and enable the precomputed energy cache.
     #    The specified pickle file ('8mers.pkl') will be created automatically during execution
     #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
-    hf.choose_precompute_library("10mers.pkl")
+    hf.choose_precompute_library("20mers.pkl")
     hf.USE_LIBRARY = False
     hf.set_nupack_params(material='dna',celsius=37,sodium=0.05,magnesium=0.025)
 
@@ -72,12 +68,12 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         on_e_subset,
         off_e_subset,
-        output_path='10mer_random.pdf'
+        output_path='20mer_random.pdf'
     )
 
     # 8) Plot self-energy distribution (G_A + G_B combined)
     self_stats = sc.plot_self_energy_histogram(
         [self_e_a, self_e_b],
         bins=30,
-        output_path='10mer_self_energies.pdf'
+        output_path='20mer_self_energies.pdf'
     )

@@ -92,6 +92,7 @@ class SequencePairRegistry:
         unwanted_substrings=None,
         apply_unwanted_to="core",
         seed=None,
+        preselected_cores=None,
     ):
         """
         :param length: Length of the core DNA sequence (without flanks).
@@ -114,6 +115,11 @@ class SequencePairRegistry:
 
         :param seed: Optional RNG seed for reproducibility.
         :type seed: int or None
+
+        :param preselected_cores: Optional iterable of core sequences to draw from
+                                  instead of random generation. Sampling is without
+                                  replacement in random order.
+        :type preselected_cores: iterable[str] or None
         """
         self.length = int(length)
         self.fivep_ext = str(fivep_ext)
@@ -128,7 +134,16 @@ class SequencePairRegistry:
         self._pair_to_id = {}   # maps canonical pair -> integer ID
         self._id_to_pair = []   # list of canonical pairs by ID (index == ID)
 
-        self._bases = ("A", "T", "G", "C")
+        self._bases = ("A", "T","C","G")
+        if preselected_cores is None:
+            self._preselected_cores = None
+        else:
+            self._preselected_cores = list(preselected_cores)
+            for core in self._preselected_cores:
+                if len(core) != self.length:
+                    raise ValueError(
+                        f"preselected core length {len(core)} != registry length {self.length}"
+                    )
 
     def _contains_any_substring(self, seq):
         """
@@ -152,6 +167,16 @@ class SequencePairRegistry:
         Generates one random core sequence of length self.length.
         """
         return "".join(self._rng.choice(self._bases) for _ in range(self.length))
+
+    def _next_preselected_core(self):
+        """
+        Returns a random preselected core sequence (with replacement).
+        """
+        if self._preselected_cores is None:
+            return None
+        if not self._preselected_cores:
+            return None
+        return self._rng.choice(self._preselected_cores)
 
     def _make_flanked(self, core_seq):
         """
@@ -206,6 +231,7 @@ class SequencePairRegistry:
 
         Behavior
         --------
+        - If preselected_cores were provided, draws from that list (random, with replacement).
         - Draw random core sequences until constraints pass.
         - Convert to canonical (sorted) flanked pair.
         - If pair was seen: return existing ID.
@@ -217,6 +243,26 @@ class SequencePairRegistry:
         :returns: (pair_id, (seq, rc_seq)) where seq/rc_seq are flanked and sorted.
         :rtype: tuple[int, tuple[str, str]]
         """
+        if self._preselected_cores is not None:
+            while True:
+                core_seq = self._next_preselected_core()
+                if core_seq is None:
+                    raise RuntimeError("Preselected cores are empty.")
+
+                if not self._is_valid(core_seq):
+                    continue
+
+                pair = self._make_pair(core_seq)
+
+                existing_id = self._pair_to_id.get(pair)
+                if existing_id is not None:
+                    return existing_id, pair
+
+                new_id = len(self._id_to_pair)
+                self._pair_to_id[pair] = new_id
+                self._id_to_pair.append(pair)
+                return new_id, pair
+
         for _ in range(int(max_tries)):
             core_seq = self._random_core()
 
@@ -862,9 +908,10 @@ def select_subset_in_energy_range(
     :param timeout_s: Timeout in seconds; returns early if exceeded.
     :type timeout_s: float or None
 
-    :returns: Tuple `(subset, indices)` where `subset` is a list of `(seq, rc_seq)` pairs
-              and `indices` are their corresponding global IDs.
-    :rtype: tuple[list[tuple[str, str]], list[int]]
+    :returns: Tuple `(subset, indices, success_rate)` where `subset` is a list of `(seq, rc_seq)` pairs,
+              `indices` are their corresponding global IDs, and `success_rate` is the fraction of
+              evaluated candidates that pass the energy filters.
+    :rtype: tuple[list[tuple[str, str]], list[int], float]
     """
 
     if Use_Library is None:
@@ -876,6 +923,8 @@ def select_subset_in_energy_range(
     subset = []
     indices = []
     tested_indices = set(avoid_indices)
+    attempts = 0
+    successes = 0
 
     start_t = time.time()
 
@@ -894,7 +943,8 @@ def select_subset_in_energy_range(
                     f"Only {len(subset)} of requested {max_size} found (timeout)."
                 )
                 logger.info(f"Only {len(subset)} of requested {max_size} found for given parameters (timeout = {timeout_s}s).")
-                return subset, indices
+                success_rate = (successes / attempts) if attempts else 0.0
+                return subset, indices, success_rate
 
             index, (seq, rc_seq) = random.choice(sequence_pairs)
 
@@ -902,6 +952,7 @@ def select_subset_in_energy_range(
                 continue
 
             tested_indices.add(index)
+            attempts += 1
 
             energy, self_e_seq, self_e_rc_seq = nupack_compute_energy_precompute_library_fast(
                 seq,
@@ -913,14 +964,14 @@ def select_subset_in_energy_range(
             if energy_min <= energy <= energy_max and (self_e_seq >= self_energy_min) and (self_e_rc_seq >= self_energy_min):
                 subset.append((seq, rc_seq))
                 indices.append(index)
+                successes += 1
 
         print(
             f"Selected {len(subset)} sequence pairs with energies in range "
             f"[{energy_min}, {energy_max}]"
         )
-
-
-        return subset, indices
+        success_rate = (successes / attempts) if attempts else 0.0
+        return subset, indices, success_rate
 
     # -------------------------------------------------
     # CASE 2 — registry input
@@ -939,7 +990,8 @@ def select_subset_in_energy_range(
                 f"Only {len(subset)} of requested {max_size} found (timeout)."
             )
             logger.info(f"Only {len(subset)} of requested {max_size} found for given parameters (timeout = {timeout_s}s).")
-            return subset, indices
+            success_rate = (successes / attempts) if attempts else 0.0
+            return subset, indices, success_rate
 
         pair_id, (seq, rc_seq) = sequence_pairs.sample_pair()
 
@@ -947,6 +999,7 @@ def select_subset_in_energy_range(
             continue
 
         tested_indices.add(pair_id)
+        attempts += 1
 
         energy, self_e_seq, self_e_rc_seq  = nupack_compute_energy_precompute_library_fast(
             seq,
@@ -958,14 +1011,15 @@ def select_subset_in_energy_range(
         if energy_min <= energy <= energy_max and (self_e_seq >= self_energy_min) and (self_e_rc_seq >= self_energy_min):
             subset.append((seq, rc_seq))
             indices.append(pair_id)
+            successes += 1
 
     print(
         f"Selected {len(subset)} sequence pairs with energies in range "
         f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
     )
     logger.info(f"Selected {len(subset)} sequence pairs with on-target energies in range [{energy_min}, {energy_max}] and secondary-structure energy above {self_energy_min}.")
-
-    return subset, indices
+    success_rate = (successes / attempts) if attempts else 0.0
+    return subset, indices, success_rate
 
 
 
@@ -1030,6 +1084,40 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
 
     print(f"Scanned and selected {len(subset)} sequence pairs in range [{energy_min}, {energy_max}]")
     return subset, selected_ids
+
+
+def compute_offtarget_fraction_below_limit(off_energies, off_limit):
+    """
+    Computes the fraction of off-target energies that are below `off_limit`.
+
+    Notes
+    -----
+    - If `off_energies` is a dict of matrices, values are flattened and concatenated.
+    - For dict input, zeros are excluded because they represent uncomputed entries.
+
+    :param off_energies: Off-target energies as an array-like or dict of energy matrices.
+    :type off_energies: array-like or dict
+
+    :param off_limit: Threshold energy (kcal/mol).
+    :type off_limit: float
+
+    :returns: Fraction of values < off_limit in [0, 1]. Returns 0.0 if no values are available.
+    :rtype: float
+    """
+    if isinstance(off_energies, dict):
+        values = np.concatenate([
+            off_energies['handle_handle_energies'].flatten(),
+            off_energies['antihandle_handle_energies'].flatten(),
+            off_energies['antihandle_antihandle_energies'].flatten()
+        ])
+        values = values[values != 0]
+    else:
+        values = np.ravel(off_energies)
+
+    if values.size == 0:
+        return 0.0
+
+    return float(np.mean(values < float(off_limit)))
 
 
 

@@ -47,7 +47,7 @@ if __name__ == "__main__":
     )
 
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=20,
+        length=10,
         fivep_ext="",
         threep_ext="",
         unwanted_substrings=["AAAA", "CCCC", "GGGG", "TTTT"],
@@ -58,10 +58,10 @@ if __name__ == "__main__":
 
     # 3) Define energy thresholds based on prior analysis
 
-    max_ontarget = -23  # Maximum acceptable on-target binding energy
-    min_ontarget = -27  # Minimum acceptable on-target binding energy
-    offtarget_limit = -7.5
-    self_energy_limit = -2.0
+    max_ontarget = -12
+    min_ontarget = -13.5
+    offtarget_limit = -8.0
+    self_energy_limit = -1
     # 4) Configure and enable the precomputed energy cache.
     #    The specified pickle file will be created inside 'pre_computed_energies' if it doesn't exist.
     #    Existing files are reused automatically to avoid recomputation.
@@ -78,8 +78,8 @@ if __name__ == "__main__":
         max_ontarget,
         min_ontarget,
         self_energy_limit,
-        subsetsize=100,
-        generations=10
+        subsetsize=150,
+        generations=1500
     )
 
     # 6) Save the selected orthogonal sequences to a file with a name you choose for later use
