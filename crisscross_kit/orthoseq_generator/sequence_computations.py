@@ -1,6 +1,7 @@
 import pickle
 import os
 import itertools
+import multiprocessing as mp
 from nupack import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,6 +42,13 @@ def slurm_cpus(default=1):
 def _max_workers(fraction=0.75):
     total = slurm_cpus(default=os.cpu_count() or 1)
     return max(1, int(total * fraction))
+
+
+def _mp_context_from_env():
+    method = os.environ.get("ORTHOSEQ_MP_START", "").strip().lower()
+    if not method:
+        return None
+    return mp.get_context(method)
 
 
 def revcom(sequence):
@@ -590,19 +598,27 @@ def compute_ontarget_energies(sequence_list):
 
     # parallelize energy computation
     pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
-    
-    with ProcessPoolExecutor(max_workers=max_workers,
-                             initializer=_init_worker,
-                             initargs=pool_args) as executor:
-        futures = []
-        for i, (seq, rc_seq) in enumerate(sequence_list):
-            futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq))
-
-        for future in tqdm(as_completed(futures), total=len(futures)):
-            i, energy,self_e_seq, self_e_rc_seq = future.result()
+    if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
+        for i, (seq, rc_seq) in tqdm(enumerate(sequence_list), total=len(sequence_list)):
+            _, energy, self_e_seq, self_e_rc_seq = compute_pair_energy_on(i, seq, rc_seq)
             energies[i] = energy
             self_energies_seq[i] = self_e_seq
             self_energies_rc_seq[i] = self_e_rc_seq
+    else:
+        mp_ctx = _mp_context_from_env()
+        with ProcessPoolExecutor(max_workers=max_workers,
+                                 initializer=_init_worker,
+                                 initargs=pool_args,
+                                 mp_context=mp_ctx) as executor:
+            futures = []
+            for i, (seq, rc_seq) in enumerate(sequence_list):
+                futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq))
+
+            for future in tqdm(as_completed(futures), total=len(futures)):
+                i, energy, self_e_seq, self_e_rc_seq = future.result()
+                energies[i] = energy
+                self_energies_seq[i] = self_e_seq
+                self_energies_rc_seq[i] = self_e_rc_seq
 
     # update the precompute library if required
     if hf.USE_LIBRARY:
@@ -713,18 +729,27 @@ def compute_offtarget_energies(sequence_pairs):
         print(f'Calculating with {max_workers} cores...')
         pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
 
-        with ProcessPoolExecutor(max_workers=max_workers,
-                                 initializer=_init_worker,
-                                 initargs=pool_args) as executor:
-            futures = []
+        if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
             for i, seq1 in enumerate(seqs1):
                 for j, seq2 in enumerate(seqs2):
                     if condition(i, j):
-                        futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2))
+                        _, _, energy = compute_pair_energy_off(i, j, seq1, seq2)
+                        energy_matrix[i, j] = energy
+        else:
+            mp_ctx = _mp_context_from_env()
+            with ProcessPoolExecutor(max_workers=max_workers,
+                                     initializer=_init_worker,
+                                     initargs=pool_args,
+                                     mp_context=mp_ctx) as executor:
+                futures = []
+                for i, seq1 in enumerate(seqs1):
+                    for j, seq2 in enumerate(seqs2):
+                        if condition(i, j):
+                            futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2))
 
-            for future in tqdm(as_completed(futures), total=len(futures)):
-                i, j, energy = future.result()
-                energy_matrix[i, j] = energy
+                for future in tqdm(as_completed(futures), total=len(futures)):
+                    i, j, energy = future.result()
+                    energy_matrix[i, j] = energy
 
     # Parallelize handle-handle energy computation
     print(f'Computing off-target energies for handle-handle interactions')
