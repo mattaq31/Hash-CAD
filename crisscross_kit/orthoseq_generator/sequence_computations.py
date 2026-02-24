@@ -2,7 +2,6 @@ import pickle
 import os
 import itertools
 import multiprocessing as mp
-from nupack import *
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -441,6 +440,8 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
    
    
    
+    from nupack import Strand, Complex, Model, complex_analysis
+
     A = Strand(seq1, name='H1')  # name is required for strands
     B = Strand(seq2, name='H2')
     library1 = {}
