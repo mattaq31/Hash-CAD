@@ -18,6 +18,29 @@ logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 
 
+def _parse_slurm_cpus(value):
+    if not value:
+        return None
+    try:
+        # Handles values like "16", "16(x2)", or "16,16"
+        first = value.split(",")[0]
+        first = first.split("(")[0]
+        return int(first)
+    except ValueError:
+        return None
+
+
+def slurm_cpus(default=1):
+    for key in ("SLURM_CPUS_PER_TASK", "SLURM_JOB_CPUS_PER_NODE", "SLURM_CPUS_ON_NODE"):
+        parsed = _parse_slurm_cpus(os.environ.get(key))
+        if parsed:
+            return max(1, parsed)
+    return max(1, default)
+
+
+def _max_workers(fraction=0.75):
+    total = slurm_cpus(default=os.cpu_count() or 1)
+    return max(1, int(total * fraction))
 
 
 def revcom(sequence):
@@ -562,7 +585,7 @@ def compute_ontarget_energies(sequence_list):
     print(f"Computing on-target energies for {len(sequence_list)} sequences...")
     logger.info(f"Computing on-target energies for {len(sequence_list)} sequences.")
 
-    max_workers = max(1, os.cpu_count() * 3 // 4)
+    max_workers = _max_workers()
     print(f"Calculating with {max_workers} cores...")
 
     # parallelize energy computation
@@ -686,7 +709,7 @@ def compute_offtarget_energies(sequence_pairs):
     # For handle-handle and antihandle-antihandle comparisons, we avoid redundant computations by only calculating for i ≥ j.
     # For handle-antihandle comparisons, we skip the diagonal (i == j) to avoid the on-target interactions.
     def parallel_energy_computation(seqs1, seqs2, energy_matrix, condition):
-        max_workers = max(1, os.cpu_count() * 3// 4) # Use only 3 quarters of all possible cores on the maching
+        max_workers = _max_workers()  # Use only 3 quarters of all possible cores on the machine
         print(f'Calculating with {max_workers} cores...')
         pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
 
