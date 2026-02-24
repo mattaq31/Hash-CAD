@@ -3,7 +3,6 @@ import random
 import threading
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.streamlit_app import plotly_utils as pu
-from orthoseq_generator.streamlit_app.state_manager import START_MIN_ON, START_MAX_ON
 
 def _pilot_worker(registry, pilot_size, out_q):
     try:
@@ -16,10 +15,6 @@ def _pilot_worker(registry, pilot_size, out_q):
 
 def render_exploratory_tab(registry_factory, nupack_params):
     st.header("Step 1: Pilot Analysis")
-
-    if st.session_state.get("sync_self_energy_draft", False) or "draft_self_energy_limit_input" not in st.session_state:
-        st.session_state.draft_self_energy_limit_input = float(st.session_state.self_energy_limit)
-        st.session_state.sync_self_energy_draft = False
 
     if st.session_state.run_compute_1 and not st.session_state.pilot_running:
         st.session_state.run_compute_1 = False
@@ -98,8 +93,8 @@ def render_exploratory_tab(registry_factory, nupack_params):
             st.number_input(
                 "Min On-Target Energy (kcal/mol)",
                 step=None,
-                key="draft_min_ontarget",
-                value=START_MIN_ON,
+                key="min_ontarget_input",
+                value=float(st.session_state.min_ontarget),
                 disabled=st.session_state.busy
             )
 
@@ -107,18 +102,20 @@ def render_exploratory_tab(registry_factory, nupack_params):
             st.number_input(
                 "Max On-Target Energy (kcal/mol)",
                 step=None,
-                key="draft_max_ontarget",
-                value=START_MAX_ON,
+                key="max_ontarget_input",
+                value=float(st.session_state.max_ontarget),
                 disabled=st.session_state.busy
             )
 
         with col_c:
             if st.button("Use This Range", key="btn_commit_range", disabled=st.session_state.busy):
-                a = float(st.session_state.draft_min_ontarget)
-                b = float(st.session_state.draft_max_ontarget)
+                a = float(st.session_state.min_ontarget_input)
+                b = float(st.session_state.max_ontarget_input)
 
-                st.session_state.min_ontarget = min(a, b)
-                st.session_state.max_ontarget = max(a, b)
+                lower = min(a, b)
+                upper = max(a, b)
+                st.session_state.min_ontarget = lower
+                st.session_state.max_ontarget = upper
 
                 st.success("Range Transferred")
 
@@ -126,8 +123,8 @@ def render_exploratory_tab(registry_factory, nupack_params):
         fig = pu.create_interactive_histogram(
             st.session_state.on_e_pilot,
             st.session_state.off_e_pilot,
-            float(st.session_state.draft_min_ontarget),
-            float(st.session_state.draft_max_ontarget),
+            float(st.session_state.min_ontarget_input),
+            float(st.session_state.max_ontarget_input),
         )
         st.plotly_chart(fig, width="stretch", key="pilot_chart_static")
 
@@ -141,20 +138,19 @@ def render_exploratory_tab(registry_factory, nupack_params):
                 st.number_input(
                     "Min Secondary-Structure Energy (kcal/mol)",
                     step=None,
-                    key="draft_self_energy_limit_input",
-                    value=float(st.session_state.draft_self_energy_limit_input),
+                    key="self_energy_limit_input",
+                    value=float(st.session_state.self_energy_limit),
                     disabled=st.session_state.busy
                 )
             with col_s2:
                 if st.button("Use This Value", key="btn_commit_self_energy", disabled=st.session_state.busy):
-                    committed_limit = float(st.session_state.draft_self_energy_limit_input)
+                    committed_limit = float(st.session_state.self_energy_limit_input)
                     st.session_state.self_energy_limit = committed_limit
-                    st.session_state.sync_self_energy_draft = True
                     st.success("Value Transferred")
                     #st.rerun()
 
             self_fig = pu.create_self_energy_histogram(
                 st.session_state.self_e_pilot,
-                self_limit=float(st.session_state.draft_self_energy_limit_input)
+                self_limit=float(st.session_state.self_energy_limit_input)
             )
             st.plotly_chart(self_fig, width="stretch", key="pilot_self_chart_static")

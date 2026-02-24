@@ -2,11 +2,13 @@ import streamlit as st
 import random
 import threading
 from orthoseq_generator import sequence_computations as sc
+from orthoseq_generator import numeric_functions as nf
+from orthoseq_generator import vertex_cover_algorithms as vca
 from orthoseq_generator.streamlit_app import plotly_utils as pu
 
 def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out_q):
     try:
-        subset, indices = sc.select_subset_in_energy_range(
+        subset, indices, success_rate = sc.select_subset_in_energy_range(
             registry,
             energy_min=float(min_on),
             energy_max=float(max_on),
@@ -16,14 +18,14 @@ def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out
         )
 
         if not subset:
-            out_q.put(("done", None, None, None, "No sequences found in the specified on-target energy range using the given parameters"))
+            out_q.put(("done", None, None, None, success_rate, "No sequences found in the specified on-target energy range using the given parameters"))
             return
 
         on_e, self_e_a, self_e_b = sc.compute_ontarget_energies(subset)
         off_e = sc.compute_offtarget_energies(subset)
-        out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), None))
+        out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), success_rate, None))
     except Exception as e:
-        out_q.put(("done", None, None, None, repr(e)))
+        out_q.put(("done", None, None, None, None, repr(e)))
 
 def render_refinement_tab(registry_factory, nupack_params):
     st.header("Step 2: Off-Target Limit Selection")
@@ -33,6 +35,7 @@ def render_refinement_tab(registry_factory, nupack_params):
     if st.session_state.run_compute_2 and not st.session_state.refine_running:
         st.session_state.run_compute_2 = False
         st.session_state.refine_error = None
+        st.session_state.refine_success_rate = None
 
         random.seed(nupack_params['random_seed'])
         nupack_params['sync_func']()
@@ -59,7 +62,7 @@ def render_refinement_tab(registry_factory, nupack_params):
         st.rerun()
 
     if st.session_state.refine_running and (not st.session_state.refine_queue.empty()):
-        msg, on_e, off_e, self_e, err = st.session_state.refine_queue.get()
+        msg, on_e, off_e, self_e, success_rate, err = st.session_state.refine_queue.get()
 
         st.session_state.refine_running = False
         st.session_state.busy = False
@@ -68,11 +71,13 @@ def render_refinement_tab(registry_factory, nupack_params):
             st.session_state.on_e_range = None
             st.session_state.off_e_range = None
             st.session_state.self_e_range = None
+            st.session_state.refine_success_rate = None
             st.session_state.refine_error = err
         else:
             st.session_state.on_e_range = on_e
             st.session_state.off_e_range = off_e
             st.session_state.self_e_range = self_e
+            st.session_state.refine_success_rate = success_rate
             st.session_state.refine_error = None
             #print(on_e, off_e, self_e)
             #print(1)
@@ -112,6 +117,24 @@ def render_refinement_tab(registry_factory, nupack_params):
             st.session_state.on_e_range is not None
             and st.session_state.off_e_range is not None
     ):
+        pool_estimate = None
+        if st.session_state.refine_success_rate is not None:
+            seq_length = int(nupack_params.get("seq_length", 0))
+            pool_estimate = st.session_state.refine_success_rate * (4 ** seq_length) if seq_length > 0 else None
+            if pool_estimate is not None and pool_estimate > 0:
+                import math
+                exp = int(math.floor(math.log10(pool_estimate)))
+                mantissa = pool_estimate / (10 ** exp)
+                st.info(
+                    f"Fraction $S$ of sampled sequence pairs that pass the filters: {st.session_state.refine_success_rate:.3f} \n \n"
+                    f"Estimated selected pool size: $ N= S \\cdot  4^{{{seq_length}}} = {mantissa:.3g} \\cdot 10^{{{exp}}}$ "
+                )
+            else:
+                st.info(
+                    f"Success rate: {st.session_state.refine_success_rate:.3f} "
+                    f"Estimated selected pool size: unavailable (could not compute; missing or invalid sequence length)."
+                )
+
         st.markdown("---")
         st.subheader("Select Off-Target Energy Limit")
         st.write("Set limit and hit \"Use this value\" to transfer the value to the next tab.")
@@ -123,13 +146,31 @@ def render_refinement_tab(registry_factory, nupack_params):
                 "Off-Target Energy Limit (kcal/mol)",
                 step=None,
                 key="draft_offtarget_limit",
-                value=float(st.session_state.draft_offtarget_limit),
+                value=float(st.session_state.offtarget_limit),
                 disabled=st.session_state.busy
             )
         with col_y:
             if st.button("Use This Value", key="btn_commit_offtarget", disabled=st.session_state.busy):
                 st.session_state.offtarget_limit = float(st.session_state.draft_offtarget_limit)
                 st.success("Committed. Tab 3 now uses this off-target limit.")
+
+        conflict_probability = vca.compute_pair_conflict_probability(
+            st.session_state.off_e_range,
+            float(st.session_state.draft_offtarget_limit)
+        )
+        st.info(f"Conflict Probability $P_c$ = {conflict_probability:.3f}")
+
+        if pool_estimate is not None and pool_estimate >= 1 and 0.0 < conflict_probability < 1.0:
+            estimated_orthogonal_pairs = nf.numeric_independet_set_estimator(
+                int(round(pool_estimate)),
+                float(conflict_probability)
+            )
+            st.info(f"Estimated number of orthogonal pairs in the pool = {estimated_orthogonal_pairs}")
+        else:
+            st.info(
+                "Estimated number of orthogonal pairs in the pool: unavailable "
+                "(requires N >= 1 and 0 < P_c < 1)."
+            )
 
         fig = pu.create_interactive_histogram(
             st.session_state.on_e_range,

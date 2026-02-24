@@ -9,6 +9,13 @@ START_OFFTARGET = -7.5
 START_SELF_ENERGY = -2.0
 
 def init_session_state():
+    if "_defaults_seeded" not in st.session_state:
+        st.session_state.min_ontarget = START_MIN_ON
+        st.session_state.max_ontarget = START_MAX_ON
+        st.session_state.offtarget_limit = START_OFFTARGET
+        st.session_state.self_energy_limit = START_SELF_ENERGY
+        st.session_state._defaults_seeded = True
+
     if "busy" not in st.session_state:
         st.session_state.busy = False
     if "stop_event" not in st.session_state:
@@ -59,15 +66,7 @@ def init_session_state():
     if "self_energy_limit" not in st.session_state:
         st.session_state.self_energy_limit = START_SELF_ENERGY
 
-    # Drafts
-    if "draft_min_ontarget" not in st.session_state:
-        st.session_state.draft_min_ontarget = float(st.session_state.min_ontarget)
-    if "draft_max_ontarget" not in st.session_state:
-        st.session_state.draft_max_ontarget = float(st.session_state.max_ontarget)
-    if "draft_offtarget_limit" not in st.session_state:
-        st.session_state.draft_offtarget_limit = float(st.session_state.offtarget_limit)
-    if "draft_self_energy_limit" not in st.session_state:
-        st.session_state.draft_self_energy_limit = float(st.session_state.self_energy_limit)
+    # Inputs / drafts used by tabs
 
     # Queues and buffers
     if "search_queue" not in st.session_state:
@@ -99,6 +98,8 @@ def init_session_state():
         st.session_state.refine_thread = None
     if "refine_error" not in st.session_state:
         st.session_state.refine_error = None
+    if "refine_success_rate" not in st.session_state:
+        st.session_state.refine_success_rate = None
     
     if "final_cache_ready" not in st.session_state:
         st.session_state.final_cache_ready = False

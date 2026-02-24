@@ -20,6 +20,7 @@ Main Steps:
 '''
 
 import random
+from seqwalk import design
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 
@@ -30,20 +31,15 @@ if __name__ == "__main__":
 
     # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
-    ontarget8mer = sc.create_sequence_pairs_pool(
-        length=7,
-        fivep_ext="",
-        threep_ext="",
-        avoid_gggg=False
-    )
-
+    seqwalk_cores = design.max_size(20, 10, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
         length=20,
         fivep_ext="",
         threep_ext="",
-        unwanted_substrings=["AAAA", "CCCC", "GGGG", "TTTT"],
+        unwanted_substrings=[],
         apply_unwanted_to="core",
-        seed=RANDOM_SEED
+        seed=RANDOM_SEED,
+        preselected_cores=seqwalk_cores,
     )
 
 
@@ -51,20 +47,22 @@ if __name__ == "__main__":
     #    The specified pickle file ('8mers.pkl') will be created automatically during execution
     #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
-    hf.choose_precompute_library("8mers.pkl")
+    hf.choose_precompute_library("20mers.pkl")
     hf.USE_LIBRARY = False
 
     # 4) Select subset within desired on-target energy range (based on first script’s histograms)
-    max_ontarget = -10
-    min_ontarget = -30
-    subset, indices = sc.select_subset_in_energy_range(
+    max_ontarget = -23
+    min_ontarget = -25
+    hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
+    subset, indices, success_rate = sc.select_subset_in_energy_range(
         sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,
-        self_energy_min=-2,
-        max_size=2,
+        self_energy_min=-1.25,
+        max_size=50,
         Use_Library=False
     )
+    print(f"Selection success rate: {success_rate:.3f}")
 
     # 5) Compute on-target energies for the restricted subset
     on_e_subset,self_e_A,self_e_B = sc.compute_ontarget_energies(subset)
@@ -76,7 +74,7 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         on_e_subset,
         off_e_subset,
-        output_path='energy_random10mers_12to13.pdf'
+        output_path='energy_random20mers_12to13.pdf'
     )
 
-    self_stats =sc.plot_self_energy_histogram([self_e_A,self_e_B],bins=30, output_path='10mer_self_energies.pdf')
+    self_stats =sc.plot_self_energy_histogram([self_e_A,self_e_B],bins=30, output_path='20mer_self_energies.pdf')
