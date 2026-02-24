@@ -55,25 +55,26 @@ def main():
 
     # 2) Compare for each PKL
     results_paths = []
-    for pkl_path in pkl_paths:
-        run_compare(
-            pkl_path,
-            offtarget_limits=compare_cfg.get("offtarget_limits"),
-            random_seed=compare_cfg.get("random_seed", 41),
-            num_runs=compare_cfg.get("num_runs", 10),
-            num_vertices_to_remove=compare_cfg.get("num_vertices_to_remove"),
-            max_iterations=compare_cfg.get("max_iterations", 200),
-            limit=compare_cfg.get("limit", float("inf")),
-            multistart=compare_cfg.get("multistart", 1),
-            population_size=compare_cfg.get("population_size", 300),
-            show_progress=compare_cfg.get("show_progress", False),
-            offtarget_step=compare_cfg.get("offtarget_step", 0.1),
-            target_conflict_prob=compare_cfg.get("target_conflict_prob", 0.5),
-            max_steps=compare_cfg.get("max_steps", 2000),
-            output_dir=output_dir,
-        )
-        base = os.path.splitext(os.path.basename(pkl_path))[0]
-        results_paths.append(os.path.join(output_dir, f"{base}_compare_results.pkl"))
+    if compare_cfg.get("enabled", True):
+        for pkl_path in pkl_paths:
+            run_compare(
+                pkl_path,
+                offtarget_limits=compare_cfg.get("offtarget_limits"),
+                random_seed=compare_cfg.get("random_seed", 41),
+                num_runs=compare_cfg.get("num_runs", 10),
+                num_vertices_to_remove=compare_cfg.get("num_vertices_to_remove"),
+                max_iterations=compare_cfg.get("max_iterations", 200),
+                limit=compare_cfg.get("limit", float("inf")),
+                multistart=compare_cfg.get("multistart", 1),
+                population_size=compare_cfg.get("population_size", 300),
+                show_progress=compare_cfg.get("show_progress", False),
+                offtarget_step=compare_cfg.get("offtarget_step", 0.1),
+                target_conflict_prob=compare_cfg.get("target_conflict_prob", 0.5),
+                max_steps=compare_cfg.get("max_steps", 2000),
+                output_dir=output_dir,
+            )
+            base = os.path.splitext(os.path.basename(pkl_path))[0]
+            results_paths.append(os.path.join(output_dir, f"{base}_compare_results.pkl"))
 
     # 3) Plot results
     if plot_cfg.get("enabled", True):
