@@ -3,16 +3,17 @@ Purpose:
     Run compute -> compare -> plot using a simple TOML config.
 """
 
-import argparse
-import os
-import tomllib
 
-from compute_short_seq_energies import run_compute_short_seq
-from compare_algorithms_from_pkl import run_compare
-from plot_compare_results import plot_results
 
 
 def main():
+    import argparse
+    import os
+    import tomllib
+
+    from compute_short_seq_energies import run_compute_short_seq
+    from compare_algorithms_from_pkl import run_compare
+    from plot_compare_results import plot_results
     parser = argparse.ArgumentParser()
     default_config = os.path.join(os.path.dirname(__file__), "pipeline_config.example.toml")
     parser.add_argument(
