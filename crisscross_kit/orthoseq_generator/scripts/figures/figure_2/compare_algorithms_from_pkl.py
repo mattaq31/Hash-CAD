@@ -55,7 +55,7 @@ _COMPARE_CTX = {}
 def _init_compare_worker(ctx):
     debug = os.environ.get("ORTHOSEQ_DEBUG_MP", "").strip().lower() in ("1", "true", "yes")
     if debug:
-        print(f"[compare] worker init pid={os.getpid()}")
+        print(f"[compare] worker init pid={os.getpid()}", flush=True)
     # Avoid sending large numpy arrays through initargs when possible.
     if "pkl_path" in ctx and ("ids" not in ctx or "off_energies" not in ctx):
         with open(ctx["pkl_path"], "rb") as f:
@@ -86,7 +86,7 @@ def _init_compare_worker(ctx):
 
     _COMPARE_CTX.update(ctx)
     if debug:
-        print(f"[compare] worker ready pid={os.getpid()} ids={len(_COMPARE_CTX.get('ids', []))}")
+        print(f"[compare] worker ready pid={os.getpid()} ids={len(_COMPARE_CTX.get('ids', []))}", flush=True)
 
 
 def _run_compare_single_seed(run_seed, offtarget_limits, conflict_probs):
@@ -288,6 +288,9 @@ def run_compare(
     output_dir=None,
     parallel=True,
 ):
+    debug = os.environ.get("ORTHOSEQ_DEBUG_MP", "").strip().lower() in ("1", "true", "yes")
+    if debug:
+        print(f"[compare] run_compare start pkl={pkl_path}", flush=True)
     # Load precomputed energies.
     with open(pkl_path, "rb") as f:
         data = pickle.load(f)
@@ -344,15 +347,16 @@ def run_compare(
         }
         max_workers = _max_workers()
         mp_ctx = _mp_context_from_env()
-        debug = os.environ.get("ORTHOSEQ_DEBUG_MP", "").strip().lower() in ("1", "true", "yes")
         if debug:
-            print(f"[compare] starting pool max_workers={max_workers}")
+            print(f"[compare] starting pool max_workers={max_workers}", flush=True)
         with ProcessPoolExecutor(
             max_workers=max_workers,
             initializer=_init_compare_worker,
             initargs=(ctx,),
             mp_context=mp_ctx,
         ) as executor:
+            if debug:
+                print(f"[compare] pool created max_workers={max_workers}", flush=True)
             futures = []
             for seed in run_seeds:
                 futures.append(executor.submit(_run_compare_single_seed, seed, offtarget_limits, conflict_probs))
