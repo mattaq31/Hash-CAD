@@ -245,7 +245,7 @@ def evolutionary_vertex_cover_prototype(
             Edges = build_edges(off_e_subset, indices, offtarget_limit)
 
             multistart = 30
-            removed_vertices = iterative_vertex_cover_multi(
+            removed_vertices, _trajectories = iterative_vertex_cover_multi(
                 indices,
                 Edges,
                 avoid_V=history_ids,
