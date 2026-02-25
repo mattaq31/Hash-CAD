@@ -10,6 +10,7 @@ def main():
     import argparse
     import os
     import tomllib
+    import time
 
     from compute_short_seq_energies import run_compute_short_seq
     from compare_algorithms_from_pkl import run_compare
@@ -57,6 +58,7 @@ def main():
     results_paths = []
     if compare_cfg.get("enabled", True):
         for pkl_path in pkl_paths:
+            print(f"[pipeline] compare start pkl={pkl_path} t={time.time():.0f}", flush=True)
             run_compare(
                 pkl_path,
                 offtarget_limits=compare_cfg.get("offtarget_limits"),
@@ -73,6 +75,7 @@ def main():
                 max_steps=compare_cfg.get("max_steps", 2000),
                 output_dir=output_dir,
             )
+            print(f"[pipeline] compare end pkl={pkl_path} t={time.time():.0f}", flush=True)
             base = os.path.splitext(os.path.basename(pkl_path))[0]
             results_paths.append(os.path.join(output_dir, f"{base}_compare_results.pkl"))
 
