@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 def _format_title(df, base_name):
     # Pull one row of metadata for display.
     num_vertices = df["num_vertices"].iloc[0] if "num_vertices" in df else None
-    length = df["length"].iloc[0] if "length" in df else None
+    length = df["sequence_length"].iloc[0] if "sequence_length" in df else None
     range_sigma = df["range_sigma"].iloc[0] if "range_sigma" in df else None
     min_on = df["min_on"].iloc[0] if "min_on" in df else None
     max_on = df["max_on"].iloc[0] if "max_on" in df else None

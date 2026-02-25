@@ -343,8 +343,9 @@ def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150,
     :param show_progress: If True, prints status each iteration.
     :type show_progress: bool
 
-    :returns: The best (smallest) vertex cover found across all restarts.
-    :rtype: set
+    :returns: Tuple of (best_vertex_cover, trajectories), where trajectories is a list
+              of per-multistart lists of independent set sizes over iterations.
+    :rtype: tuple[set, list[list[int]]]
     """
 
     if avoid_V is None:
@@ -356,7 +357,8 @@ def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150,
     # This keeps track of the overall best (i.e., smallest) vertex cover found across all multistart iterations.
     # There is also a separate "best_vertex_cover" inside each iteration (the inner loop).
     bestest_vertex_cover = None
-   
+    trajectories = []
+
     for i in range(multistart):
         
         
@@ -365,6 +367,7 @@ def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150,
         current_vertex_cover = best_vertex_cover.copy()
         population = [current_vertex_cover]  # Start with the best vertex cover as the initial population
         iteration = 0
+        size_trajectory = []
         
         
         
@@ -373,7 +376,8 @@ def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150,
 
             # Early exit if desired independent set size reached
             if -len(best_vertex_cover) + len(V) >= limit:
-                print('found desired set')
+                if show_progress:
+                    print('found desired set')
                 break
 
             # print('population is of lenght')
@@ -419,18 +423,30 @@ def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150,
             if len(population) > population_size:
                 population = random.sample(population, population_size)
                 
-            if show_progress:                                                    
-                print(f"Iteration {iteration+1}: Found {len(population)} sets of size {-len(best_vertex_cover) + len(V)}") 
+            size_trajectory.append(-len(best_vertex_cover) + len(V))
+            if show_progress:
+                print(
+                    f"Iteration {iteration+1}: Found {len(population)} sets of size {-len(best_vertex_cover) + len(V)}"
+                )
 
         # update the bestest_vertex_cover. keep record which of the multistarts resulted in the best.
         if bestest_vertex_cover is None or len(best_vertex_cover) < len(bestest_vertex_cover):
             bestest_vertex_cover = best_vertex_cover.copy()
-            print("update bestest")
         elif len(best_vertex_cover) == len(bestest_vertex_cover):
             if avoid_overlap_size(best_vertex_cover) > avoid_overlap_size(bestest_vertex_cover):
                 bestest_vertex_cover = best_vertex_cover.copy()
-        print(f"Iteration {i + 1} of {multistart}| current bestest independent set size: {len(V)-len(best_vertex_cover)}")
-    return bestest_vertex_cover
+        trajectories.append(size_trajectory)
+        if len(size_trajectory) > 20:
+            head = ", ".join(str(x) for x in size_trajectory[:10])
+            tail = ", ".join(str(x) for x in size_trajectory[-10:])
+            traj_str = f"[{head}, ..., {tail}]"
+        else:
+            traj_str = "[" + ", ".join(str(x) for x in size_trajectory) + "]"
+        print(
+            f"Iteration {i + 1} of {multistart}| current bestest independent set size: {len(V)-len(best_vertex_cover)} "
+            f"| set size trajectory: {traj_str}"
+        )
+    return bestest_vertex_cover, trajectories
 
 
 
@@ -594,7 +610,7 @@ def evolutionary_vertex_cover(
             # Find sequences to remove via vertex-cover heuristic
             multistart = 30
             logger.info(f"Running vertex cover heuristic. Trying {multistart} independent starts.")
-            removed_vertices = iterative_vertex_cover_multi(
+            removed_vertices, _trajectories = iterative_vertex_cover_multi(
                 indices, Edges,
                 avoid_V=history,
                 multistart=multistart,

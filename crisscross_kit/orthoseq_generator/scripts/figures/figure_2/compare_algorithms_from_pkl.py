@@ -8,26 +8,151 @@ import os
 import glob
 import pickle
 import random
+import math
 import numpy as np
 import pandas as pd
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import vertex_cover_algorithms as vca
 
 
+def _parse_slurm_cpus(value):
+    if not value:
+        return None
+    try:
+        first = value.split(",")[0]
+        first = first.split("(")[0]
+        return int(first)
+    except ValueError:
+        return None
+
+
+def slurm_cpus(default=1):
+    for key in ("SLURM_CPUS_PER_TASK", "SLURM_JOB_CPUS_PER_NODE", "SLURM_CPUS_ON_NODE"):
+        parsed = _parse_slurm_cpus(os.environ.get(key))
+        if parsed:
+            return max(1, parsed)
+    return max(1, default)
+
+
+def _max_workers(fraction=0.75):
+    total = slurm_cpus(default=os.cpu_count() or 1)
+    return max(1, total - 1)
+
+
+def _mp_context_from_env():
+    method = os.environ.get("ORTHOSEQ_MP_START", "").strip().lower()
+    if not method:
+        return None
+    return mp.get_context(method)
+
+
+_COMPARE_CTX = {}
+
+
+def _init_compare_worker(ctx):
+    _COMPARE_CTX.update(ctx)
+
+
+def _run_compare_single_seed(run_seed, offtarget_limits, conflict_probs):
+    ids = _COMPARE_CTX["ids"]
+    id_to_seq = _COMPARE_CTX["id_to_seq"]
+    off_energies = _COMPARE_CTX["off_energies"]
+    n_vertices = _COMPARE_CTX["n_vertices"]
+    length = _COMPARE_CTX["length"]
+    range_sigma = _COMPARE_CTX["range_sigma"]
+    min_on = _COMPARE_CTX["min_on"]
+    max_on = _COMPARE_CTX["max_on"]
+    num_vertices_to_remove = _COMPARE_CTX["num_vertices_to_remove"]
+    max_iterations = _COMPARE_CTX["max_iterations"]
+    limit = _COMPARE_CTX["limit"]
+    multistart = _COMPARE_CTX["multistart"]
+    population_size = _COMPARE_CTX["population_size"]
+    show_progress = _COMPARE_CTX["show_progress"]
+    pkl_path = _COMPARE_CTX["pkl_path"]
+    run_idx_by_seed = _COMPARE_CTX["run_idx_by_seed"]
+
+    rows = []
+    for cutoff in offtarget_limits:
+        conflict_prob = float(conflict_probs[float(cutoff)])
+        naive_sequences = _run_naive(ids, id_to_seq, off_energies, cutoff, random_seed=run_seed)
+        print(f"alg=naive size={len(naive_sequences)} run={run_idx_by_seed[run_seed]} cutoff={float(cutoff)}")
+        rows.append({
+            "pkl_path": pkl_path,
+            "run_type": "naive",
+            "run_idx": run_idx_by_seed[run_seed],
+            "num_vertices": n_vertices,
+            "offtarget_limit": float(cutoff),
+            "conflict_probability": conflict_prob,
+            "independent_set_size": len(naive_sequences),
+            "independent_set_sequences": naive_sequences,
+            "set_size_trajectories": None,
+            "sequence_length": length,
+            "range_sigma": range_sigma,
+            "min_on": min_on,
+            "max_on": max_on,
+        })
+
+        vc_sequences, vc_trajectories = _run_vertex_cover(
+            ids,
+            id_to_seq,
+            off_energies,
+            cutoff,
+            random_seed=run_seed,
+            num_vertices_to_remove=num_vertices_to_remove,
+            max_iterations=max_iterations,
+            limit=limit,
+            multistart=multistart,
+            population_size=population_size,
+            show_progress=show_progress,
+        )
+        print(f"alg=vertex_cover size={len(vc_sequences)} run={run_idx_by_seed[run_seed]} cutoff={float(cutoff)}")
+        rows.append({
+            "pkl_path": pkl_path,
+            "run_type": "vertex_cover",
+            "run_idx": run_idx_by_seed[run_seed],
+            "num_vertices": n_vertices,
+            "offtarget_limit": float(cutoff),
+            "conflict_probability": conflict_prob,
+            "independent_set_size": len(vc_sequences),
+            "independent_set_sequences": vc_sequences,
+            "set_size_trajectories": vc_trajectories,
+            "sequence_length": length,
+            "range_sigma": range_sigma,
+            "min_on": min_on,
+            "max_on": max_on,
+        })
+
+    return rows
+
+
+def _snap_cutoff_to_step(base_cutoff, step):
+    """
+    Snap the starting cutoff to the first multiple of step that is >= base_cutoff.
+    This keeps cutoffs aligned across runs while staying above the base cutoff.
+    """
+    if step <= 0:
+        raise ValueError("step must be positive")
+    base = float(base_cutoff)
+    step = float(step)
+    return math.ceil(base / step) * step
+
+
 def _build_offtarget_limits(off_energies, base_cutoff, step=0.1, target_pc=0.5, max_steps=2000):
-    # Start at base_cutoff and step upward until we hit target conflict probability.
+    # Start at the snapped cutoff and step upward until we hit target conflict probability.
     if off_energies is None:
         return []
 
     offtarget_limits = []
-    cutoff = float(base_cutoff)
-    for _ in range(max_steps):
+    start_cutoff = _snap_cutoff_to_step(base_cutoff, step)
+    for i in range(max_steps):
+        cutoff = start_cutoff + (i * float(step))
         pc = float(vca.compute_pair_conflict_probability(off_energies, cutoff))
         offtarget_limits.append(cutoff)
         if pc >= target_pc:
             break
-        cutoff = float(cutoff + step)
 
     return offtarget_limits
 
@@ -97,7 +222,7 @@ def _run_vertex_cover(ids, id_to_seq, off_energies, cutoff, random_seed=41,
     if n_remove is None or n_remove == 0:
         n_remove = max(1, int(round(0.2 * len(vertices))))
 
-    vertex_cover = vca.iterative_vertex_cover_multi(
+    vertex_cover, trajectories = vca.iterative_vertex_cover_multi(
         vertices,
         edges,
         avoid_V=None,
@@ -110,7 +235,7 @@ def _run_vertex_cover(ids, id_to_seq, off_energies, cutoff, random_seed=41,
     )
 
     independent = vertices - vertex_cover
-    return [id_to_seq[i] for i in independent]
+    return [id_to_seq[i] for i in independent], trajectories
 
 
 def run_compare(
@@ -123,11 +248,12 @@ def run_compare(
     limit=np.inf,
     multistart=1,
     population_size=900,
-    show_progress=True,
+    show_progress=False,
     offtarget_step=0.1,
     target_conflict_prob=0.5,
     max_steps=2000,
     output_dir=None,
+    parallel=True,
 ):
     # Load precomputed energies.
     with open(pkl_path, "rb") as f:
@@ -163,60 +289,69 @@ def run_compare(
     n_vertices = len(ids)
     rows = []
 
-    for cutoff in offtarget_limits:
-        # Same conflict probability used in analyze_conflict_probabilities.py
-        conflict_prob = float(vca.compute_pair_conflict_probability(off_energies, float(cutoff)))
+    conflict_probs = {
+        float(cutoff): float(vca.compute_pair_conflict_probability(off_energies, float(cutoff)))
+        for cutoff in offtarget_limits
+    }
 
-        for run_idx in range(num_runs):
-            # Deterministic seeds per run.
-            run_seed = int(random_seed) + run_idx
+    run_seeds = [int(random_seed) + run_idx for run_idx in range(num_runs)]
+    run_idx_by_seed = {seed: idx for idx, seed in enumerate(run_seeds)}
 
-            naive_sequences = _run_naive(ids, id_to_seq, off_energies, cutoff, random_seed=run_seed)
-            print(f"cutoff={cutoff} run={run_idx} naive_size={len(naive_sequences)}")
-            rows.append({
-                "pkl_path": pkl_path,
-                "run_type": "naive",
-                "run_idx": run_idx,
-                "num_vertices": n_vertices,
-                "offtarget_limit": float(cutoff),
-                "conflict_probability": conflict_prob,
-                "independent_set_size": len(naive_sequences),
-                "independent_set_sequences": naive_sequences,
-                "length": length,
-                "range_sigma": range_sigma,
-                "min_on": min_on,
-                "max_on": max_on,
-            })
+    if parallel and os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() not in ("1", "true", "yes"):
+        ctx = {
+            "ids": ids,
+            "id_to_seq": id_to_seq,
+            "off_energies": off_energies,
+            "n_vertices": n_vertices,
+            "sequence_length": length,
+            "range_sigma": range_sigma,
+            "min_on": min_on,
+            "max_on": max_on,
+            "num_vertices_to_remove": num_vertices_to_remove,
+            "max_iterations": max_iterations,
+            "limit": limit,
+            "multistart": multistart,
+            "population_size": population_size,
+            "show_progress": show_progress,
+            "pkl_path": pkl_path,
+            "run_idx_by_seed": run_idx_by_seed,
+        }
+        max_workers = _max_workers()
+        mp_ctx = _mp_context_from_env()
+        with ProcessPoolExecutor(
+            max_workers=max_workers,
+            initializer=_init_compare_worker,
+            initargs=(ctx,),
+            mp_context=mp_ctx,
+        ) as executor:
+            futures = []
+            for seed in run_seeds:
+                futures.append(executor.submit(_run_compare_single_seed, seed, offtarget_limits, conflict_probs))
+            for future in as_completed(futures):
+                rows.extend(future.result())
+    else:
+        _COMPARE_CTX.update({
+            "ids": ids,
+            "id_to_seq": id_to_seq,
+            "off_energies": off_energies,
+            "n_vertices": n_vertices,
+            "sequence_length": length,
+            "range_sigma": range_sigma,
+            "min_on": min_on,
+            "max_on": max_on,
+            "num_vertices_to_remove": num_vertices_to_remove,
+            "max_iterations": max_iterations,
+            "limit": limit,
+            "multistart": multistart,
+            "population_size": population_size,
+            "show_progress": show_progress,
+            "pkl_path": pkl_path,
+            "run_idx_by_seed": run_idx_by_seed,
+        })
+        for run_seed in run_seeds:
+            rows.extend(_run_compare_single_seed(run_seed, offtarget_limits, conflict_probs))
 
-            vc_sequences = _run_vertex_cover(
-                ids,
-                id_to_seq,
-                off_energies,
-                cutoff,
-                random_seed=run_seed,
-                num_vertices_to_remove=num_vertices_to_remove,
-                max_iterations=max_iterations,
-                limit=limit,
-                multistart=multistart,
-                population_size=population_size,
-                show_progress=show_progress,
-            )
-            rows.append({
-                "pkl_path": pkl_path,
-                "run_type": "vertex_cover",
-                "run_idx": run_idx,
-                "num_vertices": n_vertices,
-                "offtarget_limit": float(cutoff),
-                "conflict_probability": conflict_prob,
-                "independent_set_size": len(vc_sequences),
-                "independent_set_sequences": vc_sequences,
-                "length": length,
-                "range_sigma": range_sigma,
-                "min_on": min_on,
-                "max_on": max_on,
-            })
-
-        print(f"cutoff={cutoff}: runs={num_runs}")
+    rows.sort(key=lambda r: (r["offtarget_limit"], r["run_idx"], r["run_type"]))
 
     # Save results to PKL/CSV for plotting.
     df = pd.DataFrame(rows)
@@ -246,6 +381,6 @@ if __name__ == "__main__":
             offtarget_step=0.3,
             target_conflict_prob=0.5,
             limit=np.inf,
-            show_progress=True,
+            show_progress=False,
             output_dir=OUTPUT_DIR,
         )

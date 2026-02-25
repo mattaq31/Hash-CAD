@@ -49,9 +49,9 @@ if __name__ == "__main__":
     #    - multistart: number of random restarts
     #    - population_size: max retained covers per generation
     #    - show_progress: display iteration logs
-    vertex_cover = vca.iterative_vertex_cover_multi(
+    vertex_cover, _trajectories = vca.iterative_vertex_cover_multi(
         vertices, edges,
-        preserve_V=None,
+        avoid_V=None,
         num_vertices_to_remove=200,
         max_iterations=200,
         limit=70,
