@@ -12,7 +12,6 @@ import math
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
-import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from orthoseq_generator import helper_functions as hf
@@ -45,21 +44,43 @@ def _max_workers(fraction=0.75):
 
 def _mp_context_from_env():
     method = os.environ.get("ORTHOSEQ_MP_START", "").strip().lower()
-    if method:
-        return mp.get_context(method)
-    # On Linux, avoid fork-related deadlocks after threads/BLAS by default.
-    if sys.platform.startswith("linux"):
-        try:
-            return mp.get_context("forkserver")
-        except ValueError:
-            return mp.get_context("spawn")
-    return None
+    if not method:
+        return None
+    return mp.get_context(method)
 
 
 _COMPARE_CTX = {}
 
 
 def _init_compare_worker(ctx):
+    # Avoid sending large numpy arrays through initargs when possible.
+    if "pkl_path" in ctx and ("ids" not in ctx or "off_energies" not in ctx):
+        with open(ctx["pkl_path"], "rb") as f:
+            data = pickle.load(f)
+
+        subset = data.get("subset_pairs")
+        ids = data.get("subset_ids")
+        off_energies = data.get("off_energies")
+        length = data.get("length")
+        range_sigma = data.get("range_sigma")
+        min_on = data.get("min_on")
+        max_on = data.get("max_on")
+
+        if subset is None or ids is None or off_energies is None:
+            raise ValueError(f"Missing required keys in {ctx['pkl_path']}")
+
+        ctx = {
+            **ctx,
+            "ids": ids,
+            "id_to_seq": dict(zip(ids, subset)),
+            "off_energies": off_energies,
+            "n_vertices": len(ids),
+            "sequence_length": length,
+            "range_sigma": range_sigma,
+            "min_on": min_on,
+            "max_on": max_on,
+        }
+
     _COMPARE_CTX.update(ctx)
 
 
@@ -305,15 +326,8 @@ def run_compare(
     run_idx_by_seed = {seed: idx for idx, seed in enumerate(run_seeds)}
 
     if parallel and os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() not in ("1", "true", "yes"):
+        # Pass only lightweight config through initargs; worker loads PKL locally.
         ctx = {
-            "ids": ids,
-            "id_to_seq": id_to_seq,
-            "off_energies": off_energies,
-            "n_vertices": n_vertices,
-            "sequence_length": length,
-            "range_sigma": range_sigma,
-            "min_on": min_on,
-            "max_on": max_on,
             "num_vertices_to_remove": num_vertices_to_remove,
             "max_iterations": max_iterations,
             "limit": limit,

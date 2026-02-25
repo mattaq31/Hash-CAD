@@ -2,7 +2,6 @@ import pickle
 import os
 import itertools
 import multiprocessing as mp
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -46,15 +45,9 @@ def _max_workers(fraction=0.75):
 
 def _mp_context_from_env():
     method = os.environ.get("ORTHOSEQ_MP_START", "").strip().lower()
-    if method:
-        return mp.get_context(method)
-    # On Linux, avoid fork-related deadlocks after threads/BLAS by default.
-    if sys.platform.startswith("linux"):
-        try:
-            return mp.get_context("forkserver")
-        except ValueError:
-            return mp.get_context("spawn")
-    return None
+    if not method:
+        return None
+    return mp.get_context(method)
 
 
 def revcom(sequence):
