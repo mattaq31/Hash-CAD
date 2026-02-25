@@ -61,7 +61,7 @@ def _run_compare_single_seed(run_seed, offtarget_limits, conflict_probs):
     id_to_seq = _COMPARE_CTX["id_to_seq"]
     off_energies = _COMPARE_CTX["off_energies"]
     n_vertices = _COMPARE_CTX["n_vertices"]
-    length = _COMPARE_CTX["length"]
+    length = _COMPARE_CTX["sequence_length"]
     range_sigma = _COMPARE_CTX["range_sigma"]
     min_on = _COMPARE_CTX["min_on"]
     max_on = _COMPARE_CTX["max_on"]
