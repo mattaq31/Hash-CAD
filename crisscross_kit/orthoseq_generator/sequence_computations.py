@@ -40,7 +40,7 @@ def slurm_cpus(default=1):
 
 def _max_workers(fraction=0.75):
     total = slurm_cpus(default=os.cpu_count() or 1)
-    return max(1, int(total * fraction))
+    return max(1, total - 1)
 
 
 def _mp_context_from_env():
