@@ -12,6 +12,7 @@ import math
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
+import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from orthoseq_generator import helper_functions as hf
@@ -44,9 +45,15 @@ def _max_workers(fraction=0.75):
 
 def _mp_context_from_env():
     method = os.environ.get("ORTHOSEQ_MP_START", "").strip().lower()
-    if not method:
-        return None
-    return mp.get_context(method)
+    if method:
+        return mp.get_context(method)
+    # On Linux, avoid fork-related deadlocks after threads/BLAS by default.
+    if sys.platform.startswith("linux"):
+        try:
+            return mp.get_context("forkserver")
+        except ValueError:
+            return mp.get_context("spawn")
+    return None
 
 
 _COMPARE_CTX = {}
