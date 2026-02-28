@@ -134,16 +134,31 @@ class PlateLayoutState {
     // Remove this ID from the group
     group.remove(slatId);
 
-    // Check if any other copies remain on plates
-    final othersOnPlates = group.where((id) {
+    // Count how many group members remain on plates
+    final onPlates = group.where((id) {
       for (var plate in plateAssignments.values) {
         if (plate.values.contains(id)) return true;
       }
       return false;
-    }).isNotEmpty;
+    });
 
-    if (othersOnPlates) {
-      // Other copies exist on plates — this one just disappears
+    if (onPlates.isNotEmpty) {
+      // Dissolve group if only 1 copy remains (no longer a "duplicate")
+      if (onPlates.length <= 1) {
+        final lastCopy = onPlates.first;
+        // Rename the remaining copy back to the base ID on its plate
+        if (lastCopy != base) {
+          for (var plate in plateAssignments.values) {
+            for (var well in plate.keys) {
+              if (plate[well] == lastCopy) {
+                plate[well] = base;
+                break;
+              }
+            }
+          }
+        }
+        duplicateGroups.remove(base);
+      }
       return;
     }
 

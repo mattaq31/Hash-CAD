@@ -205,7 +205,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   void _handleDuplicateSelected() {
     setState(() {
       final newKeys = _layoutState!.duplicateSlats(_selectedWells);
-      _selectedWells = newKeys;
+      _selectedWells.clear();
     });
     _saveUndoState();
   }
