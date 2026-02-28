@@ -1,12 +1,13 @@
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/handle_plates.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:csv/csv.dart';
 
-// Conditional import
-import 'save_csv_web.dart' if (dart.library.io) 'save_csv_desktop.dart';
+import 'save_file_web.dart' if (dart.library.io) 'save_file_desktop.dart';
 
 
-List<String> _generatePlateLayout96() {
+List<String> generatePlateLayout96() {
   final rows = 'ABCDEFGH'.split('');
   final cols = List.generate(12, (i) => i + 1);
   return [
@@ -15,7 +16,7 @@ List<String> _generatePlateLayout96() {
   ];
 }
 
-List<String> _generatePlateLayout384() {
+List<String> generatePlateLayout384() {
   final rows = 'ABCDEFGHIJKLMNOP'.split('');
   final cols = List.generate(24, (i) => i + 1);
   return [
@@ -37,9 +38,9 @@ Future<void> convertSlatsToEchoCsv({
 
   late List<String> plateFormat;
   if (plateSize == '96') {
-    plateFormat = _generatePlateLayout96();
+    plateFormat = generatePlateLayout96();
   } else {
-    plateFormat = _generatePlateLayout384();
+    plateFormat = generatePlateLayout384();
   }
 
   final outputWellList = <String>[];
@@ -104,5 +105,5 @@ Future<void> convertSlatsToEchoCsv({
     ...outputCommandList
   ]);
 
-  await saveCsv(csvString, outputFilename);
+  await saveFileBytes(Uint8List.fromList(utf8.encode(csvString)), outputFilename, 'csv');
 }

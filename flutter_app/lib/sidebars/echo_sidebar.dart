@@ -249,6 +249,18 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
           ),
         ],
       ),
+      SizedBox(height: 10),
+      FilledButton.icon(
+        onPressed: () {
+          actionState.activateEchoPlateWindow();
+        },
+        icon: Icon(Icons.grid_view, size: 18),
+        label: Text("Plate Layout"),
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: TextStyle(fontSize: 16),
+        ),
+      ),
       Divider(thickness: 2, color: Colors.grey.shade300),
       Text("Echo CSV Export",
           style: TextStyle(fontSize: 18, color: Colors.grey.shade600)),
