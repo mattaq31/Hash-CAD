@@ -73,15 +73,12 @@ class SlatUndoStack {
 
     // Add a deep copy of the new state
     _history.add(state.copy());
+    _currentIndex++;
 
-    // Trim history and adjust index accordingly
+    // Trim oldest entry if over capacity
     if (_history.length > _maxHistory) {
       _history.removeAt(0);
-      if (_currentIndex > 0) {
-        _currentIndex--;
-      }
-    } else {
-      _currentIndex++;
+      _currentIndex--;
     }
   }
 

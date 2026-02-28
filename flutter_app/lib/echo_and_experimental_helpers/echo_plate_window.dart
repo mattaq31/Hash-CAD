@@ -12,6 +12,7 @@ import 'echo_plate_pdf_export.dart';
 import 'echo_plate_sidebar.dart';
 import 'echo_plate_well.dart';
 import 'plate_layout_state.dart';
+import 'plate_undo_stack.dart';
 
 import 'save_file_web.dart' if (dart.library.io) '../echo_and_experimental_helpers/save_file_desktop.dart';
 
@@ -28,6 +29,7 @@ class EchoPlateWindow extends StatefulWidget {
 
 class _EchoPlateWindowState extends State<EchoPlateWindow> {
   PlateLayoutState? _layoutState;
+  final PlateUndoStack _undoStack = PlateUndoStack();
   final Map<String, GlobalKey<WellWidgetState>> _wellKeys = {};
   final GlobalKey _rubberBandOverlayKey = GlobalKey();
 
@@ -65,7 +67,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   bool _handleKeyEvent(KeyEvent event) {
-    final held = HardwareKeyboard.instance.logicalKeysPressed.any((k) =>
+    final pressed = HardwareKeyboard.instance.logicalKeysPressed;
+    final held = pressed.any((k) =>
         k == LogicalKeyboardKey.metaLeft ||
         k == LogicalKeyboardKey.metaRight ||
         k == LogicalKeyboardKey.controlLeft ||
@@ -74,11 +77,36 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       setState(() => _modifierHeld = held);
     }
 
+    // Only consume undo/redo/delete when the echo window is active and not collapsed
+    final active = _layoutState != null && !_isCollapsed;
+
     // Delete/Backspace to remove selected wells
     if (event is KeyDownEvent &&
         (event.logicalKey == LogicalKeyboardKey.backspace || event.logicalKey == LogicalKeyboardKey.delete)) {
-      if (_selectedWells.isNotEmpty && _layoutState != null) {
+      if (active && _selectedWells.isNotEmpty) {
         _handleDeleteSelected();
+        return true;
+      }
+    }
+
+    // Undo: Ctrl/Cmd-Z (without Shift)
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.keyZ && held) {
+      final shiftHeld = pressed.contains(LogicalKeyboardKey.shiftLeft) ||
+          pressed.contains(LogicalKeyboardKey.shiftRight);
+      if (active) {
+        if (shiftHeld) {
+          _performRedo();
+        } else {
+          _performUndo();
+        }
+        return true;
+      }
+    }
+
+    // Redo: Ctrl/Cmd-Y
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.keyY && held) {
+      if (active) {
+        _performRedo();
         return true;
       }
     }
@@ -98,18 +126,46 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     _groupDragAnchor = null;
     _groupDragOffsets = null;
     _groupDragHoverWell = null;
+    _undoStack.clear();
+    _undoStack.saveState(_layoutState!);
+  }
+
+  void _saveUndoState() {
+    _undoStack.saveState(_layoutState!);
+  }
+
+  void _performUndo() {
+    final restored = _undoStack.undo();
+    if (restored != null) {
+      setState(() {
+        _layoutState = restored;
+        _selectedWells.clear();
+      });
+    }
+  }
+
+  void _performRedo() {
+    final restored = _undoStack.redo();
+    if (restored != null) {
+      setState(() {
+        _layoutState = restored;
+        _selectedWells.clear();
+      });
+    }
   }
 
   void _handleSidebarToWell(String slatId, int toPlate, String toWell) {
     setState(() {
       _layoutState!.moveSlatFromSidebarToWell(slatId, toPlate, toWell);
     });
+    _saveUndoState();
   }
 
   void _handleWellToSidebar(int fromPlate, String fromWell) {
     setState(() {
       _layoutState!.moveSlatFromWellToSidebar(fromPlate, fromWell);
     });
+    _saveUndoState();
   }
 
   void _handleWellToWell(int fromPlate, String fromWell, int toPlate, String toWell) {
@@ -117,6 +173,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     setState(() {
       _layoutState!.moveSlatBetweenWells(fromPlate, fromWell, toPlate, toWell);
     });
+    _saveUndoState();
   }
 
   void _handleAutoAssign(DesignState appState) {
@@ -126,6 +183,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       }
       _layoutState!.autoAssign(appState.slats, appState.layerMap, columnsThreeToTenOnly: _columnsThreeToTenOnly);
     });
+    _saveUndoState();
   }
 
   void _handleRemoveAll(DesignState appState) {
@@ -133,6 +191,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _layoutState!.removeAll(appState.slats, appState.layerMap);
       _selectedWells.clear();
     });
+    _saveUndoState();
   }
 
   void _handleDeleteSelected() {
@@ -140,6 +199,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _layoutState!.removeSelected(_selectedWells);
       _selectedWells.clear();
     });
+    _saveUndoState();
   }
 
   void _handleDuplicateSelected() {
@@ -147,12 +207,14 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       final newKeys = _layoutState!.duplicateSlats(_selectedWells);
       _selectedWells = newKeys;
     });
+    _saveUndoState();
   }
 
   void _handleAddPlate() {
     setState(() {
       _layoutState!.addPlate();
     });
+    _saveUndoState();
   }
 
   void _handleRemovePlate(int plateIndex) {
@@ -162,6 +224,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _layoutState!.removePlate(plateIndex);
       _wellKeys.clear();
     });
+    _saveUndoState();
   }
 
   void _handleWellRightClick(int plate, String well) {
@@ -304,6 +367,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _groupDragOffsets = null;
       _groupDragHoverWell = null;
     });
+    _saveUndoState();
   }
 
   void _endGroupDragAtCurrentHover() {
@@ -441,13 +505,22 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
 
+    // Keep undo routing flag in sync: true when echo window owns undo/redo
+    actionState.echoPlateUndoActive =
+        actionState.echoPlateWindowActive && _layoutState != null && !_isCollapsed;
+
     if (!actionState.echoPlateWindowActive) {
-      _layoutState = null;
+      // Sync when hidden so state is correct when reopened
+      _layoutState?.syncWithDesign(appState.slats, appState.layerMap);
       return const SizedBox.shrink();
     }
 
     if (_layoutState == null) {
       _initialize(appState);
+      actionState.echoPlateUndoActive = true;
+    } else {
+      // Sync with design on every rebuild (picks up added/removed slats)
+      _layoutState!.syncWithDesign(appState.slats, appState.layerMap);
     }
 
     final screenWidth = MediaQuery.of(context).size.width;

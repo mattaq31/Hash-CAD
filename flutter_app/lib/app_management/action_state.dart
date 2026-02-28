@@ -24,6 +24,7 @@ class ActionState extends ChangeNotifier {
   bool evolveMode;
   bool slatLinkerActive;
   bool echoPlateWindowActive;
+  bool echoPlateUndoActive;
   bool isSideBarCollapsed;
   int panelMode;
   String cargoAttachMode;
@@ -59,6 +60,7 @@ class ActionState extends ChangeNotifier {
     this.evolveMode = false,
     this.slatLinkerActive = false,
     this.echoPlateWindowActive = false,
+    this.echoPlateUndoActive = false,
     this.isSideBarCollapsed = false,
     this.displaySeeds = true,
     this.displayBorder = true,

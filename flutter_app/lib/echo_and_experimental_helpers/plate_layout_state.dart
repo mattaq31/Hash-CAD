@@ -302,6 +302,90 @@ class PlateLayoutState {
     unassignedSlats.clear();
   }
 
+  /// Creates a deep copy of this state.
+  PlateLayoutState copy() {
+    return PlateLayoutState(
+      unassignedSlats: List<String>.from(unassignedSlats),
+      plateAssignments: {
+        for (var e in plateAssignments.entries) e.key: Map<String, String?>.from(e.value),
+      },
+      duplicateGroups: {
+        for (var e in duplicateGroups.entries) e.key: Set<String>.from(e.value),
+      },
+      duplicateCounters: Map<String, int>.from(_duplicateCounters),
+    );
+  }
+
+  /// Syncs this state with the current design slats.
+  ///
+  /// New non-phantom slats are added to [unassignedSlats] in sorted order.
+  /// Deleted slats are removed from wells and [unassignedSlats].
+  /// Returns `true` if any changes were made.
+  bool syncWithDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap) {
+    // Build set of valid base IDs (non-phantom slats from design)
+    final validBaseIds = <String>{};
+    for (var entry in slats.entries) {
+      if (entry.value.phantomParent == null) {
+        validBaseIds.add(entry.key);
+      }
+    }
+
+    // Build set of tracked base IDs (from unassigned + wells)
+    final trackedBaseIds = <String>{};
+    for (var id in unassignedSlats) {
+      trackedBaseIds.add(baseSlatId(id));
+    }
+    for (var plate in plateAssignments.values) {
+      for (var slatId in plate.values) {
+        if (slatId != null) {
+          trackedBaseIds.add(baseSlatId(slatId));
+        }
+      }
+    }
+
+    bool changed = false;
+
+    // Add new slats to unassigned list
+    final newIds = validBaseIds.difference(trackedBaseIds);
+    if (newIds.isNotEmpty) {
+      changed = true;
+      // Sort new slats using standard ordering, then append
+      final sorted = sortSlatsForPlateAssignment(slats, layerMap);
+      for (var entry in sorted) {
+        if (newIds.contains(entry.key)) {
+          unassignedSlats.add(entry.key);
+        }
+      }
+    }
+
+    // Remove deleted slats
+    final deletedIds = trackedBaseIds.difference(validBaseIds);
+    if (deletedIds.isNotEmpty) {
+      changed = true;
+
+      // Remove from unassigned
+      unassignedSlats.removeWhere((id) => deletedIds.contains(baseSlatId(id)));
+
+      // Remove from wells
+      for (var plate in plateAssignments.values) {
+        for (var well in plate.keys) {
+          final slatId = plate[well];
+          if (slatId != null && deletedIds.contains(baseSlatId(slatId))) {
+            plate[well] = null;
+          }
+        }
+      }
+
+      // Clean up duplicate groups
+      for (var baseId in deletedIds) {
+        duplicateGroups.remove(baseId);
+        _duplicateCounters.remove(baseId);
+      }
+    }
+
+    return changed;
+  }
+
   /// Duplicates slats at the given selected well keys.
   /// New copies are placed in the first fully empty row (across all plates),
   /// preserving their original column positions.
