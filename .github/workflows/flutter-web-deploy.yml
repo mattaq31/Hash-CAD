@@ -40,7 +40,29 @@ jobs:
       - name: Build Flutter Web
         run: flutter build web --release --base-href="/"
         working-directory: flutter_app
-        
+
+      - name: Deploy DNA source plates for server sync
+        run: |
+          mkdir -p flutter_app/build/web/plates
+          rsync -a --exclude='old_plate_format' crisscross_kit/crisscross/dna_source_plates/ flutter_app/build/web/plates/
+          python3 -c "
+          import os, json
+          plates = []
+          plates_dir = 'flutter_app/build/web/plates'
+          for root, dirs, files in os.walk(plates_dir):
+              if 'old_plate_format' in root.split(os.sep):
+                  continue
+              for f in files:
+                  if f.endswith('.xlsx'):
+                      rel = os.path.relpath(os.path.join(root, f), plates_dir)
+                      category = os.path.dirname(rel) if os.path.dirname(rel) else 'uncategorized'
+                      name = os.path.splitext(f)[0]
+                      plates.append({'name': name, 'path': rel, 'category': category})
+          plates.sort(key=lambda p: (p['category'], p['name']))
+          with open(os.path.join(plates_dir, 'manifest.json'), 'w') as mf:
+              json.dump({'plates': plates}, mf, indent=2)
+          "
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.8.0
         with:

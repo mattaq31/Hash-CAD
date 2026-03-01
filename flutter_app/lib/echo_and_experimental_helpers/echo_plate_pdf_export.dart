@@ -4,8 +4,13 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../crisscross_core/slats.dart';
 import 'echo_category_colors.dart';
+import 'plate_layout_state.dart' show baseSlatId;
 
-Future<Uint8List> buildPlateLayoutPdf(Map<int, Map<String, String?>> plateAssignments, Map<String, Slat> slats) async {
+Future<Uint8List> buildPlateLayoutPdf(
+  Map<int, Map<String, String?>> plateAssignments,
+  Map<String, Slat> slats, {
+  Map<int, String>? plateNames,
+}) async {
   final pdf = pw.Document();
   final rows = 'ABCDEFGH'.split('');
   final cols = List.generate(12, (i) => i + 1);
@@ -14,8 +19,12 @@ Future<Uint8List> buildPlateLayoutPdf(Map<int, Map<String, String?>> plateAssign
   const double cellHeight = 48;
   const double headerSize = 18;
 
-  for (int p = 0; p < plateAssignments.length; p++) {
-    final assignments = plateAssignments[p]!;
+  final sortedKeys = plateAssignments.keys.toList()..sort();
+  for (var i = 0; i < sortedKeys.length; i++) {
+    final plateIndex = sortedKeys[i];
+    final assignments = plateAssignments[plateIndex]!;
+    final name = plateNames?[plateIndex] ?? 'plate';
+    final displayTitle = 'p${plateIndex}_$name';
 
     pdf.addPage(
       pw.Page(
@@ -25,7 +34,7 @@ Future<Uint8List> buildPlateLayoutPdf(Map<int, Map<String, String?>> plateAssign
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text('Plate ${p + 1}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text(displayTitle, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 8),
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -71,7 +80,8 @@ Future<Uint8List> buildPlateLayoutPdf(Map<int, Map<String, String?>> plateAssign
 
 pw.Widget _buildPdfWellCell(Map<String, String?> assignments, String wellName, Map<String, Slat> slats, double cellWidth, double cellHeight) {
   final slatId = assignments[wellName];
-  final slat = slatId != null ? slats[slatId] : null;
+  final lookupId = slatId != null ? baseSlatId(slatId) : null;
+  final slat = lookupId != null ? slats[lookupId] : null;
 
   return pw.Container(
     width: cellWidth,

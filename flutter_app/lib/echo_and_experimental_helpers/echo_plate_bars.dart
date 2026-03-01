@@ -11,6 +11,8 @@ class PlateHeaderBar extends StatelessWidget {
   final VoidCallback onToggleCollapse;
   final bool isHovered;
   final ValueChanged<bool> onHoverChanged;
+  final String experimentTitle;
+  final VoidCallback? onRenameExperiment;
 
   const PlateHeaderBar({
     super.key,
@@ -19,6 +21,8 @@ class PlateHeaderBar extends StatelessWidget {
     required this.onToggleCollapse,
     required this.isHovered,
     required this.onHoverChanged,
+    required this.experimentTitle,
+    this.onRenameExperiment,
   });
 
   @override
@@ -47,12 +51,21 @@ class PlateHeaderBar extends StatelessWidget {
                   constraints: const BoxConstraints(),
                 ),
               ),
-              const Align(
+              Align(
                 alignment: Alignment.center,
-                child: Text(
-                  'Echo Plate Layout',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Echo Export: $experimentTitle',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22),
+                    ),
+                    if (onRenameExperiment != null) ...[
+                      const SizedBox(width: 6),
+                      _HeaderEditButton(onTap: onRenameExperiment!),
+                    ],
+                  ],
                 ),
               ),
               Positioned(
@@ -69,6 +82,31 @@ class PlateHeaderBar extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HeaderEditButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _HeaderEditButton({required this.onTap});
+
+  @override
+  State<_HeaderEditButton> createState() => _HeaderEditButtonState();
+}
+
+class _HeaderEditButtonState extends State<_HeaderEditButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Icon(Icons.edit, size: 18, color: _hovering ? Colors.white : Colors.white54),
       ),
     );
   }

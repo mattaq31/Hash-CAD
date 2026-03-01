@@ -1,3 +1,4 @@
+import '../app_management/design_io_constants.dart';
 import '../crisscross_core/slats.dart';
 import 'echo_export.dart' show generatePlateLayout96;
 import 'echo_plate_constants.dart';
@@ -39,15 +40,34 @@ class PlateLayoutState {
   /// Tracks the next duplicate counter per base slat ID.
   Map<String, int> _duplicateCounters;
 
+  /// User-assigned names for each plate (keyed by plate index).
+  Map<int, String> plateNames;
+
   PlateLayoutState({
     List<String>? unassignedSlats,
     Map<int, Map<String, String?>>? plateAssignments,
     Map<String, Set<String>>? duplicateGroups,
     Map<String, int>? duplicateCounters,
+    Map<int, String>? plateNames,
   })  : unassignedSlats = unassignedSlats ?? [],
         plateAssignments = plateAssignments ?? {},
         duplicateGroups = duplicateGroups ?? {},
-        _duplicateCounters = duplicateCounters ?? {};
+        _duplicateCounters = duplicateCounters ?? {},
+        plateNames = plateNames ?? {};
+
+  /// Returns the user-assigned name for a plate, defaulting to 'Plate'.
+  String plateName(int index) => plateNames[index] ?? 'Plate';
+
+  /// Renames a plate. Name must be max 25 chars, alphanumeric + underscore only.
+  void renamePlate(int index, String name) {
+    plateNames[index] = name;
+  }
+
+  /// Validates a plate name: max 25 chars, alphanumeric + underscore only.
+  static bool isValidPlateName(String name) {
+    if (name.isEmpty || name.length > 25) return false;
+    return RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(name);
+  }
 
   /// Creates a new state with all non-phantom slats unassigned and one empty plate.
   factory PlateLayoutState.fromSlats(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap) {
@@ -55,6 +75,7 @@ class PlateLayoutState {
     return PlateLayoutState(
       unassignedSlats: sorted.map((e) => e.key).toList(),
       plateAssignments: {0: {for (var w in _plate96Wells) w: null}},
+      plateNames: {0: 'Plate'},
     );
   }
 
@@ -62,6 +83,7 @@ class PlateLayoutState {
   void addPlate() {
     final newIndex = plateAssignments.isEmpty ? 0 : (plateAssignments.keys.toList()..sort()).last + 1;
     plateAssignments[newIndex] = {for (var w in _plate96Wells) w: null};
+    plateNames[newIndex] = 'Plate';
   }
 
   /// Removes a plate, returning any assigned slats to the sidebar.
@@ -79,14 +101,7 @@ class PlateLayoutState {
     }
 
     plateAssignments.remove(plateIndex);
-
-    // Renumber plates to be sequential 0, 1, 2, ...
-    final sortedKeys = plateAssignments.keys.toList()..sort();
-    final renumbered = <int, Map<String, String?>>{};
-    for (var i = 0; i < sortedKeys.length; i++) {
-      renumbered[i] = plateAssignments[sortedKeys[i]]!;
-    }
-    plateAssignments = renumbered;
+    plateNames.remove(plateIndex);
   }
 
   /// Returns all IDs sharing the same base (siblings + self).
@@ -300,6 +315,7 @@ class PlateLayoutState {
       if (wellIdx >= emptyWells.length) {
         final newPlateIndex = (plateAssignments.keys.toList()..sort()).last + 1;
         plateAssignments[newPlateIndex] = {for (var w in _plate96Wells) w: null};
+        plateNames[newPlateIndex] = 'Plate';
         for (var w in _plate96Wells) {
           if (columnsThreeToTenOnly) {
             final col = wellCol(w);
@@ -317,6 +333,107 @@ class PlateLayoutState {
     unassignedSlats.clear();
   }
 
+  /// Exports each plate as a human-readable 9×13 grid (header row + A-H, label col + 1-12).
+  /// Returns a map from plate index to a record containing the plate name and grid data.
+  Map<int, ({String name, List<List<dynamic>> grid})> exportPlateGrids() {
+    final result = <int, ({String name, List<List<dynamic>> grid})>{};
+    for (var plateEntry in plateAssignments.entries) {
+      final plateIndex = plateEntry.key;
+      final plate = plateEntry.value;
+      final grid = <List<dynamic>>[];
+      // Header row: ["", 1, 2, ..., 12]
+      grid.add(['', ...List.generate(12, (i) => i + 1)]);
+      // Data rows: ["A", slatId_or_empty, ...]
+      for (var r = 0; r < 8; r++) {
+        final row = <dynamic>[plateRows[r]];
+        for (var c = 0; c < 12; c++) {
+          final well = wellName(r, c);
+          row.add(plate[well] ?? '');
+        }
+        grid.add(row);
+      }
+      result[plateIndex] = (name: plateName(plateIndex), grid: grid);
+    }
+    return result;
+  }
+
+  /// Reconstructs a PlateLayoutState from echo plate sheets in a design file.
+  /// Returns null if no echo plate sheets are found.
+  static PlateLayoutState? fromExcelSheets(
+    Map<String, List<List<dynamic>>> sheets,
+    Map<String, Slat> slats,
+    Map<String, Map<String, dynamic>> layerMap,
+  ) {
+    // Find echo plate sheets with format p{N}_{name}
+    final plateSheetRegex = RegExp(r'^' + echoPlateSheetPrefix + r'(\d+)_(.+)$');
+    final plateSheetNames = sheets.keys.where((k) => plateSheetRegex.hasMatch(k)).toList()
+      ..sort((a, b) {
+        final numA = int.parse(plateSheetRegex.firstMatch(a)!.group(1)!);
+        final numB = int.parse(plateSheetRegex.firstMatch(b)!.group(1)!);
+        return numA.compareTo(numB);
+      });
+
+    if (plateSheetNames.isEmpty) return null;
+
+    final plateAssignments = <int, Map<String, String?>>{};
+    final parsedPlateNames = <int, String>{};
+    final allPlacedIds = <String>[];
+
+    for (var sheetName in plateSheetNames) {
+      final match = plateSheetRegex.firstMatch(sheetName)!;
+      final plateIndex = int.parse(match.group(1)!);
+      final pName = match.group(2)!;
+      final rows = sheets[sheetName]!;
+      final plateMap = <String, String?>{for (var w in _plate96Wells) w: null};
+
+      // rows[0] is the header row; rows 1-8 are data rows A-H
+      for (var r = 1; r < rows.length && r <= 8; r++) {
+        final row = rows[r];
+        for (var c = 1; c < row.length && c <= 12; c++) {
+          final cellValue = row[c];
+          final well = wellName(r - 1, c - 1);
+          if (cellValue != null && cellValue.toString().isNotEmpty) {
+            final slatId = cellValue.toString();
+            plateMap[well] = slatId;
+            allPlacedIds.add(slatId);
+          }
+        }
+      }
+      plateAssignments[plateIndex] = plateMap;
+      parsedPlateNames[plateIndex] = pName;
+    }
+
+    // Rebuild duplicateGroups and counters in a single pass
+    final duplicateGroups = <String, Set<String>>{};
+    final duplicateCounters = <String, int>{};
+    for (var id in allPlacedIds) {
+      final base = baseSlatId(id);
+      if (isDuplicateSlatId(id)) {
+        duplicateGroups.putIfAbsent(base, () => {base});
+        duplicateGroups[base]!.add(id);
+        final suffix = int.tryParse(id.substring(id.indexOf('~') + 1)) ?? 0;
+        final current = duplicateCounters[base] ?? 0;
+        if (suffix > current) duplicateCounters[base] = suffix;
+      } else if (duplicateGroups.containsKey(base)) {
+        // Base ID placed without suffix but has duplicates — track it
+        duplicateGroups[base]!.add(id);
+      }
+    }
+
+    // Compute unassigned slats: all non-phantom design slat IDs not placed
+    final placedBaseIds = allPlacedIds.map(baseSlatId).toSet();
+    final sorted = sortSlatsForPlateAssignment(slats, layerMap);
+    final unassigned = sorted.where((e) => !placedBaseIds.contains(e.key)).map((e) => e.key).toList();
+
+    return PlateLayoutState(
+      unassignedSlats: unassigned,
+      plateAssignments: plateAssignments,
+      duplicateGroups: duplicateGroups,
+      duplicateCounters: duplicateCounters,
+      plateNames: parsedPlateNames,
+    );
+  }
+
   /// Creates a deep copy of this state.
   PlateLayoutState copy() {
     return PlateLayoutState(
@@ -328,6 +445,7 @@ class PlateLayoutState {
         for (var e in duplicateGroups.entries) e.key: Set<String>.from(e.value),
       },
       duplicateCounters: Map<String, int>.from(_duplicateCounters),
+      plateNames: Map<int, String>.from(plateNames),
     );
   }
 
@@ -466,6 +584,7 @@ class PlateLayoutState {
     if (targetBlock == null) {
       final newPlateIndex = plateAssignments.isEmpty ? 0 : (plateAssignments.keys.toList()..sort()).last + 1;
       plateAssignments[newPlateIndex] = {for (var w in _plate96Wells) w: null};
+      plateNames[newPlateIndex] = 'Plate';
       targetBlock = (plate: newPlateIndex, startRow: 0);
     }
 

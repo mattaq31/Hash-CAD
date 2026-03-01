@@ -6,6 +6,7 @@ import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/common_utilities.dart';
+import '../../echo_and_experimental_helpers/plate_layout_state.dart';
 import '../slat_undo_stack.dart';
 import '../shared_app_state.dart';
 import 'design_state_handle_link_mixin.dart';
@@ -88,6 +89,10 @@ mixin DesignStateContract on ChangeNotifier {
   Map<String, Cargo> get cargoPalette;
   set cargoPalette(Map<String, Cargo> value);
   PlateLibrary get plateStack;
+  PlateLayoutState? get echoPlateLayoutState;
+  set echoPlateLayoutState(PlateLayoutState? value);
+  bool get echoPlateLayoutFromImport;
+  set echoPlateLayoutFromImport(bool value);
 
   // === Methods from DesignStateCoreMixin ===
   void setHoverPreview(HoverPreview? preview);
@@ -105,7 +110,7 @@ mixin DesignStateContract on ChangeNotifier {
   void undo2DAction({bool redo = false});
 
   // === Methods from DesignStateFileIOMixin ===
-  void exportCurrentDesign();
+  void exportCurrentDesign(BuildContext context);
   void importNewDesign(BuildContext context, {String? fileName, Uint8List? fileBytes});
   void clearAll();
 

@@ -49,6 +49,12 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   bool _columnsThreeToTenOnly = false;
   bool _overwriteExisting = false;
 
+  // Experiment title
+  String _experimentTitle = 'Experiment';
+
+  /// Sorted plate indices for stable iteration.
+  List<int> get _sortedPlateKeys => _layoutState!.plateAssignments.keys.toList()..sort();
+
   // Group drag
   String? _groupDragAnchor;
   List<({int dRow, int dCol})>? _groupDragOffsets;
@@ -120,7 +126,14 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   void _initialize(DesignState appState) {
-    _layoutState = PlateLayoutState.fromSlats(appState.slats, appState.layerMap);
+    // Use persisted layout state if available, otherwise create fresh
+    if (appState.echoPlateLayoutState != null) {
+      _layoutState = appState.echoPlateLayoutState!.copy();
+      appState.echoPlateLayoutState = null;
+      appState.echoPlateLayoutFromImport = false;
+    } else {
+      _layoutState = PlateLayoutState.fromSlats(appState.slats, appState.layerMap);
+    }
     _wellKeys.clear();
     _selectedWells = {};
     _groupDragAnchor = null;
@@ -132,6 +145,24 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
   void _saveUndoState() {
     _undoStack.saveState(_layoutState!);
+    _syncLayoutToAppState();
+  }
+
+  /// Keeps appState's echo plate reference in sync (shares the same object — no deep copy).
+  /// Export calls exportPlateGrids() which only reads, so sharing is safe.
+  void _syncLayoutToAppState() {
+    final appState = context.read<DesignState>();
+    appState.echoPlateLayoutState = _layoutState;
+  }
+
+  /// Replaces the local layout with one freshly imported from a design file.
+  void _applyImportedLayout(DesignState appState) {
+    _layoutState = appState.echoPlateLayoutState!.copy();
+    appState.echoPlateLayoutFromImport = false;
+    _undoStack.clear();
+    _undoStack.saveState(_layoutState!);
+    _selectedWells.clear();
+    _wellKeys.clear();
   }
 
   void _performUndo() {
@@ -141,6 +172,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         _layoutState = restored;
         _selectedWells.clear();
       });
+      _syncLayoutToAppState();
     }
   }
 
@@ -151,6 +183,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         _layoutState = restored;
         _selectedWells.clear();
       });
+      _syncLayoutToAppState();
     }
   }
 
@@ -249,12 +282,109 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   Future<void> _exportPdf(DesignState appState) async {
-    final pdfBytes = await buildPlateLayoutPdf(_layoutState!.plateAssignments, appState.slats);
+    final pdfBytes = await buildPlateLayoutPdf(
+      _layoutState!.plateAssignments,
+      appState.slats,
+      plateNames: _layoutState!.plateNames,
+    );
     await saveFileBytes(
       pdfBytes,
       '${appState.designName}_plate_layout.pdf',
       'pdf',
     );
+  }
+
+  Future<void> _handleRenamePlate(int plateIndex) async {
+    final currentName = _layoutState!.plateName(plateIndex);
+    final controller = TextEditingController(text: currentName);
+    String? errorText;
+
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Rename Plate'),
+          content: TextField(
+            controller: controller,
+            maxLength: 25,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Plate name',
+              errorText: errorText,
+              helperText: 'a-z, 0-9, _ only',
+            ),
+            onChanged: (value) {
+              setDialogState(() {
+                if (value.isEmpty) {
+                  errorText = 'Name cannot be empty';
+                } else if (!PlateLayoutState.isValidPlateName(value)) {
+                  errorText = 'Only letters, numbers, and underscores';
+                } else {
+                  errorText = null;
+                }
+              });
+            },
+            onSubmitted: (value) {
+              if (PlateLayoutState.isValidPlateName(value)) {
+                Navigator.pop(ctx, value);
+              }
+            },
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final value = controller.text;
+                if (PlateLayoutState.isValidPlateName(value)) {
+                  Navigator.pop(ctx, value);
+                }
+              },
+              child: const Text('Rename'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (newName != null && newName != currentName) {
+      setState(() {
+        _layoutState!.renamePlate(plateIndex, newName);
+      });
+      _saveUndoState();
+    }
+  }
+
+  Future<void> _handleRenameExperiment() async {
+    final controller = TextEditingController(text: _experimentTitle);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename Experiment'),
+        content: TextField(
+          controller: controller,
+          maxLength: 40,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Experiment name'),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) Navigator.pop(ctx, value.trim());
+          },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(ctx, value);
+            },
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName != null && newName != _experimentTitle) {
+      setState(() => _experimentTitle = newName);
+    }
   }
 
   // --- Selection helpers ---
@@ -510,14 +640,19 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         actionState.echoPlateWindowActive && _layoutState != null && !_isCollapsed;
 
     if (!actionState.echoPlateWindowActive) {
-      // Sync when hidden so state is correct when reopened
-      _layoutState?.syncWithDesign(appState.slats, appState.layerMap);
+      // If a fresh import happened while hidden, replace the layout entirely
+      if (appState.echoPlateLayoutFromImport && appState.echoPlateLayoutState != null) {
+        _applyImportedLayout(appState);
+      }
       return const SizedBox.shrink();
     }
 
     if (_layoutState == null) {
       _initialize(appState);
       actionState.echoPlateUndoActive = true;
+    } else if (appState.echoPlateLayoutFromImport && appState.echoPlateLayoutState != null) {
+      // A fresh import happened while the echo window was open — replace layout
+      _applyImportedLayout(appState);
     } else {
       // Sync with design on every rebuild (picks up added/removed slats)
       _layoutState!.syncWithDesign(appState.slats, appState.layerMap);
@@ -556,6 +691,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
               PlateHeaderBar(
                 onClose: () => actionState.deactivateEchoPlateWindow(),
                 onExport: () => _exportPdf(appState),
+                experimentTitle: _experimentTitle,
+                onRenameExperiment: _handleRenameExperiment,
                 onToggleCollapse: () {
                   setState(() {
                     _isCollapsed = !_isCollapsed;
@@ -619,29 +756,35 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
               padding: const EdgeInsets.symmetric(horizontal: echoGridPadding, vertical: 12),
               child: Column(
                 children: [
-                  for (int p = 0; p < _layoutState!.plateAssignments.length; p++) ...[
-                    if (p > 0) const SizedBox(height: 20),
-                    PlateGrid(
-                      plateIndex: p,
-                      assignments: _layoutState!.plateAssignments[p]!,
-                      slats: appState.slats,
-                      layerMap: appState.layerMap,
-                      onWellToWell: _handleWellToWell,
-                      onSidebarToWell: _handleSidebarToWell,
-                      wellKeyFor: _keyFor,
-                      selectedWells: _effectiveSelectedWells(p),
-                      onWellClick: _handleWellClick,
-                      onWellRightClick: _handleWellRightClick,
-                      isGroupDragging: _groupDragAnchor != null,
-                      onGroupDragStart: _startGroupDrag,
-                      onGroupDragHover: _updateGroupDragHover,
-                      ghostStateFor: _ghostStateFor,
-                      isSourceWellDuringGroupDrag: _isSourceWellDuringGroupDrag,
-                      layoutState: _layoutState!,
-                      onRemovePlate: _layoutState!.plateAssignments.length > 1
-                          ? () => _handleRemovePlate(p)
-                          : null,
-                    ),
+                  for (var i = 0; i < _sortedPlateKeys.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 20),
+                    Builder(builder: (context) {
+                      final plateIndex = _sortedPlateKeys[i];
+                      return PlateGrid(
+                        plateIndex: plateIndex,
+                        assignments: _layoutState!.plateAssignments[plateIndex]!,
+                        slats: appState.slats,
+                        layerMap: appState.layerMap,
+                        onWellToWell: _handleWellToWell,
+                        onSidebarToWell: _handleSidebarToWell,
+                        wellKeyFor: _keyFor,
+                        selectedWells: _effectiveSelectedWells(plateIndex),
+                        onWellClick: _handleWellClick,
+                        onWellRightClick: _handleWellRightClick,
+                        isGroupDragging: _groupDragAnchor != null,
+                        onGroupDragStart: _startGroupDrag,
+                        onGroupDragHover: _updateGroupDragHover,
+                        ghostStateFor: _ghostStateFor,
+                        isSourceWellDuringGroupDrag: _isSourceWellDuringGroupDrag,
+                        layoutState: _layoutState!,
+                        plateName: _layoutState!.plateName(plateIndex),
+                        plateDisplayNumber: i + 1,
+                        onRenamePlate: () => _handleRenamePlate(plateIndex),
+                        onRemovePlate: _layoutState!.plateAssignments.length > 1
+                            ? () => _handleRemovePlate(plateIndex)
+                            : null,
+                      );
+                    }),
                   ],
                   const SizedBox(height: 16),
                   TextButton.icon(

@@ -27,6 +27,9 @@ class PlateGrid extends StatelessWidget {
   final bool Function(int plate, String well) isSourceWellDuringGroupDrag;
   final PlateLayoutState layoutState;
   final VoidCallback? onRemovePlate;
+  final String plateName;
+  final int plateDisplayNumber;
+  final VoidCallback? onRenamePlate;
 
   const PlateGrid({
     super.key,
@@ -46,7 +49,10 @@ class PlateGrid extends StatelessWidget {
     required this.ghostStateFor,
     required this.isSourceWellDuringGroupDrag,
     required this.layoutState,
+    required this.plateName,
+    required this.plateDisplayNumber,
     this.onRemovePlate,
+    this.onRenamePlate,
   });
 
   @override
@@ -63,12 +69,21 @@ class PlateGrid extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Plate ${plateIndex + 1}',
+                plateName,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(width: 4),
+              Text(
+                '($plateDisplayNumber)',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              ),
+              if (onRenamePlate != null) ...[
+                const SizedBox(width: 4),
+                _HoverableIconButton(onTap: onRenamePlate!, icon: Icons.edit, hoverColor: Colors.blue),
+              ],
               if (onRemovePlate != null) ...[
-                const SizedBox(width: 6),
-                _HoverableCloseButton(onTap: onRemovePlate!),
+                const SizedBox(width: 4),
+                _HoverableIconButton(onTap: onRemovePlate!, icon: Icons.close, hoverColor: Colors.red),
               ],
             ],
           ),
@@ -165,15 +180,17 @@ class PlateGrid extends StatelessWidget {
   }
 }
 
-class _HoverableCloseButton extends StatefulWidget {
+class _HoverableIconButton extends StatefulWidget {
   final VoidCallback onTap;
-  const _HoverableCloseButton({required this.onTap});
+  final IconData icon;
+  final Color hoverColor;
+  const _HoverableIconButton({required this.onTap, required this.icon, required this.hoverColor});
 
   @override
-  State<_HoverableCloseButton> createState() => _HoverableCloseButtonState();
+  State<_HoverableIconButton> createState() => _HoverableIconButtonState();
 }
 
-class _HoverableCloseButtonState extends State<_HoverableCloseButton> {
+class _HoverableIconButtonState extends State<_HoverableIconButton> {
   bool _hovering = false;
 
   @override
@@ -186,7 +203,7 @@ class _HoverableCloseButtonState extends State<_HoverableCloseButton> {
         onTap: widget.onTap,
         child: Padding(
           padding: const EdgeInsets.all(2),
-          child: Icon(Icons.close, size: 16, color: _hovering ? Colors.red : Colors.grey.shade400),
+          child: Icon(widget.icon, size: 16, color: _hovering ? widget.hoverColor : Colors.grey.shade400),
         ),
       ),
     );
