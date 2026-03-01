@@ -273,7 +273,7 @@ jobs:
         working-directory: .
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: hash-cad-${{ matrix.os }}
           path: |
