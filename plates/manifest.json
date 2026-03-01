@@ -1,0 +1,214 @@
+{
+  "plates": [
+    {
+      "name": "P3250_SW_antihandles",
+      "path": "assembly_plates/P3250_SW_antihandles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3251_CW_antihandles",
+      "path": "assembly_plates/P3251_CW_antihandles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3252_SW_antihandles",
+      "path": "assembly_plates/P3252_SW_antihandles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3533_SW_handles",
+      "path": "assembly_plates/P3533_SW_handles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3534_SW_handles",
+      "path": "assembly_plates/P3534_SW_handles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3535_SW_handles",
+      "path": "assembly_plates/P3535_SW_handles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3536_MA_h2_antihandles",
+      "path": "assembly_plates/P3536_MA_h2_antihandles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3537_MA_h2_antihandles",
+      "path": "assembly_plates/P3537_MA_h2_antihandles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3538_MA_h2_antihandles",
+      "path": "assembly_plates/P3538_MA_h2_antihandles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3601_MA_H5_handles_S1A",
+      "path": "assembly_plates/P3601_MA_H5_handles_S1A.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3602_MA_H5_handles_S1B",
+      "path": "assembly_plates/P3602_MA_H5_handles_S1B.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3603_MA_H5_handles_S1C",
+      "path": "assembly_plates/P3603_MA_H5_handles_S1C.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3604_MA_H2_antihandles_S1A",
+      "path": "assembly_plates/P3604_MA_H2_antihandles_S1A.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3605_MA_H2_antihandles_S1B",
+      "path": "assembly_plates/P3605_MA_H2_antihandles_S1B.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3606_MA_H2_antihandles_S1C",
+      "path": "assembly_plates/P3606_MA_H2_antihandles_S1C.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3649_MA_H5_handles_S1A",
+      "path": "assembly_plates/P3649_MA_H5_handles_S1A.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3650_MA_H5_handles_S1B",
+      "path": "assembly_plates/P3650_MA_H5_handles_S1B.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3651_MA_H5_handles_S1C",
+      "path": "assembly_plates/P3651_MA_H5_handles_S1C.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3652_MA_H5_handles_S2A",
+      "path": "assembly_plates/P3652_MA_H5_handles_S2A.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3653_MA_H5_handles_S2B",
+      "path": "assembly_plates/P3653_MA_H5_handles_S2B.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3654_MA_H5_handles_S2C",
+      "path": "assembly_plates/P3654_MA_H5_handles_S2C.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3655_MA_H2_antihandles_S1A",
+      "path": "assembly_plates/P3655_MA_H2_antihandles_S1A.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3656_MA_H2_antihandles_S1B",
+      "path": "assembly_plates/P3656_MA_H2_antihandles_S1B.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3657_MA_H2_antihandles_S1C",
+      "path": "assembly_plates/P3657_MA_H2_antihandles_S1C.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3658_MA_H2_antihandles_S2A",
+      "path": "assembly_plates/P3658_MA_H2_antihandles_S2A.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3659_MA_H2_antihandles_S2B",
+      "path": "assembly_plates/P3659_MA_H2_antihandles_S2B.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3660_MA_H2_antihandles_S2C",
+      "path": "assembly_plates/P3660_MA_H2_antihandles_S2C.xlsx",
+      "category": "assembly_plates"
+    },
+    {
+      "name": "P3510_SSW_cnt_patterning",
+      "path": "cargo_plates/P3510_SSW_cnt_patterning.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "P3518_MA_octahedron_patterning_v1",
+      "path": "cargo_plates/P3518_MA_octahedron_patterning_v1.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "P3628_SSW_plate",
+      "path": "cargo_plates/P3628_SSW_plate.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "P3837_SSW_fribourg_cnt_2",
+      "path": "cargo_plates/P3837_SSW_fribourg_cnt_2.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "sw_src004_pulldownhandles",
+      "path": "cargo_plates/sw_src004_pulldownhandles.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "sw_src005_antiNelsonQuimby_cc6hb_h2handles",
+      "path": "cargo_plates/sw_src005_antiNelsonQuimby_cc6hb_h2handles.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "sw_src007_nelson_quimby_bart_edna",
+      "path": "cargo_plates/sw_src007_nelson_quimby_bart_edna.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "sw_src010_nelson_quimby_bart_edna_maxed",
+      "path": "cargo_plates/sw_src010_nelson_quimby_bart_edna_maxed.xlsx",
+      "category": "cargo_plates"
+    },
+    {
+      "name": "sw_src002_slatcore",
+      "path": "flat_staple_plates/sw_src002_slatcore.xlsx",
+      "category": "flat_staple_plates"
+    },
+    {
+      "name": "sw_src009_control_max",
+      "path": "flat_staple_plates/sw_src009_control_max.xlsx",
+      "category": "flat_staple_plates"
+    },
+    {
+      "name": "P2854_CW_seed_plug_center",
+      "path": "seed_plates/P2854_CW_seed_plug_center.xlsx",
+      "category": "seed_plates"
+    },
+    {
+      "name": "P3339_JL_seed_plug_corner",
+      "path": "seed_plates/P3339_JL_seed_plug_corner.xlsx",
+      "category": "seed_plates"
+    },
+    {
+      "name": "P3555_SSW_combined_seeds",
+      "path": "seed_plates/P3555_SSW_combined_seeds.xlsx",
+      "category": "seed_plates"
+    },
+    {
+      "name": "P3621_SSW_seed_plug_center_8064",
+      "path": "seed_plates/P3621_SSW_seed_plug_center_8064.xlsx",
+      "category": "seed_plates"
+    },
+    {
+      "name": "P3643_MA_combined_seeds_8064",
+      "path": "seed_plates/P3643_MA_combined_seeds_8064.xlsx",
+      "category": "seed_plates"
+    }
+  ]
+}
