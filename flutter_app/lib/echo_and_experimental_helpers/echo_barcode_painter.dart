@@ -14,6 +14,16 @@ class HandleBarcodePainter extends CustomPainter {
     this.maxLength = 32,
   });
 
+  /// Blocked handles (value '0') should display as FLAT staples.
+  static String? _effectiveCategory(Map<String, dynamic>? handle) {
+    if (handle == null) return null;
+    final category = handle['category'] as String?;
+    if (category != null && handle['value'] == '0' && (category == 'ASSEMBLY_HANDLE' || category == 'ASSEMBLY_ANTIHANDLE')) {
+      return 'FLAT';
+    }
+    return category;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final rectWidth = size.width / maxLength;
@@ -26,7 +36,7 @@ class HandleBarcodePainter extends CustomPainter {
     // Top row: H2
     for (int i = 0; i < maxLength; i++) {
       final handle = h2Handles[i + 1];
-      final color = categoryColor(handle?['category'] as String?);
+      final color = categoryColor(_effectiveCategory(handle));
       final rect = Rect.fromLTWH(i * rectWidth, 0, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);
       canvas.drawRect(rect, linePaint);
@@ -35,7 +45,7 @@ class HandleBarcodePainter extends CustomPainter {
     // Bottom row: H5
     for (int i = 0; i < maxLength; i++) {
       final handle = h5Handles[i + 1];
-      final color = categoryColor(handle?['category'] as String?);
+      final color = categoryColor(_effectiveCategory(handle));
       final rect = Rect.fromLTWH(i * rectWidth, rowHeight, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);
       canvas.drawRect(rect, linePaint);

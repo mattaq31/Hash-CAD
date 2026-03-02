@@ -3,7 +3,7 @@ import '../crisscross_core/slats.dart';
 import 'echo_plate_constants.dart';
 import 'echo_plate_painters.dart';
 import 'echo_plate_well.dart';
-import 'plate_layout_state.dart' show PlateLayoutState, baseSlatId;
+import 'plate_layout_state.dart' show PlateLayoutState, WellConfig, baseSlatId;
 
 // ---------------------------------------------------------------------------
 // PlateGrid — renders one 96-well plate with chamfered borders
@@ -30,6 +30,8 @@ class PlateGrid extends StatelessWidget {
   final String plateName;
   final int plateDisplayNumber;
   final VoidCallback? onRenamePlate;
+  final bool showMetricView;
+  final Map<String, WellConfig>? plateWellConfigs;
 
   const PlateGrid({
     super.key,
@@ -53,6 +55,8 @@ class PlateGrid extends StatelessWidget {
     required this.plateDisplayNumber,
     this.onRemovePlate,
     this.onRenamePlate,
+    this.showMetricView = false,
+    this.plateWellConfigs,
   });
 
   @override
@@ -169,6 +173,9 @@ class PlateGrid extends StatelessWidget {
       ghostState: ghostState,
       isDimmedSource: isSource && isGroupDragging,
       isInDuplicateGroup: isInDupGroup,
+      showMetricView: showMetricView,
+      wellConfig: plateWellConfigs?[well],
+      slatType: slat?.slatType,
       onWellToWell: onWellToWell,
       onSidebarToWell: onSidebarToWell,
       onWellClick: () => onWellClick(plateIndex, well),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../crisscross_core/slats.dart';
 import 'echo_barcode_painter.dart';
 import 'echo_plate_constants.dart';
-import 'plate_layout_state.dart' show baseSlatId;
+import 'plate_layout_state.dart' show WellConfig, baseSlatId;
 
 // ---------------------------------------------------------------------------
 // WellWidget — renders a single well, accepts drags from sidebar + plates
@@ -25,6 +25,9 @@ class WellWidget extends StatefulWidget {
   final VoidCallback onGroupDragStart;
   final VoidCallback onGroupDragHover;
   final bool isInDuplicateGroup;
+  final bool showMetricView;
+  final WellConfig? wellConfig;
+  final String? slatType;
 
   const WellWidget({
     super.key,
@@ -37,6 +40,9 @@ class WellWidget extends StatefulWidget {
     required this.ghostState,
     required this.isDimmedSource,
     this.isInDuplicateGroup = false,
+    this.showMetricView = false,
+    this.wellConfig,
+    this.slatType,
     required this.onWellToWell,
     required this.onSidebarToWell,
     required this.onWellClick,
@@ -133,7 +139,7 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
       child: Stack(
         children: [
           Opacity(
-            opacity: widget.isDimmedSource ? 0.3 : opacity,
+            opacity: widget.isDimmedSource ? 0.3 : (widget.showMetricView && slat != null ? 0.2 : opacity),
             child: slat != null
                 ? Center(
                     child: Column(
@@ -177,12 +183,33 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
                       )
                     : null),
           ),
-          // Duplicate badge
+          // Duplicate badge (top-left)
           if (widget.isInDuplicateGroup && slat != null)
             Positioned(
               top: 1,
-              right: 1,
+              left: 1,
               child: Icon(Icons.copy, size: 10, color: Colors.grey.shade500),
+            ),
+          // Slat type label (top-right)
+          if (widget.slatType != null && slat != null)
+            Positioned(
+              top: 1,
+              right: 1,
+              child: Text(
+                widget.slatType!,
+                style: TextStyle(fontSize: 7, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+              ),
+            ),
+          // Metric view overlay
+          if (widget.showMetricView && slat != null && widget.wellConfig != null)
+            Positioned.fill(
+              child: Center(
+                child: Text(
+                  '${widget.wellConfig!.volume.toInt()}µL ${widget.wellConfig!.ratio.toInt()}x',
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
         ],
       ),

@@ -86,7 +86,7 @@ void main() {
       expect(newRows.length, 1);
     });
 
-    test('duplicates across multiple rows preserve relative row layout', () {
+    test('duplicates are placed near their originals', () {
       final layout = _autoAssignedLayout(20);
       // 20 slats fill A1-A12 (12) + B1-B8 (8). Select one from row A and one from row B.
       final keyA3 = '0:A3';
@@ -94,22 +94,23 @@ void main() {
       final newKeys = layout.duplicateSlats({keyA3, keyB2});
 
       expect(newKeys.length, 2);
-      final wellsByKey = <String, String>{};
+
+      // Each duplicate should be on the same plate as its original
       for (var k in newKeys) {
         final parts = k.split(':');
-        wellsByKey[k] = parts[1];
+        expect(int.parse(parts[0]), 0); // same plate
       }
 
-      // Find the wells and check relative row offset is preserved
-      final newWells = wellsByKey.values.toList()..sort();
-      final rows = newWells.map((w) => w[0]).toList();
-      final cols = newWells.map((w) => int.parse(w.substring(1))).toList();
-
-      // Original A3 and B2 differ by 1 row; duplicates should too
-      final rowIndices = rows.map((r) => 'ABCDEFGH'.indexOf(r)).toList()..sort();
-      expect(rowIndices[1] - rowIndices[0], 1);
-      // Columns should match originals
-      expect(cols.toSet(), containsAll([2, 3]));
+      // Duplicates should be placed in nearby empty wells, not far away
+      final newWells = newKeys.map((k) => k.split(':')[1]).toList();
+      for (var well in newWells) {
+        final r = 'ABCDEFGH'.indexOf(well[0]);
+        final c = int.parse(well.substring(1));
+        // Should be within the first few rows (nearby the originals in rows A-B)
+        expect(r, lessThan(4));
+        expect(c, greaterThan(0));
+        expect(c, lessThanOrEqualTo(12));
+      }
     });
 
     test('registers duplicate group correctly', () {

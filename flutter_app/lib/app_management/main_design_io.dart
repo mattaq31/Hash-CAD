@@ -408,9 +408,15 @@ void exportDesign(Map<String, Slat> slats,
       for (var r = 0; r < entry.value.grid.length; r++) {
         final row = entry.value.grid[r];
         for (var c = 0; c < row.length; c++) {
-          final style = (r == 0 || c == 0) ? echoHeaderStyle : echoDataStyle;
+          final isHeader = r == 0 || c == 0 || r == 10;
+          final style = isHeader ? echoHeaderStyle : echoDataStyle;
           _setCellValue(echoSheet, c, r, row[c], style: style);
         }
+      }
+      // Set column widths: label col narrow, data cols wide enough for IDs and config strings
+      echoSheet.setColumnWidth(0, 4.0);
+      for (var c = 1; c <= 12; c++) {
+        echoSheet.setColumnWidth(c, 16.0);
       }
     }
   }

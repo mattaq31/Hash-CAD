@@ -120,6 +120,8 @@ class PlateActionBar extends StatelessWidget {
   final VoidCallback onRemoveAll;
   final VoidCallback onDeleteSelected;
   final VoidCallback onDuplicateSelected;
+  final VoidCallback onConfigAll;
+  final VoidCallback onEditSelected;
   final bool hasSelection;
 
   const PlateActionBar({
@@ -127,6 +129,8 @@ class PlateActionBar extends StatelessWidget {
     required this.onRemoveAll,
     required this.onDeleteSelected,
     required this.onDuplicateSelected,
+    required this.onConfigAll,
+    required this.onEditSelected,
     required this.hasSelection,
   });
 
@@ -141,6 +145,29 @@ class PlateActionBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          TextButton.icon(
+            onPressed: onConfigAll,
+            icon: Icon(Icons.tune, size: 18, color: Colors.teal.shade700),
+            label: Text('Config All', style: TextStyle(fontSize: 12, color: Colors.teal.shade700)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: hasSelection ? onEditSelected : null,
+            icon: Icon(Icons.edit_note, size: 18, color: hasSelection ? Colors.teal.shade700 : Colors.grey),
+            label: Text('Edit Selected',
+                style: TextStyle(fontSize: 12, color: hasSelection ? Colors.teal.shade700 : Colors.grey)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 16),
           TextButton.icon(
             onPressed: hasSelection ? onDuplicateSelected : null,
             icon: Icon(Icons.copy, size: 18, color: hasSelection ? Colors.blue.shade700 : Colors.grey),
@@ -195,7 +222,10 @@ class PlateColorKeyBar extends StatelessWidget {
     ('Undefined', defaultCategoryColorHex),
   ];
 
-  const PlateColorKeyBar({super.key});
+  final bool showMetricView;
+  final VoidCallback onToggleMetricView;
+
+  const PlateColorKeyBar({super.key, required this.showMetricView, required this.onToggleMetricView});
 
   @override
   Widget build(BuildContext context) {
@@ -207,23 +237,69 @@ class PlateColorKeyBar extends StatelessWidget {
         border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < _entries.length; i++) ...[
-            if (i > 0) const SizedBox(width: 16),
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Color(_entries[i].$2),
-                borderRadius: BorderRadius.circular(2),
-                border: Border.all(color: Colors.grey.shade400, width: 0.5),
-              ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < _entries.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 16),
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Color(_entries[i].$2),
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: Colors.grey.shade400, width: 0.5),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(_entries[i].$1, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                ],
+              ],
             ),
-            const SizedBox(width: 4),
-            Text(_entries[i].$1, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-          ],
+          ),
+          _MetricViewToggle(active: showMetricView, onTap: onToggleMetricView),
         ],
+      ),
+    );
+  }
+}
+
+class _MetricViewToggle extends StatefulWidget {
+  final bool active;
+  final VoidCallback onTap;
+  const _MetricViewToggle({required this.active, required this.onTap});
+
+  @override
+  State<_MetricViewToggle> createState() => _MetricViewToggleState();
+}
+
+class _MetricViewToggleState extends State<_MetricViewToggle> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.active
+        ? Colors.teal.shade700
+        : (_hovering ? Colors.grey.shade600 : Colors.grey.shade400);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Tooltip(
+          message: widget.active ? 'Hide quantities' : 'Show quantities',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.active ? Icons.visibility : Icons.visibility_off, size: 16, color: color),
+              const SizedBox(width: 4),
+              Text('Material Quantities', style: TextStyle(fontSize: 11, color: color)),
+            ],
+          ),
+        ),
       ),
     );
   }

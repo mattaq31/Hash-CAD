@@ -94,7 +94,12 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
           final handles = side == 2 ? slat.h2Handles : slat.h5Handles;
           if (handles.containsKey(pos)) {
             final handle = handles[pos]!;
-            final category = handle['category'] as String?;
+            var category = handle['category'] as String?;
+            // Blocked handles (value '0') are effectively flat staples
+            if (category != null && handle['value'] == '0' &&
+                (category == 'ASSEMBLY_HANDLE' || category == 'ASSEMBLY_ANTIHANDLE')) {
+              category = 'FLAT';
+            }
             if (category != null && handle['sequence'] == null) {
               missing.putIfAbsent(category, () => []);
               missing[category]!.add((slatId: slat.id, position: pos, side: side));

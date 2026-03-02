@@ -44,7 +44,7 @@ List<Map<String, dynamic>> readDnaPlateMapping(Uint8List fileBytes) {
           rowData[key ?? ''] = value.value;
         }
         else {
-          throw Exception('Unsupported cell type: ${value.runtimeType}');
+          rowData[key ?? ''] = value.toString();
         }
       }
     }

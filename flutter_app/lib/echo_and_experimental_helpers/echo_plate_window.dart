@@ -11,6 +11,7 @@ import 'echo_plate_grid.dart';
 import 'echo_plate_pdf_export.dart';
 import 'echo_plate_sidebar.dart';
 import 'echo_plate_well.dart';
+import 'echo_well_config_dialog.dart';
 import 'plate_layout_state.dart';
 import 'plate_undo_stack.dart';
 
@@ -48,9 +49,13 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   // Auto-assign options
   bool _columnsThreeToTenOnly = false;
   bool _overwriteExisting = false;
+  bool _splitSlatTypes = false;
 
-  // Experiment title
-  String _experimentTitle = 'Experiment';
+  // Metric view toggle
+  bool _showMetricView = false;
+
+  // Dialog guard — suppresses keyboard shortcuts while a modal dialog is open
+  bool _dialogOpen = false;
 
   /// Sorted plate indices for stable iteration.
   List<int> get _sortedPlateKeys => _layoutState!.plateAssignments.keys.toList()..sort();
@@ -83,8 +88,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       setState(() => _modifierHeld = held);
     }
 
-    // Only consume undo/redo/delete when the echo window is active and not collapsed
-    final active = _layoutState != null && !_isCollapsed;
+    // Only consume undo/redo/delete when the echo window is active, not collapsed, and no dialog is open
+    final active = _layoutState != null && !_isCollapsed && !_dialogOpen;
 
     // Delete/Backspace to remove selected wells
     if (event is KeyDownEvent &&
@@ -214,7 +219,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       if (_overwriteExisting) {
         _layoutState!.removeAll(appState.slats, appState.layerMap);
       }
-      _layoutState!.autoAssign(appState.slats, appState.layerMap, columnsThreeToTenOnly: _columnsThreeToTenOnly);
+      _layoutState!.autoAssign(appState.slats, appState.layerMap,
+          columnsThreeToTenOnly: _columnsThreeToTenOnly, splitSlatTypes: _splitSlatTypes);
     });
     _saveUndoState();
   }
@@ -299,6 +305,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     final controller = TextEditingController(text: currentName);
     String? errorText;
 
+    _dialogOpen = true;
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -346,6 +353,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       ),
     );
 
+    _dialogOpen = false;
     if (newName != null && newName != currentName) {
       setState(() {
         _layoutState!.renamePlate(plateIndex, newName);
@@ -355,7 +363,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   Future<void> _handleRenameExperiment() async {
-    final controller = TextEditingController(text: _experimentTitle);
+    final controller = TextEditingController(text: _layoutState!.experimentTitle);
+    _dialogOpen = true;
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -382,9 +391,40 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       ),
     );
 
-    if (newName != null && newName != _experimentTitle) {
-      setState(() => _experimentTitle = newName);
+    _dialogOpen = false;
+    if (newName != null && newName != _layoutState!.experimentTitle) {
+      setState(() => _layoutState!.experimentTitle = newName);
+      _saveUndoState();
     }
+  }
+
+  Future<void> _handleConfigAll() async {
+    _dialogOpen = true;
+    final config = await showWellConfigDialog(context, title: 'Configure All Wells');
+    _dialogOpen = false;
+    if (config == null) return;
+    setState(() {
+      _layoutState!.applyConfigToAll(config);
+    });
+    _saveUndoState();
+  }
+
+  Future<void> _handleEditSelected() async {
+    if (_selectedWells.isEmpty) return;
+    // Pre-fill from first selected well's config
+    final firstKey = _selectedWells.first.split(':');
+    final firstPlate = int.parse(firstKey[0]);
+    final firstWell = firstKey[1];
+    final initial = _layoutState!.getWellConfig(firstPlate, firstWell);
+
+    _dialogOpen = true;
+    final config = await showWellConfigDialog(context, title: 'Edit Selected Wells', initial: initial);
+    _dialogOpen = false;
+    if (config == null) return;
+    setState(() {
+      _layoutState!.applyConfigToSelected(_selectedWells, config);
+    });
+    _saveUndoState();
   }
 
   // --- Selection helpers ---
@@ -691,7 +731,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
               PlateHeaderBar(
                 onClose: () => actionState.deactivateEchoPlateWindow(),
                 onExport: () => _exportPdf(appState),
-                experimentTitle: _experimentTitle,
+                experimentTitle: _layoutState!.experimentTitle,
                 onRenameExperiment: _handleRenameExperiment,
                 onToggleCollapse: () {
                   setState(() {
@@ -707,6 +747,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                   onRemoveAll: () => _handleRemoveAll(appState),
                   onDeleteSelected: _handleDeleteSelected,
                   onDuplicateSelected: _handleDuplicateSelected,
+                  onConfigAll: _handleConfigAll,
+                  onEditSelected: _handleEditSelected,
                   hasSelection: _selectedWells.isNotEmpty,
                 ),
                 Expanded(
@@ -722,6 +764,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         onColumnsThreeToTenOnlyChanged: (v) => setState(() => _columnsThreeToTenOnly = v),
                         overwriteExisting: _overwriteExisting,
                         onOverwriteExistingChanged: (v) => setState(() => _overwriteExisting = v),
+                        splitSlatTypes: _splitSlatTypes,
+                        onSplitSlatTypesChanged: (v) => setState(() => _splitSlatTypes = v),
                       ),
                       const VerticalDivider(width: 1, thickness: 1),
                       Expanded(
@@ -730,7 +774,10 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                     ],
                   ),
                 ),
-                const PlateColorKeyBar(),
+                PlateColorKeyBar(
+                  showMetricView: _showMetricView,
+                  onToggleMetricView: () => setState(() => _showMetricView = !_showMetricView),
+                ),
               ],
             ],
           ),
@@ -783,6 +830,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         onRemovePlate: _layoutState!.plateAssignments.length > 1
                             ? () => _handleRemovePlate(plateIndex)
                             : null,
+                        showMetricView: _showMetricView,
+                        plateWellConfigs: _layoutState!.wellConfigs[plateIndex],
                       );
                     }),
                   ],

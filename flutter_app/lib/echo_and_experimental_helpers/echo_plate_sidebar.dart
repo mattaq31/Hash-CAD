@@ -17,6 +17,8 @@ class SlatSidebar extends StatelessWidget {
   final ValueChanged<bool> onColumnsThreeToTenOnlyChanged;
   final bool overwriteExisting;
   final ValueChanged<bool> onOverwriteExistingChanged;
+  final bool splitSlatTypes;
+  final ValueChanged<bool> onSplitSlatTypesChanged;
 
   const SlatSidebar({
     super.key,
@@ -29,6 +31,8 @@ class SlatSidebar extends StatelessWidget {
     required this.onColumnsThreeToTenOnlyChanged,
     required this.overwriteExisting,
     required this.onOverwriteExistingChanged,
+    required this.splitSlatTypes,
+    required this.onSplitSlatTypesChanged,
   });
 
   @override
@@ -89,6 +93,26 @@ class SlatSidebar extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text('Overwrite', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.only(left: 30, right: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Checkbox(
+                    value: splitSlatTypes,
+                    onChanged: (v) => onSplitSlatTypesChanged(v ?? false),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text('Split types', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
               ],
             ),
           ),
