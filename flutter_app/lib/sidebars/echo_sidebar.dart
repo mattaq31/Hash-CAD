@@ -10,6 +10,7 @@ import '../app_management/app_preferences.dart';
 import '../crisscross_core/handle_plates.dart';
 import '../dialogs/alert_window.dart' show displayPlateInfo;
 import '../app_management/action_state.dart';
+import '../echo_and_experimental_helpers/echo_plate_constants.dart' show slatDisplayName;
 
 class EchoTools extends StatefulWidget {
   const EchoTools({super.key});
@@ -103,11 +104,11 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
             }
             if (category != null && handle['sequence'] == null) {
               missing.putIfAbsent(category, () => []);
-              missing[category]!.add((slatId: slat.id, position: pos, side: side));
+              missing[category]!.add((slatId: slatDisplayName(slat, appState.layerMap), position: pos, side: side));
             }
           } else {
             // No handle at this position — needs a FLAT staple
-            missing['FLAT']!.add((slatId: slat.id, position: pos, side: side));
+            missing['FLAT']!.add((slatId: slatDisplayName(slat, appState.layerMap), position: pos, side: side));
           }
         }
       }

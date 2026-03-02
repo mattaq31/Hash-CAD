@@ -156,6 +156,7 @@ class SlatSidebar extends StatelessWidget {
                       return SidebarSlatTile(
                         slatId: slatId,
                         slat: slat,
+                        displayName: slatDisplayName(slat, layerMap),
                         designColor: designColorFor(slat, layerMap),
                       );
                     },
@@ -177,9 +178,10 @@ class SlatSidebar extends StatelessWidget {
 class SidebarSlatTile extends StatelessWidget {
   final String slatId;
   final Slat slat;
+  final String displayName;
   final Color? designColor;
 
-  const SidebarSlatTile({super.key, required this.slatId, required this.slat, this.designColor});
+  const SidebarSlatTile({super.key, required this.slatId, required this.slat, required this.displayName, this.designColor});
 
   Widget _buildTileContent({double opacity = 1.0}) {
     final borderColor = designColor ?? Colors.grey.shade300;
@@ -198,7 +200,7 @@ class SidebarSlatTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              slatId.replaceFirst('-I', '-'),
+              displayName,
               style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,

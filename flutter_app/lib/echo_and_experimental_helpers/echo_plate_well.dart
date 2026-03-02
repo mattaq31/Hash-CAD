@@ -11,6 +11,7 @@ import 'plate_layout_state.dart' show WellConfig, baseSlatId;
 class WellWidget extends StatefulWidget {
   final String wellName;
   final String? slatId;
+  final String? displayName;
   final Slat? slat;
   final int plateIndex;
   final Color? designColor;
@@ -33,6 +34,7 @@ class WellWidget extends StatefulWidget {
     super.key,
     required this.wellName,
     required this.slatId,
+    this.displayName,
     required this.slat,
     required this.plateIndex,
     required this.designColor,
@@ -125,8 +127,7 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
       }
     }
 
-    // Strip ~N suffix for display
-    final displayId = slatId != null ? baseSlatId(slatId).replaceFirst('-I', '-') : '';
+    final displayId = widget.displayName ?? (slatId != null ? baseSlatId(slatId).replaceFirst('-I', '-') : '');
 
     return Container(
       width: echoWellWidth,
@@ -171,7 +172,7 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
                         opacity: 0.5,
                         child: Center(
                           child: Text(
-                            baseSlatId(widget.ghostState!.ghostSlatId!).replaceFirst('-I', '-'),
+                            widget.displayName ?? baseSlatId(widget.ghostState!.ghostSlatId!).replaceFirst('-I', '-'),
                             style: TextStyle(
                               fontSize: 8,
                               fontWeight: FontWeight.w600,

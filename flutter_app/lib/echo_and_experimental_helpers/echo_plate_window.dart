@@ -292,6 +292,10 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _layoutState!.plateAssignments,
       appState.slats,
       plateNames: _layoutState!.plateNames,
+      wellConfigs: _layoutState!.wellConfigs,
+      duplicateGroups: _layoutState!.duplicateGroups,
+      layerMap: appState.layerMap,
+      experimentTitle: _layoutState!.experimentTitle,
     );
     await saveFileBytes(
       pdfBytes,

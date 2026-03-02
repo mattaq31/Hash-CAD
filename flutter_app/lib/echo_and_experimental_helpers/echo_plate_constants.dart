@@ -30,3 +30,12 @@ Color? designColorFor(Slat? slat, Map<String, Map<String, dynamic>> layerMap) {
   if (slat == null) return null;
   return slat.uniqueColor ?? layerMap[slat.layer]?['color'] as Color?;
 }
+
+/// Returns a human-readable display name for a slat in the format `L{layer}-{number}`.
+///
+/// The layer number is 1-indexed (derived from the layer's `order` field in [layerMap]).
+/// For example, a slat with `numericID` 9 on the second layer (order 1) becomes `L2-9`.
+String slatDisplayName(Slat slat, Map<String, Map<String, dynamic>> layerMap) {
+  final layerOrder = (layerMap[slat.layer]?['order'] as int? ?? 0) + 1;
+  return 'L$layerOrder-${slat.numericID}';
+}
