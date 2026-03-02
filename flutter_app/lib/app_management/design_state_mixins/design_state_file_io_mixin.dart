@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/seed.dart';
 import '../../echo_and_experimental_helpers/plate_layout_state.dart';
 import '../main_design_io.dart';
@@ -210,6 +211,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
       replacedPlateCount = plateStack.plates.length;
       plateStack.clear();
       plateStack.readPlatesFromRawData(result.inputPlateData!);
+      syncCargoFromPlates(plateStack, cargoPalette);
     }
 
     updateDesignHammingValue();

@@ -3,6 +3,7 @@
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import '../app_management/design_io_constants.dart';
+import 'cargo.dart';
 
 
 String sanitizePlateMap(String name) {
@@ -162,6 +163,31 @@ class PlateLibrary {
     globalConcentrations.clear();
   }
 
+  /// Returns unique cargo IDs found across all loaded plates.
+  Set<String> get allCargoIds {
+    final ids = <String>{};
+    for (final key in globalSequences.keys) {
+      if (key.startsWith('CARGO|')) {
+        // Key format: CARGO|position|side|cargoName
+        ids.add(key.split('|')[3]);
+      }
+    }
+    return ids;
+  }
+}
+
+/// Adds any cargo IDs found in [plateLibrary] that are missing from [cargoPalette].
+void syncCargoFromPlates(PlateLibrary plateLibrary, Map<String, Cargo> cargoPalette) {
+  for (final cargoId in plateLibrary.allCargoIds) {
+    if (!cargoPalette.containsKey(cargoId)) {
+      final colorIndex = (cargoPalette.length - 1) % qualitativeCargoColors.length;
+      cargoPalette[cargoId] = Cargo(
+        name: cargoId,
+        shortName: generateShortName(cargoId),
+        color: qualitativeCargoColors[colorIndex],
+      );
+    }
+  }
 }
 
 class HashCadPlate {

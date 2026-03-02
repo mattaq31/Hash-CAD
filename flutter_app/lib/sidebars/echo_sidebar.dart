@@ -69,6 +69,7 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
     if (plateFiles.isNotEmpty) {
       final replacedCount = plateNames.where((n) => existingPlateNames.contains(n)).length;
       appState.plateStack.readPlates(plateFiles, plateNames);
+      syncCargoFromPlates(appState.plateStack, appState.cargoPalette);
       appState.notifyListeners();
       if (context.mounted) {
         final msg = replacedCount > 0
@@ -270,10 +271,9 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
           constraints: BoxConstraints(
             maxHeight: appState.plateStack.plates.isEmpty
                 ? 20
-                : min(
-                    // Cap at ~6 collapsed tiles (each ~56px)
-                    6 * 56.0,
-                    appState.plateStack.plates.length * 56.0),
+                : appState.plateStack.plates.length <= 6
+                    ? double.infinity
+                    : 6 * 72.0, // Cap at ~6 collapsed tiles
           ),
           child: appState.plateStack.plates.isEmpty
               ? Center(

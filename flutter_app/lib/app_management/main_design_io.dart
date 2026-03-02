@@ -82,16 +82,6 @@ class ParsedDesignResult {
 
 final Random _rand = Random();
 
-final List<Color> qualitativeCargoColors = [
-  Color(0xFF1B9E77), // Teal
-  Color(0xFFD95F02), // Orange/
-  Color(0xFF7570B3), // Purple
-  Color(0xFFE7298A), // Pink
-  Color(0xFF66A61E), // Green
-  Color(0xFFE6AB02), // Mustard
-  Color(0xFFA6761D), // Brown
-  Color(0xFF0034FF), // Blue
-];
 
 Future<String?> selectSaveLocation(String defaultFileName) async {
   String? filePath = await FilePicker.platform.saveFile(

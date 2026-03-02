@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../crisscross_core/handle_plates.dart';
 import '../main_design_io.dart';
 import 'design_state_contract.dart';
 
@@ -9,6 +10,7 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
   @override
   void importPlates() async {
     await importPlatesFromFile(plateStack);
+    syncCargoFromPlates(plateStack, cargoPalette);
 
     // TODO: if plate already exists, show warning dialog
     // TODO: how to handle identical wells
