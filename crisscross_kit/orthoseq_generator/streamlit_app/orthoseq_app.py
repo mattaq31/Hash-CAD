@@ -1,4 +1,5 @@
 if __name__ == "__main__":
+    from pathlib import Path
     import streamlit as st
     from orthoseq_generator import helper_functions as hf
     from orthoseq_generator import sequence_computations as sc
@@ -36,10 +37,8 @@ if __name__ == "__main__":
     # 3. Sidebar: Global Settings
     st.sidebar.header("Global Settings")
     st.sidebar.subheader("Sequence Layout")
-    st.sidebar.image(
-        "crisscross_kit/orthoseq_generator/streamlit_app/graphics/on_target.png",
-        width='content'
-    )
+    graphic_path = Path(__file__).with_name("graphics") / "on_target.png"
+    st.sidebar.image(str(graphic_path), width="content")
 
     def _validate_dna_extension(label, value):
         cleaned = value.strip()
