@@ -62,7 +62,7 @@ def render_exploratory_tab(registry_factory, nupack_params):
         "Sample Size",
         min_value=10, 
         max_value=1000, 
-        value=50, 
+        value=st.session_state.pilot_size,
         key="pilot_size", 
         disabled=st.session_state.busy
     )

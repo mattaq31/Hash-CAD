@@ -1,7 +1,7 @@
 """
 Purpose:
     Compute NUPACK on-target and off-target energies for short sequences and
-    save results to PKL for downstream analysis.
+    save noflank_results to PKL for downstream analysis.
 
     This script does no plotting and no graph/selection logic.
 """
@@ -82,7 +82,7 @@ def run_compute_short_seq(
         "nupack_params": dict(hf.NUPACK_PARAMS),
     }
 
-    # Write results to disk.
+    # Write noflank_results to disk.
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         out_path = os.path.join(output_dir, f"{out_prefix}_subset.pkl")
@@ -97,7 +97,8 @@ def run_compute_short_seq(
 
 if __name__ == "__main__":
     # Minimal defaults for manual runs.
-    OUTPUT_DIR = "results"
+    SCRIPT_DIR = os.path.dirname(__file__)
+    OUTPUT_DIR = os.path.join(SCRIPT_DIR, "data", "noflank_results")
     LENGTHS = [7]
     RANGE_SIGMAS = [1.0]
 

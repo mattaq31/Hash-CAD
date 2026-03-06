@@ -158,27 +158,27 @@ def get_library_path():
 def get_default_results_folder():
 
     """
-    Returns the default path to the 'results' folder where output files containing the generated sequence pairs are saved.
+    Returns the default path to the 'noflank_results' folder where output files containing the generated sequence pairs are saved.
 
     Description
     -----------
-    The results directory is created automatically if it does not exist.  
+    The noflank_results directory is created automatically if it does not exist.
     The path is based on the current working directory from which the script was executed.
     
 
-    :returns: Absolute path to the 'results' directory.
+    :returns: Absolute path to the 'noflank_results' directory.
     :rtype: str
     """
     
     
     base_dir = os.getcwd()  # Directory from which the script was executed
-    folder_path = os.path.join(base_dir, "results")
+    folder_path = os.path.join(base_dir, "noflank_results")
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
 def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
     """
-    Saves a list of DNA sequence pairs to a plain text file in the default results folder.
+    Saves a list of DNA sequence pairs to a plain text file in the default noflank_results folder.
 
     Description
     -----------
@@ -218,19 +218,19 @@ def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
 
 def load_sequence_pairs_from_txt(filename,use_default_results_folder=True):
     """
-    Loads DNA sequence pairs from a plain text file in the default results folder.
+    Loads DNA sequence pairs from a plain text file in the default noflank_results folder.
 
     Description
     -----------
     Reads a tab-separated text file where each line contains a sequence and its
-    reverse complement. The file is located in the results directory returned by
+    reverse complement. The file is located in the noflank_results directory returned by
     `get_default_results_folder()`.
 
     :param filename: Name of the text file to load.
     :type filename: str
 
     :param use_default_results_folder: If True, interpret `filename` relative to the
-                                       default results folder; otherwise treat it as
+                                       default noflank_results folder; otherwise treat it as
                                        an absolute or relative path.
     :type use_default_results_folder: bool
 

@@ -73,22 +73,22 @@ if __name__ == "__main__":
     random.seed(RANDOM_SEED)
     hf.set_nupack_params(material='dna', celsius=37, sodium=0.050, magnesium=0.025)
     # 2) Registry that generates candidate sequence pairs on demand
-    seqwalk_cores = design.max_size(20, 8, alphabet="ACGT")
+    #seqwalk_cores = design.max_size(20, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=20,
-        fivep_ext="",
+        length=10,
+        fivep_ext="TTTT",
         threep_ext="",
         unwanted_substrings=[],
         apply_unwanted_to="core",
         seed=RANDOM_SEED,
-        preselected_cores=seqwalk_cores,
+        preselected_cores=None,
     )
 
     # 3) Energy thresholds (use values established during pilot analysis)
-    max_ontarget = -23
-    min_ontarget = -25
-    offtarget_limit = -8.0
-    self_energy_limit = -1.25
+    max_ontarget = -12.5
+    min_ontarget = -14.5
+    offtarget_limit = -7.9
+    self_energy_limit = -0.5
 
     # 4) Configure cache and NUPACK parameters
     hf.choose_precompute_library("naive_search.pkl")
@@ -161,7 +161,7 @@ if __name__ == "__main__":
                 f"(attempt {attempts}, on={on_energy:.2f})"
             )
     except KeyboardInterrupt:
-        print("\nInterrupted. Saving current results...")
+        print("\nInterrupted. Saving current noflank_results...")
 
     elapsed_s = time.time() - start_time
     print(

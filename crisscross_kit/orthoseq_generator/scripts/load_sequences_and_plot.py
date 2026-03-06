@@ -22,7 +22,7 @@ from orthoseq_generator import sequence_computations as sc
 
 if __name__ == "__main__":
     # 1) Load sequence pairs from file (make sure the correct file name is provided). 
-    # The file needs to be located in the results folder. This is where run_sequence_search script saves it. 
+    # The file needs to be located in the noflank_results folder. This is where run_sequence_search script saves it.
     sequence_pairs = hf.load_sequence_pairs_from_txt('the_new_64_seq.txt')
 
     # 2) Optional: Enable precomputed energy cache for faster performance
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # 4) Compute off-target energies (cross-hybridization)
     off_e = sc.compute_offtarget_energies(sequence_pairs)
 
-    # 5) Plot histograms and save results
+    # 5) Plot histograms and save noflank_results
     stats = sc.plot_on_off_target_histograms(
         on_e,
         off_e,

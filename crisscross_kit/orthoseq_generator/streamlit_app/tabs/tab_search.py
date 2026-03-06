@@ -5,7 +5,7 @@ import time
 import os
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator import helper_functions as hf
-from orthoseq_generator.vertex_cover_algorithms import evolutionary_vertex_cover
+from orthoseq_generator.search_algorithm import hybrid_search
 from orthoseq_generator.streamlit_app import plotly_utils as pu
 
 def _search_worker(
@@ -14,21 +14,29 @@ def _search_worker(
     max_on,
     min_on,
     self_energy_limit,
-    subsetsize,
+    init_subsetsize,
     generations,
+    vc_multistart,
+    vc_max_iterations,
+    max_nupack_calls,
+    history_subset_scale,
     stop_event,
     out_q,
 ):
     start_time = time.time()
     try:
-        res = evolutionary_vertex_cover(
+        res = hybrid_search(
             registry,
             offtarget_limit,
             max_on,
             min_on,
             self_energy_limit,
-            subsetsize=subsetsize,
+            init_subsetsize=init_subsetsize,
             generations=generations,
+            vc_multistart=vc_multistart,
+            vc_max_iterations=vc_max_iterations,
+            max_nupack_calls=max_nupack_calls,
+            history_subset_scale=history_subset_scale,
             stop_event=stop_event
         )
         if not res:
@@ -52,17 +60,52 @@ def render_search_tab(registry_factory, nupack_params):
 
     # Inputs (locked while running)
     st.number_input(
-        "Number of New Sequence Pairs per Generation",
-        value=175,
-        key="subset_size_search",
-        disabled=st.session_state.search_running
-    )
-    st.number_input(
         "Number of Generations",
-        value=50,
+        value=st.session_state.generations,
         key="generations",
         disabled=st.session_state.search_running
     )
+
+    with st.expander("Advanced Search Parameters", expanded=False):
+        st.number_input(
+            "Initial Subset Size",
+            min_value=1,
+            value=st.session_state.subset_size_search,
+            key="subset_size_search",
+            disabled=st.session_state.search_running,
+            help="Number of fresh candidate pairs requested before preserved history pairs are re-added."
+        )
+        st.number_input(
+            "Vertex-Cover Multistart",
+            min_value=1,
+            value=st.session_state.search_vc_multistart,
+            key="search_vc_multistart",
+            disabled=st.session_state.search_running,
+        )
+        st.number_input(
+            "Vertex-Cover Max Iterations",
+            min_value=1,
+            value=st.session_state.search_vc_max_iterations,
+            key="search_vc_max_iterations",
+            disabled=st.session_state.search_running,
+        )
+        st.number_input(
+            "Max NUPACK Calls",
+            min_value=1,
+            value=st.session_state.search_max_nupack_calls,
+            key="search_max_nupack_calls",
+            disabled=st.session_state.search_running,
+            help="Per-generation budget for direct NUPACK computations during subset selection."
+        )
+        st.number_input(
+            "History Subset Scale",
+            min_value=0.0,
+            value=st.session_state.search_history_subset_scale,
+            step=0.1,
+            key="search_history_subset_scale",
+            disabled=st.session_state.search_running,
+            help="If history is non-empty, the next requested fresh subset size becomes int(history_size * this value)."
+        )
 
     col1, col2 = st.columns(2)
     final_analysis_pending = (
@@ -124,8 +167,12 @@ def render_search_tab(registry_factory, nupack_params):
         max_on = float(st.session_state.max_ontarget)
         min_on = float(st.session_state.min_ontarget)
         self_energy_limit = float(st.session_state.self_energy_limit)
-        subsetsize = int(st.session_state.subset_size_search)
+        init_subsetsize = int(st.session_state.subset_size_search)
         generations_ = int(st.session_state.generations)
+        vc_multistart = int(st.session_state.search_vc_multistart)
+        vc_max_iterations = int(st.session_state.search_vc_max_iterations)
+        max_nupack_calls = int(st.session_state.search_max_nupack_calls)
+        history_subset_scale = float(st.session_state.search_history_subset_scale)
         stop_event = st.session_state.stop_event
         out_q = st.session_state.search_queue
         st.session_state.search_running = True
@@ -138,8 +185,12 @@ def render_search_tab(registry_factory, nupack_params):
                 max_on,
                 min_on,
                 self_energy_limit,
-                subsetsize,
+                init_subsetsize,
                 generations_,
+                vc_multistart,
+                vc_max_iterations,
+                max_nupack_calls,
+                history_subset_scale,
                 stop_event,
                 out_q,
             ),

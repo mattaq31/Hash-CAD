@@ -242,7 +242,7 @@ t0_map = fit["t0_map"]
 q_map = fit["q_map"]
 
 print("==================================================")
-print("Global fit results (t0 shared within each sample_base):")
+print("Global fit noflank_results (t0 shared within each sample_base):")
 for b in fit["sample_bases"]:
     print(f"  {b}: t0 = {t0_map[b]:.6g} µs")
 print("  Converged:", fit["opt"].success, "-", fit["opt"].message)

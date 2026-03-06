@@ -15,7 +15,7 @@ def compute_hamming(handle_dict, antihandle_dict, valid_product_indices, slat_le
     :param antihandle_dict: Dictionary of antihandles i.e. {slat_id: slat_antihandle_array}
     :param valid_product_indices: A list of indices matching the possible products that should be computed (i.e. if a product is not being requested, the index should be False)
     :param slat_length: The length of a single slat (must be an integer)
-    :return: Array of results for each possible combination (a single integer per combination)
+    :return: Array of noflank_results for each possible combination (a single integer per combination)
     """
     single_combo = 4 * slat_length
     total_combos = single_combo * sum(valid_product_indices)
@@ -63,7 +63,7 @@ def compute_hamming2(handle_dict, antihandle_dict, valid_product_indices, slat_l
     :param antihandle_dict: Dictionary of antihandles i.e. {slat_id: slat_antihandle_array}
     :param valid_product_indices: A list of indices matching the possible products that should be computed (i.e. if a product is not being requested, the index should be False)
     :param slat_length: The length of a single slat (must be an integer)
-    :return: Array of results for each possible combination (a single integer per combination)
+    :return: Array of noflank_results for each possible combination (a single integer per combination)
     """
     single_combo = 4 * slat_length
     total_combos = single_combo * sum(valid_product_indices)

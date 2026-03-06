@@ -54,15 +54,15 @@ if __name__ == "__main__":
     max_ontarget = -23
     min_ontarget = -25
     hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
-    subset, indices, success_rate = sc.select_subset_in_energy_range(
+    subset, indices, _, _ = sc.select_subset_in_energy_range(
         sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,
         self_energy_min=-1.25,
         max_size=50,
-        Use_Library=False
+        Use_Library=False,
+        timeout_s=20,
     )
-    print(f"Selection success rate: {success_rate:.3f}")
 
     # 5) Compute on-target energies for the restricted subset
     on_e_subset,self_e_A,self_e_B = sc.compute_ontarget_energies(subset)

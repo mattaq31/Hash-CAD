@@ -7,6 +7,10 @@ R_KCAL = 1.98720425864083e-3
 RHO_H2O = 55.14
 
 
+def _store_selection_helper_conc_nm():
+    st.session_state.selection_helper_conc_nm = st.session_state._selection_helper_conc_nm
+
+
 def _solve_ab_equilibrium(a0, b0, kc):
     a = kc
     b = -(kc * (a0 + b0) + 1.0)
@@ -101,13 +105,17 @@ def render_selection_helper_tab(nupack_params):
 
     )
 
+    if "selection_helper_conc_nm" not in st.session_state:
+        st.session_state.selection_helper_conc_nm = 1000.0
+    st.session_state._selection_helper_conc_nm = st.session_state.selection_helper_conc_nm
+
     conc_nm = st.number_input(
         "Strand concentrations (nM)",
         min_value=0.0,
-        value=1000.0,
         step=10.0,
         format="%.1f",
-        key="selection_helper_conc_nm",
+        key="_selection_helper_conc_nm",
+        on_change=_store_selection_helper_conc_nm,
         disabled=st.session_state.busy,
     )
 

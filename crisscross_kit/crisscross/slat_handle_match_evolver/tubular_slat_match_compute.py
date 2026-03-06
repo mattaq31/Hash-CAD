@@ -82,7 +82,7 @@ def oneshot_hamming_compute(handle_dict, antihandle_dict, slat_length):
     :param handle_dict: Dictionary of handles i.e. {slat_id: slat_handle_array}
     :param antihandle_dict: Dictionary of antihandles i.e. {slat_id: slat_antihandle_array}
     :param slat_length: The length of a single slat (must be an integer)
-    :return: Array of results for each possible combination (a single integer per combination)
+    :return: Array of noflank_results for each possible combination (a single integer per combination)
     """
 
     handles = np.array(list(handle_dict.values()))
@@ -135,7 +135,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
     Given a slat and handle array, this function computes the hamming distance of all handle/antihandle combinations provided.
     Scores for individual components, such as specific slat groups, can also be requested.
     Note: This function is our current fastest implementation. Due to its optimization, it cannot be instructed to
-    compute lesser combinations of slats in the design - it will compute all hamming results at once.
+    compute lesser combinations of slats in the design - it will compute all hamming noflank_results at once.
 
     Implementation comment:  Requesting the similarity score requires that more hamming combinations are computed.
     This will of course slow down the function by a factor of 3 (approx).  We tried to reduce this speed loss by
@@ -257,7 +257,7 @@ def multirule_oneshot_hamming(slat_array, handle_array,
             antihandle_matrix_indices = np.array([antihandle_ordered_list_partial.index((x,y)) for x,y in slat_dict["antihandles"].keys()], dtype=np.uint16)
             score_dict[group_key] = np.min([hamming_results_partial[group_key][hID, ahID, :] for hID, ahID in product(handle_matrix_indices, antihandle_matrix_indices)])
 
-    # Precomputes match histogram (based on oneshot results computed above)
+    # Precomputes match histogram (based on oneshot noflank_results computed above)
     if return_match_histogram:
         matches = -(hamming_results - slat_length)
         flat_matches = matches.flatten()
@@ -278,7 +278,7 @@ def precise_hamming_compute(handle_dict, antihandle_dict, valid_product_indices,
     :param valid_product_indices: A list of indices matching the possible
     products that should be computed (i.e. if a product is not being requested, the index should be False)
     :param slat_length: The length of a single slat (must be an integer)
-    :return: Array of results for each possible combination (a single integer per combination)
+    :return: Array of noflank_results for each possible combination (a single integer per combination)
     """
     single_combo = 4 * slat_length
     total_combos = single_combo * sum(valid_product_indices)
