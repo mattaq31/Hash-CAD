@@ -3,7 +3,7 @@
 Purpose:
     Load a previously saved subset of 7-mer sequence pairs and their off-target energies,
     build the interaction graph, run the iterative vertex-cover heuristic to extract an
-    independent set (orthogonal sequences), and save the results.
+    independent set (orthogonal sequences), and save the noflank_results.
 
 Main Steps:
     1. Fix the random seed for reproducibility.
@@ -21,7 +21,7 @@ from orthoseq_generator import vertex_cover_algorithms as vca
 import pickle
 
 if __name__ == "__main__":
-    # 1) Reproducibility: fix the RNG for consistent results
+    # 1) Reproducibility: fix the RNG for consistent noflank_results
     RANDOM_SEED = 41
     random.seed(RANDOM_SEED)
 

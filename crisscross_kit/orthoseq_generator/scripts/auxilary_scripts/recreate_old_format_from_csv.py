@@ -6,8 +6,8 @@ import csv
 def main():
     # Define paths
     base_dir = Path(__file__).resolve().parents[1]  # Go up from auxilary_scripts
-    input_file = base_dir /  "results" / "handles_with_energies.csv"  # Change name if needed
-    output_file = base_dir /  "results" / "the_new_64_seq.txt"
+    input_file = base_dir /  "noflank_results" / "handles_with_energies.csv"  # Change name if needed
+    output_file = base_dir /  "noflank_results" / "the_new_64_seq.txt"
 
     sequences = []
 

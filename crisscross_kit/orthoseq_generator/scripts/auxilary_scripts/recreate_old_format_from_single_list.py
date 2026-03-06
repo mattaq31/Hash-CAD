@@ -7,8 +7,8 @@ import sequence_computations as sc
 def main():
     # Define paths
     base_dir = Path(__file__).resolve().parents[1]  # Go up from auxilary_scripts
-    input_file = base_dir /  "results" / "stell.txt"  # Change name if needed
-    output_file = base_dir /  "results" / "stell_2.txt"
+    input_file = base_dir /  "noflank_results" / "stell.txt"  # Change name if needed
+    output_file = base_dir /  "noflank_results" / "stell_2.txt"
 
     sequences = []
 

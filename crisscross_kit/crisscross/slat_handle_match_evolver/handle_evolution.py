@@ -229,7 +229,7 @@ class EvolveManager:
         results = self.pool.starmap(comprehensive_score_analysis, analysis_inputs)
         multiprocess_time = time.time() - multiprocess_start
 
-        # Unpack and store results from multiprocessing
+        # Unpack and store noflank_results from multiprocessing
         for index, res in enumerate(results):
             mean_parasitic_valency[index] = res['mean_log_score']
             max_parasitic_valency[index] = res['worst_match_score']

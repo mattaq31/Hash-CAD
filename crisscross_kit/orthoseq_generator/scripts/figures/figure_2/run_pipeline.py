@@ -3,18 +3,19 @@ Purpose:
     Run compute -> compare -> plot using a simple TOML config.
 """
 
+import os
+
 
 
 
 def main():
     import argparse
-    import os
     import tomllib
     import time
 
     from compute_short_seq_energies import run_compute_short_seq
     from compare_algorithms_from_pkl import run_compare
-    from plot_compare_results import plot_results
+    from plot_all_results_individual import plot_results
     parser = argparse.ArgumentParser()
     default_config = os.path.join(os.path.dirname(__file__), "pipeline_config.example.toml")
     parser.add_argument(
@@ -31,7 +32,12 @@ def main():
     compute_cfg = cfg.get("compute", {})
     compare_cfg = cfg.get("compare", {})
     plot_cfg = cfg.get("plot", {})
-    output_dir = cfg.get("output", {}).get("dir", "results")
+    output_dir_cfg = cfg.get("output", {}).get("dir", "data/noflank_results")
+    output_dir = (
+        output_dir_cfg
+        if os.path.isabs(output_dir_cfg)
+        else os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir_cfg))
+    )
 
     # 1) Compute PKLs
     pkl_paths = []
@@ -77,9 +83,9 @@ def main():
             )
             print(f"[pipeline] compare end pkl={pkl_path} t={time.time():.0f}", flush=True)
             base = os.path.splitext(os.path.basename(pkl_path))[0]
-            results_paths.append(os.path.join(output_dir, f"{base}_compare_results.pkl"))
+            results_paths.append(os.path.join(output_dir, f"{base}_compare_results.csv"))
 
-    # 3) Plot results
+    # 3) Plot noflank_results
     if plot_cfg.get("enabled", True):
         for results_path in results_paths:
             plot_results(results_path)

@@ -386,7 +386,7 @@ def run_compare(
 
     rows.sort(key=lambda r: (r["offtarget_limit"], r["run_idx"], r["run_type"]))
 
-    # Save results to PKL/CSV for plotting.
+    # Save noflank_results to PKL/CSV for plotting.
     df = pd.DataFrame(rows)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -404,9 +404,10 @@ def run_compare(
 
 if __name__ == "__main__":
     # Minimal defaults for manual runs.
-    OUTPUT_DIR = "results"
+    SCRIPT_DIR = os.path.dirname(__file__)
+    OUTPUT_DIR = os.path.join(SCRIPT_DIR, "data", "noflank_results")
     #PKL_PATHS = sorted(glob.glob(os.path.join(OUTPUT_DIR, "*_subset.pkl")))
-    PKL_PATHS = [os.path.join(OUTPUT_DIR,"short_seq_6mer_sigma0p5_subset.pkl")]
+    PKL_PATHS = [os.path.join(OUTPUT_DIR, "short_seq_6mer_sigma0p5_subset.pkl")]
     for pkl_path in PKL_PATHS:
         run_compare(
             pkl_path,

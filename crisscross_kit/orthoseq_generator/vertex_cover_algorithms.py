@@ -221,7 +221,7 @@ def build_edges(offtarget_dict, indices, energy_cutoff):
     hah_infixes = np.argwhere(hah < energy_cutoff)
     ahah_infixes = np.argwhere(ahah < energy_cutoff)
 
-    # 2.1) Combine all results into one array
+    # 2.1) Combine all noflank_results into one array
     combined_infixes = np.vstack((hh_infixes, hah_infixes, ahah_infixes))
 
     # 2.2) Sort each pair so that (i,j) and (j,i) become identical
@@ -467,6 +467,7 @@ def evolutionary_vertex_cover(
 ):
     
     """
+    Dont use. It is working worse than
     Evolves an independent set of sequences from a set of candidate sequence pairs by
     iteratively removing high-energy (off-target) interactions via vertex-cover heuristics.  
     Implements a form of genetic “survivor selection” via repeated vertex-cover:
@@ -570,14 +571,15 @@ def evolutionary_vertex_cover(
                 print("Stop event detected. Stopping search...")
                 break
             # Select sequences with on-target energy in desired range
-            subset, indices, _ = sc.select_subset_in_energy_range(
+            subset, indices, _, _ = sc.select_subset_in_energy_range(
                 sequence_pairs,
                 energy_min=min_ontarget,
                 energy_max=max_ontarget,
                 self_energy_min=self_energy_limit,
                 max_size=subsetsize,
                 Use_Library=False,
-                avoid_indices=history
+                avoid_indices=history,
+                timeout_s=20,
             )
             # Re-add previously preserved sequences
             sorted_history = sorted(history)
@@ -677,7 +679,7 @@ if __name__ == "__main__":
     min_ontarget = -10.4
     '''
     # Select sequences with on-target energy in desired range
-    subset, indices, _ = select_subset_in_energy_range(
+    subset, indices, _, _ = select_subset_in_energy_range(
         ontarget7mer, energy_min=min_ontarget, energy_max=max_ontarget,
         max_size=30, Use_Library=True, avoid_indices=set()
     )

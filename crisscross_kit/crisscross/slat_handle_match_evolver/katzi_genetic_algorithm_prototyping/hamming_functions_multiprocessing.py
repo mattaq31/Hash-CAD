@@ -22,7 +22,7 @@ def compute_hamming(handle_dict, antihandle_dict, valid_product_indices, slat_le
     :param antihandle_dict: Dictionary of antihandles i.e. {slat_id: slat_antihandle_array}
     :param valid_product_indices: A list of indices matching the possible products that should be computed (i.e. if a product is not being requested, the index should be False)
     :param slat_length: The length of a single slat (must be an integer)
-    :return: Array of results for each possible combination (a single integer per combination)
+    :return: Array of noflank_results for each possible combination (a single integer per combination)
     """
     """
     Vectorized function to compute hamming distance between slat handle and antihandle combinations.
@@ -350,7 +350,7 @@ def generate_handle_set_and_evolve(base_array, unique_sequences=32, slat_length=
         with multiprocessing.Pool(processes=num_processes) as pool:
             results = pool.starmap(process_handle, [(j, handle_arries[j], base_array) + tuple(settings.values()) for j in range(population)])
     
-        # Unpack and store results from multiprocessing
+        # Unpack and store noflank_results from multiprocessing
         for res in results:
             index = res[0]
             offset = 1

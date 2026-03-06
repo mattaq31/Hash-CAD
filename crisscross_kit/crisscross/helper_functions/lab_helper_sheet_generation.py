@@ -575,7 +575,7 @@ def prepare_liquid_handle_plates_multiple_files(output_directory, file_list=None
                                                 plot_distribution_per_plate=True, plate_size='384'):
     """
     Generates resuspension maps for all provided DNA spec files.
-    :param output_directory: Output folder to save results.
+    :param output_directory: Output folder to save noflank_results.
     :param file_list: Specific list of filepaths to assess.
     :param extract_all_from_folder: Alternatively, specify a folder and all excel sheets will be extracted from the folder.
     :param target_concentration_uM: Target concentration for plate resuspension.
@@ -609,7 +609,7 @@ def prepare_liquid_handler_plate_resuspension_map(filename, output_directory, ta
     Generates a visual plate map and resuspension instructions for an entire plate of DNA oligos.
     The amount of DNA per well should be specified in an excel file using the standard IDT format.
     :param filename: Excel file containing DNA spec sheets (can contain multiples plates per sheet).
-    :param output_directory: Output folder to save results.
+    :param output_directory: Output folder to save noflank_results.
     :param target_concentration_uM: Target concentration for plate resuspension.
     :param volume_cap_ul: Maximum volume to resuspend (after which the volume is kept constant and the concentration is raised instead).
     :param max_commands_per_file: Maximum commands that can be taken in by the liquid handler in one go.  If this is exceeded, files are split into different components.

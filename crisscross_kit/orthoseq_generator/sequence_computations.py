@@ -899,10 +899,80 @@ def select_subset(sequence_pairs, max_size=200, timeout_s=20):
     logger.info(f"Selected requested {max_size} sequence pairs.")
     return subset
 
+def crossreference_sequences(
+    new_pair,
+    pool,
+    offtarget_limit,
+    max_pair_violations=0,
+    Use_Library=None,
+):
+    """
+    Checks off-target interactions between a candidate sequence pair and a
+    history pool.
 
-import random
-import time
-import numpy as np
+    Counts violations per pool pair, not per individual strand-strand
+    interaction. A pool pair is counted as violating if any of the four
+    pairwise comparisons between `(seq, rc_seq)` and `(pool_seq, pool_rc)`
+    falls below `offtarget_limit`.
+
+    :param new_pair: Candidate `(seq, rc_seq)` pair to test.
+    :type new_pair: tuple[str, str]
+
+    :param pool: Existing `(seq, rc_seq)` pairs to cross-reference against.
+    :type pool: list[tuple[str, str]]
+
+    :param offtarget_limit: Energy cutoff below which an off-target interaction
+                            is considered a violation.
+    :type offtarget_limit: float
+
+    :param max_pair_violations: Maximum number of violating pool pairs allowed
+                                before the candidate is rejected.
+    :type max_pair_violations: int
+
+    :param Use_Library: Whether to use the precomputed energy library
+                        (overrides the global setting if not None).
+    :type Use_Library: bool or None
+
+    :returns: Tuple `(passed, nupack_calls)` where `passed` is False if the
+              number of violating pool pairs exceeds `max_pair_violations`,
+              and `nupack_calls` is the number of direct energy computations
+              performed during this cross-reference check.
+    :rtype: tuple[bool, int]
+    """
+    if Use_Library is None:
+        Use_Library = hf.USE_LIBRARY
+
+    if not pool:
+        return True, 0
+
+    seq, rc_seq = new_pair
+    violations = 0
+    nupack_calls = 0
+
+    for pool_seq, pool_rc in pool:
+        violated = False
+        for a in (seq, rc_seq):
+            for b in (pool_seq, pool_rc):
+                nupack_calls += 1
+                result = nupack_compute_energy_precompute_library_fast(
+                    a,
+                    b,
+                    type="total",
+                    Use_Library=Use_Library,
+                )
+                energy = result[0] if isinstance(result, tuple) else result
+                if energy < offtarget_limit:
+                    violated = True
+                    break
+            if violated:
+                break
+
+        if violated:
+            violations += 1
+            if violations > max_pair_violations:
+                return False, nupack_calls
+
+    return True, nupack_calls
 
 
 def select_subset_in_energy_range(
@@ -913,10 +983,16 @@ def select_subset_in_energy_range(
     max_size=np.inf,
     Use_Library=None,
     avoid_indices=None,
-    timeout_s=20,
+    timeout_s=None,
+    history_pool=None,
+    allowed_violations=0,
+    offtarget_limit=None,
+    max_nupack_calls=None,
+    progress_every=None,
 ):
     """
-    Selects a random subset of sequence pairs whose on-target energies fall within a given range.
+    Selects a random subset of sequence pairs that pass on-target energy,
+    self-energy, and optional cross-reference filters.
 
     Supports two input types:
     1) Precomputed list of (index, (seq, rc_seq)) tuples.
@@ -925,13 +1001,9 @@ def select_subset_in_energy_range(
     Notes
     -----
     - Uses random sampling without full shuffling.
-    - Stops when max_size is reached, candidates are exhausted, or timeout occurs.
     - Keeps returned sequence order aligned with returned indices list.
-
-    Timeout behavior
-    ----------------
-    If timeout_s is reached, returns sequences found so far and prints:
-        "Only X of requested Y found (timeout)."
+    - Can stop early due to `timeout_s`, `max_nupack_calls`, or candidate exhaustion.
+    - If `offtarget_limit` is None, cross-reference filtering is skipped.
 
     :param sequence_pairs: List of (index, (seq, rc_seq)) tuples or registry with sample_pair().
     :type sequence_pairs: list or object
@@ -954,13 +1026,30 @@ def select_subset_in_energy_range(
     :param avoid_indices: Indices to avoid when sampling.
     :type avoid_indices: set or None
 
-    :param timeout_s: Timeout in seconds; returns early if exceeded.
+    :param timeout_s: Optional wall-clock timeout in seconds; returns early if exceeded.
     :type timeout_s: float or None
 
-    :returns: Tuple `(subset, indices, success_rate)` where `subset` is a list of `(seq, rc_seq)` pairs,
-              `indices` are their corresponding global IDs, and `success_rate` is the fraction of
-              evaluated candidates that pass the energy filters.
-    :rtype: tuple[list[tuple[str, str]], list[int], float]
+    :param history_pool: Optional list of accepted `(seq, rc_seq)` pairs to cross-reference against.
+    :type history_pool: list[tuple[str, str]] or None
+
+    :param allowed_violations: Maximum number of pool pairs allowed to violate `offtarget_limit`.
+    :type allowed_violations: int
+
+    :param offtarget_limit: Optional off-target energy cutoff for cross-reference filtering.
+    :type offtarget_limit: float or None
+
+    :param max_nupack_calls: Optional limit on direct NUPACK energy computations made inside this function.
+    :type max_nupack_calls: int or None
+
+    :param progress_every: Optional attempt interval for progress prints.
+    :type progress_every: int or None
+
+    :returns: Tuple `(subset, indices, stopped_early, nupack_calls)` where `subset`
+              is a list of `(seq, rc_seq)` pairs, `indices` are their corresponding
+              global IDs, `stopped_early` indicates timeout or NUPACK-budget exit,
+              and `nupack_calls` is the number of direct NUPACK computations made
+              inside this function.
+    :rtype: tuple[list[tuple[str, str]], list[int], bool, int]
     """
 
     if Use_Library is None:
@@ -969,13 +1058,54 @@ def select_subset_in_energy_range(
     if avoid_indices is None:
         avoid_indices = set()
 
+    if history_pool is None:
+        history_pool = []
+
     subset = []
     indices = []
     tested_indices = set(avoid_indices)
     attempts = 0
-    successes = 0
+    nupack_calls = 0
 
     start_t = time.time()
+
+    def _evaluate_candidate(seq, rc_seq):
+        nonlocal nupack_calls
+
+        if max_nupack_calls is not None and nupack_calls >= max_nupack_calls:
+            return None, "nupack_limit"
+
+        nupack_calls += 1
+        energy, self_e_seq, self_e_rc_seq = nupack_compute_energy_precompute_library_fast(
+            seq,
+            rc_seq,
+            type="total",
+            Use_Library=Use_Library,
+        )
+
+        if not (
+            energy_min <= energy <= energy_max
+            and self_e_seq >= self_energy_min
+            and self_e_rc_seq >= self_energy_min
+        ):
+            return False, None
+
+        if offtarget_limit is not None:
+            passed_crossref, crossref_nupack_calls = crossreference_sequences(
+                (seq, rc_seq),
+                history_pool,
+                offtarget_limit,
+                max_pair_violations=allowed_violations,
+                Use_Library=Use_Library,
+            )
+            nupack_calls += crossref_nupack_calls
+            if not passed_crossref:
+                return False, None
+
+        if max_nupack_calls is not None and nupack_calls >= max_nupack_calls:
+            return None, "nupack_limit"
+
+        return True, None
 
     # -------------------------------------------------
     # CASE 1 — precomputed list input
@@ -988,12 +1118,16 @@ def select_subset_in_energy_range(
         while len(indices) < max_size and len(tested_indices) < total:
 
             if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+                elapsed_s = time.time() - start_t
                 print(
-                    f"Only {len(subset)} of requested {max_size} found (timeout)."
+                    f"Only {len(subset)} of requested {max_size} found "
+                    f"(timeout after {elapsed_s:.2f}s)."
                 )
-                logger.info(f"Only {len(subset)} of requested {max_size} found for given parameters (timeout = {timeout_s}s).")
-                success_rate = (successes / attempts) if attempts else 0.0
-                return subset, indices, success_rate
+                logger.info(
+                    f"Only {len(subset)} of requested {max_size} found for given "
+                    f"parameters (timeout = {timeout_s}s)."
+                )
+                return subset, indices, True, nupack_calls
 
             index, (seq, rc_seq) = random.choice(sequence_pairs)
 
@@ -1002,25 +1136,38 @@ def select_subset_in_energy_range(
 
             tested_indices.add(index)
             attempts += 1
+            if progress_every and attempts % progress_every == 0:
+                print(
+                    f"Progress: {len(subset)}/{max_size} "
+                    f"accepted after {attempts} attempts"
+                )
 
-            energy, self_e_seq, self_e_rc_seq = nupack_compute_energy_precompute_library_fast(
-                seq,
-                rc_seq,
-                type="total",
-                Use_Library=Use_Library,
-            )
-
-            if energy_min <= energy <= energy_max and (self_e_seq >= self_energy_min) and (self_e_rc_seq >= self_energy_min):
+            accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
+            if stop_reason is not None:
+                elapsed_s = time.time() - start_t
+                print(
+                    f"Only {len(subset)} of requested {max_size} found "
+                    f"(NUPACK call limit hit after {elapsed_s:.2f}s, "
+                    f"NUPACK calls: {nupack_calls})."
+                )
+                logger.info(
+                    f"Only {len(subset)} of requested {max_size} found for given "
+                    f"parameters (max_nupack_calls = {max_nupack_calls})."
+                )
+                return subset, indices, True, nupack_calls
+            if accepted:
                 subset.append((seq, rc_seq))
                 indices.append(index)
-                successes += 1
-
         print(
             f"Selected {len(subset)} sequence pairs with energies in range "
-            f"[{energy_min}, {energy_max}]"
+            f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
         )
-        success_rate = (successes / attempts) if attempts else 0.0
-        return subset, indices, success_rate
+        logger.info(
+            f"Selected {len(subset)} sequence pairs with on-target energies in "
+            f"range [{energy_min}, {energy_max}] and secondary-structure energy "
+            f"above {self_energy_min}."
+        )
+        return subset, indices, False, nupack_calls
 
     # -------------------------------------------------
     # CASE 2 — registry input
@@ -1035,12 +1182,16 @@ def select_subset_in_energy_range(
     while len(indices) < max_size:
 
         if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+            elapsed_s = time.time() - start_t
             print(
-                f"Only {len(subset)} of requested {max_size} found (timeout)."
+                f"Only {len(subset)} of requested {max_size} found "
+                f"(timeout after {elapsed_s:.2f}s)."
             )
-            logger.info(f"Only {len(subset)} of requested {max_size} found for given parameters (timeout = {timeout_s}s).")
-            success_rate = (successes / attempts) if attempts else 0.0
-            return subset, indices, success_rate
+            logger.info(
+                f"Only {len(subset)} of requested {max_size} found for given "
+                f"parameters (timeout = {timeout_s}s)."
+            )
+            return subset, indices, True, nupack_calls
 
         pair_id, (seq, rc_seq) = sequence_pairs.sample_pair()
 
@@ -1049,26 +1200,38 @@ def select_subset_in_energy_range(
 
         tested_indices.add(pair_id)
         attempts += 1
+        if progress_every and attempts % progress_every == 0:
+            print(
+                f"Progress: {len(subset)}/{max_size} "
+                f"accepted after {attempts} attempts"
+            )
 
-        energy, self_e_seq, self_e_rc_seq  = nupack_compute_energy_precompute_library_fast(
-            seq,
-            rc_seq,
-            type="total",
-            Use_Library=Use_Library,
-        )
-
-        if energy_min <= energy <= energy_max and (self_e_seq >= self_energy_min) and (self_e_rc_seq >= self_energy_min):
+        accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
+        if stop_reason is not None:
+            elapsed_s = time.time() - start_t
+            print(
+                f"Only {len(subset)} of requested {max_size} found "
+                f"(NUPACK call limit hit after {elapsed_s:.2f}s, "
+                f"NUPACK calls: {nupack_calls})."
+            )
+            logger.info(
+                f"Only {len(subset)} of requested {max_size} found for given "
+                f"parameters (max_nupack_calls = {max_nupack_calls})."
+            )
+            return subset, indices, True, nupack_calls
+        if accepted:
             subset.append((seq, rc_seq))
             indices.append(pair_id)
-            successes += 1
-
     print(
         f"Selected {len(subset)} sequence pairs with energies in range "
         f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
     )
-    logger.info(f"Selected {len(subset)} sequence pairs with on-target energies in range [{energy_min}, {energy_max}] and secondary-structure energy above {self_energy_min}.")
-    success_rate = (successes / attempts) if attempts else 0.0
-    return subset, indices, success_rate
+    logger.info(
+        f"Selected {len(subset)} sequence pairs with on-target energies in "
+        f"range [{energy_min}, {energy_max}] and secondary-structure energy "
+        f"above {self_energy_min}."
+    )
+    return subset, indices, False, nupack_calls
 
 
 
@@ -1225,7 +1388,7 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     FONTSIZE_LABELS = 19
     FONTSIZE_TITLE = 19
     FONTSIZE_LEGEND = 16
-    FIGSIZE = (12, 5.5)  # Wide aspect ratio
+    FIGSIZE = (5.5 * 16 / 9, 5.5)  # 16:9 with fixed height
     #Histogram colors
     color_on = '#1f77b4'  # dark blue
     color_off = '#d62728'  # dark red
@@ -1304,7 +1467,7 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     for spine in ax.spines.values():
         spine.set_linewidth(LINEWIDTH_AXIS)
 
-    ax.legend(fontsize=FONTSIZE_LEGEND)
+    ax.legend(fontsize=FONTSIZE_LEGEND, frameon=False)
 
     plt.tight_layout()
     if output_path:

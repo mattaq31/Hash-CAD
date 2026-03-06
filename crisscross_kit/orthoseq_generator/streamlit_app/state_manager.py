@@ -98,8 +98,6 @@ def init_session_state():
         st.session_state.refine_thread = None
     if "refine_error" not in st.session_state:
         st.session_state.refine_error = None
-    if "refine_success_rate" not in st.session_state:
-        st.session_state.refine_success_rate = None
     
     if "final_cache_ready" not in st.session_state:
         st.session_state.final_cache_ready = False
@@ -109,7 +107,24 @@ def init_session_state():
         st.session_state.final_self_fig = None
     if "search_error" not in st.session_state:
         st.session_state.search_error = None
-
+    if "subset_size_search" not in st.session_state:
+        st.session_state.subset_size_search = 450
+    if "generations" not in st.session_state:
+        st.session_state.generations = 50
+    if "search_vc_multistart" not in st.session_state:
+        st.session_state.search_vc_multistart = 30
+    if "search_vc_max_iterations" not in st.session_state:
+        st.session_state.search_vc_max_iterations = 5000
+    if "search_max_nupack_calls" not in st.session_state:
+        st.session_state.search_max_nupack_calls = 50000
+    if "search_history_subset_scale" not in st.session_state:
+        st.session_state.search_history_subset_scale = 1.0
+    if "pilot_size" not in st.session_state:
+        st.session_state.pilot_size = 50
+    if "refine_size" not in st.session_state:
+        st.session_state.refine_size = 50
+    if "selection_helper_conc_nm" not in st.session_state:
+        st.session_state.selection_helper_conc_nm = 1000.0
     if "selection_helper_assoc_fig" not in st.session_state:
         st.session_state.selection_helper_assoc_fig = None
     if "selection_helper_secondary_fig" not in st.session_state:
