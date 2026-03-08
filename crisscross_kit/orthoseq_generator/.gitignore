@@ -5,3 +5,4 @@
 .dump/
 .Old_unsorted/
 *.txt
+*.csv
