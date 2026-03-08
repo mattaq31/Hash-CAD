@@ -18,6 +18,7 @@ def _search_worker(
     generations,
     vc_multistart,
     vc_max_iterations,
+    prune_fraction,
     max_nupack_calls,
     history_subset_scale,
     stop_event,
@@ -35,6 +36,7 @@ def _search_worker(
             generations=generations,
             vc_multistart=vc_multistart,
             vc_max_iterations=vc_max_iterations,
+            prune_fraction=prune_fraction,
             max_nupack_calls=max_nupack_calls,
             history_subset_scale=history_subset_scale,
             stop_event=stop_event
@@ -61,9 +63,11 @@ def render_search_tab(registry_factory, nupack_params):
     # Inputs (locked while running)
     st.number_input(
         "Number of Generations",
+        min_value=1,
         value=st.session_state.generations,
         key="generations",
-        disabled=st.session_state.search_running
+        disabled=st.session_state.search_running,
+        help="How many generations the search should run. More generations usually give the algorithm more chances to improve the result, but they also take longer."
     )
 
     with st.expander("Advanced Search Parameters", expanded=False):
@@ -73,7 +77,7 @@ def render_search_tab(registry_factory, nupack_params):
             value=st.session_state.subset_size_search,
             key="subset_size_search",
             disabled=st.session_state.search_running,
-            help="Number of fresh candidate pairs requested before preserved history pairs are re-added."
+            help="Number of requested sequence pairs used to build the initial trial pool."
         )
         st.number_input(
             "Vertex-Cover Multistart",
@@ -81,6 +85,7 @@ def render_search_tab(registry_factory, nupack_params):
             value=st.session_state.search_vc_multistart,
             key="search_vc_multistart",
             disabled=st.session_state.search_running,
+            help="Number of repeated runs of the graph-based optimization step per generation."
         )
         st.number_input(
             "Vertex-Cover Max Iterations",
@@ -88,6 +93,17 @@ def render_search_tab(registry_factory, nupack_params):
             value=st.session_state.search_vc_max_iterations,
             key="search_vc_max_iterations",
             disabled=st.session_state.search_running,
+            help="Number of refinement iterations used inside each graph-based optimization run."
+        )
+        st.number_input(
+            "Prune Fraction",
+            min_value=0.0,
+            max_value=1.0,
+            value=st.session_state.search_prune_fraction,
+            step=0.05,
+            key="search_prune_fraction",
+            disabled=st.session_state.search_running,
+            help="Controls how strongly the current graph-based solution is perturbed before it is refined again."
         )
         st.number_input(
             "Max NUPACK Calls",
@@ -95,7 +111,7 @@ def render_search_tab(registry_factory, nupack_params):
             value=st.session_state.search_max_nupack_calls,
             key="search_max_nupack_calls",
             disabled=st.session_state.search_running,
-            help="Per-generation budget for direct NUPACK computations during subset selection."
+            help="Limit on the number of NUPACK calls used while collecting fresh candidates in one generation. If this limit is reached, the number of allowed conflicts for newly sampled pairs is increased by 1 in later generations."
         )
         st.number_input(
             "History Subset Scale",
@@ -104,7 +120,7 @@ def render_search_tab(registry_factory, nupack_params):
             step=0.1,
             key="search_history_subset_scale",
             disabled=st.session_state.search_running,
-            help="If history is non-empty, the next requested fresh subset size becomes int(history_size * this value)."
+            help="Once an orthogonal set has been established, this determines how many new sequence pairs are requested in later generations relative to the size of that retained set."
         )
 
     col1, col2 = st.columns(2)
@@ -171,6 +187,7 @@ def render_search_tab(registry_factory, nupack_params):
         generations_ = int(st.session_state.generations)
         vc_multistart = int(st.session_state.search_vc_multistart)
         vc_max_iterations = int(st.session_state.search_vc_max_iterations)
+        prune_fraction = float(st.session_state.search_prune_fraction)
         max_nupack_calls = int(st.session_state.search_max_nupack_calls)
         history_subset_scale = float(st.session_state.search_history_subset_scale)
         stop_event = st.session_state.stop_event
@@ -189,6 +206,7 @@ def render_search_tab(registry_factory, nupack_params):
                 generations_,
                 vc_multistart,
                 vc_max_iterations,
+                prune_fraction,
                 max_nupack_calls,
                 history_subset_scale,
                 stop_event,
