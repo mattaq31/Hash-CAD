@@ -191,6 +191,18 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
               left: 1,
               child: Icon(Icons.copy, size: 10, color: Colors.grey.shade500),
             ),
+          // Warning indicator (top-left, shifted right if duplicate badge present)
+          if (slat != null)
+            Builder(builder: (context) {
+              final warning = wellWarningState(slat, widget.wellConfig);
+              if (!warning.incomplete && !warning.exceedsVolume) return const SizedBox.shrink();
+              final leftOffset = widget.isInDuplicateGroup ? 12.0 : 1.0;
+              if (warning.incomplete) {
+                return Positioned(top: 1, left: leftOffset, child: Icon(Icons.error, size: 10, color: Colors.red.shade600));
+              }
+              return Positioned(
+                  top: 1, left: leftOffset, child: Icon(Icons.warning, size: 10, color: Colors.orange.shade600));
+            }),
           // Slat type label (top-right)
           if (widget.slatType != null && slat != null)
             Positioned(

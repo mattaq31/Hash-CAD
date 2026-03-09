@@ -6,7 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../crisscross_core/slats.dart';
 import 'echo_category_colors.dart';
-import 'echo_plate_constants.dart' show designColorFor, slatDisplayName;
+import 'echo_plate_constants.dart' show designColorFor, slatDisplayName, wellWarningState;
 import 'plate_layout_state.dart' show WellConfig, baseSlatId, isDuplicateSlatId;
 
 // ---------------------------------------------------------------------------
@@ -278,7 +278,7 @@ pw.Widget _buildPdfWellCell(
   }
 
   const wellInset = 1.0; // gap between wells so colored borders don't overlap
-  final barcodeWidth = _cellWidth - wellInset * 2 - 5;
+  final barcodeWidth = _cellWidth - wellInset * 2 - 15;
 
   return pw.Container(
     width: _cellWidth,
@@ -307,7 +307,20 @@ pw.Widget _buildPdfWellCell(
                   left: 1.5,
                   child: _buildDuplicateBadge(),
                 ),
+              // Warning indicator (top-left, shifted right if duplicate badge present)
+              () {
+                  final warning = wellWarningState(slat, config);
+                  if (!warning.incomplete && !warning.exceedsVolume) return pw.SizedBox();
+                  final leftOffset = isDuplicate ? 12.0 : 1.5;
+                  final color = warning.incomplete ? PdfColors.red : PdfColors.orange;
+                  return pw.Positioned(
+                    top: 1.0,
+                    left: leftOffset,
+                    child: _buildPdfWarningTriangle(color),
+                  );
+                }(),
               // Centered pictogram block: name sits above, volume sits below
+              // Barcodes are centered; H5/H2 labels are positioned absolutely to the left
               pw.Positioned.fill(
                 child: pw.Column(
                   mainAxisAlignment: pw.MainAxisAlignment.center,
@@ -321,13 +334,13 @@ pw.Widget _buildPdfWellCell(
                       textAlign: pw.TextAlign.center,
                     ),
                     pw.SizedBox(height: 1),
-                    // Position markers (1, 16, 32)
+                    // Position markers
                     _buildPositionMarkers(slat.maxLength, barcodeWidth),
-                    // H2 barcode
-                    _buildPdfBarcodeRow(slat.h2Handles, slat.maxLength, barcodeWidth, 6),
+                    // H5 barcode (top) with label
+                    _buildLabeledBarcodeRow('H5', slat.h5Handles, slat.maxLength, barcodeWidth),
                     pw.SizedBox(height: 0.5),
-                    // H5 barcode
-                    _buildPdfBarcodeRow(slat.h5Handles, slat.maxLength, barcodeWidth, 6),
+                    // H2 barcode (bottom) with label
+                    _buildLabeledBarcodeRow('H2', slat.h2Handles, slat.maxLength, barcodeWidth),
                     // Volume/ratio (below the pictogram)
                     if (volumeText != null) ...[
                       pw.SizedBox(height: 2),
@@ -389,6 +402,68 @@ pw.Widget _buildPositionMarkers(int maxLength, double totalWidth) {
               );
             }(),
       ],
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Labeled barcode row: barcode with side label (H2/H5) positioned to the left
+// ---------------------------------------------------------------------------
+
+pw.Widget _buildLabeledBarcodeRow(String label, Map<int, Map<String, dynamic>> handles, int maxLength, double barcodeWidth) {
+  return pw.Stack(
+    overflow: pw.Overflow.visible,
+    children: [
+      _buildPdfBarcodeRow(handles, maxLength, barcodeWidth, 6),
+      pw.Positioned(
+        left: 1.5,
+        top: 0,
+        child: pw.Text(label, style: pw.TextStyle(fontSize: 4, color: PdfColors.grey500)),
+      ),
+    ],
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Warning triangle: small triangle with '!' — mimics Icons.warning in UI
+// ---------------------------------------------------------------------------
+
+pw.Widget _buildPdfWarningTriangle(PdfColor color) {
+  const size = 8.0;
+  return pw.SizedBox(
+    width: size,
+    height: size,
+    child: pw.CustomPaint(
+      size: const PdfPoint(size, size),
+      painter: (PdfGraphics canvas, PdfPoint s) {
+        // Draw filled triangle pointing up
+        canvas
+          ..moveTo(s.x / 2, s.y) // top center
+          ..lineTo(0, 0) // bottom left
+          ..lineTo(s.x, 0) // bottom right
+          ..closePath();
+        canvas.setFillColor(color);
+        canvas.fillPath();
+
+        // Draw white '!' in the center of the triangle
+        // Triangle centroid is at (w/2, h/3) from bottom in PDF coords
+        canvas.setFillColor(PdfColors.white);
+
+        // Exclamation mark stem
+        const stemW = 1.0;
+        const stemH = 3.2;
+        final stemX = s.x / 2 - stemW / 2;
+        final stemY = s.y * 0.28; // slightly below centroid
+        canvas.drawRect(stemX, stemY, stemW, stemH);
+        canvas.fillPath();
+
+        // Exclamation mark dot
+        const dotSize = 1.0;
+        final dotX = s.x / 2 - dotSize / 2;
+        final dotY = stemY - dotSize - 0.6;
+        canvas.drawRect(dotX, dotY, dotSize, dotSize);
+        canvas.fillPath();
+      },
     ),
   );
 }

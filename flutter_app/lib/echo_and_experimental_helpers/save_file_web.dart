@@ -21,3 +21,12 @@ Future<void> saveFileBytes(Uint8List bytes, String fileName, String extension) a
 
   web.URL.revokeObjectURL(url);
 }
+
+/// On web, downloads each file individually (no folder concept).
+Future<bool> saveMultipleFiles(Map<String, Uint8List> files, String folderName) async {
+  for (var entry in files.entries) {
+    final ext = entry.key.split('.').last;
+    await saveFileBytes(entry.value, entry.key, ext);
+  }
+  return true;
+}

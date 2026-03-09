@@ -30,6 +30,7 @@ class PlateGrid extends StatelessWidget {
   final String plateName;
   final int plateDisplayNumber;
   final VoidCallback? onRenamePlate;
+  final VoidCallback? onConfigPlate;
   final bool showMetricView;
   final Map<String, WellConfig>? plateWellConfigs;
 
@@ -55,6 +56,7 @@ class PlateGrid extends StatelessWidget {
     required this.plateDisplayNumber,
     this.onRemovePlate,
     this.onRenamePlate,
+    this.onConfigPlate,
     this.showMetricView = false,
     this.plateWellConfigs,
   });
@@ -84,6 +86,10 @@ class PlateGrid extends StatelessWidget {
               if (onRenamePlate != null) ...[
                 const SizedBox(width: 4),
                 _HoverableIconButton(onTap: onRenamePlate!, icon: Icons.edit, hoverColor: Colors.blue),
+              ],
+              if (onConfigPlate != null) ...[
+                const SizedBox(width: 4),
+                _HoverableIconButton(onTap: onConfigPlate!, icon: Icons.tune, hoverColor: Colors.teal.shade700),
               ],
               if (onRemovePlate != null) ...[
                 const SizedBox(width: 4),

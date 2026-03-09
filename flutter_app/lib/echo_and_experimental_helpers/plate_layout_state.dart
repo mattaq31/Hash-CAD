@@ -128,6 +128,17 @@ class PlateLayoutState {
     wellConfigs.putIfAbsent(plateIndex, () => {})[well] = config;
   }
 
+  /// Applies a [WellConfig] to every occupied well on a single plate.
+  void applyConfigToPlate(int plateIndex, WellConfig config) {
+    final plate = plateAssignments[plateIndex];
+    if (plate == null) return;
+    for (var wellEntry in plate.entries) {
+      if (wellEntry.value != null) {
+        wellConfigs.putIfAbsent(plateIndex, () => {})[wellEntry.key] = config.copy();
+      }
+    }
+  }
+
   /// Applies a [WellConfig] to every occupied well across all plates.
   void applyConfigToAll(WellConfig config) {
     for (var plateEntry in plateAssignments.entries) {
@@ -388,7 +399,7 @@ class PlateLayoutState {
   /// When [columnsThreeToTenOnly] is true, only wells in columns 3-10 (0-indexed 2-9) are used.
   /// When [splitSlatTypes] is true, different slat types are placed on separate plates.
   void autoAssign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap,
-      {bool columnsThreeToTenOnly = false, bool splitSlatTypes = false}) {
+      {bool columnsThreeToTenOnly = false, bool splitSlatTypes = false, bool splitSlatLayers = false}) {
     if (unassignedSlats.isEmpty) return;
 
     // Sort unassigned slats using the standard ordering
@@ -406,6 +417,17 @@ class PlateLayoutState {
 
       for (var typeGroup in groupsByType.values) {
         _autoAssignGroup(typeGroup, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
+      }
+    } else if (splitSlatLayers) {
+      // Group slats by layer, preserving sorted order within each group
+      final groupsByLayer = <String, List<String>>{};
+      for (var entry in toAssign) {
+        final layer = slats[entry.key]?.layer ?? '';
+        groupsByLayer.putIfAbsent(layer, () => []).add(entry.key);
+      }
+
+      for (var layerGroup in groupsByLayer.values) {
+        _autoAssignGroup(layerGroup, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
       }
     } else {
       _autoAssignGroup(toAssign.map((e) => e.key).toList(), columnsThreeToTenOnly: columnsThreeToTenOnly);
@@ -728,7 +750,7 @@ class PlateLayoutState {
     if (toDuplicate.isEmpty) return {};
 
     // Generate new duplicate IDs
-    final newSlats = <({String newId, int origPlate, int origRow, int origCol})>[];
+    final newSlats = <({String newId, int origPlate, String origWell, int origRow, int origCol})>[];
     for (var item in toDuplicate) {
       final base = baseSlatId(item.slatId);
       final counter = (_duplicateCounters[base] ?? 1) + 1;
@@ -740,7 +762,7 @@ class PlateLayoutState {
       group.add(item.slatId); // ensure original is tracked
       group.add(newId);
 
-      newSlats.add((newId: newId, origPlate: item.plate, origRow: item.row, origCol: item.col));
+      newSlats.add((newId: newId, origPlate: item.plate, origWell: item.well, origRow: item.row, origCol: item.col));
     }
 
     // Place each duplicate as close as possible to its original
@@ -751,6 +773,14 @@ class PlateLayoutState {
       final placed = _placeNearby(item.newId, item.origPlate, item.origRow, item.origCol, occupiedThisRound);
       if (placed != null) {
         newKeys.add(placed);
+        // Copy well config from source well to the new duplicate well
+        final sourceConfig = wellConfigs[item.origPlate]?[item.origWell];
+        if (sourceConfig != null) {
+          final parts = placed.split(':');
+          final destPlate = int.parse(parts[0]);
+          final destWell = parts[1];
+          wellConfigs.putIfAbsent(destPlate, () => {})[destWell] = sourceConfig.copy();
+        }
       }
     }
 

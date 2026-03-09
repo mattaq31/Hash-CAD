@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+import 'echo_plate_constants.dart' show echoMaxWellVolumeNl;
 import 'plate_layout_state.dart' show WellConfig;
 
 /// Shows a dialog to configure per-well Echo dispensing parameters.
 ///
 /// Returns the configured [WellConfig] on "Apply", or null on cancel.
+///
+/// When [estimateVolumeNl] is provided, it is called with the current config
+/// to compute the estimated total transfer volume in nL. A warning is shown
+/// if this exceeds 25000 nL (25 µL).
 Future<WellConfig?> showWellConfigDialog(
   BuildContext context, {
   String title = 'Configure Wells',
   WellConfig initial = const WellConfig(),
+  double Function(WellConfig config)? estimateVolumeNl,
 }) {
   return showDialog<WellConfig>(
     context: context,
@@ -24,6 +30,14 @@ Future<WellConfig?> showWellConfigDialog(
           double materialPerHandle = scaffoldConc * ratio * volume / 1000;
           double totalSlatQuantity = scaffoldConc * volume / 1000;
           bool isValid = ratio > 0 && volume > 0 && scaffoldConc > 0;
+
+          // Compute volume warning if estimator is provided
+          double? estimatedNl;
+          bool volumeTooHigh = false;
+          if (estimateVolumeNl != null && isValid) {
+            estimatedNl = estimateVolumeNl(WellConfig(ratio: ratio, volume: volume, scaffoldConc: scaffoldConc));
+            volumeTooHigh = estimatedNl > echoMaxWellVolumeNl;
+          }
 
           void rebuild() => setDialogState(() {});
 
@@ -44,6 +58,21 @@ Future<WellConfig?> showWellConfigDialog(
                   _ComputedRow(label: 'Material per Handle', value: '${materialPerHandle.toStringAsFixed(1)} pmol'),
                   const SizedBox(height: 6),
                   _ComputedRow(label: 'Total Slat Quantity', value: '${totalSlatQuantity.toStringAsFixed(1)} pmol'),
+                  if (volumeTooHigh && estimatedNl != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.warning, size: 16, color: Colors.orange.shade700),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Estimated transfer volume (${(estimatedNl / 1000).toStringAsFixed(1)} µL) exceeds 25 µL',
+                            style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -33,18 +33,18 @@ class HandleBarcodePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5;
 
-    // Top row: H2
+    // Top row: H5
     for (int i = 0; i < maxLength; i++) {
-      final handle = h2Handles[i + 1];
+      final handle = h5Handles[i + 1];
       final color = categoryColor(_effectiveCategory(handle));
       final rect = Rect.fromLTWH(i * rectWidth, 0, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);
       canvas.drawRect(rect, linePaint);
     }
 
-    // Bottom row: H5
+    // Bottom row: H2
     for (int i = 0; i < maxLength; i++) {
-      final handle = h5Handles[i + 1];
+      final handle = h2Handles[i + 1];
       final color = categoryColor(_effectiveCategory(handle));
       final rect = Rect.fromLTWH(i * rectWidth, rowHeight, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);

@@ -31,20 +31,17 @@ List<Map<String, dynamic>> readDnaPlateMapping(Uint8List fileBytes) {
       final key = headers[j];
       final cell = j < row.length ? row[j] : null;
 
-      if (cell == null){
-        rowData[key ?? ''] =  null;
-      }
-      else{
+      if (cell == null || cell.value == null) {
+        rowData[key ?? ''] = null;
+      } else {
         final value = cell.value;
         if (value is TextCellValue) {
           rowData[key ?? ''] = value.value.text ?? '';
         } else if (value is IntCellValue) {
           rowData[key ?? ''] = value.value;
-        }
-        else if (value is DoubleCellValue) {
+        } else if (value is DoubleCellValue) {
           rowData[key ?? ''] = value.value;
-        }
-        else {
+        } else {
           rowData[key ?? ''] = value.toString();
         }
       }

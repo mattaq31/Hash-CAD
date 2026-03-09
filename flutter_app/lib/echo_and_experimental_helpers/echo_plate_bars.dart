@@ -7,7 +7,6 @@ import 'echo_category_colors.dart';
 
 class PlateHeaderBar extends StatelessWidget {
   final VoidCallback onClose;
-  final VoidCallback onExport;
   final VoidCallback onToggleCollapse;
   final bool isHovered;
   final ValueChanged<bool> onHoverChanged;
@@ -17,7 +16,6 @@ class PlateHeaderBar extends StatelessWidget {
   const PlateHeaderBar({
     super.key,
     required this.onClose,
-    required this.onExport,
     required this.onToggleCollapse,
     required this.isHovered,
     required this.onHoverChanged,
@@ -66,17 +64,6 @@ class PlateHeaderBar extends StatelessWidget {
                       _HeaderEditButton(onTap: onRenameExperiment!),
                     ],
                   ],
-                ),
-              ),
-              Positioned(
-                right: 0,
-                child: IconButton(
-                  icon: const Icon(Icons.download, size: 24),
-                  color: Colors.white,
-                  tooltip: 'Export PDF',
-                  onPressed: onExport,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ),
             ],
@@ -233,33 +220,36 @@ class PlateColorKeyBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
         border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < _entries.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 16),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Color(_entries[i].$2),
-                      borderRadius: BorderRadius.circular(2),
-                      border: Border.all(color: Colors.grey.shade400, width: 0.5),
-                    ),
+          const Expanded(child: SizedBox.shrink()),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < _entries.length; i++) ...[
+                if (i > 0) const SizedBox(width: 16),
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Color(_entries[i].$2),
+                    borderRadius: BorderRadius.circular(2),
+                    border: Border.all(color: Colors.grey.shade400, width: 0.5),
                   ),
-                  const SizedBox(width: 4),
-                  Text(_entries[i].$1, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-                ],
+                ),
+                const SizedBox(width: 4),
+                Text(_entries[i].$1, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
               ],
+            ],
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _MetricViewToggle(active: showMetricView, onTap: onToggleMetricView),
             ),
           ),
-          _MetricViewToggle(active: showMetricView, onTap: onToggleMetricView),
         ],
       ),
     );

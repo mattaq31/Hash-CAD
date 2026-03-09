@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../2d_painters/drag_box_painter.dart';
 import '../app_management/shared_app_state.dart';
 import '../app_management/action_state.dart';
+import '../crisscross_core/slats.dart';
+import 'echo_export.dart';
 import 'echo_plate_bars.dart';
 import 'echo_plate_constants.dart';
 import 'echo_plate_grid.dart';
@@ -50,9 +52,16 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   bool _columnsThreeToTenOnly = false;
   bool _overwriteExisting = false;
   bool _splitSlatTypes = false;
+  bool _splitSlatLayers = false;
 
   // Metric view toggle
   bool _showMetricView = false;
+
+  // Export options
+  bool _normalizeVolumes = false;
+
+  // Last used well config (remembered across config dialogs)
+  WellConfig _lastUsedConfig = const WellConfig();
 
   // Dialog guard — suppresses keyboard shortcuts while a modal dialog is open
   bool _dialogOpen = false;
@@ -220,7 +229,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         _layoutState!.removeAll(appState.slats, appState.layerMap);
       }
       _layoutState!.autoAssign(appState.slats, appState.layerMap,
-          columnsThreeToTenOnly: _columnsThreeToTenOnly, splitSlatTypes: _splitSlatTypes);
+          columnsThreeToTenOnly: _columnsThreeToTenOnly,
+          splitSlatTypes: _splitSlatTypes,
+          splitSlatLayers: _splitSlatLayers);
     });
     _saveUndoState();
   }
@@ -285,23 +296,6 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     setState(() {
       _selectedWells = newSelection;
     });
-  }
-
-  Future<void> _exportPdf(DesignState appState) async {
-    final pdfBytes = await buildPlateLayoutPdf(
-      _layoutState!.plateAssignments,
-      appState.slats,
-      plateNames: _layoutState!.plateNames,
-      wellConfigs: _layoutState!.wellConfigs,
-      duplicateGroups: _layoutState!.duplicateGroups,
-      layerMap: appState.layerMap,
-      experimentTitle: _layoutState!.experimentTitle,
-    );
-    await saveFileBytes(
-      pdfBytes,
-      '${appState.designName}_plate_layout.pdf',
-      'pdf',
-    );
   }
 
   Future<void> _handleRenamePlate(int plateIndex) async {
@@ -402,11 +396,57 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     }
   }
 
+  /// Computes the max transfer volume (nL) across a set of slats for a given config.
+  double _estimateMaxVolumeNl(WellConfig config, Iterable<Slat> slatsToCheck) {
+    double maxVol = 0;
+    for (var slat in slatsToCheck) {
+      final total = slatTotalVolumeNl(slat, config);
+      if (total > maxVol) maxVol = total;
+    }
+    return maxVol;
+  }
+
+  /// Resolves an iterable of (possibly null/duplicate) slat IDs to unique Slat objects.
+  Iterable<Slat> _resolveUniqueSlats(Iterable<String?> slatIds, Map<String, Slat> slats) {
+    final seen = <String>{};
+    return slatIds
+        .whereType<String>()
+        .where((id) => seen.add(baseSlatId(id)))
+        .map((id) => slats[baseSlatId(id)])
+        .whereType<Slat>();
+  }
+
+  /// Returns all assigned slats across all plates.
+  Iterable<Slat> _allAssignedSlats(Map<String, Slat> slats) {
+    return _resolveUniqueSlats(_layoutState!.plateAssignments.values.expand((plate) => plate.values), slats);
+  }
+
+  /// Returns assigned slats for a specific plate.
+  Iterable<Slat> _plateAssignedSlats(int plateIndex, Map<String, Slat> slats) {
+    return _resolveUniqueSlats(_layoutState!.plateAssignments[plateIndex]?.values ?? <String?>[], slats);
+  }
+
+  /// Returns assigned slats for selected wells.
+  Iterable<Slat> _selectedAssignedSlats(Map<String, Slat> slats) {
+    return _resolveUniqueSlats(
+        _selectedWells.map((key) {
+          final parts = key.split(':');
+          return _layoutState!.plateAssignments[int.parse(parts[0])]?[parts[1]];
+        }),
+        slats);
+  }
+
   Future<void> _handleConfigAll() async {
+    final appState = context.read<DesignState>();
+    final affectedSlats = _allAssignedSlats(appState.slats).toList();
     _dialogOpen = true;
-    final config = await showWellConfigDialog(context, title: 'Configure All Wells');
+    final config = await showWellConfigDialog(context,
+        title: 'Configure All Wells',
+        initial: _lastUsedConfig,
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
     _dialogOpen = false;
     if (config == null) return;
+    _lastUsedConfig = config;
     setState(() {
       _layoutState!.applyConfigToAll(config);
     });
@@ -415,18 +455,41 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
   Future<void> _handleEditSelected() async {
     if (_selectedWells.isEmpty) return;
+    final appState = context.read<DesignState>();
     // Pre-fill from first selected well's config
     final firstKey = _selectedWells.first.split(':');
     final firstPlate = int.parse(firstKey[0]);
     final firstWell = firstKey[1];
     final initial = _layoutState!.getWellConfig(firstPlate, firstWell);
+    final affectedSlats = _selectedAssignedSlats(appState.slats).toList();
 
     _dialogOpen = true;
-    final config = await showWellConfigDialog(context, title: 'Edit Selected Wells', initial: initial);
+    final config = await showWellConfigDialog(context,
+        title: 'Edit Selected Wells',
+        initial: initial,
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
     _dialogOpen = false;
     if (config == null) return;
+    _lastUsedConfig = config;
     setState(() {
       _layoutState!.applyConfigToSelected(_selectedWells, config);
+    });
+    _saveUndoState();
+  }
+
+  Future<void> _handleConfigPlate(int plateIndex) async {
+    final appState = context.read<DesignState>();
+    final affectedSlats = _plateAssignedSlats(plateIndex, appState.slats).toList();
+    _dialogOpen = true;
+    final config = await showWellConfigDialog(context,
+        title: 'Configure Plate',
+        initial: _lastUsedConfig,
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
+    _dialogOpen = false;
+    if (config == null) return;
+    _lastUsedConfig = config;
+    setState(() {
+      _layoutState!.applyConfigToPlate(plateIndex, config);
     });
     _saveUndoState();
   }
@@ -704,7 +767,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final fullHeight = screenHeight * 0.8;
+    final fullHeight = screenHeight * 0.85;
 
     final showContent = !_isCollapsed && _animationComplete;
 
@@ -734,7 +797,6 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
             children: [
               PlateHeaderBar(
                 onClose: () => actionState.deactivateEchoPlateWindow(),
-                onExport: () => _exportPdf(appState),
                 experimentTitle: _layoutState!.experimentTitle,
                 onRenameExperiment: _handleRenameExperiment,
                 onToggleCollapse: () {
@@ -769,7 +831,15 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         overwriteExisting: _overwriteExisting,
                         onOverwriteExistingChanged: (v) => setState(() => _overwriteExisting = v),
                         splitSlatTypes: _splitSlatTypes,
-                        onSplitSlatTypesChanged: (v) => setState(() => _splitSlatTypes = v),
+                        onSplitSlatTypesChanged: (v) => setState(() {
+                          _splitSlatTypes = v;
+                          if (v) _splitSlatLayers = false;
+                        }),
+                        splitSlatLayers: _splitSlatLayers,
+                        onSplitSlatLayersChanged: (v) => setState(() {
+                          _splitSlatLayers = v;
+                          if (v) _splitSlatTypes = false;
+                        }),
                       ),
                       const VerticalDivider(width: 1, thickness: 1),
                       Expanded(
@@ -782,12 +852,215 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                   showMetricView: _showMetricView,
                   onToggleMetricView: () => setState(() => _showMetricView = !_showMetricView),
                 ),
+                _buildExportSection(appState),
               ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Returns true if any assigned slat still has placeholder handles.
+  bool _hasIncompleteSlats(Map<String, Slat> slats) {
+    for (var plate in _layoutState!.plateAssignments.values) {
+      for (var slatId in plate.values) {
+        if (slatId == null) continue;
+        final base = baseSlatId(slatId);
+        final slat = slats[base];
+        if (slat != null && slat.placeholderList.isNotEmpty) return true;
+      }
+    }
+    return false;
+  }
+
+  Widget _buildExportSection(DesignState appState) {
+    final hasIncompleteSlats = _hasIncompleteSlats(appState.slats);
+    // Check if any slats are assigned at all
+    final hasAssignments = _layoutState!.plateAssignments.values.any((plate) => plate.values.any((v) => v != null));
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: Checkbox(
+                      value: _normalizeVolumes,
+                      onChanged: (v) => setState(() => _normalizeVolumes = v ?? false),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text('Normalize volumes', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                ],
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: hasIncompleteSlats || !hasAssignments ? null : () => _showExportDialog(appState),
+            icon: const Icon(Icons.download, size: 20),
+            label: const Text('Export', style: TextStyle(fontSize: 14)),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          Expanded(
+            child: hasIncompleteSlats
+                ? Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'Ensure all handles are available in input plate stack before exporting',
+                      style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showExportDialog(DesignState appState) async {
+    bool generatePdf = true;
+    bool generateCsv = true;
+
+    _dialogOpen = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Export Echo Instructions'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                value: generatePdf,
+                onChanged: (v) => setDialogState(() => generatePdf = v ?? false),
+                title: const Text('Generate PDF plate layouts', style: TextStyle(fontSize: 14)),
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              CheckboxListTile(
+                value: generateCsv,
+                onChanged: (v) => setDialogState(() => generateCsv = v ?? false),
+                title: const Text('Generate Echo CSV instructions', style: TextStyle(fontSize: 14)),
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              CheckboxListTile(
+                value: false,
+                onChanged: null,
+                title: Text('Generate lab helper sheets', style: TextStyle(fontSize: 14, color: Colors.grey.shade400)),
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: generatePdf || generateCsv ? () => Navigator.pop(ctx, true) : null,
+              child: const Text('Go'),
+            ),
+          ],
+        ),
+      ),
+    );
+    _dialogOpen = false;
+
+    if (confirmed == true) {
+      await _runExport(appState, generatePdf: generatePdf, generateCsv: generateCsv);
+    }
+  }
+
+  Future<void> _runExport(DesignState appState, {required bool generatePdf, required bool generateCsv}) async {
+    final files = <String, Uint8List>{};
+    final baseName = appState.designName;
+    EchoCsvResult? csvResult;
+
+    if (generatePdf) {
+      final pdfBytes = await buildPlateLayoutPdf(
+        _layoutState!.plateAssignments,
+        appState.slats,
+        plateNames: _layoutState!.plateNames,
+        wellConfigs: _layoutState!.wellConfigs,
+        duplicateGroups: _layoutState!.duplicateGroups,
+        layerMap: appState.layerMap,
+        experimentTitle: _layoutState!.experimentTitle,
+      );
+      files['${baseName}_plate_layout.pdf'] = pdfBytes;
+    }
+
+    if (generateCsv) {
+      csvResult = generateEchoCsv(
+        plateAssignments: _layoutState!.plateAssignments,
+        wellConfigs: _layoutState!.wellConfigs,
+        plateNames: _layoutState!.plateNames,
+        slats: appState.slats,
+        layerMap: appState.layerMap,
+        normalizeVolumes: _normalizeVolumes,
+      );
+      files['${baseName}_echo_instructions.csv'] = csvResult.csvBytes;
+    }
+
+    if (files.isEmpty) return;
+
+    // Show volume warning before saving, with option to cancel
+    if (csvResult != null && csvResult.warnings.isNotEmpty && mounted) {
+      final shouldContinue = await _showVolumeWarningDialog(csvResult.warnings);
+      if (!shouldContinue) return;
+    }
+
+    final folderName = '${baseName}_echo_instructions';
+    await saveMultipleFiles(files, folderName);
+  }
+
+  Future<bool> _showVolumeWarningDialog(List<String> warnings) async {
+    _dialogOpen = true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+            const SizedBox(width: 8),
+            const Text('Volume Warning'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var warning in warnings) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(warning)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Continue')),
+        ],
+      ),
+    );
+    _dialogOpen = false;
+    return result ?? false;
   }
 
   Widget _buildPlateScrollArea(DesignState appState) {
@@ -831,6 +1104,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         plateName: _layoutState!.plateName(plateIndex),
                         plateDisplayNumber: i + 1,
                         onRenamePlate: () => _handleRenamePlate(plateIndex),
+                        onConfigPlate: () => _handleConfigPlate(plateIndex),
                         onRemovePlate: _layoutState!.plateAssignments.length > 1
                             ? () => _handleRemovePlate(plateIndex)
                             : null,
