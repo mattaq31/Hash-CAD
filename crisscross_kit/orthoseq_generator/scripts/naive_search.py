@@ -71,12 +71,12 @@ if __name__ == "__main__":
     # 1) Reproducibility: fix the RNG
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
-    hf.set_nupack_params(material='dna', celsius=37, sodium=0.050, magnesium=0.025)
+    hf.set_nupack_params(material='rna', celsius=37, sodium=0.050, magnesium=0.025)
     # 2) Registry that generates candidate sequence pairs on demand
     #seqwalk_cores = design.max_size(20, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
         length=10,
-        fivep_ext="TTTT",
+        fivep_ext="",
         threep_ext="",
         unwanted_substrings=[],
         apply_unwanted_to="core",
@@ -85,9 +85,9 @@ if __name__ == "__main__":
     )
 
     # 3) Energy thresholds (use values established during pilot analysis)
-    max_ontarget = -12.5
-    min_ontarget = -14.5
-    offtarget_limit = -7.9
+    max_ontarget = -15
+    min_ontarget = -17.5
+    offtarget_limit = -8.5
     self_energy_limit = -0.5
 
     # 4) Configure cache and NUPACK parameters
