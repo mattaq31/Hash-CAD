@@ -173,7 +173,7 @@ Brief explanation of the advanced parameters:
 
 
 
-## Advanced use via scripts
+## Advanced use via scripts (from here on no longer up to date)
 
 You can manually download example [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) from GitHub demonstrating how to use the tool.
 
