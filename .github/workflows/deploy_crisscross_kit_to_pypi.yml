@@ -23,7 +23,7 @@ jobs:
       # Enable cross-arch emulation on Linux runners for aarch64 containers
       - name: Set up QEMU (for aarch64)
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
