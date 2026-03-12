@@ -10,6 +10,7 @@ import '../sidebars/sidebar_tools.dart';
 import '../app_management/shared_app_state.dart';
 import '../grpc_client_architecture/hamming_evolve_window.dart';
 import '../sidebars/slat_linker_window.dart';
+import '../echo_and_experimental_helpers/echo_plate_window.dart';
 import '../grpc_client_architecture/server_startup.dart';
 import '../app_management/version_tracker.dart';
 import 'floating_main_title.dart';
@@ -306,6 +307,8 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
           HammingEvolveWindow(),
 
           SlatLinkerWindow(),
+
+          EchoPlateWindow(),
 
           // Overlay spinner when loading
           if (appState.currentlyLoadingDesign)

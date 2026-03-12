@@ -156,4 +156,21 @@ class AppPreferences {
     if (lastCheck == null) return true;
     return DateTime.now().difference(lastCheck) > interval;
   }
+
+  // ============== Plate Server URL ==============
+
+  static const String defaultPlateServerUrl = 'https://www.hash-cad.com';
+
+  /// Get the saved plate server URL, or the default
+  Future<String> getPlateServerUrl() async {
+    final prefs = await _loadPrefs();
+    return prefs['plate_server_url'] as String? ?? defaultPlateServerUrl;
+  }
+
+  /// Save the plate server URL
+  Future<void> setPlateServerUrl(String url) async {
+    final prefs = await _loadPrefs();
+    prefs['plate_server_url'] = url;
+    await _savePrefs();
+  }
 }

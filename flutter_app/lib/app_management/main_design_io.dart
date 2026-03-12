@@ -1,7 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border, BorderStyle;
+import 'package:excel/excel.dart' as excel_lib show Border, BorderStyle; // prefixed to avoid flutter/material clash
 import 'package:flutter/material.dart';
 import 'package:hash_cad/crisscross_core/handle_plates.dart';
 import 'package:path/path.dart';
@@ -15,23 +16,72 @@ import '../crisscross_core/slats.dart';
 import '../crisscross_core/sparse_to_array_conversion.dart';
 import '../crisscross_core/seed.dart';
 import '../crisscross_core/common_utilities.dart';
+import '../echo_and_experimental_helpers/plate_layout_state.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
+
+import 'design_io_constants.dart';
 
 // Remember the last directory used for opening files in this session (desktop only)
 String? _lastOpenDirectory;
 
+/// Extracts all rows from an Excel sheet, converting cell values to Dart types.
+List<List<dynamic>> _extractSheetRows(Sheet sheet) {
+  return sheet.rows.map((row) {
+    return row.map((cell) {
+      if (cell == null) return '';
+      final v = cell.value;
+      if (v is TextCellValue) return v.value.text ?? '';
+      if (v is IntCellValue) return v.value;
+      if (v is DoubleCellValue) return v.value;
+      return v.toString();
+    }).toList();
+  }).toList();
+}
+
+/// Writes a dynamic value to an Excel cell, choosing the appropriate CellValue type.
+void _setCellValue(Sheet sheet, int col, int row, dynamic val, {CellStyle? style}) {
+  final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row));
+  if (val is int) {
+    cell.value = IntCellValue(val);
+  } else if (val is double) {
+    cell.value = DoubleCellValue(val);
+  } else {
+    cell.value = TextCellValue(val.toString());
+  }
+  if (style != null) {
+    cell.cellStyle = style;
+  }
+}
+
+/// Data class for the result of parseDesignInIsolate
+class ParsedDesignResult {
+  final Map<String, Slat> slats;
+  final Map<String, Map<String, dynamic>> layerMap;
+  final String gridMode;
+  final Map<String, Cargo> cargoPalette;
+  final Map<(String, String, Offset), Seed> seedRoster;
+  final Map<String, Map<int, String>> phantomMap;
+  final HandleLinkManager linkManager;
+  final String errorCode;
+  final Map<String, List<List<dynamic>>>? echoPlateData;
+  final Map<String, List<List<dynamic>>>? inputPlateData;
+
+  const ParsedDesignResult({
+    required this.slats,
+    required this.layerMap,
+    required this.gridMode,
+    required this.cargoPalette,
+    required this.seedRoster,
+    required this.phantomMap,
+    required this.linkManager,
+    required this.errorCode,
+    this.echoPlateData,
+    this.inputPlateData,
+  });
+}
+
 final Random _rand = Random();
 
-final List<Color> qualitativeCargoColors = [
-  Color(0xFF1B9E77), // Teal
-  Color(0xFFD95F02), // Orange/
-  Color(0xFF7570B3), // Purple
-  Color(0xFFE7298A), // Pink
-  Color(0xFF66A61E), // Green
-  Color(0xFFE6AB02), // Mustard
-  Color(0xFFA6761D), // Brown
-  Color(0xFF0034FF), // Blue
-];
 
 Future<String?> selectSaveLocation(String defaultFileName) async {
   String? filePath = await FilePicker.platform.saveFile(
@@ -79,7 +129,8 @@ void exportDesign(Map<String, Slat> slats,
     Map<String, Map<Offset, String>> occupiedCargoPoints,
     Map<(String, String, Offset), Seed> seedRoster,
     HandleLinkManager linkManager,
-    double gridSize, String gridMode, String suggestedDesignName) async{
+    double gridSize, String gridMode, String suggestedDesignName,
+    {PlateLayoutState? echoPlateLayoutState, PlateLibrary? plateLibrary}) async{
 
   Offset minPos;
   Offset maxPos;
@@ -319,7 +370,80 @@ void exportDesign(Map<String, Slat> slats,
   // finally, export the link manager to its own sheet
   writeHandleLinksToExcel(excel, slats, linkManager, layerMap);
 
-  excel.delete('Sheet1'); // removes useless first sheet
+  // Shared styles for echo plate and input plate sheets
+  final thinBorder = excel_lib.Border(borderStyle: excel_lib.BorderStyle.Thin);
+  final echoHeaderStyle = CellStyle(
+    backgroundColorHex: '#D9E1F2'.excelColor,
+    bold: true,
+    horizontalAlign: HorizontalAlign.Center,
+    leftBorder: thinBorder,
+    rightBorder: thinBorder,
+    topBorder: thinBorder,
+    bottomBorder: thinBorder,
+  );
+  final echoDataStyle = CellStyle(
+    leftBorder: thinBorder,
+    rightBorder: thinBorder,
+    topBorder: thinBorder,
+    bottomBorder: thinBorder,
+    horizontalAlign: HorizontalAlign.Center,
+  );
+
+  // Export echo plate layout if present
+  if (echoPlateLayoutState != null) {
+    final grids = echoPlateLayoutState.exportPlateGrids();
+    for (var entry in grids.entries) {
+      final sheetName = '${echoPlateSheetPrefix}${entry.key}_${entry.value.name}';
+      Sheet echoSheet = excel[sheetName];
+      for (var r = 0; r < entry.value.grid.length; r++) {
+        final row = entry.value.grid[r];
+        for (var c = 0; c < row.length; c++) {
+          final isHeader = r == 0 || c == 0 || r == 10;
+          final style = isHeader ? echoHeaderStyle : echoDataStyle;
+          _setCellValue(echoSheet, c, r, row[c], style: style);
+        }
+      }
+      // Set column widths: label col narrow, data cols wide enough for IDs and config strings
+      echoSheet.setColumnWidth(0, 4.0);
+      for (var c = 1; c <= 12; c++) {
+        echoSheet.setColumnWidth(c, 16.0);
+      }
+    }
+  }
+
+  // Export input plates if present
+  if (plateLibrary != null && plateLibrary.plates.isNotEmpty) {
+    for (var plate in plateLibrary.plates.entries) {
+      // Truncate plate name to fit within Excel's 31-char sheet name limit
+      final maxNameLen = 31 - inputPlateSheetPrefix.length;
+      final truncatedName = plate.key.length > maxNameLen ? plate.key.substring(0, maxNameLen) : plate.key;
+      final sheetName = '$inputPlateSheetPrefix$truncatedName';
+      Sheet inputSheet = excel[sheetName];
+      final rawData = plate.value.exportToAllDataFormat();
+      final colWidths = <int, int>{};
+      for (var r = 0; r < rawData.length; r++) {
+        final row = rawData[r];
+        for (var c = 0; c < row.length; c++) {
+          // Only style the header row — styling hundreds of data cells can cause Excel repair issues
+          _setCellValue(inputSheet, c, r, row[c], style: r == 0 ? echoHeaderStyle : null);
+          final cellLen = row[c].toString().length;
+          if (cellLen > (colWidths[c] ?? 0)) colWidths[c] = cellLen;
+        }
+      }
+      // Auto-size columns based on max content width (cap at 50 to avoid excessive widths for sequences)
+      for (var col in colWidths.entries) {
+        final width = min((col.value + 2) * 1.2, 50.0);
+        inputSheet.setColumnWidth(col.key, width);
+      }
+    }
+  }
+
+  // Remove the default Sheet1 safely — set another sheet as default first to avoid corrupting the workbook
+  final firstRealSheet = excel.sheets.keys.firstWhere((k) => k != 'Sheet1', orElse: () => 'Sheet1');
+  if (firstRealSheet != 'Sheet1') {
+    excel.setDefaultSheet(firstRealSheet);
+    excel.delete('Sheet1');
+  }
 
   if (kIsWeb){
     excel.save(fileName: '$suggestedDesignName.xlsx');
@@ -452,7 +576,7 @@ bool extractAssemblyHandlesFromExcel(Excel excelFile, List<List<List<int>>> slat
   return true;
 }
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, HandleLinkManager, String)> parseDesignInIsolate(Uint8List fileBytes) async {
+Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
@@ -466,7 +590,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // Metadata must exist
   if (!excel.tables.containsKey('metadata')) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_GENERAL');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_GENERAL');
   }
 
   // Read metadata
@@ -486,7 +610,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
 
   // if no layers found, return empty maps
   if (numLayers == 0) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SLAT_SHEETS');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_SLAT_SHEETS');
   }
 
   int layerReadStart = 8;
@@ -568,7 +692,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_GENERAL');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_GENERAL');
   }
 
   // prepares slat array from metadata information
@@ -577,7 +701,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     slatArray = List.generate(excel.tables['slat_layer_1']!.maxRows,
         (_) => List.generate(excel.tables['slat_layer_1']!.maxColumns, (_) => List.filled(numLayers, 0)));
   } catch (_) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SLAT_SHEETS');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_SLAT_SHEETS');
   }
 
   // extracts slat positional data into array
@@ -649,7 +773,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SLAT_SHEETS');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_SLAT_SHEETS');
   }
 
 
@@ -671,7 +795,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
   // assembly handle extraction
   final okHandles = extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minX, minY, false);
   if (!okHandles) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_ASSEMBLY_SHEETS');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_ASSEMBLY_SHEETS');
   }
 
   // extracts cargo handles and assigns them to slats
@@ -718,7 +842,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_CARGO_SHEETS');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_CARGO_SHEETS');
   }
 
   // legacy compatibility with files that didn't contain seed info
@@ -777,7 +901,7 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
   catch (_){
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_SEED_SHEETS');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_SEED_SHEETS');
   }
 
   // prepares seedRoster from partial seed arrays
@@ -849,10 +973,10 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     String? linkError = extractHandleLinksFromExcel(excel, slats, layerMap, linkManager);
     if (linkError != null) {
       // Return the specific error message for display to user
-      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER: $linkError');
+      return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_LINK_MANAGER: $linkError');
     }
   } catch (e) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, 'ERR_LINK_MANAGER: ${e.toString()}');
+    return ParsedDesignResult(slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette, seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: 'ERR_LINK_MANAGER: ${e.toString()}');
   }
 
   // Create placeholder handles for blocked positions (blocked handles have value '0' with ASSEMBLY category)
@@ -864,12 +988,36 @@ Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String
     }
   }
 
-  return (slats, layerMap, gridMode, cargoPalette, seedRoster, phantomMap, linkManager, '');
+  // Extract echo plate data if present
+  Map<String, List<List<dynamic>>>? echoPlateData;
+  final echoSheetNames = excel.tables.keys.where((key) => key.startsWith(echoPlateSheetPrefix)).toList()..sort();
+  if (echoSheetNames.isNotEmpty) {
+    echoPlateData = {for (var name in echoSheetNames) name: _extractSheetRows(excel.tables[name]!)};
+  }
+
+  // Extract input plate data if present
+  Map<String, List<List<dynamic>>>? inputPlateData;
+  final inputPlateSheetNames = excel.tables.keys.where((key) => key.startsWith(inputPlateSheetPrefix)).toList();
+  if (inputPlateSheetNames.isNotEmpty) {
+    inputPlateData = {for (var name in inputPlateSheetNames) name: _extractSheetRows(excel.tables[name]!)};
+  }
+
+  return ParsedDesignResult(
+    slats: slats,
+    layerMap: layerMap,
+    gridMode: gridMode,
+    cargoPalette: cargoPalette,
+    seedRoster: seedRoster,
+    phantomMap: phantomMap,
+    linkManager: linkManager,
+    errorCode: '',
+    echoPlateData: echoPlateData,
+    inputPlateData: inputPlateData,
+  );
 }
 
-Future<(Map<String, Slat>, Map<String, Map<String, dynamic>>, String, Map<String, Cargo>, Map<(String, String, Offset), Seed>, Map<String, Map<int, String>>, HandleLinkManager, String, String)>
-importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
-  /// Reads in a design from the standard format excel file, and returns maps of slats and layers found in the design.
+Future<(ParsedDesignResult, String)> importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
+  /// Reads in a design from the standard format excel file, and returns a ParsedDesignResult plus the design name.
 
   Map<String, Map<String, dynamic>> layerMap = {};
   Map<String, Slat> slats = {};
@@ -877,6 +1025,11 @@ importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
   Map<String, Map<int, String>> phantomMap = {};
   Map<(String, String, Offset), Seed> seedRoster = {};
   HandleLinkManager linkManager = HandleLinkManager();
+
+  ParsedDesignResult emptyResult({String errorCode = ''}) => ParsedDesignResult(
+    slats: slats, layerMap: layerMap, gridMode: '', cargoPalette: cargoPalette,
+    seedRoster: seedRoster, phantomMap: phantomMap, linkManager: linkManager, errorCode: errorCode,
+  );
 
   String filePath;
   Uint8List fileBytes;
@@ -906,27 +1059,16 @@ importDesign({String? inputFileName, Uint8List? inputFileBytes}) async {
       }
       fileName = basenameWithoutExtension(result.files.first.name);
     } else {
-      // if nothing picked, return empty maps
-      return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, '', '');
+      // if nothing picked, return empty result
+      return (emptyResult(), '');
     }
   }
   // run isolate function
   try {
-    final (slatsOut, layerMapOut, layerName, cargoOut, seedOut, phantomMapOut, linkManagerOut, errorCode) =
-        await compute(parseDesignInIsolate, fileBytes);
-    return (
-      slatsOut,
-      layerMapOut,
-      layerName,
-      cargoOut,
-      seedOut,
-      phantomMapOut,
-      linkManagerOut,
-      fileName,
-      errorCode
-    );
+    final result = await compute(parseDesignInIsolate, fileBytes);
+    return (result, fileName);
   } catch (_) {
-    return (slats, layerMap, '', cargoPalette, seedRoster, phantomMap, linkManager, '', 'ERR_GENERAL');
+    return (emptyResult(errorCode: 'ERR_GENERAL'), '');
   }
 }
 

@@ -62,7 +62,7 @@ jobs:
           with open(os.path.join(plates_dir, 'manifest.json'), 'w') as mf:
               json.dump({'plates': plates}, mf, indent=2)
           "
-          
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.8.0
         with:

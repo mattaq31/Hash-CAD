@@ -4,6 +4,7 @@ import 'package:xml/xml.dart';
 
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/seed.dart';
+import '../echo_and_experimental_helpers/echo_plate_constants.dart' show slatDisplayName;
 import '../app_management/shared_app_state.dart';
 import '../app_management/action_state.dart';
 import 'slat_painter.dart';
@@ -229,7 +230,7 @@ Future<void> exportSlatsToSvg({
 
       // 4. Add slat ID if enabled (only for selected layer)
       if (exportOptions['slatIDs'] == true && slat.layer == selectedLayer) {
-        _addSlatID(slatGroupBuilder, slat, coords, gridSize);
+        _addSlatID(slatGroupBuilder, slat, coords, gridSize, layerMap);
       }
     });
 
@@ -514,7 +515,7 @@ void _addHandleMarkers(
 }
 
 /// Adds slat ID label at the center of the slat.
-void _addSlatID(XmlBuilder builder, Slat slat, List<Offset> coords, double gridSize) {
+void _addSlatID(XmlBuilder builder, Slat slat, List<Offset> coords, double gridSize, Map<String, Map<String, dynamic>> layerMap) {
   // Find center of all coords
   double sumX = 0, sumY = 0;
   for (final c in coords) {
@@ -533,7 +534,7 @@ void _addSlatID(XmlBuilder builder, Slat slat, List<Offset> coords, double gridS
   }
 
   // Slat ID text
-  String slatIdText = slat.id.replaceFirst('-I', '-') + (slat.slatType != 'tube' ? ' (${slat.slatType})' : '');
+  String slatIdText = slatDisplayName(slat, layerMap) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : '');
   double rectWidth = slat.slatType == 'tube' ? gridSize * 3 : gridSize * 6;
   double rectHeight = gridSize * 0.85;
   double fontSize = gridSize * 0.6;

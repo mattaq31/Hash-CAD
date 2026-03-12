@@ -1,6 +1,7 @@
 import pickle
+import os
 import itertools
-from nupack import *
+import multiprocessing as mp
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -11,9 +12,42 @@ from matplotlib.ticker import AutoMinorLocator
 from orthoseq_generator import helper_functions as hf
 import time
 
+import logging
+
+logger = logging.getLogger("orthoseq")
+logger.addHandler(logging.NullHandler())
 
 
+def _parse_slurm_cpus(value):
+    if not value:
+        return None
+    try:
+        # Handles values like "16", "16(x2)", or "16,16"
+        first = value.split(",")[0]
+        first = first.split("(")[0]
+        return int(first)
+    except ValueError:
+        return None
 
+
+def slurm_cpus(default=1):
+    for key in ("SLURM_CPUS_PER_TASK", "SLURM_JOB_CPUS_PER_NODE", "SLURM_CPUS_ON_NODE"):
+        parsed = _parse_slurm_cpus(os.environ.get(key))
+        if parsed:
+            return max(1, parsed)
+    return max(1, default)
+
+
+def _max_workers(fraction=0.75):
+    total = slurm_cpus(default=os.cpu_count() or 1)
+    return max(1, total - 1)
+
+
+def _mp_context_from_env():
+    method = os.environ.get("ORTHOSEQ_MP_START", "").strip().lower()
+    if not method:
+        return None
+    return mp.get_context(method)
 
 
 def revcom(sequence):
@@ -67,6 +101,239 @@ def sorted_key(seq1, seq2):
     :rtype: tuple
     """
     return (min(seq1, seq2), max(seq1, seq2))
+
+
+class SequencePairRegistry:
+    """
+    Stateful generator/registry for DNA sequence pairs.
+
+    It generates random core sequences of fixed length, forms the pair
+    (seq, revcom(seq)), applies constraints, and assigns stable integer IDs.
+
+    If a generated pair has been seen before, it returns the previously
+    assigned ID instead of creating a new one.
+    """
+
+    def __init__(
+        self,
+        length=7,
+        fivep_ext="",
+        threep_ext="",
+        unwanted_substrings=None,
+        apply_unwanted_to="core",
+        seed=None,
+        preselected_cores=None,
+    ):
+        """
+        :param length: Length of the core DNA sequence (without flanks).
+        :type length: int
+
+        :param fivep_ext: Optional 5′ flanking sequence prepended to each strand.
+        :type fivep_ext: str
+
+        :param threep_ext: Optional 3′ flanking sequence appended to each strand.
+        :type threep_ext: str
+
+        :param unwanted_substrings: List of substrings that disqualify a sequence.
+                                    Example: ["AAAA", "CCCC", "GGGG", "TTTT"].
+        :type unwanted_substrings: list[str] or None
+
+        :param apply_unwanted_to: Where to apply unwanted_substrings checks.
+                                  - "core": apply only to the random core sequences
+                                  - "full": apply to the full flanked sequences
+        :type apply_unwanted_to: str
+
+        :param seed: Optional RNG seed for reproducibility.
+        :type seed: int or None
+
+        :param preselected_cores: Optional iterable of core sequences to draw from
+                                  instead of random generation. Sampling is without
+                                  replacement in random order.
+        :type preselected_cores: iterable[str] or None
+        """
+        self.length = int(length)
+        self.fivep_ext = str(fivep_ext)
+        self.threep_ext = str(threep_ext)
+        self.unwanted_substrings = list(unwanted_substrings) if unwanted_substrings else []
+
+        if apply_unwanted_to not in ("core", "full"):
+            raise ValueError('apply_unwanted_to must be "core" or "full"')
+        self.apply_unwanted_to = apply_unwanted_to
+
+        self._rng = random.Random(seed)
+        self._pair_to_id = {}   # maps canonical pair -> integer ID
+        self._id_to_pair = []   # list of canonical pairs by ID (index == ID)
+
+        self._bases = ("A", "T","C","G")
+        if preselected_cores is None:
+            self._preselected_cores = None
+        else:
+            self._preselected_cores = list(preselected_cores)
+            for core in self._preselected_cores:
+                if len(core) != self.length:
+                    raise ValueError(
+                        f"preselected core length {len(core)} != registry length {self.length}"
+                    )
+
+    def _contains_any_substring(self, seq):
+        """
+        Returns True if seq contains any substring from self.unwanted_substrings.
+
+        :param seq: DNA sequence as a string.
+        :type seq: str
+
+        :returns: True if any unwanted substring is found, False otherwise.
+        :rtype: bool
+        """
+        if not self.unwanted_substrings:
+            return False
+        for s in self.unwanted_substrings:
+            if s in seq:
+                return True
+        return False
+
+    def _random_core(self):
+        """
+        Generates one random core sequence of length self.length.
+        """
+        return "".join(self._rng.choice(self._bases) for _ in range(self.length))
+
+    def _next_preselected_core(self):
+        """
+        Returns a random preselected core sequence (with replacement).
+        """
+        if self._preselected_cores is None:
+            return None
+        if not self._preselected_cores:
+            return None
+        return self._rng.choice(self._preselected_cores)
+
+    def _make_flanked(self, core_seq):
+        """
+        Returns (seq, rc_seq) with flanks added.
+
+        :param core_seq: Core DNA sequence (unflanked).
+        :type core_seq: str
+
+        :returns: (flanked_seq, flanked_revcom_seq)
+        :rtype: tuple[str, str]
+        """
+        core_rc = revcom(core_seq)
+        seq = f"{self.fivep_ext}{core_seq}{self.threep_ext}"
+        rc_seq = f"{self.fivep_ext}{core_rc}{self.threep_ext}"
+        return seq, rc_seq
+
+    def _make_pair(self, core_seq):
+        """
+        Builds the canonical (sorted) flanked pair from a core sequence.
+        """
+        seq, rc_seq = self._make_flanked(core_seq)
+        return sorted_key(seq, rc_seq)
+
+    def _is_valid(self, core_seq):
+        """
+        Checks constraints on core_seq and its reverse complement.
+
+        The unwanted_substrings constraint can be applied either to:
+        - the core sequences ("core"), or
+        - the full flanked sequences ("full").
+        """
+        core_rc = revcom(core_seq)
+
+        if self.apply_unwanted_to == "core":
+            if self._contains_any_substring(core_seq):
+                return False
+            if self._contains_any_substring(core_rc):
+                return False
+            return True
+
+        # apply_unwanted_to == "full"
+        seq, rc_seq = self._make_flanked(core_seq)
+        if self._contains_any_substring(seq):
+            return False
+        if self._contains_any_substring(rc_seq):
+            return False
+        return True
+
+    def sample_pair(self, max_tries=10_000):
+        """
+        Generates (or reuses) a random sequence pair and returns (pair_id, pair).
+
+        Behavior
+        --------
+        - If preselected_cores were provided, draws from that list (random, with replacement).
+        - Draw random core sequences until constraints pass.
+        - Convert to canonical (sorted) flanked pair.
+        - If pair was seen: return existing ID.
+        - Else: assign new ID, store, return it.
+
+        :param max_tries: Maximum attempts before raising an error (prevents infinite loops).
+        :type max_tries: int
+
+        :returns: (pair_id, (seq, rc_seq)) where seq/rc_seq are flanked and sorted.
+        :rtype: tuple[int, tuple[str, str]]
+        """
+        if self._preselected_cores is not None:
+            while True:
+                core_seq = self._next_preselected_core()
+                if core_seq is None:
+                    raise RuntimeError("Preselected cores are empty.")
+
+                if not self._is_valid(core_seq):
+                    continue
+
+                pair = self._make_pair(core_seq)
+
+                existing_id = self._pair_to_id.get(pair)
+                if existing_id is not None:
+                    return existing_id, pair
+
+                new_id = len(self._id_to_pair)
+                self._pair_to_id[pair] = new_id
+                self._id_to_pair.append(pair)
+                return new_id, pair
+
+        for _ in range(int(max_tries)):
+            core_seq = self._random_core()
+
+            if not self._is_valid(core_seq):
+                continue
+
+            pair = self._make_pair(core_seq)
+
+            existing_id = self._pair_to_id.get(pair)
+            if existing_id is not None:
+                return existing_id, pair
+
+            new_id = len(self._id_to_pair)
+            self._pair_to_id[pair] = new_id
+            self._id_to_pair.append(pair)
+            return new_id, pair
+
+        raise RuntimeError(
+            "Could not generate a valid new sequence pair within max_tries. "
+            "Relax constraints or increase max_tries."
+        )
+
+    def get_pair_by_id(self, pair_id):
+        """
+        Returns the stored pair for a given ID.
+
+        :param pair_id: Integer ID returned by sample_pair.
+        :type pair_id: int
+
+        :returns: (seq, rc_seq) canonical sorted pair.
+        :rtype: tuple[str, str]
+        """
+        return self._id_to_pair[int(pair_id)]
+
+    def __len__(self):
+        """
+        Number of unique pairs stored so far.
+        """
+        return len(self._id_to_pair)
+
+
 
 
 def create_sequence_pairs_pool(length=7, fivep_ext="", threep_ext="", avoid_gggg=True):
@@ -137,11 +404,15 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
 
     Notes
     -----
-    - Uses a local cache to avoid redundant NUPACK calls when provided with `Use_Library=True`. The input variable overwrites the global state. 
-    - Energies are stored under a sorted key so (seq1, seq2) and (seq2, seq1) map identically. Saving is not done here
-    - This function is called by multiprocessing. Each instance loads its own precompute library once from file. 
+    - Uses a local cache to avoid redundant NUPACK calls when `Use_Library=True`. If the
+      argument is None, the global setting in `hf.USE_LIBRARY` is used.
+    - Energies are stored under a sorted key so (seq1, seq2) and (seq2, seq1) map identically.
+      This function does not write back to disk; cache updates are handled by callers.
+    - Called by multiprocessing; each worker loads its own cache copy once from file.
     - Does not write to the cache during multiprocessing to prevent conflicts.
-    - All energies larger than -1 kcal/mol are mapped to -1 kcal/mol. 0 is used in other routines as an idicator that the energy has not been computed. -1 kcal/mol is already extremely weak. (virtually no interaction) 
+    - All energies larger than -1 kcal/mol are mapped to -1 kcal/mol. 0 is used in other
+      routines as an indicator that the energy has not been computed. -1 kcal/mol is already
+      extremely weak (virtually no interaction).
     - Model parameters are fixed at 37°C, sodium=0.05 M, magnesium=0.025 M; change with a fresh cache.
 
     :param seq1: First DNA sequence.
@@ -156,8 +427,10 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
     :param Use_Library: If True, use and load the precompute cache; defaults to global setting.
     :type Use_Library: bool or None
 
-    :returns: Gibbs free energy in kcal/mol, or -1.0 kcal/mol if no interaction or on error.
-    :rtype: float
+    :returns: Tuple `(energy, G_A, G_B)` where `energy` is the association free energy
+              (kcal/mol). For homodimers, `G_B == G_A`. If NUPACK returns no MFE or
+              an exception occurs, the function returns `-1.0` (scalar) instead.
+    :rtype: tuple[float, float, float] or float
     """
     
     
@@ -167,6 +440,8 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
    
    
    
+    from nupack import Strand, Complex, Model, complex_analysis
+
     A = Strand(seq1, name='H1')  # name is required for strands
     B = Strand(seq2, name='H2')
     library1 = {}
@@ -192,11 +467,20 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         # Define the complex (symmetric if seq1 == seq2)
         if seq1 == seq2:
             complex_obj = Complex([A, A], name='(H1+H1)')
+            mono_obj_A =Complex([A],name='(H1)')
+            homo= True
         else:
             complex_obj = Complex([A, B], name='(H1+H2)')
-
+            mono_obj_A = Complex([A],name='(H1)')
+            mono_obj_B = Complex([B],name='(H2)')
+            homo=False
         # Define model
-        model1 = Model(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
+        model1 = Model(
+            material=hf.NUPACK_PARAMS["MATERIAL"],
+            celsius=hf.NUPACK_PARAMS["CELSIUS"],
+            sodium=hf.NUPACK_PARAMS["SODIUM"],
+            magnesium=hf.NUPACK_PARAMS["MAGNESIUM"]
+        )
 
         # Run complex analysis only for what's needed
         if type == 'minimum':
@@ -205,17 +489,36 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
             if len(mfe_list) == 0:
                 return -1.0
             energy = mfe_list[0].energy
+            G_A=0
+            G_B=0
+
 
         elif type == 'total':
-            results = complex_analysis([complex_obj], model=model1, compute=['pfunc'])
-            energy = results[complex_obj].free_energy
-            if energy > 0:
+            # association free energy using partition function (pfunc)
+            # tube reference: dG = G_AB - G_A - G_B  (homodimer: G_AB - 2*G_A)
+
+            if homo:
+                results = complex_analysis([complex_obj, mono_obj_A], model=model1, compute=['pfunc'])
+                G_AB = results[complex_obj].free_energy
+                G_A = results[mono_obj_A].free_energy
+                G_B = G_A
+                energy = G_AB - 2.0 * G_A
+            else:
+                results = complex_analysis([complex_obj, mono_obj_A, mono_obj_B], model=model1, compute=['pfunc'])
+                G_AB = results[complex_obj].free_energy
+                G_A = results[mono_obj_A].free_energy
+                G_B = results[mono_obj_B].free_energy
+                energy = G_AB - G_A - G_B
+
+            if energy > -1:
                 energy = -1.0
+
+
 
         else:
             raise ValueError('type must be either "minimum" or "total"')
 
-        return energy
+        return energy, G_A, G_B
 
     except Exception as e:
         print(f"The following error occurred: {e}")
@@ -223,7 +526,7 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         return -1.0
 
 
-def _init_worker(lib_filename, use_lib):
+def _init_worker(lib_filename, use_lib, nupack_params):
     """
     Initializes worker processes for parallel energy computations by configuring
     the precompute library filename and cache usage flag.
@@ -238,7 +541,7 @@ def _init_worker(lib_filename, use_lib):
     :rtype: None
     """
     
-    
+    hf.NUPACK_PARAMS= nupack_params
     hf._precompute_library_filename = lib_filename
     hf.USE_LIBRARY = use_lib
     #print("Worker using", _precompute_library_filename, USE_LIBRARY)
@@ -258,11 +561,11 @@ def compute_pair_energy_on(i, seq, rc_seq):
     :param rc_seq: Reverse complement sequence.
     :type rc_seq: str
 
-    :returns: Tuple containing the index and its computed Gibbs free energy.
-    :rtype: tuple (int, float)
+    :returns: Tuple `(i, pair_energy, self_energy_seq, self_energy_rc_seq)`.
+    :rtype: tuple[int, float, float, float]
     """
-    
-    return i, nupack_compute_energy_precompute_library_fast(seq, rc_seq)
+    pair_e, self_e1, self_e2 = nupack_compute_energy_precompute_library_fast(seq,rc_seq)
+    return i, pair_e, self_e1, self_e2
 
 
 def compute_ontarget_energies(sequence_list):
@@ -279,32 +582,44 @@ def compute_ontarget_energies(sequence_list):
     :param sequence_list: List of tuples, each containing a sequence and its reverse complement.
     :type sequence_list: list of tuple
 
-    :returns: NumPy array of Gibbs free energies (kcal/mol) for each sequence pair.
-    :rtype: numpy.ndarray
+    :returns: Tuple of NumPy arrays `(pair_energies, self_energies_seq, self_energies_rc_seq)`.
+    :rtype: tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]
     """
 
     # Preallocate array for better performance
     energies = np.zeros(len(sequence_list))
-
+    self_energies_seq= np.zeros(len(sequence_list))
+    self_energies_rc_seq= np.zeros(len(sequence_list))
     # Announce what is about to happen
     print(f"Computing on-target energies for {len(sequence_list)} sequences...")
+    logger.info(f"Computing on-target energies for {len(sequence_list)} sequences.")
 
-    max_workers = max(1, os.cpu_count() * 3 // 4)
+    max_workers = _max_workers()
     print(f"Calculating with {max_workers} cores...")
 
     # parallelize energy computation
-    pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY)
-    
-    with ProcessPoolExecutor(max_workers=max_workers,
-                             initializer=_init_worker,
-                             initargs=pool_args) as executor:
-        futures = []
-        for i, (seq, rc_seq) in enumerate(sequence_list):
-            futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq))
-
-        for future in tqdm(as_completed(futures), total=len(futures)):
-            i, energy = future.result()
+    pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
+    if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
+        for i, (seq, rc_seq) in tqdm(enumerate(sequence_list), total=len(sequence_list)):
+            _, energy, self_e_seq, self_e_rc_seq = compute_pair_energy_on(i, seq, rc_seq)
             energies[i] = energy
+            self_energies_seq[i] = self_e_seq
+            self_energies_rc_seq[i] = self_e_rc_seq
+    else:
+        mp_ctx = _mp_context_from_env()
+        with ProcessPoolExecutor(max_workers=max_workers,
+                                 initializer=_init_worker,
+                                 initargs=pool_args,
+                                 mp_context=mp_ctx) as executor:
+            futures = []
+            for i, (seq, rc_seq) in enumerate(sequence_list):
+                futures.append(executor.submit(compute_pair_energy_on, i, seq, rc_seq))
+
+            for future in tqdm(as_completed(futures), total=len(futures)):
+                i, energy, self_e_seq, self_e_rc_seq = future.result()
+                energies[i] = energy
+                self_energies_seq[i] = self_e_seq
+                self_energies_rc_seq[i] = self_e_rc_seq
 
     # update the precompute library if required
     if hf.USE_LIBRARY:
@@ -326,7 +641,7 @@ def compute_ontarget_energies(sequence_list):
             hf.save_pickle_atomic(library1, file_name)
             print("saved stuff")
 
-    return energies
+    return energies, self_energies_seq, self_energies_rc_seq
 
 
 
@@ -350,7 +665,8 @@ def compute_pair_energy_off(i, j, seq1, seq2):
      :returns: Tuple `(i, j, energy)` where `energy` is the computed Gibbs free energy.
      :rtype: tuple (int, int, float)
      """
-    return i, j, nupack_compute_energy_precompute_library_fast(seq1, seq2)
+    bind_energy , _, _ = nupack_compute_energy_precompute_library_fast(seq1, seq2)
+    return i, j, bind_energy
 
 
 def compute_offtarget_energies(sequence_pairs):
@@ -410,33 +726,48 @@ def compute_offtarget_energies(sequence_pairs):
     # For handle-handle and antihandle-antihandle comparisons, we avoid redundant computations by only calculating for i ≥ j.
     # For handle-antihandle comparisons, we skip the diagonal (i == j) to avoid the on-target interactions.
     def parallel_energy_computation(seqs1, seqs2, energy_matrix, condition):
-        max_workers = max(1, os.cpu_count() * 3// 4) # Use only 3 quarters of all possible cores on the maching
+        max_workers = _max_workers()  # Use only 3 quarters of all possible cores on the machine
         print(f'Calculating with {max_workers} cores...')
-        pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY)
+        pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
 
-        with ProcessPoolExecutor(max_workers=max_workers,
-                                 initializer=_init_worker,
-                                 initargs=pool_args) as executor:
-            futures = []
+        if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
             for i, seq1 in enumerate(seqs1):
                 for j, seq2 in enumerate(seqs2):
                     if condition(i, j):
-                        futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2))
+                        _, _, energy = compute_pair_energy_off(i, j, seq1, seq2)
+                        energy_matrix[i, j] = energy
+        else:
+            mp_ctx = _mp_context_from_env()
+            with ProcessPoolExecutor(max_workers=max_workers,
+                                     initializer=_init_worker,
+                                     initargs=pool_args,
+                                     mp_context=mp_ctx) as executor:
+                futures = []
+                for i, seq1 in enumerate(seqs1):
+                    for j, seq2 in enumerate(seqs2):
+                        if condition(i, j):
+                            futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2))
 
-            for future in tqdm(as_completed(futures), total=len(futures)):
-                i, j, energy = future.result()
-                energy_matrix[i, j] = energy
+                for future in tqdm(as_completed(futures), total=len(futures)):
+                    i, j, energy = future.result()
+                    energy_matrix[i, j] = energy
 
     # Parallelize handle-handle energy computation
     print(f'Computing off-target energies for handle-handle interactions')
+    computations = int(len(handles) * (len(handles)+1)/2)
+    logger.info(f"Computing off-target energies for {computations} plus-plus interactions")
     parallel_energy_computation(handles, handles, crosscorrelated_handle_handle_energies, lambda i, j: j <= i)
 
     # Parallelize antihandle-antihandle energy computation
-    print(f'Computing off-target energies for antihandle-antihandle interactions')
+    print(f'Computing off-target energies for minus-minus interactions')
+    computations = int(len(antihandles) * (len(antihandles) + 1) / 2)
+    logger.info(f"Computing off-target energies for {computations} minus-minus interactions")
     parallel_energy_computation(antihandles, antihandles, crosscorrelated_antihandle_antihandle_energies, lambda i, j: j <= i)
 
     # Parallelize handle-antihandle energy computation
     print(f'Computing off-target energies for handle-antihandle interactions')
+    computations = len(handles) * (len(antihandles))-len(handles)
+    logger.info(f"Computing off-target energies for {computations} plus-minus interactions")
     parallel_energy_computation(handles, antihandles, crosscorrelated_handle_antihandle_energies, lambda i, j: j != i)
 
 
@@ -481,113 +812,427 @@ def compute_offtarget_energies(sequence_pairs):
             }
 
 
-def select_subset(sequence_pairs, max_size=200):
+def select_subset(sequence_pairs, max_size=200, timeout_s=20):
     """
     Selects a random subset of sequence pairs up to a specified maximum size.
 
+    This function supports two input types:
+    1) A precomputed pool: list of (index, (seq, rc_seq)) tuples.
+       - If pool size > max_size: uses random.sample for efficiency.
+       - Else: returns all pairs.
+    2) A generator/registry object that provides sample_pair().
+       - Repeatedly calls sample_pair() until max_size unique pairs are collected,
+         or timeout_s is reached.
+
     Notes
     -----
-    - If the number of available pairs exceeds `max_size`, randomly samples `max_size` pairs using `random.sample`.
-    - If the number of pairs is less than or equal to `max_size`, returns all pairs.
-    - Uses sampling rather than full shuffling for performance on large datasets.
+    - For list input: uses sampling rather than shuffling for performance.
+    - For registry input: guarantees uniqueness by ID (not by sequence string),
+      so repeated samples do not inflate the subset.
 
-    :param sequence_pairs: List of `(index, (seq, rc_seq))` tuples.
-    :type sequence_pairs: list of tuple
+    Timeout behavior
+    ----------------
+    If timeout_s is reached while using a registry, the function returns the
+    pairs found so far and prints:
+        "Only X of requested Y found (timeout)."
+
+    :param sequence_pairs: Either
+        - list of (index, (seq, rc_seq)) tuples, or
+        - an object with method sample_pair() -> (pair_id, (seq, rc_seq)).
+    :type sequence_pairs: list or object
 
     :param max_size: Maximum number of pairs to select.
     :type max_size: int
 
-    :returns: List of `(seq, rc_seq)` pairs selected.
+    :param timeout_s: Optional timeout in seconds (only used for registry input).
+    :type timeout_s: float or None
+
+    :returns: List of (seq, rc_seq) pairs selected.
     :rtype: list of tuple
     """
-    
-    
-    total = len(sequence_pairs)
+    # Case 1: precomputed list of (index, pair)
+    if isinstance(sequence_pairs, list):
+        total = len(sequence_pairs)
 
-    if total > max_size:
-        selected = random.sample(sequence_pairs, max_size)
-        subset = []
-        for index, pair in selected:
-            subset.append(pair)
-        print(f"Selected random subset of {max_size} pairs from {total} available pairs.")
-    else:
+        if total > max_size:
+            selected = random.sample(sequence_pairs, max_size)
+            subset = []
+            for index, pair in selected:
+                subset.append(pair)
+            print(f"Selected random subset of {max_size} pairs from {total} available pairs.")
+            return subset
+
         subset = []
         for index, pair in sequence_pairs:
             subset.append(pair)
         print(f"Using all {total} available pairs (less than or equal to {max_size}).")
+        return subset
 
+    # Case 2: registry/generator object with sample_pair()
+    if not hasattr(sequence_pairs, "sample_pair"):
+        raise TypeError(
+            "sequence_pairs must be either a list of (index, (seq, rc_seq)) "
+            "or an object with a sample_pair() method."
+        )
+
+    start_t = time.time()
+    seen_ids = set()
+    subset = []
+
+    while len(subset) < max_size:
+        if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+            print(
+                f"Only {len(subset)} of requested {max_size} found (timeout)."
+            )
+            logger.info(f"Only {len(subset)} of requested {max_size} found (timeout = {timeout_s}s).")
+            return subset
+
+        pair_id, pair = sequence_pairs.sample_pair()
+
+        if pair_id in seen_ids:
+            continue
+
+        seen_ids.add(pair_id)
+        subset.append(pair)
+
+    print(f"Generated {max_size} unique pairs from registry input.")
+    logger.info(f"Selected requested {max_size} sequence pairs.")
     return subset
 
-
-def select_subset_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, max_size=np.inf,
-                                  Use_Library=None, avoid_indices=None):
+def crossreference_sequences(
+    new_pair,
+    pool,
+    offtarget_limit,
+    max_pair_violations=0,
+    Use_Library=None,
+):
     """
-    Selects a random subset of sequence pairs whose on-target energies fall within a given range.
+    Checks off-target interactions between a candidate sequence pair and a
+    history pool.
+
+    Counts violations per pool pair, not per individual strand-strand
+    interaction. A pool pair is counted as violating if any of the four
+    pairwise comparisons between `(seq, rc_seq)` and `(pool_seq, pool_rc)`
+    falls below `offtarget_limit`.
+
+    :param new_pair: Candidate `(seq, rc_seq)` pair to test.
+    :type new_pair: tuple[str, str]
+
+    :param pool: Existing `(seq, rc_seq)` pairs to cross-reference against.
+    :type pool: list[tuple[str, str]]
+
+    :param offtarget_limit: Energy cutoff below which an off-target interaction
+                            is considered a violation.
+    :type offtarget_limit: float
+
+    :param max_pair_violations: Maximum number of violating pool pairs allowed
+                                before the candidate is rejected.
+    :type max_pair_violations: int
+
+    :param Use_Library: Whether to use the precomputed energy library
+                        (overrides the global setting if not None).
+    :type Use_Library: bool or None
+
+    :returns: Tuple `(passed, nupack_calls)` where `passed` is False if the
+              number of violating pool pairs exceeds `max_pair_violations`,
+              and `nupack_calls` is the number of direct energy computations
+              performed during this cross-reference check.
+    :rtype: tuple[bool, int]
+    """
+    if Use_Library is None:
+        Use_Library = hf.USE_LIBRARY
+
+    if not pool:
+        return True, 0
+
+    seq, rc_seq = new_pair
+    violations = 0
+    nupack_calls = 0
+
+    for pool_seq, pool_rc in pool:
+        violated = False
+        for a in (seq, rc_seq):
+            for b in (pool_seq, pool_rc):
+                nupack_calls += 1
+                result = nupack_compute_energy_precompute_library_fast(
+                    a,
+                    b,
+                    type="total",
+                    Use_Library=Use_Library,
+                )
+                energy = result[0] if isinstance(result, tuple) else result
+                if energy < offtarget_limit:
+                    violated = True
+                    break
+            if violated:
+                break
+
+        if violated:
+            violations += 1
+            if violations > max_pair_violations:
+                return False, nupack_calls
+
+    return True, nupack_calls
+
+
+def select_subset_in_energy_range(
+    sequence_pairs,
+    energy_min=-np.inf,
+    energy_max=np.inf,
+    self_energy_min=-np.inf,
+    max_size=np.inf,
+    Use_Library=None,
+    avoid_indices=None,
+    timeout_s=None,
+    history_pool=None,
+    allowed_violations=0,
+    offtarget_limit=None,
+    max_nupack_calls=None,
+    progress_every=None,
+):
+    """
+    Selects a random subset of sequence pairs that pass on-target energy,
+    self-energy, and optional cross-reference filters.
+
+    Supports two input types:
+    1) Precomputed list of (index, (seq, rc_seq)) tuples.
+    2) SequencePairRegistry-like object with sample_pair() method.
 
     Notes
     -----
-    - Randomly samples without full shuffling for performance on large datasets.
-    - Continues until `max_size` pairs are found or all candidates (excluding `avoid_indices`) are tested.
-    - Uses `nupack_compute_energy_precompute_library_fast` with `Use_Library` to compute or fetch energies.
-    - Prints a summary of how many pairs were selected.
+    - Uses random sampling without full shuffling.
+    - Keeps returned sequence order aligned with returned indices list.
+    - Can stop early due to `timeout_s`, `max_nupack_calls`, or candidate exhaustion.
+    - If `offtarget_limit` is None, cross-reference filtering is skipped.
 
-    :param sequence_pairs: List of `(index, (seq, rc_seq))` tuples.
-    :type sequence_pairs: list of tuple
+    :param sequence_pairs: List of (index, (seq, rc_seq)) tuples or registry with sample_pair().
+    :type sequence_pairs: list or object
 
-    :param energy_min: Minimum allowed Gibbs free energy (inclusive).
+    :param energy_min: Minimum acceptable on-target (association) energy.
     :type energy_min: float
 
-    :param energy_max: Maximum allowed Gibbs free energy (inclusive).
+    :param energy_max: Maximum acceptable on-target (association) energy.
     :type energy_max: float
 
-    :param max_size: Maximum number of pairs to select.
-    :type max_size: int or float('inf')
+    :param self_energy_min: Minimum acceptable self-energy for each strand.
+    :type self_energy_min: float
 
-    :param Use_Library: Whether to use a precomputed energy library (overrides global setting if not None).
+    :param max_size: Maximum number of pairs to return.
+    :type max_size: int
+
+    :param Use_Library: Whether to use the precomputed energy library (overrides global if not None).
     :type Use_Library: bool or None
 
-    :param avoid_indices: Set of indices to skip during selection.
+    :param avoid_indices: Indices to avoid when sampling.
     :type avoid_indices: set or None
 
-    :returns: Tuple `(subset, indices)` where:
-              - `subset` is a list of `(seq, rc_seq)` pairs within the energy range.
-              - `indices` is a list of their corresponding global indices.
-    :rtype: tuple (list of tuple, list of int)
+    :param timeout_s: Optional wall-clock timeout in seconds; returns early if exceeded.
+    :type timeout_s: float or None
+
+    :param history_pool: Optional list of accepted `(seq, rc_seq)` pairs to cross-reference against.
+    :type history_pool: list[tuple[str, str]] or None
+
+    :param allowed_violations: Maximum number of pool pairs allowed to violate `offtarget_limit`.
+    :type allowed_violations: int
+
+    :param offtarget_limit: Optional off-target energy cutoff for cross-reference filtering.
+    :type offtarget_limit: float or None
+
+    :param max_nupack_calls: Optional limit on direct NUPACK energy computations made inside this function.
+    :type max_nupack_calls: int or None
+
+    :param progress_every: Optional attempt interval for progress prints.
+    :type progress_every: int or None
+
+    :returns: Tuple `(subset, indices, stopped_early, nupack_calls)` where `subset`
+              is a list of `(seq, rc_seq)` pairs, `indices` are their corresponding
+              global IDs, `stopped_early` indicates timeout or NUPACK-budget exit,
+              and `nupack_calls` is the number of direct NUPACK computations made
+              inside this function.
+    :rtype: tuple[list[tuple[str, str]], list[int], bool, int]
     """
-    
+
     if Use_Library is None:
         Use_Library = hf.USE_LIBRARY
-    
+
     if avoid_indices is None:
         avoid_indices = set()
+
+    if history_pool is None:
+        history_pool = []
 
     subset = []
     indices = []
     tested_indices = set(avoid_indices)
-    
-    
-    # I used shuffel here before. For large numbers of sequence_pairs i.e. around 4^12 shuffel is very slow
-    while len(indices) < max_size and len(tested_indices) < len(sequence_pairs):
-        index, (seq, rc_seq) = random.choice(sequence_pairs)
+    attempts = 0
+    nupack_calls = 0
 
-        if index in tested_indices:
-            continue
+    start_t = time.time()
 
-        tested_indices.add(index)
+    def _evaluate_candidate(seq, rc_seq):
+        nonlocal nupack_calls
 
-        energy = nupack_compute_energy_precompute_library_fast(
-            seq, rc_seq,
-            type='total',
-            Use_Library=Use_Library
+        if max_nupack_calls is not None and nupack_calls >= max_nupack_calls:
+            return None, "nupack_limit"
+
+        nupack_calls += 1
+        energy, self_e_seq, self_e_rc_seq = nupack_compute_energy_precompute_library_fast(
+            seq,
+            rc_seq,
+            type="total",
+            Use_Library=Use_Library,
         )
 
-        if energy_min <= energy <= energy_max:
+        if not (
+            energy_min <= energy <= energy_max
+            and self_e_seq >= self_energy_min
+            and self_e_rc_seq >= self_energy_min
+        ):
+            return False, None
+
+        if offtarget_limit is not None:
+            passed_crossref, crossref_nupack_calls = crossreference_sequences(
+                (seq, rc_seq),
+                history_pool,
+                offtarget_limit,
+                max_pair_violations=allowed_violations,
+                Use_Library=Use_Library,
+            )
+            nupack_calls += crossref_nupack_calls
+            if not passed_crossref:
+                return False, None
+
+        if max_nupack_calls is not None and nupack_calls >= max_nupack_calls:
+            return None, "nupack_limit"
+
+        return True, None
+
+    # -------------------------------------------------
+    # CASE 1 — precomputed list input
+    # -------------------------------------------------
+
+    if isinstance(sequence_pairs, list):
+
+        total = len(sequence_pairs)
+
+        while len(indices) < max_size and len(tested_indices) < total:
+
+            if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+                elapsed_s = time.time() - start_t
+                print(
+                    f"Only {len(subset)} of requested {max_size} found "
+                    f"(timeout after {elapsed_s:.2f}s)."
+                )
+                logger.info(
+                    f"Only {len(subset)} of requested {max_size} found for given "
+                    f"parameters (timeout = {timeout_s}s)."
+                )
+                return subset, indices, True, nupack_calls
+
+            index, (seq, rc_seq) = random.choice(sequence_pairs)
+
+            if index in tested_indices:
+                continue
+
+            tested_indices.add(index)
+            attempts += 1
+            if progress_every and attempts % progress_every == 0:
+                print(
+                    f"Progress: {len(subset)}/{max_size} "
+                    f"accepted after {attempts} attempts"
+                )
+
+            accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
+            if stop_reason is not None:
+                elapsed_s = time.time() - start_t
+                print(
+                    f"Only {len(subset)} of requested {max_size} found "
+                    f"(NUPACK call limit hit after {elapsed_s:.2f}s, "
+                    f"NUPACK calls: {nupack_calls})."
+                )
+                logger.info(
+                    f"Only {len(subset)} of requested {max_size} found for given "
+                    f"parameters (max_nupack_calls = {max_nupack_calls})."
+                )
+                return subset, indices, True, nupack_calls
+            if accepted:
+                subset.append((seq, rc_seq))
+                indices.append(index)
+        print(
+            f"Selected {len(subset)} sequence pairs with energies in range "
+            f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
+        )
+        logger.info(
+            f"Selected {len(subset)} sequence pairs with on-target energies in "
+            f"range [{energy_min}, {energy_max}] and secondary-structure energy "
+            f"above {self_energy_min}."
+        )
+        return subset, indices, False, nupack_calls
+
+    # -------------------------------------------------
+    # CASE 2 — registry input
+    # -------------------------------------------------
+
+    if not hasattr(sequence_pairs, "sample_pair"):
+        raise TypeError(
+            "sequence_pairs must be either a list of (index, (seq, rc_seq)) "
+            "or an object with a sample_pair() method."
+        )
+
+    while len(indices) < max_size:
+
+        if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+            elapsed_s = time.time() - start_t
+            print(
+                f"Only {len(subset)} of requested {max_size} found "
+                f"(timeout after {elapsed_s:.2f}s)."
+            )
+            logger.info(
+                f"Only {len(subset)} of requested {max_size} found for given "
+                f"parameters (timeout = {timeout_s}s)."
+            )
+            return subset, indices, True, nupack_calls
+
+        pair_id, (seq, rc_seq) = sequence_pairs.sample_pair()
+
+        if pair_id in tested_indices:
+            continue
+
+        tested_indices.add(pair_id)
+        attempts += 1
+        if progress_every and attempts % progress_every == 0:
+            print(
+                f"Progress: {len(subset)}/{max_size} "
+                f"accepted after {attempts} attempts"
+            )
+
+        accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
+        if stop_reason is not None:
+            elapsed_s = time.time() - start_t
+            print(
+                f"Only {len(subset)} of requested {max_size} found "
+                f"(NUPACK call limit hit after {elapsed_s:.2f}s, "
+                f"NUPACK calls: {nupack_calls})."
+            )
+            logger.info(
+                f"Only {len(subset)} of requested {max_size} found for given "
+                f"parameters (max_nupack_calls = {max_nupack_calls})."
+            )
+            return subset, indices, True, nupack_calls
+        if accepted:
             subset.append((seq, rc_seq))
-            indices.append(index)
+            indices.append(pair_id)
+    print(
+        f"Selected {len(subset)} sequence pairs with energies in range "
+        f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
+    )
+    logger.info(
+        f"Selected {len(subset)} sequence pairs with on-target energies in "
+        f"range [{energy_min}, {energy_max}] and secondary-structure energy "
+        f"above {self_energy_min}."
+    )
+    return subset, indices, False, nupack_calls
 
-    print(f"Selected {len(subset)} sequence pairs with energies in range [{energy_min}, {energy_max}]")
-
-    return subset, indices
 
 
 def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, Use_Library=None, avoid_ids=None):
@@ -641,7 +1286,7 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
         if ID in avoid_ids:
             continue
 
-        energy = nupack_compute_energy_precompute_library_fast(
+        energy,_,_ = nupack_compute_energy_precompute_library_fast(
             seq, rc_seq, type='total', Use_Library=Use_Library
         )
 
@@ -653,8 +1298,43 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
     return subset, selected_ids
 
 
+def compute_offtarget_fraction_below_limit(off_energies, off_limit):
+    """
+    Computes the fraction of off-target energies that are below `off_limit`.
 
-def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_path=None):
+    Notes
+    -----
+    - If `off_energies` is a dict of matrices, values are flattened and concatenated.
+    - For dict input, zeros are excluded because they represent uncomputed entries.
+
+    :param off_energies: Off-target energies as an array-like or dict of energy matrices.
+    :type off_energies: array-like or dict
+
+    :param off_limit: Threshold energy (kcal/mol).
+    :type off_limit: float
+
+    :returns: Fraction of values < off_limit in [0, 1]. Returns 0.0 if no values are available.
+    :rtype: float
+    """
+    if isinstance(off_energies, dict):
+        values = np.concatenate([
+            off_energies['handle_handle_energies'].flatten(),
+            off_energies['antihandle_handle_energies'].flatten(),
+            off_energies['antihandle_antihandle_energies'].flatten()
+        ])
+        values = values[values != 0]
+    else:
+        values = np.ravel(off_energies)
+
+    if values.size == 0:
+        return 0.0
+
+    return float(np.mean(values < float(off_limit)))
+
+
+
+def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_path=None, show_plot=True, 
+                                 vlines=None):
     """
     Plots histograms comparing on-target and off-target Gibbs free energy distributions.
 
@@ -682,6 +1362,13 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     :param output_path: File path to save the plot; if None, the plot is only displayed.
     :type output_path: str or None
 
+    :param show_plot: Whether to call plt.show() to display the plot.
+    :type show_plot: bool
+
+    :param vlines: Dictionary of vertical lines to draw. Keys are labels, values are x-positions.
+                   Special keys: 'min_ontarget', 'max_ontarget', 'offtarget_limit'.
+    :type vlines: dict or None
+
     :returns: Dictionary of summary statistics:
               - 'mean_on'  : Mean of on-target energies  
               - 'std_on'   : Standard deviation of on-target energies  
@@ -701,7 +1388,7 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     FONTSIZE_LABELS = 19
     FONTSIZE_TITLE = 19
     FONTSIZE_LEGEND = 16
-    FIGSIZE = (12, 5.5)  # Wide aspect ratio
+    FIGSIZE = (5.5 * 16 / 9, 5.5)  # 16:9 with fixed height
     #Histogram colors
     color_on = '#1f77b4'  # dark blue
     color_off = '#d62728'  # dark red
@@ -719,6 +1406,12 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
         # Determine common bin edges
     combined_min = min(np.min(on_energies), np.min(off_energies))
     combined_max = max(np.max(on_energies), np.max(off_energies))
+    
+    if vlines:
+        for val in vlines.values():
+            combined_min = min(combined_min, val)
+            combined_max = max(combined_max, val)
+            
     bin_edges = np.linspace(combined_min, combined_max, bins + 1)
 
 
@@ -747,6 +1440,15 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
         color=color_on, edgecolor='black', linewidth=2, density=True
     )
 
+    # Draw vertical lines if requested
+    if vlines:
+        if 'min_ontarget' in vlines:
+            ax.axvline(vlines['min_ontarget'], color='blue', linestyle='--', linewidth=3, label='Min On-Target')
+        if 'max_ontarget' in vlines:
+            ax.axvline(vlines['max_ontarget'], color='blue', linestyle='--', linewidth=3, label='Max On-Target')
+        if 'offtarget_limit' in vlines:
+            ax.axvline(vlines['offtarget_limit'], color='red', linestyle='--', linewidth=3, label='Off-Target Limit')
+
     ax.set_xlabel('Gibbs free energy (kcal/mol)', fontsize=FONTSIZE_LABELS)
     ax.set_ylabel('Normalized frequency', fontsize=FONTSIZE_LABELS)
     ax.set_title('On-target vs Off-target Energy Distribution', fontsize=FONTSIZE_TITLE, pad=10)
@@ -765,12 +1467,14 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     for spine in ax.spines.values():
         spine.set_linewidth(LINEWIDTH_AXIS)
 
-    ax.legend(fontsize=FONTSIZE_LEGEND)
+    ax.legend(fontsize=FONTSIZE_LEGEND, frameon=False)
 
     plt.tight_layout()
     if output_path:
         plt.savefig(output_path)
-    plt.show()
+    
+    if show_plot:
+        plt.show()
 
     # Print statistics
     print("\nSummary statistics:")
@@ -793,6 +1497,103 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
         'min_off': min_off,
     }
 
+
+def plot_self_energy_histogram(self_energies, bins=30, output_path=None, show_plot=True):
+    """
+    Plots a histogram of self-energies (e.g., G_A and G_B combined).
+
+    Notes
+    -----
+    - Accepts a single array-like, a tuple/list of arrays (e.g., (G_A, G_B)),
+      or a dict of arrays; all values are flattened and concatenated.
+    - Uses the same visual style as plot_on_off_target_histograms.
+    - Prints summary statistics after plotting.
+
+    :param self_energies: Array-like, tuple/list of arrays, or dict of arrays.
+    :type self_energies: array-like or tuple/list or dict
+
+    :param bins: Number of bins for histogram.
+    :type bins: int
+
+    :param output_path: File path to save the plot; if None, the plot is only displayed.
+    :type output_path: str or None
+
+    :param show_plot: Whether to call plt.show() to display the plot.
+    :type show_plot: bool
+    """
+    if isinstance(self_energies, dict):
+        values = [np.ravel(v) for v in self_energies.values()]
+        combined = np.concatenate(values) if values else np.array([])
+    elif isinstance(self_energies, (list, tuple)) and len(self_energies) > 1:
+        combined = np.concatenate([np.ravel(v) for v in self_energies])
+    else:
+        combined = np.ravel(self_energies)
+
+    # --- Centralized style settings ---
+    LINEWIDTH_AXIS = 2.5
+    TICK_WIDTH = 2.5
+    TICK_LENGTH = 6
+    FONTSIZE_TICKS = 16
+    FONTSIZE_LABELS = 19
+    FONTSIZE_TITLE = 19
+    FONTSIZE_LEGEND = 16
+    FIGSIZE = (12, 5.5)  # Wide aspect ratio
+    color_self = '#1f77b4'  # dark blue
+
+    # Compute statistics
+    mean_self = np.mean(combined)
+    std_self = np.std(combined)
+    min_self = np.min(combined)
+    max_self = np.max(combined)
+
+    # Plot
+    fig, ax = plt.subplots(figsize=FIGSIZE)
+    ax.hist(
+        combined, bins=bins, alpha=0.8, label='Self-energies',
+        color=color_self, edgecolor='black', linewidth=2, density=True
+    )
+
+    ax.set_xlabel('Gibbs free energy (kcal/mol)', fontsize=FONTSIZE_LABELS)
+    ax.set_ylabel('Normalized frequency', fontsize=FONTSIZE_LABELS)
+    ax.set_title('Self-Energy Distribution', fontsize=FONTSIZE_TITLE, pad=10)
+
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    ax.tick_params(axis='x', which='minor', length=4, width=1.2)
+
+    ax.tick_params(
+        axis='both',
+        which='major',
+        labelsize=FONTSIZE_TICKS,
+        width=TICK_WIDTH,
+        length=TICK_LENGTH
+    )
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(LINEWIDTH_AXIS)
+
+    ax.legend(fontsize=FONTSIZE_LEGEND)
+
+    plt.tight_layout()
+    if output_path:
+        plt.savefig(output_path)
+    if show_plot:
+        plt.show()
+
+    print("\nSummary statistics:")
+    print(f"Mean Self Energy:  {mean_self:.3f} kcal/mol")
+    print(f"Std Dev Self:      {std_self:.3f} kcal/mol")
+    print(f"Min Self Energy:   {min_self:.3f} kcal/mol")
+    print(f"Max Self Energy:   {max_self:.3f} kcal/mol")
+
+
+
+
+    return {
+        'mean_self': mean_self,
+        'std_self': std_self,
+        'min_self': min_self,
+        'max_self': max_self,
+    }
 
 
 if __name__ == "__main__":
@@ -833,7 +1634,7 @@ if __name__ == "__main__":
     t4 = time.time()
     print(t4-t3)
     
-    stats = plot_on_off_target_histograms(on_e_subset, off_e_subset, output_path='dump/energy_hist.pdf')
+    stats = plot_on_off_target_histograms(on_e_subset, off_e_subset, output_path='dump/energy_hist.pdf', show_plot=True)
     
 
 

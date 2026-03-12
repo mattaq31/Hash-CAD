@@ -67,7 +67,7 @@ class _SideBarToolsState extends State<SideBarTools> {
                       SizedBox(width: 10),
                       FilledButton.icon(
                         onPressed: () {
-                          appState.exportCurrentDesign();
+                          appState.exportCurrentDesign(context);
                         },
                         icon: Icon(Icons.download, size: 18),
                         label: Text("Export"),

@@ -146,7 +146,10 @@ class Slat {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
 
-    placeholderList.add('handle-$handleId-h$slatSide');
+    final inputId = 'handle-$handleId-h$slatSide';
+    if (!placeholderList.contains(inputId)) {
+      placeholderList.add(inputId);
+    }
   }
 
   /// Updates a placeholder handle with the actual handle.

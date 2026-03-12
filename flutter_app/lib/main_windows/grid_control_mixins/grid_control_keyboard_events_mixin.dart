@@ -101,23 +101,23 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
         }
       },
 
-      // Undo shortcuts (platform-specific)
+      // Undo shortcuts (platform-specific) — skip when echo plate window owns undo
       SingleActivator(LogicalKeyboardKey.keyZ, control: true, includeRepeats: false): () {
-        appState.undo2DAction();
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction();
       },
       SingleActivator(LogicalKeyboardKey.keyZ, meta: true, includeRepeats: false): () {
-        appState.undo2DAction();
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction();
       },
 
-      // Redo shortcuts
+      // Redo shortcuts — skip when echo plate window owns undo
       SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true, includeRepeats: false): () {
-        appState.undo2DAction(redo: true);
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
       SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true, includeRepeats: false): () {
-        appState.undo2DAction(redo: true);
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
       SingleActivator(LogicalKeyboardKey.keyY, control: true, includeRepeats: false): () {
-        appState.undo2DAction(redo: true);
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
 
       // Edit assembly handle shortcut - opens dialog when handles are selected

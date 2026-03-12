@@ -32,7 +32,7 @@ for x in tqdm(range(100), desc="Generating random handles"):
     scores.append(parasitic_interactions.get('mean_log_score', None))
 
 # ---------------------
-# Print results
+# Print noflank_results
 # ---------------------
 
 score_array = np.array(scores)
@@ -40,7 +40,7 @@ score_array = np.array(scores)
 print(score_array.min())
 
 # ---------------------
-# Save results as pickle
+# Save noflank_results as pickle
 # ---------------------
 
 filename = "scores_random_reduced32_100.pkl"

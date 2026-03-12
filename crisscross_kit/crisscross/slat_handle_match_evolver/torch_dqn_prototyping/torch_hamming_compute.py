@@ -44,7 +44,7 @@ def torch_oneshot_hamming_compute(handles, antihandles, slat_length):
     :param handles: Stacked handles tensor with shape (num_handles, slat_length)
     :param antihandles: Stacked antihandles tensor with shape (num_antihandles, slat_length)
     :param slat_length: The length of a single slat (must be an integer)
-    :return: Array of results for each possible combination (a single integer per combination)
+    :return: Array of noflank_results for each possible combination (a single integer per combination)
     """
 
     # TODO: torch gradients cannot be computed on integers.  Is this going to make memory requirements a problem?

@@ -128,7 +128,7 @@ def compensate_histogram(hist, connection_hist):
     :type connection_hist: numpy.ndarray
     :returns: Compensated histogram with connection matches subtracted.
     :rtype: numpy.ndarray
-    :raises ValueError: If subtraction results in negative values (over-subtraction).
+    :raises ValueError: If subtraction noflank_results in negative values (over-subtraction).
     """
     hist = np.asarray(hist, dtype=int)
     connection_hist = np.asarray(connection_hist, dtype=int)

@@ -1,0 +1,156 @@
+import streamlit as st
+import random
+import threading
+from orthoseq_generator import sequence_computations as sc
+from orthoseq_generator.streamlit_app import plotly_utils as pu
+
+def _pilot_worker(registry, pilot_size, out_q):
+    try:
+        subset = sc.select_subset(registry, max_size=pilot_size)
+        on_e, self_e_a, self_e_b = sc.compute_ontarget_energies(subset)
+        off_e = sc.compute_offtarget_energies(subset)
+        out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), None))
+    except Exception as e:
+        out_q.put(("done", None, None, None, repr(e)))
+
+def render_exploratory_tab(registry_factory, nupack_params):
+    st.header("Step 1: Pilot Analysis")
+
+    if st.session_state.run_compute_1 and not st.session_state.pilot_running:
+        st.session_state.run_compute_1 = False
+
+        random.seed(nupack_params['random_seed'])
+        nupack_params['sync_func']()
+
+        registry = registry_factory()
+        st.session_state.registry = registry
+
+        st.session_state.pilot_running = True
+
+        t = threading.Thread(
+            target=_pilot_worker,
+            args=(registry, int(st.session_state.pilot_size), st.session_state.pilot_queue),
+            daemon=True
+        )
+        st.session_state.pilot_thread = t
+        t.start()
+
+        st.rerun()
+
+    if st.session_state.pilot_running and (not st.session_state.pilot_queue.empty()):
+        msg, on_e, off_e, self_e, err = st.session_state.pilot_queue.get()
+
+        st.session_state.pilot_running = False
+        st.session_state.busy = False
+
+        if err is not None:
+            st.session_state.on_e_pilot = None
+            st.session_state.off_e_pilot = None
+            st.session_state.self_e_pilot = None
+            st.error(f"Pilot analysis failed: {err}")
+        else:
+            st.session_state.on_e_pilot = on_e
+            st.session_state.off_e_pilot = off_e
+            st.session_state.self_e_pilot = self_e
+            #print(on_e)
+
+        st.rerun()
+
+    st.write("Generate a random sample of sequence pairs to see the general energy distribution.")
+
+    pilot_size = st.number_input(
+        "Sample Size",
+        min_value=10, 
+        max_value=1000, 
+        value=st.session_state.pilot_size,
+        key="pilot_size", 
+        disabled=st.session_state.busy
+    )
+
+    if st.button(
+            "Run Pilot Analysis",
+            key="btn_run_pilot",
+            disabled=(st.session_state.busy or st.session_state.input_invalid)
+    ):
+        st.session_state.run_compute_1 = True
+        st.session_state.busy = True
+        st.rerun()
+
+    if st.session_state.pilot_running:
+        st.info("Pilot analysis running…")
+
+    if (
+            st.session_state.on_e_pilot is not None
+            and st.session_state.off_e_pilot is not None
+    ):
+        st.markdown("---")
+        st.subheader("Select On-Target Energy Range")
+        st.write("Set minimum and maximum and hit \"Use This Range\" to transfer the values to the next tabs")
+
+        col_a, col_b, col_c = st.columns([1, 1, 1])
+
+        with col_a:
+            st.number_input(
+                "Min On-Target Energy (kcal/mol)",
+                step=None,
+                key="min_ontarget_input",
+                value=float(st.session_state.min_ontarget),
+                disabled=st.session_state.busy
+            )
+
+        with col_b:
+            st.number_input(
+                "Max On-Target Energy (kcal/mol)",
+                step=None,
+                key="max_ontarget_input",
+                value=float(st.session_state.max_ontarget),
+                disabled=st.session_state.busy
+            )
+
+        with col_c:
+            if st.button("Use This Range", key="btn_commit_range", disabled=st.session_state.busy):
+                a = float(st.session_state.min_ontarget_input)
+                b = float(st.session_state.max_ontarget_input)
+
+                lower = min(a, b)
+                upper = max(a, b)
+                st.session_state.min_ontarget = lower
+                st.session_state.max_ontarget = upper
+
+                st.success("Range Transferred")
+
+        # Plot reflects draft range
+        fig = pu.create_interactive_histogram(
+            st.session_state.on_e_pilot,
+            st.session_state.off_e_pilot,
+            float(st.session_state.min_ontarget_input),
+            float(st.session_state.max_ontarget_input),
+        )
+        st.plotly_chart(fig, width="stretch", key="pilot_chart_static")
+
+        if st.session_state.self_e_pilot is not None:
+            st.markdown("---")
+            st.subheader("Select Minimum Secondary-Structure Energy")
+            st.write("Set minimum and hit \"Use This Value\" to transfer the value to the next tabs")
+
+            col_s1, col_s2 = st.columns([1, 1])
+            with col_s1:
+                st.number_input(
+                    "Min Secondary-Structure Energy (kcal/mol)",
+                    step=None,
+                    key="self_energy_limit_input",
+                    value=float(st.session_state.self_energy_limit),
+                    disabled=st.session_state.busy
+                )
+            with col_s2:
+                if st.button("Use This Value", key="btn_commit_self_energy", disabled=st.session_state.busy):
+                    committed_limit = float(st.session_state.self_energy_limit_input)
+                    st.session_state.self_energy_limit = committed_limit
+                    st.success("Value Transferred")
+                    #st.rerun()
+
+            self_fig = pu.create_self_energy_histogram(
+                st.session_state.self_e_pilot,
+                self_limit=float(st.session_state.self_energy_limit_input)
+            )
+            st.plotly_chart(self_fig, width="stretch", key="pilot_self_chart_static")

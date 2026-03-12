@@ -21,7 +21,7 @@ from orthoseq_generator import sequence_computations as sc
 import pickle
 
 if __name__ == "__main__":
-    # 1) Reproducibility: fix the RNG for consistent results
+    # 1) Reproducibility: fix the RNG for consistent noflank_results
     RANDOM_SEED = 41
     random.seed(RANDOM_SEED)
 

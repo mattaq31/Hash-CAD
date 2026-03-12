@@ -1,12 +1,13 @@
-import '../crisscross_core/slats.dart';
-import '../crisscross_core/handle_plates.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:csv/csv.dart';
 
-// Conditional import
-import 'save_csv_web.dart' if (dart.library.io) 'save_csv_desktop.dart';
+import '../crisscross_core/handle_plates.dart';
+import '../crisscross_core/slats.dart';
+import 'echo_plate_constants.dart';
+import 'plate_layout_state.dart';
 
-
-List<String> _generatePlateLayout96() {
+List<String> generatePlateLayout96() {
   final rows = 'ABCDEFGH'.split('');
   final cols = List.generate(12, (i) => i + 1);
   return [
@@ -15,7 +16,7 @@ List<String> _generatePlateLayout96() {
   ];
 }
 
-List<String> _generatePlateLayout384() {
+List<String> generatePlateLayout384() {
   final rows = 'ABCDEFGHIJKLMNOP'.split('');
   final cols = List.generate(24, (i) => i + 1);
   return [
@@ -24,85 +25,157 @@ List<String> _generatePlateLayout384() {
   ];
 }
 
-Future<void> convertSlatsToEchoCsv({
-  required Map<String, Slat> slatDict,
+/// Result of CSV generation for Echo liquid handler instructions.
+class EchoCsvResult {
+  final Uint8List csvBytes;
+  final List<String> warnings;
+  final double? totalWaterNl;
+  final int? waterWellsUsed;
+
+  const EchoCsvResult({required this.csvBytes, this.warnings = const [], this.totalWaterNl, this.waterWellsUsed});
+}
+
+/// Generates Echo liquid handler CSV instructions from plate layout assignments.
+///
+/// Each occupied well produces one CSV row per handle, with transfer volumes computed from
+/// [WellConfig.materialPerHandle] and the handle's concentration.
+///
+/// When [normalizeVolumes] is true, water transfer rows are appended so that every destination
+/// well receives the same total volume (equal to the maximum across all wells).
+EchoCsvResult generateEchoCsv({
+  required Map<int, Map<String, String?>> plateAssignments,
+  required Map<int, Map<String, WellConfig>> wellConfigs,
+  required Map<int, String> plateNames,
+  required Map<String, Slat> slats,
   required Map<String, Map<String, dynamic>> layerMap,
-  required String destinationPlateName,
-  required String outputFilename,
-  int referenceTransferVolumeNl = 75,
-  int referenceConcentrationUM = 500,
-  String plateSize = '96',
-}) async {
-  final List<List<dynamic>> outputCommandList = [];
+  bool normalizeVolumes = false,
+}) {
+  final List<List<dynamic>> outputRows = [];
+  final warnings = <String>[];
 
-  late List<String> plateFormat;
-  if (plateSize == '96') {
-    plateFormat = _generatePlateLayout96();
-  } else {
-    plateFormat = _generatePlateLayout384();
-  }
+  // Track total volume per destination well: "plateName_plateDisplayNum:well" → totalNl
+  final wellTotals = <String, double>{};
 
-  final outputWellList = <String>[];
-  final outputPlateNumList = <int>[];
+  final sortedPlateKeys = plateAssignments.keys.toList()..sort();
 
-  for (var i = 0; i < slatDict.length; i++) {
-    outputWellList.add(plateFormat[i % plateFormat.length]);
-    outputPlateNumList.add(1 + (i ~/ plateFormat.length));
-  }
+  for (var plateIndex in sortedPlateKeys) {
+    final plate = plateAssignments[plateIndex]!;
+    final plateConfigs = wellConfigs[plateIndex] ?? {};
+    final destPlateName = plateNames[plateIndex] ?? 'Plate';
 
-  var index = 0;
+    // Iterate wells in plate order (A1, A2, ... H12)
+    for (var well in generatePlateLayout96()) {
+      final slatId = plate[well];
+      if (slatId == null) continue;
 
-  final sortedSlats = slatDict.entries.toList()
-    ..sort((a, b) {
-      // Sort by layer first, then index
-      return layerMap[a.value.layer]!['order']! != layerMap[b.value.layer]!['order']! ? layerMap[a.value.layer]!['order']!.compareTo(layerMap[b.value.layer]!['order']!) : a.value.numericID.compareTo(b.value.numericID);
-    });
+      final base = baseSlatId(slatId);
+      final slat = slats[base];
+      if (slat == null) continue;
 
-  for (final entry in sortedSlats) {
+      final config = plateConfigs[well] ?? const WellConfig();
+      final matPerHandle = config.materialPerHandle;
+      final destKey = '${destPlateName}_$plateIndex:$well';
+      final csvName = slatCsvName(slat, layerMap);
 
-    final layerID = (layerMap[entry.key.split('-')[0]]!['order'] + 1).toString();
-    final slat = entry.value;
-    final slatName = 'layer$layerID-slat${slat.numericID}';
+      double wellTotal = 0;
 
-    var sortedH2 = slat.h2Handles.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    var sortedH5 = slat.h5Handles.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+      // Process h2 handles then h5 handles
+      for (var (side, handles) in [('h2', slat.h2Handles), ('h5', slat.h5Handles)]) {
+        final sorted = handles.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+        for (var entry in sorted) {
+          final handleData = entry.value;
+          final concentration = (handleData['concentration'] as num?)?.toDouble();
+          if (concentration == null || concentration <= 0) continue;
 
-    if (slatName.contains(',')) {
-      throw Exception('Slat name "$slatName" cannot contain commas.');
-    }
+          final roundedVolume = echoRoundedVolumeNl(matPerHandle, concentration);
 
-    for (final entry in sortedH2 + sortedH5) {
-      int id = entry.key;
-      var handleData = entry.value;
-      String side = sortedH2.contains(entry) ? 'h2' : 'h5';
-      final volume = (referenceTransferVolumeNl *
-              (referenceConcentrationUM / handleData['concentration']))
-          .round();
-
-      if (volume % 25 != 0) {
-        throw Exception(
-            'Volume $volume for handle ${slatName}_${side}_staple_$id is not a multiple of 25.');
+          wellTotal += roundedVolume;
+          outputRows.add([
+            '${csvName}_${side}_staple_${entry.key}',
+            sanitizePlateMap(handleData['plate'] as String),
+            handleData['well'],
+            well,
+            roundedVolume,
+            destPlateName,
+            '384PP_AQ_BP',
+          ]);
+        }
       }
 
-      outputCommandList.add([
-        '${slatName}_${side}_staple_$id',
-        sanitizePlateMap(handleData['plate']),
-        handleData['well'],
-        outputWellList[index],
-        volume,
-        '${destinationPlateName}_${outputPlateNumList[index]}',
-        '384PP_AQ_BP'
-      ]);
+      wellTotals[destKey] = (wellTotals[destKey] ?? 0) + wellTotal;
     }
-    index++;
+  }
+
+  // Check for wells exceeding 25000 nL
+  final overflowWells = <String>[];
+  for (var entry in wellTotals.entries) {
+    if (entry.value > echoMaxWellVolumeNl) {
+      overflowWells.add(entry.key.split(':').last);
+    }
+  }
+  if (overflowWells.isNotEmpty) {
+    final shown = overflowWells.take(5).join(', ');
+    final extra = overflowWells.length > 5 ? ' and ${overflowWells.length - 5} more' : '';
+    warnings.add('Wells $shown$extra exceed 25 \u00B5L total volume — contents may drip out when the Echo plate is inverted.');
+  }
+
+  // Normalize volumes with water plate compensation
+  double? totalWaterNl;
+  int? waterWellsUsed;
+
+  if (normalizeVolumes && wellTotals.isNotEmpty) {
+    final maxVolume = wellTotals.values.reduce((a, b) => a > b ? a : b);
+    final waterPlateWells = generatePlateLayout384();
+    var waterWellIndex = 0;
+    double waterTotal = 0;
+
+    for (var plateIndex in sortedPlateKeys) {
+      final plate = plateAssignments[plateIndex]!;
+      final destPlateName = plateNames[plateIndex] ?? 'Plate';
+
+      for (var well in generatePlateLayout96()) {
+        final slatId = plate[well];
+        if (slatId == null) continue;
+
+        final destKey = '${destPlateName}_$plateIndex:$well';
+        final currentTotal = wellTotals[destKey] ?? 0;
+        final deficit = maxVolume - currentTotal;
+
+        if (deficit > 0) {
+          final roundedDeficit = (deficit / 25).ceil() * 25;
+          final waterWell = waterPlateWells[waterWellIndex % waterPlateWells.length];
+          waterWellIndex++;
+
+          final base = baseSlatId(slatId);
+          final waterSlat = slats[base];
+          final waterCsvName = waterSlat != null ? slatCsvName(waterSlat, layerMap) : 'water';
+          outputRows.add([
+            '${waterCsvName}_volume_normalize',
+            'WATER_PLATE',
+            waterWell,
+            well,
+            roundedDeficit.toInt(),
+            destPlateName,
+            '384PP_AQ_BP',
+          ]);
+          waterTotal += roundedDeficit;
+        }
+      }
+    }
+
+    totalWaterNl = waterTotal;
+    waterWellsUsed = waterWellIndex;
   }
 
   final csvString = const ListToCsvConverter().convert([
     ['Component', 'Source Plate Name', 'Source Well', 'Destination Well', 'Transfer Volume', 'Destination Plate Name', 'Source Plate Type'],
-    ...outputCommandList
+    ...outputRows,
   ]);
 
-  await saveCsv(csvString, outputFilename);
+  return EchoCsvResult(
+    csvBytes: Uint8List.fromList(utf8.encode(csvString)),
+    warnings: warnings,
+    totalWaterNl: totalWaterNl,
+    waterWellsUsed: waterWellsUsed,
+  );
 }

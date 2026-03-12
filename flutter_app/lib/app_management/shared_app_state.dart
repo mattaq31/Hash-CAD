@@ -7,6 +7,7 @@ import '../crisscross_core/slats.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/seed.dart';
 import '../crisscross_core/handle_plates.dart';
+import '../echo_and_experimental_helpers/plate_layout_state.dart';
 
 import 'slat_undo_stack.dart';
 import 'app_preferences.dart';
@@ -265,6 +266,12 @@ class DesignState extends ChangeNotifier
 
   @override
   PlateLibrary plateStack = PlateLibrary();
+
+  /// Persisted echo plate layout state — populated on import, consumed by echo window on init.
+  PlateLayoutState? echoPlateLayoutState;
+
+  /// True when echoPlateLayoutState was set from a file import (not synced back by echo window).
+  bool echoPlateLayoutFromImport = false;
 
   // Assembly handle colors (customizable, persisted via AppPreferences)
   final AppPreferences _appPreferences = AppPreferences();

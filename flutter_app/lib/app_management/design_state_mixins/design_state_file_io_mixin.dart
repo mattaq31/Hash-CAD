@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/seed.dart';
+import '../../echo_and_experimental_helpers/plate_layout_state.dart';
 import '../main_design_io.dart';
-import '../shared_app_state.dart';
+import '../shared_app_state.dart' show nextCapitalLetter;
 import '../slat_undo_stack.dart';
 import 'design_state_contract.dart';
 import 'design_state_handle_link_mixin.dart';
@@ -11,9 +13,22 @@ import 'design_state_handle_link_mixin.dart';
 /// Mixin containing file import/export and undo/redo operations for DesignState
 mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
   @override
-  void exportCurrentDesign() async {
-    /// Exports the current design to an excel file
-    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, assemblyLinkManager, gridSize, gridMode, designName);
+  void exportCurrentDesign(BuildContext context) async {
+    if (slats.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Cannot export'),
+          content: const Text('Cannot export an empty design. Add slats before exporting.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+          ],
+        ),
+      );
+      return;
+    }
+    exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, assemblyLinkManager, gridSize, gridMode, designName,
+        echoPlateLayoutState: echoPlateLayoutState, plateLibrary: plateStack);
   }
 
   @override
@@ -21,17 +36,15 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     currentlyLoadingDesign = true;
     notifyListeners();
 
-    var (
-      newSlats,
-      newLayerMap,
-      newGridMode,
-      newCargoPalette,
-      newSeedRoster,
-      newPhantomMap,
-      newLinkManager,
-      newDesignName,
-      errorCode
-    ) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
+    var (result, newDesignName) = await importDesign(inputFileName: fileName, inputFileBytes: fileBytes);
+    final newSlats = result.slats;
+    final newLayerMap = result.layerMap;
+    final newGridMode = result.gridMode;
+    final newCargoPalette = result.cargoPalette;
+    final newSeedRoster = result.seedRoster;
+    final newPhantomMap = result.phantomMap;
+    final newLinkManager = result.linkManager;
+    final errorCode = result.errorCode;
 
     String messageFor(String code) {
       switch (code) {
@@ -186,6 +199,21 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
       }
     }
 
+    // Restore echo plate layout if present in the design file
+    if (result.echoPlateData != null) {
+      echoPlateLayoutState = PlateLayoutState.fromExcelSheets(result.echoPlateData!, slats, layerMap);
+      echoPlateLayoutFromImport = echoPlateLayoutState != null;
+    }
+
+    // Restore input plates if present in the design file
+    int replacedPlateCount = 0;
+    if (result.inputPlateData != null) {
+      replacedPlateCount = plateStack.plates.length;
+      plateStack.clear();
+      plateStack.readPlatesFromRawData(result.inputPlateData!);
+      syncCargoFromPlates(plateStack, cargoPalette);
+    }
+
     updateDesignHammingValue();
     currentlyLoadingDesign = false;
 
@@ -196,6 +224,13 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     saveUndoState();
 
     notifyListeners();
+
+    // Notify about replaced input plates
+    if (result.inputPlateData != null && replacedPlateCount > 0 && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Input plates loaded from design file (replaced $replacedPlateCount existing plate(s))')),
+      );
+    }
   }
 
   @override
@@ -226,6 +261,8 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     // state reset
     resetDefaults();
     assemblyLinkManager = HandleLinkManager();
+    echoPlateLayoutState = null;
+    echoPlateLayoutFromImport = false;
 
     saveUndoState();
     notifyListeners();

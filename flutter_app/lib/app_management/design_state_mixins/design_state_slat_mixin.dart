@@ -162,8 +162,7 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
 
   /// Updates the position of multiple slats
   @override
-  void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates,
-      {bool requestFlip = false}) {
+  void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates, {bool requestFlip = false}) {
     for (int i = 0; i < slatIDs.length; i++) {
       String slatID = slatIDs[i];
       Map<int, Offset> slatCoordinates = allCoordinates[i];
