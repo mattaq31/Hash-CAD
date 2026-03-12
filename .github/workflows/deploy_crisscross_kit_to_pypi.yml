@@ -23,7 +23,7 @@ jobs:
       # Enable cross-arch emulation on Linux runners for aarch64 containers
       - name: Set up QEMU (for aarch64)
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
@@ -50,7 +50,7 @@ jobs:
           cibuildwheel --output-dir wheelhouse ./crisscross_kit
 
       - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
@@ -81,7 +81,7 @@ jobs:
         working-directory: ./crisscross_kit
 
       - name: Upload sdist artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: crisscross_kit/dist/*.tar.gz
@@ -95,14 +95,14 @@ jobs:
       name: pypi
     steps:
       - name: Download wheel artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           path: dist/
           merge-multiple: true
 
       - name: Download sdist artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: sdist
           path: dist/
