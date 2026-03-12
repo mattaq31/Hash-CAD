@@ -9,7 +9,6 @@ Purpose:
 
 import random
 import logging
-from seqwalk import design
 
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
@@ -342,7 +341,6 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
     hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
-    #seqwalk_cores = design.max_size(10, 5, alphabet="ACGT", RCfree=True)
     sequence_pairs_object = sc.SequencePairRegistry(
         length=7,
         fivep_ext="TTTT",
