@@ -33,12 +33,10 @@ dependencies = [
     "colorama>=0.4.6",
     "rich-click>=1.8",
     "toml>=0.10",
-    "streamlit",
-    "plotly",
-    "streamlit-autorefresh"
 ]
 
 [project.optional-dependencies]
+streamlit = ["streamlit", "plotly", "streamlit-autorefresh"]
 3d = ["pyvista", "imageio", "imageio-ffmpeg"]
 blender = ["bpy==4.2.0"]
 

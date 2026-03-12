@@ -38,7 +38,7 @@ conda activate orthoseq
 3. Upgrade `pip` inside that environment:
 
 ```bash
-python -m pip install -U pip
+pip install -U pip
 ```
 
 4. Install **NUPACK** first.
@@ -51,14 +51,13 @@ Official guide:
 Then install it from the downloaded package directory inside your conda environment:
 
 ```bash
-python -m pip install -U nupack -f ~/Downloads/nupack-VERSION/package
+pip install -U nupack -f ~/Downloads/nupack-VERSION/package
 ```
 Here, `nupack-VERSION` means the name of the downloaded and unzipped NUPACK folder.
 
-5. Install `crisscross_kit`:
-Install the app via pip:
+5. Install `crisscross_kit` with the Streamlit extra:
 ```bash
-python -m pip install crisscross_kit
+pip install "crisscross-kit[streamlit]"
 ```
 This installs the package together with the Streamlit web app dependencies.
 
