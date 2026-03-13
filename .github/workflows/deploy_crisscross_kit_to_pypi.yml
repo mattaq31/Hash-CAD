@@ -27,18 +27,37 @@ jobs:
         with:
           platforms: arm64
 
-      - name: Build wheels with cibuildwheel
-        uses: pypa/cibuildwheel@v2
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          package-dir: ./crisscross_kit
-          output-dir: wheelhouse
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install cibuildwheel==2.*
+
+      - name: Build wheels with cibuildwheel
+        shell: bash
         env:
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "pp* *musllinux*"
           CIBW_ARCHS_LINUX: "x86_64 aarch64"
           CIBW_ARCHS_MACOS: "arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           MACOSX_DEPLOYMENT_TARGET: "11.0"
+        run: |
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt of 3"
+            cibuildwheel --output-dir wheelhouse ./crisscross_kit && break
+            if [ $attempt -lt 3 ]; then
+              echo "cibuildwheel failed, retrying in 30s..."
+              sleep 30
+            else
+              echo "cibuildwheel failed after 3 attempts"
+              exit 1
+            fi
+          done
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v7
