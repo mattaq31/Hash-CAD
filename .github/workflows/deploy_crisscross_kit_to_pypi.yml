@@ -41,7 +41,9 @@ jobs:
       - name: Pre-cache virtualenv for cibuildwheel
         shell: bash
         run: |
-          VENV_VERSION=$(python -c "from cibuildwheel.util import VIRTUALENV_VERSION; print(VIRTUALENV_VERSION)")
+          UTIL_FILE=$(python -c "import cibuildwheel.util; print(cibuildwheel.util.__file__)")
+          VENV_VERSION=$(grep -oE 'get-virtualenv/blob/[0-9.]+' "$UTIL_FILE" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "Detected virtualenv version: $VENV_VERSION"
           VENV_FILE="virtualenv-${VENV_VERSION}.pyz"
           VENV_URL="https://github.com/pypa/get-virtualenv/blob/${VENV_VERSION}/public/virtualenv.pyz?raw=true"
           if [ "$RUNNER_OS" = "macOS" ]; then
