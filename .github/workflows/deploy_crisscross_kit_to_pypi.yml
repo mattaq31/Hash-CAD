@@ -37,7 +37,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install cibuildwheel==2.*
 
-      # Adjust environment for cibuildwheel per-platform
+      # Pre-download virtualenv.pyz with retries to avoid 429 errors from GitHub
+      - name: Pre-cache virtualenv for cibuildwheel
+        shell: bash
+        run: |
+          VENV_VERSION=$(python -c "from cibuildwheel.util import VIRTUALENV_VERSION; print(VIRTUALENV_VERSION)")
+          VENV_FILE="virtualenv-${VENV_VERSION}.pyz"
+          VENV_URL="https://github.com/pypa/get-virtualenv/blob/${VENV_VERSION}/public/virtualenv.pyz?raw=true"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            CACHE_DIR="$HOME/Library/Caches/cibuildwheel"
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            CACHE_DIR="$LOCALAPPDATA/cibuildwheel/Cache"
+          else
+            CACHE_DIR="$HOME/.cache/cibuildwheel"
+          fi
+          mkdir -p "$CACHE_DIR"
+          curl --retry 5 --retry-delay 10 --retry-all-errors -L -o "$CACHE_DIR/$VENV_FILE" "$VENV_URL"
+
       - name: Build wheels with cibuildwheel
         env:
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
