@@ -46,6 +46,7 @@ jobs:
           CIBW_ARCHS_MACOS: "arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           MACOSX_DEPLOYMENT_TARGET: "11.0"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for attempt in 1 2 3; do
             echo "Attempt $attempt of 3"
