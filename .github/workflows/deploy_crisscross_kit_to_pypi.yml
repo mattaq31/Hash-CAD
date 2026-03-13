@@ -27,45 +27,18 @@ jobs:
         with:
           platforms: arm64
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install cibuildwheel==2.*
-
-      # Pre-download virtualenv.pyz with retries to avoid 429 errors from GitHub
-      - name: Pre-cache virtualenv for cibuildwheel
-        shell: bash
-        run: |
-          UTIL_FILE=$(python -c "import cibuildwheel.util; print(cibuildwheel.util.__file__)")
-          VENV_VERSION=$(grep -oE 'get-virtualenv/blob/[0-9.]+' "$UTIL_FILE" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "Detected virtualenv version: $VENV_VERSION"
-          VENV_FILE="virtualenv-${VENV_VERSION}.pyz"
-          VENV_URL="https://github.com/pypa/get-virtualenv/blob/${VENV_VERSION}/public/virtualenv.pyz?raw=true"
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            CACHE_DIR="$HOME/Library/Caches/cibuildwheel"
-          elif [ "$RUNNER_OS" = "Windows" ]; then
-            CACHE_DIR="$LOCALAPPDATA/cibuildwheel/Cache"
-          else
-            CACHE_DIR="$HOME/.cache/cibuildwheel"
-          fi
-          mkdir -p "$CACHE_DIR"
-          curl --retry 5 --retry-delay 10 --retry-all-errors -L -o "$CACHE_DIR/$VENV_FILE" "$VENV_URL"
-
       - name: Build wheels with cibuildwheel
+        uses: pypa/cibuildwheel@v2
+        with:
+          package-dir: ./crisscross_kit
+          output-dir: wheelhouse
         env:
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
-          CIBW_SKIP: "pp* *musllinux*"  # skip PyPy and musllinux (Alpine)
+          CIBW_SKIP: "pp* *musllinux*"
           CIBW_ARCHS_LINUX: "x86_64 aarch64"
           CIBW_ARCHS_MACOS: "arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           MACOSX_DEPLOYMENT_TARGET: "11.0"
-        run: |
-          cibuildwheel --output-dir wheelhouse ./crisscross_kit
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v7
