@@ -37,8 +37,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install cibuildwheel==2.*
 
-      - name: Build wheels with cibuildwheel
+      # Pre-download virtualenv from CDN to avoid rate-limited github.com/blob/ URL
+      - name: Pre-cache virtualenv for cibuildwheel
         shell: bash
+        run: |
+          VENV_VERSION=20.30.0
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            CACHE_DIR="$HOME/Library/Caches/cibuildwheel"
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            CACHE_DIR="$LOCALAPPDATA/cibuildwheel/Cache"
+          else
+            CACHE_DIR="$HOME/.cache/cibuildwheel"
+          fi
+          mkdir -p "$CACHE_DIR"
+          curl -L --retry 3 --retry-delay 5 \
+            "https://raw.githubusercontent.com/pypa/get-virtualenv/${VENV_VERSION}/public/virtualenv.pyz" \
+            -o "$CACHE_DIR/virtualenv-${VENV_VERSION}.pyz"
+
+      - name: Build wheels with cibuildwheel
         env:
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "pp* *musllinux*"
@@ -46,19 +62,8 @@ jobs:
           CIBW_ARCHS_MACOS: "arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           MACOSX_DEPLOYMENT_TARGET: "11.0"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for attempt in 1 2 3; do
-            echo "Attempt $attempt of 3"
-            cibuildwheel --output-dir wheelhouse ./crisscross_kit && break
-            if [ $attempt -lt 3 ]; then
-              echo "cibuildwheel failed, retrying in 30s..."
-              sleep 30
-            else
-              echo "cibuildwheel failed after 3 attempts"
-              exit 1
-            fi
-          done
+          cibuildwheel --output-dir wheelhouse ./crisscross_kit
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v7
