@@ -6,6 +6,7 @@ import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/common_utilities.dart';
+import '../../echo_and_experimental_helpers/plate_layout_state.dart';
 import '../slat_undo_stack.dart';
 import '../shared_app_state.dart';
 import 'design_state_handle_link_mixin.dart';
@@ -49,8 +50,6 @@ mixin DesignStateContract on ChangeNotifier {
   set nextColorIndex(int value);
   int get slatAddCount;
   set slatAddCount(int value);
-  String get slatAddDirection;
-  set slatAddDirection(String value);
   Color get uniqueSlatColor;
   set uniqueSlatColor(Color value);
   int get currentMaxValency;
@@ -90,6 +89,10 @@ mixin DesignStateContract on ChangeNotifier {
   Map<String, Cargo> get cargoPalette;
   set cargoPalette(Map<String, Cargo> value);
   PlateLibrary get plateStack;
+  PlateLayoutState? get echoPlateLayoutState;
+  set echoPlateLayoutState(PlateLayoutState? value);
+  bool get echoPlateLayoutFromImport;
+  set echoPlateLayoutFromImport(bool value);
 
   // === Methods from DesignStateCoreMixin ===
   void setHoverPreview(HoverPreview? preview);
@@ -107,7 +110,7 @@ mixin DesignStateContract on ChangeNotifier {
   void undo2DAction({bool redo = false});
 
   // === Methods from DesignStateFileIOMixin ===
-  void exportCurrentDesign();
+  void exportCurrentDesign(BuildContext context);
   void importNewDesign(BuildContext context, {String? fileName, Uint8List? fileBytes});
   void clearAll();
 
@@ -121,7 +124,6 @@ mixin DesignStateContract on ChangeNotifier {
   void flipLayer(String layer, BuildContext context);
   void flipLayerVisibility(String layer);
   void flipMultiSlatGenerator();
-  void flipSlatAddDirection();
   void deleteLayer(String layer);
   void reOrderLayers(List<String> newOrder, BuildContext context);
   void addLayer();
@@ -133,7 +135,7 @@ mixin DesignStateContract on ChangeNotifier {
   void updateMultiSlatPosition(List<String> slatIDs, List<Map<int, Offset>> allCoordinates, {bool requestFlip = false});
   void removeSlat(String ID, {bool skipStateUpdate = false});
   void removeSlats(List<String> IDs);
-  void flipSlat(String ID);
+  void flipSlat(String ID, {bool skipStateUpdate = false});
   void flipSlats(List<String> IDs);
   void selectSlat(String ID, {bool addOnly = false});
   void updateSlatAddCount(int value);

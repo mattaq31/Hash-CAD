@@ -23,7 +23,7 @@ jobs:
       # Enable cross-arch emulation on Linux runners for aarch64 containers
       - name: Set up QEMU (for aarch64)
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
@@ -37,11 +37,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install cibuildwheel==2.*
 
-      # Adjust environment for cibuildwheel per-platform
+      # Pre-download virtualenv from CDN to avoid rate-limited github.com/blob/ URL
+      - name: Pre-cache virtualenv for cibuildwheel
+        shell: bash
+        run: |
+          VENV_VERSION=20.30.0
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            CACHE_DIR="$HOME/Library/Caches/cibuildwheel"
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            CACHE_DIR="$LOCALAPPDATA/pypa/cibuildwheel/Cache"
+          else
+            CACHE_DIR="$HOME/.cache/cibuildwheel"
+          fi
+          mkdir -p "$CACHE_DIR"
+          curl -L --retry 3 --retry-delay 5 \
+            "https://raw.githubusercontent.com/pypa/get-virtualenv/${VENV_VERSION}/public/virtualenv.pyz" \
+            -o "$CACHE_DIR/virtualenv-${VENV_VERSION}.pyz"
+
       - name: Build wheels with cibuildwheel
         env:
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
-          CIBW_SKIP: "pp* *musllinux*"  # skip PyPy and musllinux (Alpine)
+          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
+          CIBW_SKIP: "pp* *musllinux*"
           CIBW_ARCHS_LINUX: "x86_64 aarch64"
           CIBW_ARCHS_MACOS: "arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
@@ -50,7 +66,7 @@ jobs:
           cibuildwheel --output-dir wheelhouse ./crisscross_kit
 
       - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
@@ -81,7 +97,7 @@ jobs:
         working-directory: ./crisscross_kit
 
       - name: Upload sdist artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: crisscross_kit/dist/*.tar.gz
@@ -95,14 +111,14 @@ jobs:
       name: pypi
     steps:
       - name: Download wheel artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           path: dist/
           merge-multiple: true
 
       - name: Download sdist artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: sdist
           path: dist/

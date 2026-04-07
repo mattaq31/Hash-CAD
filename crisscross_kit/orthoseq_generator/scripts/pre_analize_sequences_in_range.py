@@ -9,7 +9,7 @@ Purpose:
 
 Main Steps:
     1. Set a fixed random seed for reproducibility.
-    2. Generate all 8-mer sequence pairs (without filtering by 'GGGG' if you want the full range).
+    2. Generate all 7-mer sequence pairs (without filtering by 'GGGG' if you want the full range).
     3. Point to the same precomputed energy cache.
     4. Select a random subset of up to 250 pairs whose on-target energies lie within [min_ontarget, max_ontarget].
     5. Compute on- and off-target energies for that restricted pool.
@@ -20,6 +20,7 @@ Main Steps:
 '''
 
 import random
+from seqwalk import design
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 
@@ -28,35 +29,43 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
 
-    # 2) Generate the full pool of 8-mer handle/antihandle pairs,
+    # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
-    ontarget8mer = sc.create_sequence_pairs_pool(
-        length=8,
-        fivep_ext="TT",
+    seqwalk_cores = design.max_size(20, 10, alphabet="ACGT")
+    sequence_pairs_object = sc.SequencePairRegistry(
+        length=20,
+        fivep_ext="",
         threep_ext="",
-        avoid_gggg=False
+        unwanted_substrings=[],
+        apply_unwanted_to="core",
+        seed=RANDOM_SEED,
+        preselected_cores=seqwalk_cores,
     )
+
 
     # 3) Configure and enable the precomputed energy cache.
     #    The specified pickle file ('8mers.pkl') will be created automatically during execution
     #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
     #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
-    hf.choose_precompute_library("8mers.pkl")
-    hf.USE_LIBRARY = True
+    hf.choose_precompute_library("20mers.pkl")
+    hf.USE_LIBRARY = False
 
     # 4) Select subset within desired on-target energy range (based on first script’s histograms)
-    max_ontarget = -9.6
-    min_ontarget = -10.4
-    subset, indices = sc.select_subset_in_energy_range(
-        ontarget8mer,
+    max_ontarget = -23
+    min_ontarget = -25
+    hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
+    subset, indices, _, _ = sc.select_subset_in_energy_range(
+        sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,
-        max_size=250,
-        Use_Library=True
+        self_energy_min=-1.25,
+        max_size=50,
+        Use_Library=False,
+        timeout_s=20,
     )
 
     # 5) Compute on-target energies for the restricted subset
-    on_e_subset = sc.compute_ontarget_energies(subset)
+    on_e_subset,self_e_A,self_e_B = sc.compute_ontarget_energies(subset)
 
     # 6) Compute off-target energies for the same subset
     off_e_subset = sc.compute_offtarget_energies(subset)
@@ -65,5 +74,7 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         on_e_subset,
         off_e_subset,
-        output_path='energy_hist_10_4to9_6.pdf'
+        output_path='energy_random20mers_12to13.pdf'
     )
+
+    self_stats =sc.plot_self_energy_histogram([self_e_A,self_e_B],bins=30, output_path='20mer_self_energies.pdf')

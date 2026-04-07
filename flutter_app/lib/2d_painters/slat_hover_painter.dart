@@ -20,6 +20,8 @@ class SlatHoverPainter extends CustomPainter {
   final List<Slat> preSelectedSlats;
   final Offset moveAnchor;
   final bool moveTranspose;
+  final int moveRotationSteps;
+  final String gridMode;
   final DesignState appState;
   final ActionState actionState;
 
@@ -28,7 +30,8 @@ class SlatHoverPainter extends CustomPainter {
   SlatHoverPainter(this.scale, this.canvasOffset, this.slatColor,
       this.hoverValid, this.futureSlatEndPoints, this.hoverPosition,
       this.ignorePreSelectedSlats, this.preSelectedSlats, this.moveAnchor,
-      this.moveTranspose, this.appState, this.actionState)
+      this.moveTranspose, this.moveRotationSteps, this.gridMode,
+      this.appState, this.actionState)
   {
     labelPainters = <int, TextPainter>{};
     TextStyle textStyle = TextStyle(
@@ -98,7 +101,12 @@ class SlatHoverPainter extends CustomPainter {
               .toList()
             ..sort((a, b) => a.key.compareTo(b.key)); // sort by the integer key
 
-          List<Offset> coords = SortedCoords.map((e) => appState.convertCoordinateSpacetoRealSpace(e.value)).toList();
+          // rotate in coordinate space, then convert to real space
+          Offset anchorCoord = appState.convertRealSpacetoCoordinateSpace(moveAnchor);
+          List<Offset> coords = SortedCoords.map((e) {
+            Offset rotated = rotateCoordinateSpace(e.value, anchorCoord, moveRotationSteps, gridMode);
+            return appState.convertCoordinateSpacetoRealSpace(rotated);
+          }).toList();
           if (moveTranspose && slat.slatType == 'tube'){
             // reverse the coordinates
             coords = coords.reversed.toList();
@@ -117,6 +125,7 @@ class SlatHoverPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant SlatHoverPainter oldDelegate) {
     return hoverPosition != oldDelegate.hoverPosition ||
-        hoverValid != oldDelegate.hoverValid;
+        hoverValid != oldDelegate.hoverValid ||
+        moveRotationSteps != oldDelegate.moveRotationSteps;
   }
 }

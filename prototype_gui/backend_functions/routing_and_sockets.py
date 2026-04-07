@@ -104,7 +104,7 @@ def get_inventory():
     for filename in os.listdir(app.config['USER_PLATE_FOLDER']):
         if filename.endswith('.xlsx'):
             shortened_filename = filename[:-5]
-            # Run getInventory on the current file and extend the results to the all_inventory_items list
+            # Run getInventory on the current file and extend the noflank_results to the all_inventory_items list
             plate = get_plateclass('GenericPlate', shortened_filename, app.config['USER_PLATE_FOLDER'])
             inventory_items = cargo_to_inventory(plate, shortened_filename)
             all_inventory_items.extend(inventory_items)
@@ -262,7 +262,7 @@ def package_and_export_megastructure(data):
         for filename in os.listdir(app.config['USER_PLATE_FOLDER']):
             if filename.endswith('.xlsx'):
                 shortened_filename = filename[:-5]
-                # Run getInventory on the current file and extend the results to the all_inventory_items list
+                # Run getInventory on the current file and extend the noflank_results to the all_inventory_items list
                 cargo_plate_list.append(get_plateclass('GenericPlate', shortened_filename, app.config['USER_PLATE_FOLDER']))
 
         standard_cargo_plates = get_cargo_plates()

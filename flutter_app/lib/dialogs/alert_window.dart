@@ -111,7 +111,7 @@ void showKeyboardShortcutsDialog(BuildContext context) {
             children: [
               _shortcutItem("'R'", "Rotate slat draw direction"),
               _shortcutItem("'F'", "Flip multi-slat draw direction"),
-              _shortcutItem("'T'", "Transpose slat draw direction"),
+              _shortcutItem("'T'", "Transpose slat draw direction (only for straight slats in move mode)"),
               _shortcutItem("'Up/Down arrow keys'", "Change layer"),
               _shortcutItem("'A'", "Add new layer"),
               _shortcutItem("'1'", "Switch to 'Add' mode"),

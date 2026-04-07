@@ -1,33 +1,178 @@
 # Orthogonal Sequence Generator (OrthoSeq)
 ## Problem It Solves
-This tool helps you find sets of **orthogonally binding DNA sequence pairs**. The main focus is on selecting sequences based on **thermodynamic binding energy**, not sequence diversity (as commonly used in barcoding).
-The tool allows you to specify an on-target binding energy range and an off-target binding limit.
+OrthoSeq is a tool to build sets of **orthogonally binding nucleic-acid sequence pairs** for applications where binding thermodynamics matter more than simple sequence dissimilarity.
+OrthoSeq uses NUPACK for thermodynamic calculations.  
+In this context, sequence pairs are selected such that:
+- each sequence binds strongly to its intended partner within a user-defined **on-target binding** energy range
+- each sequence avoids binding strongly to unintended partners according to a user-defined **off-target binding** limit
+- each individual strand avoids forming overly stable secondary structure according to a user-defined secondary-structure energy limit
 
-Orthogonality here means:  
-- Each sequence binds strongly to its intended partner (**on-target**)  
-- Sequences do **not** bind significantly to any unintended partner (**off-target**)  
+The sequence layout can also be defined, including the length of the binding region and optional 5' and 3' flanks.
+NUPACK-related thermodynamic parameters can be set, including temperature, sodium concentration, magnesium concentration, and nucleic acid type (DNA or RNA).
 
-Unlike other orthogonal sequence generators that use **De Bruijn graphs** and/or focus on **Hamming distance** for barcode generation, this tool uses **NUPACK** to compute actual hybridization energies. The sequence selection is based **solely on thermodynamic interactions**.
+The sequence search is integrated into a Streamlit-based graphical user interface. The user interface allows you to define the sequence layout and select thermodynamic parameters such as the on-target energy range and off-target binding limit.
+The search can be launched directly from the graphical user interface.
 
-To maximize the number of orthogonal sequences found under given constraints, we employ:  
-- **Advanced graph-theoretic algorithms** (vertex cover)  
-- **Evolutionary optimization** strategies  
-
-The algorithm works best for sequences up to **13 or 14 nucleotides** long (plus optional fixed 5' and 3' extensions, defined by the user).
 
 ---
 ## Installation
 
-This package is automatically installed when you install the main `crisscross_kit` package as below:
+OrthoSeq is recommended to run inside a **Miniconda** environment.
+
+The main installation complication is **NUPACK**:
+- NUPACK is required for the thermodynamic calculations
+- NUPACK is not installed via pip in the normal way
+- because of NUPACK, this workflow currently only works for **macOS and Linux**
+
+### Recommended Setup
+
+1. Install **Miniconda** if you do not have it already.
+
+2. Create and activate a fresh environment:
 
 ```bash
-pip install crisscross_kit
+conda create -n orthoseq python=3.11
+conda activate orthoseq
 ```
 
-You will also need to install the `nupack` package separately from [here](https://www.nupack.org/download/overview).  `Nupack` will work directly in a MacOS or Linux environment, but will require the Windows Subsystem for Linux (WSL) to run on Windows.
+3. Upgrade `pip` inside that environment:
+
+```bash
+pip install -U pip
+```
+
+4. Install **NUPACK** first.
+
+Go to the official NUPACK page, accept the license, download the current release, and unzip it.
+
+Official guide:
+- [NUPACK 4 Getting Started](https://docs.nupack.org/start/)
+
+Then install it from the downloaded package directory inside your conda environment:
+
+```bash
+pip install -U nupack -f ~/Downloads/nupack-VERSION/package
+```
+Here, `nupack-VERSION` means the name of the downloaded and unzipped NUPACK folder.
+
+5. Install `crisscross_kit` with the Streamlit extra:
+```bash
+pip install "crisscross-kit[streamlit]"
+```
+This installs the package together with the Streamlit web app dependencies.
+
+6. Start the app:
+To start the app run the following in your conda environment:
+```bash
+orthoseq_app
+```
+This opens the Streamlit interface in your browser.
 
 ---
-## Basic Use
+## Using the App
+Basic workflow:
+
+### 1. Set the global sequence and thermodynamic parameters
+
+Use the global settings panel on the left side of the app.
+
+Here you can define the sequence layout:
+- core sequence length
+- optional 5' and 3' extensions by entering a base string such as `TTAG`
+- unwanted substrings such as `TTTT`
+
+There is an illustration at the top of the panel showing the resulting binding layout.
+
+Sequences containing unwanted substrings are excluded from the search. The unwanted-substring filter can be applied either to the core sequence only or to the full sequence including the user-defined extensions. Be careful not to choose unwanted substrings that are already part of your fixed extensions, or no valid sequences may remain.
+
+Further down in the panel, you can set the thermodynamic parameters:
+- nucleic acid type: DNA or RNA
+- temperature
+- sodium concentration
+- magnesium concentration
+
+If you select RNA, the sodium and magnesium concentrations are ignored because the NUPACK RNA model is defined only for 1 M sodium.
+
+### 2. Run a pilot analysis to choose the on-target range
+
+Start by getting an overview of the binding energies for the selected sequence layout.
+
+In the **Pilot Analysis** tab, choose a sample size and click **Run Pilot Analysis**. The app selects a random set of sequence pairs according to the layout and thermodynamic settings from the left panel. It then computes:
+- on-target binding energies
+- off-target binding energies
+- secondary-structure energies
+
+The results are shown in two plots.
+
+The first plot shows on-target and off-target energy histograms. You can enter minimum and maximum on-target energies in the input fields. The selected range is displayed as vertical lines on the plot. If you are happy with the range, transfer it to the next tab using **Use This Range**.
+
+The second plot shows the secondary-structure energy distribution. You can enter a minimum secondary-structure energy limit, which is also shown as a vertical line. If you are happy with the value, transfer it using **Use This Value**.
+
+### Selection Helper
+
+The **Selection Helper** tab helps interpret what these thermodynamic values mean experimentally.
+
+Because the selection algorithm is based on pairwise sequence comparisons, this tab provides reference plots:
+- fraction bound of two strands vs. binding energy
+- fraction of strands that remain fully unpaired vs. secondary-structure energy
+
+You can set the strand concentration for the first plot. The plots depend on the temperature selected in the left panel. The relevant equations are shown above the plots together with additional thermodynamic information.
+
+### 3. Choose the off-target binding limit
+
+In the **Off-Target Limit** tab, the on-target range and secondary-structure limit transferred from the pilot analysis are shown again. You can choose a sample size and click **Run Off-Target Analysis**.
+
+The app then selects a random set of sequence pairs that satisfy the previously chosen conditions and computes the on-target and off-target energies again with NUPACK.
+
+You can then choose the off-target energy limit by entering a value in the input field. The selected value is shown as a vertical red line in the plot. The plot also shows the conflict probability, which is the probability that two sequence pairs from the currently selected pool violate the chosen off-target limit.
+
+The off-target limit is chosen in a separate step because the selected on-target energy range affects the off-target energy distribution. Sequences with stronger on-target binding also tend to show stronger off-target binding.
+
+You can use the **Selection Helper** tab again to interpret the off-target energies. Once you are happy with the off-target limit, transfer it to the next tab using **Use This Value**.
+
+### 4. Run the sequence search
+
+Unfortunately, the search can be slow because NUPACK calculations dominate the runtime. For longer runs, it is a good idea to prevent your computer from going to sleep. On macOS, for example, you can run `caffeinate` in a separate terminal before starting the search.
+
+In the **Orthogonal Sequence Search** tab, the parameters transferred from the previous tabs are shown again for reference. You can then choose how many generations the search should run.
+
+In practice, it often makes sense to use a fairly large number of generations, for example `1000`, and stop the search manually once you are happy with the result. Start the search with **Run Search**. While it is running, progress messages are shown in the logging window above the tabs. If you already have enough sequences, you can stop the search with **Stop Searching**.
+
+There is also an **Advanced Search Parameters** panel. In most cases, the default values are a good starting point.
+
+The search has two phases:
+
+- **Initial search**: a random pool of sequence pairs is collected under the selected on-target and secondary-structure limits. Off-target interactions are then computed for this initial pool, a conflict graph is built, and a graph-based search is performed to obtain an initial orthogonal set.
+- **Iterative refinement**: in each generation, new sequence pairs are sampled one by one under the same limits. Each new pair is compared against the currently retained orthogonal set. If it creates too many off-target conflicts with that set, it is discarded. If it passes this check, it is added to the current trial pool.
+- After enough new pairs have been collected, they are combined with the currently retained orthogonal set.
+- Off-target interactions are then computed for this combined pool, a conflict graph is built, and the graph-based search is run again on the full combined pool.
+- This allows the algorithm not only to add good new sequence pairs, but also to replace previously retained pairs if that leads to a larger orthogonal set overall.
+
+The graph-based search can be understood as follows:
+
+- each sequence pair in the current pool is treated as a node in a graph
+- two nodes are connected if the corresponding sequence pairs violate the chosen off-target limit
+- the goal is then to keep as many nodes as possible while removing enough conflicting nodes that no connections remain
+- the vertex-cover routine is the heuristic used to decide which sequence pairs to remove so that the remaining set is as large as possible
+
+You do not need to think in graph-theory terms to use the app, but this is the reason the advanced parameters mainly control repeated graph-search attempts and refinement steps.
+
+Brief explanation of the advanced parameters:
+
+- **Initial Subset Size**: number of requested sequence pairs used to build the initial trial pool.
+- **Vertex-Cover Multistart**: number of repeated runs of the graph-based optimization step per generation.
+- **Vertex-Cover Max Iterations**: number of refinement iterations used inside each graph-based optimization run.
+- **Prune Fraction**: controls how strongly the current graph-based solution is perturbed before it is refined again.
+- **Max NUPACK Calls**: limit on the number of NUPACK calls used while collecting fresh candidates in one generation. If this limit is reached, the number of allowed conflicts for newly sampled pairs is increased by 1 in later generations.
+- **History Subset Scale**: once an orthogonal set has been established, this determines how many new sequence pairs are requested in later generations relative to the size of that retained set.
+
+
+---
+
+
+
+
+## Advanced use via scripts (from here on no longer up to date)
 
 You can manually download example [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) from GitHub demonstrating how to use the tool.
 

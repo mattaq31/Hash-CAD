@@ -23,6 +23,8 @@ class ActionState extends ChangeNotifier {
   bool isolateSlatLayerView;
   bool evolveMode;
   bool slatLinkerActive;
+  bool echoPlateWindowActive;
+  bool echoPlateUndoActive;
   bool isSideBarCollapsed;
   int panelMode;
   String cargoAttachMode;
@@ -57,6 +59,8 @@ class ActionState extends ChangeNotifier {
     this.isolateSlatLayerView = false,
     this.evolveMode = false,
     this.slatLinkerActive = false,
+    this.echoPlateWindowActive = false,
+    this.echoPlateUndoActive = false,
     this.isSideBarCollapsed = false,
     this.displaySeeds = true,
     this.displayBorder = true,
@@ -199,6 +203,16 @@ class ActionState extends ChangeNotifier {
 
   void deactivateSlatLinker(){
     slatLinkerActive = false;
+    notifyListeners();
+  }
+
+  void activateEchoPlateWindow(){
+    echoPlateWindowActive = true;
+    notifyListeners();
+  }
+
+  void deactivateEchoPlateWindow(){
+    echoPlateWindowActive = false;
     notifyListeners();
   }
 

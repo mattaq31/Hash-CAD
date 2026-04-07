@@ -7,6 +7,7 @@ import '../crisscross_core/slats.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/seed.dart';
 import '../crisscross_core/handle_plates.dart';
+import '../echo_and_experimental_helpers/plate_layout_state.dart';
 
 import 'slat_undo_stack.dart';
 import 'app_preferences.dart';
@@ -102,38 +103,13 @@ class DesignState extends ChangeNotifier
   @override
   String gridMode = '60';
   @override
-  bool standardTilt = true; // just a toggle between the two different tilt types
+  bool standardTilt = true; // tracks which tilt orientation is active for the F key
 
   @override
   HoverPreview? hoverPreview; // current transient set of slats
 
-  Map<(String, int), Offset> slatDirectionGenerators = {
-    ('90', 90): Offset(1, 0),
-    ('90', 180): Offset(0, 1),
-    ('60', 180): Offset(0, 2),
-    ('60', 120): Offset(1, 1),
-    ('60', 240): Offset(-1, 1),
-  };
-
   @override
   Map<(String, int), Offset> multiSlatGenerators = {
-    ('90', 90): Offset(0, 1),
-    ('90', 180): Offset(1, 0),
-    ('60', 180): Offset(1, 1),
-    ('60', 120): Offset(0, 2),
-    ('60', 240): Offset(0, 2),
-  };
-  @override
-  Map<(String, int), Offset> multiSlatGeneratorsAlternate = {
-    ('90', 90): Offset(0, -1),
-    ('90', 180): Offset(-1, 0),
-    ('60', 180): Offset(-1, 1),
-    ('60', 120): Offset(1, -1),
-    ('60', 240): Offset(-1, -1),
-  };
-
-  // trialling a new system for slat addition using a full 360deg rotation and no flips
-  Map<(String, int), Offset> multiSlatGeneratorsDB = {
     ('90', 90): Offset(0, 1),
     ('90', 180): Offset(-1, 0),
     ('90', 270): Offset(0, -1),
@@ -146,7 +122,21 @@ class DesignState extends ChangeNotifier
     ('60', 60): Offset(0, 2),
   };
 
-  Map<(String, int), Offset> slatDirectionGeneratorsDB = {
+  @override
+  Map<(String, int), Offset> multiSlatGeneratorsAlternate = {
+    ('90', 90): Offset(0, -1),
+    ('90', 180): Offset(1, 0),
+    ('90', 270): Offset(0, 1),
+    ('90', 0): Offset(-1, 0),
+    ('60', 180): Offset(1, -1),
+    ('60', 120): Offset(0, -2),
+    ('60', 240): Offset(1, 1),
+    ('60', 300): Offset(0, 2),
+    ('60', 0): Offset(-1, 1),
+    ('60', 60): Offset(-1, -1),
+  };
+
+  Map<(String, int), Offset> slatDirectionGenerators = {
     ('90', 90): Offset(1, 0),
     ('90', 180): Offset(0, 1),
     ('90', 270): Offset(-1, 0),
@@ -185,7 +175,6 @@ class DesignState extends ChangeNotifier
   Map<String, Map<String, dynamic>> layerMap = {
     'A': {
       "direction": 120, // slat default direction
-      "DBDirection": 120, // temporary alternative drawing system
       'order': 0, // draw order - has to be updated when layers are moved
       'top_helix': 'H5',
       'bottom_helix': 'H2',
@@ -196,7 +185,6 @@ class DesignState extends ChangeNotifier
     },
     'B': {
       "direction": 240,
-      "DBDirection": 240, // temporary alternative drawing system
       'next_slat_id': 1,
       'slat_count': 0,
       'top_helix': 'H5',
@@ -227,8 +215,6 @@ class DesignState extends ChangeNotifier
   int nextColorIndex = 2;
   @override
   int slatAddCount = 1;
-  @override
-  String slatAddDirection = 'down';
   @override
   Color uniqueSlatColor = Colors.blue;
   @override
@@ -280,6 +266,12 @@ class DesignState extends ChangeNotifier
 
   @override
   PlateLibrary plateStack = PlateLibrary();
+
+  /// Persisted echo plate layout state — populated on import, consumed by echo window on init.
+  PlateLayoutState? echoPlateLayoutState;
+
+  /// True when echoPlateLayoutState was set from a file import (not synced back by echo window).
+  bool echoPlateLayoutFromImport = false;
 
   // Assembly handle colors (customizable, persisted via AppPreferences)
   final AppPreferences _appPreferences = AppPreferences();

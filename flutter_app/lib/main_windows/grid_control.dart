@@ -48,6 +48,10 @@ class _GridAndCanvasState extends State<GridAndCanvas>
 
   @override
   bool moveFlipRequested = false;
+  @override
+  int moveRotationSteps = 0;
+  @override
+  bool seedTransposed = false;
 
   // Current scale and offset (zoom and move)
   @override
@@ -72,6 +76,8 @@ class _GridAndCanvasState extends State<GridAndCanvas>
   // Dragging/moving state
   @override
   bool dragActive = false;
+  @override
+  Offset lastPointerPosition = Offset.zero;
   @override
   Offset slatMoveAnchor = Offset.zero;
   @override

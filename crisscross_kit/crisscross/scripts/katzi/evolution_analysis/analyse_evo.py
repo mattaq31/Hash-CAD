@@ -55,7 +55,7 @@ def intuitive_score(matches,fudge_dG=-10):
 
 def compute_generation_results(file_locations, slat_array, slat_len):
     """
-    Compute results for all generations.
+    Compute noflank_results for all generations.
 
     Parameters
     ----------
@@ -105,7 +105,7 @@ def compute_generation_results(file_locations, slat_array, slat_len):
 
 def save_results_pkl(results, out_path):
     """
-    Save results list to a pickle file.
+    Save noflank_results list to a pickle file.
 
     Parameters
     ----------
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     # Compute and save
     results = compute_generation_results(file_locations, slat_array, slat_len)
 
-    # Pick where you want the results
+    # Pick where you want the noflank_results
     out_pkl = Path(folder) / "evolution_results24000_onwards.pkl"
     save_results_pkl(results, out_pkl)
 

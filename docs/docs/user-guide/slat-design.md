@@ -46,10 +46,11 @@ Toggle between modes using the grid mode selectors in the slat design sidebar.
 2. Hover over the grid to show a preview of the slat placement, which will automatically snap to your selected grid.
 3. Click to place your slat.
 4. You can change slat type from the slat palette, or change the number of slats you want to add in one go by changing the slat addition count.
-5. Slats can be rotated by pressing the 'R' key, transposed by pressing the 'T' key and, when placing multiple slats, flipped by pressing the 'F' key (try them out to get a feel for how these commands work).
+5. Slats can be rotated by pressing the 'R' key and, when placing multiple slats, flipped by pressing the 'F' key (try them out to get a feel for how these commands work).
 6.  Slats can only be placed on one layer at a time.  Switch between layers by clicking on the different layers in the layer manager, or cycle through them using the up/down arrow keys.  You can also quickly add a new layer by pressing the 'A' key.
 7. **ctrl-z** or **cmd-z** allows you to undo the last slat placement.
 
+**NOTE - GIF IS USING AN OLDER VERSION THAT ALSO INCLUDED THE T KEY FOR FLIPPING SLATS - IGNORE THIS, GIF WILL BE UPDATED SOON**
 <p align="center">
   <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/tutorial_kit/slat_add.gif" alt="Triangulation" width="800">
 </p>

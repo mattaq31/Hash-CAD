@@ -2,6 +2,8 @@
 
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
+import '../app_management/design_io_constants.dart';
+import 'cargo.dart';
 
 
 String sanitizePlateMap(String name) {
@@ -29,21 +31,18 @@ List<Map<String, dynamic>> readDnaPlateMapping(Uint8List fileBytes) {
       final key = headers[j];
       final cell = j < row.length ? row[j] : null;
 
-      if (cell == null){
-        rowData[key ?? ''] =  null;
-      }
-      else{
+      if (cell == null || cell.value == null) {
+        rowData[key ?? ''] = null;
+      } else {
         final value = cell.value;
         if (value is TextCellValue) {
           rowData[key ?? ''] = value.value.text ?? '';
         } else if (value is IntCellValue) {
           rowData[key ?? ''] = value.value;
-        }
-        else if (value is DoubleCellValue) {
+        } else if (value is DoubleCellValue) {
           rowData[key ?? ''] = value.value;
-        }
-        else {
-          throw Exception('Unsupported cell type: ${value.runtimeType}');
+        } else {
+          rowData[key ?? ''] = value.toString();
         }
       }
     }
@@ -66,12 +65,41 @@ class PlateLibrary {
       final plate = HashCadPlate(plateFiles[i], name);
       plates[name] = plate;
 
-      for (final key in plate.sequences.keys) {
-        globalSequences[key] = plate.getSequence(key);
-        globalConcentrations[key] = plate.getConcentration(key);
-        globalWells[key] = plate.getWell(key);
-        globalPlates[key] = name;
+      _registerPlateGlobals(plate, name);
+    }
+  }
+
+  /// Reconstructs the plate library from raw row data (as stored in design files).
+  void readPlatesFromRawData(Map<String, List<List<dynamic>>> rawDataMap) {
+    for (var entry in rawDataMap.entries) {
+      // Strip the input plate prefix to get the plate name
+      final name = entry.key.startsWith(inputPlateSheetPrefix) ? entry.key.substring(inputPlateSheetPrefix.length) : entry.key;
+      final rows = entry.value;
+      if (rows.isEmpty) continue;
+
+      // Convert raw rows (with header) back to List<Map<String, dynamic>>
+      final headers = rows.first.map((e) => e.toString()).toList();
+      final parsedRows = <Map<String, dynamic>>[];
+      for (var i = 1; i < rows.length; i++) {
+        final rowData = <String, dynamic>{};
+        for (var j = 0; j < headers.length && j < rows[i].length; j++) {
+          rowData[headers[j]] = rows[i][j];
+        }
+        parsedRows.add(rowData);
       }
+
+      final plate = HashCadPlate.fromParsedData(parsedRows, name);
+      plates[name] = plate;
+      _registerPlateGlobals(plate, name);
+    }
+  }
+
+  void _registerPlateGlobals(HashCadPlate plate, String name) {
+    for (final key in plate.sequences.keys) {
+      globalSequences[key] = plate.getSequence(key);
+      globalConcentrations[key] = plate.getConcentration(key);
+      globalWells[key] = plate.getWell(key);
+      globalPlates[key] = name;
     }
   }
 
@@ -132,6 +160,31 @@ class PlateLibrary {
     globalConcentrations.clear();
   }
 
+  /// Returns unique cargo IDs found across all loaded plates.
+  Set<String> get allCargoIds {
+    final ids = <String>{};
+    for (final key in globalSequences.keys) {
+      if (key.startsWith('CARGO|')) {
+        // Key format: CARGO|position|side|cargoName
+        ids.add(key.split('|')[3]);
+      }
+    }
+    return ids;
+  }
+}
+
+/// Adds any cargo IDs found in [plateLibrary] that are missing from [cargoPalette].
+void syncCargoFromPlates(PlateLibrary plateLibrary, Map<String, Cargo> cargoPalette) {
+  for (final cargoId in plateLibrary.allCargoIds) {
+    if (!cargoPalette.containsKey(cargoId)) {
+      final colorIndex = (cargoPalette.length - 1) % qualitativeCargoColors.length;
+      cargoPalette[cargoId] = Cargo(
+        name: cargoId,
+        shortName: generateShortName(cargoId),
+        color: qualitativeCargoColors[colorIndex],
+      );
+    }
+  }
 }
 
 class HashCadPlate {
@@ -140,10 +193,35 @@ class HashCadPlate {
   final Map<String, dynamic> concentrations = {};
   String plateName;
 
+  /// Raw row data for re-export into design files.
+  final List<List<dynamic>> rawData = [];
+
   HashCadPlate(Uint8List plateData, this.plateName, {int plateSize = 384})  {
 
     List<Map<String, dynamic>> rawPlateData = readDnaPlateMapping(plateData);
+    _storeRawData(rawPlateData);
     identifyWellsAndSequences(rawPlateData);
+  }
+
+  /// Creates a HashCadPlate from pre-parsed row data (e.g. from a design file).
+  HashCadPlate.fromParsedData(List<Map<String, dynamic>> parsedData, this.plateName) {
+    _storeRawData(parsedData);
+    identifyWellsAndSequences(parsedData);
+  }
+
+  void _storeRawData(List<Map<String, dynamic>> parsedData) {
+    for (var row in parsedData) {
+      rawData.add([row['well'] ?? '', row['name'] ?? '', row['sequence'] ?? '', row['concentration'] ?? 0]);
+    }
+  }
+
+  /// Returns raw data in the standard "All Data" format (header + data rows).
+  List<List<dynamic>> exportToAllDataFormat() {
+    final result = <List<dynamic>>[
+      ['well', 'name', 'sequence', 'concentration'],
+      ...rawData,
+    ];
+    return result;
   }
 
   void identifyWellsAndSequences(List<Map<String, dynamic>> rawPlateData) {

@@ -575,8 +575,9 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
   }
 
   /// Toggles block status on a handle and applies the change.
-  /// When blocking: Sets handle value to '0' (preserving ASSEMBLY category).
-  /// When unblocking: Removes the handle entry entirely (position becomes available).
+  /// When blocking: Registers the block, then runs smartSetHandle to propagate — the enforcement
+  /// phase will keep this handle at '0' and remove (not block) any adjacent touching handle.
+  /// When unblocking: Removes the block and deletes the placeholder handle.
   @override
   void toggleHandleBlockAndApply(HandleKey key) {
     var slat = slats[key.$1];
@@ -587,13 +588,13 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
       slat.removeHandle(key.$2, key.$3);
       assemblyLinkManager.removeBlock(key);
     } else {
-      // Block - get existing category or determine from layer/side TODO: this logic is highly circumstantial... should decide category based on layer position
+      // Block - register the block first, then propagate via smartSetHandle
       var handleDict = getHandleDict(slat, key.$3);
-      String category = handleDict[key.$2]?['category'] ??(key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
+      String category = handleDict[key.$2]?['category'] ?? (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
 
-      // Set value to '0' (preserves category)
-      slat.setPlaceholderHandle(key.$2, key.$3, '0', category);
       assemblyLinkManager.addBlock(key);
+      // smartSetHandle propagation will set '0' here and remove (not block) the adjacent handle
+      smartSetHandle(slat, key.$2, key.$3, '0', category);
     }
 
     hammingValueValid = false;
