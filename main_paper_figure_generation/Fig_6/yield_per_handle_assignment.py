@@ -9,9 +9,12 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib as mpl
 import pickle
+from scipy.stats import spearmanr  # rank-based correlation test
 
-filename = "scores_random.pkl"
-filename32 = "scores_random_reduced32.pkl"
+SCRIPT_DIR = Path(__file__).resolve().parent
+EVO_RUN_PLOTS_DIR = SCRIPT_DIR / "evo_run_plots"
+filename = EVO_RUN_PLOTS_DIR / "scores_random.pkl"
+filename32 = EVO_RUN_PLOTS_DIR / "scores_random_reduced32.pkl"
 
 with open(filename, "rb") as f:
     score_array = pickle.load(f)
@@ -138,6 +141,35 @@ groups = sorted((present_groups & set(loss_map.keys())) - {'V3'})
 x_positions = [loss_map[g] for g in groups]
 data        = [five_six.xs(g, level='Group').values for g in groups]
 
+
+def report_spearman_test(groups, loss_map, five_six):
+    """Report Spearman correlation between loss values and measured 5+6 counts."""
+    losses = []
+    measured_counts = []
+
+    for g in groups:
+        loss = loss_map.get(g)
+        if loss is None or np.isnan(loss):
+            continue
+        # Pair every per-image measurement in this group with that group's loss.
+        values = five_six.xs(g, level='Group').to_numpy(dtype=float)
+        losses.extend([float(loss)] * len(values))
+        measured_counts.extend(values.tolist())
+
+    losses = np.asarray(losses, dtype=float)
+    measured_counts = np.asarray(measured_counts, dtype=float)
+
+    if losses.size < 2 or measured_counts.size < 2:
+        print("Spearman test: not enough data.")
+        return
+
+    # Spearman tests whether loss ordering tracks the ordering of measured 5+6 yields.
+    rho, p_value = spearmanr(losses, measured_counts, nan_policy="omit")
+    print("\nSpearman test: loss vs structures per image (5+6)")
+    print(f"n = {losses.size}")
+    print(f"rho = {rho:.4f}")
+    print(f"p = {p_value:.4g}")
+
 # ====== Plot ======
 fig, ax, lw_pt = make_fig_ax(BOX_W_MM, BOX_H_MM)
 
@@ -193,3 +225,6 @@ out_svg = OUT_DIR / "boxplot_5plus6_vs_loss_numeric.svg"
 fig.savefig(out_svg, format="svg", bbox_inches="tight", pad_inches=PAD_INCHES)
 plt.close(fig)
 print(f"Saved: {out_svg}")
+
+# Print the correlation statistics after generating the figure file.
+report_spearman_test(groups, loss_map, five_six)
