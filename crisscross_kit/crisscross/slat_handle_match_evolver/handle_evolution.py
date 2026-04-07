@@ -66,7 +66,7 @@ class EvolveManager:
         self.slat_array = megastructure.generate_slat_occupancy_grid()
         self.repeating_unit_constraints = {} if repeating_unit_constraints is None else repeating_unit_constraints
 
-        seed_handle_array = megastructure.generate_assembly_handle_grid()
+        seed_handle_array = megastructure.generate_assembly_handle_grid(category='all_slats')
 
         if np.sum(seed_handle_array) == 0:
             self.handle_array = None
@@ -229,7 +229,7 @@ class EvolveManager:
         results = self.pool.starmap(comprehensive_score_analysis, analysis_inputs)
         multiprocess_time = time.time() - multiprocess_start
 
-        # Unpack and store results from multiprocessing
+        # Unpack and store noflank_results from multiprocessing
         for index, res in enumerate(results):
             mean_parasitic_valency[index] = res['mean_log_score']
             max_parasitic_valency[index] = res['worst_match_score']

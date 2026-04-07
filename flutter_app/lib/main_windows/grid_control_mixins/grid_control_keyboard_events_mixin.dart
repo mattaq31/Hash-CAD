@@ -14,8 +14,11 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       // Rotation shortcut
       SingleActivator(LogicalKeyboardKey.keyR): () {
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
-          // moveRotationStepsRequested += 1;
-          // TODO: reinstate this system when confirmed
+          setState(() {
+            moveRotationSteps += 1;
+            var (_, newHoverValid) = hoverCalculator(lastPointerPosition, appState, actionState, true);
+            hoverValid = newHoverValid;
+          });
         } else {
           appState.rotateLayerDirection(appState.selectedLayerKey);
         }
@@ -30,15 +33,14 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
           setHoverCoordinates(appState);
         }
       },
-      // flip shortcut for 60deg layers
+      // flip shortcut (T key works in move mode for slats, and in cargo-add mode for seed transpose)
       SingleActivator(LogicalKeyboardKey.keyT): () {
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
           moveFlipRequested = !moveFlipRequested;
-        } else {
-          appState.flipSlatAddDirection();
-        }
-        if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
-          setHoverCoordinates(appState);
+        } else if (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED') {
+          setState(() {
+            seedTransposed = !seedTransposed;
+          });
         }
       },
       // delete shortcut (when in move mode)
@@ -99,23 +101,23 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
         }
       },
 
-      // Undo shortcuts (platform-specific)
-      SingleActivator(LogicalKeyboardKey.keyZ, control: true): () {
-        appState.undo2DAction();
+      // Undo shortcuts (platform-specific) — skip when echo plate window owns undo
+      SingleActivator(LogicalKeyboardKey.keyZ, control: true, includeRepeats: false): () {
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction();
       },
-      SingleActivator(LogicalKeyboardKey.keyZ, meta: true): () {
-        appState.undo2DAction();
+      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, includeRepeats: false): () {
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction();
       },
 
-      // Redo shortcuts
-      SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): () {
-        appState.undo2DAction(redo: true);
+      // Redo shortcuts — skip when echo plate window owns undo
+      SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true, includeRepeats: false): () {
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
-      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true): () {
-        appState.undo2DAction(redo: true);
+      SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true, includeRepeats: false): () {
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
-      SingleActivator(LogicalKeyboardKey.keyY, control: true): () {
-        appState.undo2DAction(redo: true);
+      SingleActivator(LogicalKeyboardKey.keyY, control: true, includeRepeats: false): () {
+        if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
 
       // Edit assembly handle shortcut - opens dialog when handles are selected
@@ -155,11 +157,17 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
                 String category = updateHandleDict[updatePos]!['category'].toString();
                 bool isLast = (i == positionsToUpdate.length - 1);
 
-                if (result['enforce'] == true) {
-                  appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int);
+                if (result['enforceInPlace'] == true) {
+                  int currentValue = int.parse(updateHandleDict[updatePos]!['value'].toString());
+                  appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), currentValue, requestStateUpdate: isLast);
+                } else {
+                  if (result['enforce'] == true) {
+                    appState.setHandleEnforcedValue((updateSlatID, updatePos, integerSlatSide), result['value'] as int, requestStateUpdate: false);
+                  } else {
+                    appState.assemblyLinkManager.clearEnforcedValue((updateSlatID, updatePos, integerSlatSide));
+                  }
+                  appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
                 }
-
-                appState.smartSetHandle(updateSlat, updatePos, integerSlatSide, result['value'].toString(), category, requestStateUpdate: isLast);
 
               }
             }

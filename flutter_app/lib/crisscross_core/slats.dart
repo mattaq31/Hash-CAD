@@ -3,6 +3,36 @@
 import 'package:flutter/material.dart';
 
 
+/// Rotates a point around a center in coordinate space by a given number of steps.
+/// In 90deg mode, each step is 90deg CW (4 steps = full rotation).
+/// In 60deg mode, each step is 60deg CW (6 steps = full rotation).
+Offset rotateCoordinateSpace(Offset point, Offset center, int steps, String gridMode) {
+  int modulus = gridMode == '90' ? 4 : 6;
+  steps = steps % modulus;
+  if (steps == 0) return point;
+
+  double dx = point.dx - center.dx;
+  double dy = point.dy - center.dy;
+
+  for (int i = 0; i < steps; i++) {
+    if (gridMode == '90') {
+      // 90deg CW: (dx, dy) -> (dy, -dx)
+      double newDx = dy;
+      double newDy = -dx;
+      dx = newDx;
+      dy = newDy;
+    } else {
+      // 60deg CW: (dx, dy) -> (0.5*dx + 0.5*dy, -1.5*dx + 0.5*dy)
+      double newDx = 0.5 * dx + 0.5 * dy;
+      double newDy = -1.5 * dx + 0.5 * dy;
+      dx = newDx.roundToDouble();
+      dy = newDy.roundToDouble();
+    }
+  }
+
+  return Offset(center.dx + dx, center.dy + dy);
+}
+
 Offset calculateCenter(Iterable<Offset> points) {
   double sumX = 0.0;
   double sumY = 0.0;
@@ -116,7 +146,10 @@ class Slat {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
 
-    placeholderList.add('handle-$handleId-h$slatSide');
+    final inputId = 'handle-$handleId-h$slatSide';
+    if (!placeholderList.contains(inputId)) {
+      placeholderList.add(inputId);
+    }
   }
 
   /// Updates a placeholder handle with the actual handle.

@@ -46,7 +46,7 @@ dependencies:
   built_collection: ^5.1.1
   intl: ^0.19.0
   excel: ^4.0.6
-  file_picker: 10.3.8
+  file_picker: ^10.3.10
   fl_chart: ^1.1.1
   dotted_border: ^2.1.0
   crypto: ^3.0.6
@@ -65,6 +65,7 @@ dependencies:
   three_js_core: any
   three_js_geometry: any
   three_js_math: any
+  pdf: ^3.11.3
 
 dependency_overrides:
   three_js_core_loaders:

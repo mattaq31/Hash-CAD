@@ -134,6 +134,10 @@ dmypy.json
 # temp scripts
 scratch/*
 
+# orthoseq results
+results/
+noflank_results/
+
 # temporary excel files
 ~$*
 

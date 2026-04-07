@@ -53,7 +53,7 @@ def compute(
     B_list: Sequence[np.ndarray],      # Antihandle arrays (2D uint8)
     compute_instructions: Sequence[np.ndarray],  # Computation pairs
     do_hist: int,                       # Generate histogram
-    do_full: int,                       # Return full results
+    do_full: int,                       # Return full noflank_results
     report_worst: int,                  # Report worst matches
     local_histogram: int = 0,           # Per-pair histograms
 ) -> Tuple[

@@ -65,7 +65,6 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
     occupiedGridPoints = {};
     phantomMap = {};
     seedRoster = {};
-    slatAddDirection = 'down';
     uniqueSlatColor = Colors.blue;
     uniqueSlatColorsByLayer = {};
     slatAdditionType = 'tube';

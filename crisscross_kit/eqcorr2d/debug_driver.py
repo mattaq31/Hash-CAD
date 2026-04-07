@@ -44,7 +44,7 @@ def debug_entry():
         arr1d = B_dict[key]
         B_dict[key] = make_spiced_2d(arr1d)
 
-    # Collect results in a dict keyed by compact flag-summary strings
+    # Collect noflank_results in a dict keyed by compact flag-summary strings
     results = {}
 
     runs = 3
@@ -208,7 +208,7 @@ def debug_entry():
     results[key] = (res_2d, (values, counts, elapsed))
     print(f"[debug_driver] {key} time: {elapsed} s")
 
-    # Return the aggregated results dictionary for inspection from C debugger
+    # Return the aggregated noflank_results dictionary for inspection from C debugger
     print("DEBUG_DRIVER: DONE")
     return results, spiced_indices_A, spiced_indices_B
 

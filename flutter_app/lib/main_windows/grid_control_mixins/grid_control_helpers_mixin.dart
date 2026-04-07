@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
 import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/slats.dart';
 import 'grid_control_contract.dart';
 
 /// Mixin containing helper calculation functions for GridAndCanvas
@@ -249,9 +250,11 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       // preselectedSlats means that the slats are already selected and are being moved
       if (preSelectedPositions) {
         Offset slatOffset = appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor);
+        Offset anchorCoord = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
         for (var slat in appState.selectedSlats) {
           for (var coord in appState.slats[slat]!.slatPositionToCoordinate.values) {
-            queryCoordinates.add(coord + slatOffset);
+            Offset rotated = rotateCoordinateSpace(coord, anchorCoord, moveRotationSteps, appState.gridMode);
+            queryCoordinates.add(rotated + slatOffset);
           }
         }
       } else {

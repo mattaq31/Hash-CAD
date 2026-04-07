@@ -232,7 +232,7 @@ t0_global = fit["t0"]
 q_map = fit["q_map"]
 
 print("==================================================")
-print("Global fit results:")
+print("Global fit noflank_results:")
 print(f"  Shared t0 (us): {t0_global:.6g}")
 print(f"  Number of curves fit: {len(curves)}")
 print("  Converged:", fit["opt"].success, "-", fit["opt"].message)

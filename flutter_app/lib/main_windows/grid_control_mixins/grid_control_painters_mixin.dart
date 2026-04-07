@@ -64,6 +64,8 @@ mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridContro
                   appState.selectedSlats.map((e) => appState.slats[e]!).toList(),
                   slatMoveAnchor,
                   moveFlipRequested,
+                  moveRotationSteps,
+                  appState.gridMode,
                   appState,
                   actionState,
                 )

@@ -43,6 +43,13 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
   final TextEditingController _slat2Controller = TextEditingController();
   bool _hasAutoPopulated = false;
 
+  // Drag-select state
+  bool _isDragging = false;
+  Offset? _dragStart;
+  Offset? _dragEnd;
+  final Map<HandleKey, GlobalKey> _handleButtonKeys = {};
+  final GlobalKey _handleDisplayAreaKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -106,6 +113,7 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
     return list;
   }
 
+  /// toggles whether or not a handle is selected for editing
   void _toggleHandleSelection(HandleKey key, HandleLinkManager linkManager) {
     setState(() {
       if (selectedHandles.contains(key)) {
@@ -122,9 +130,181 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
     });
   }
 
+  /// unselect all handles
   void _clearSelection() {
     setState(() {
       selectedHandles.clear();
+    });
+  }
+
+  /// toggles the selection of all handles on either one side of the other of a slat
+  void _toggleAllHandles(String slatId, int side, DesignState appState) {
+    final slat = appState.slats[slatId];
+    if (slat == null) return;
+
+    // Check if all handles for this side are already selected
+    bool allSelected = true;
+    for (int pos = 1; pos <= slat.maxLength; pos++) {
+      if (!selectedHandles.contains((slatId, pos, side))) {
+        allSelected = false;
+        break;
+      }
+    }
+
+    setState(() {
+      for (int pos = 1; pos <= slat.maxLength; pos++) {
+        if (allSelected) {
+          selectedHandles.remove((slatId, pos, side));
+        } else {
+          selectedHandles.add((slatId, pos, side));
+        }
+      }
+    });
+  }
+
+  /// Creates a global unique index for each handle button for drag-selection purposes
+  GlobalKey _getOrCreateHandleKey(HandleKey handleKey) {
+    return _handleButtonKeys.putIfAbsent(handleKey, () => GlobalKey());
+  }
+
+  /// Builds a slat selector autocomplete widget
+  Widget _buildSlatSelector({
+    required String label,
+    required List<String> availableSlats,
+    required TextEditingController controller,
+    required void Function(String) onSelected,
+  }) {
+    return SizedBox(
+      width: 160,
+      child: Autocomplete<String>(
+        displayStringForOption: (option) => option.replaceFirst('-I', '-'),
+        optionsBuilder: (textEditingValue) {
+          if (textEditingValue.text.isEmpty) {
+            return availableSlats;
+          }
+          final query = textEditingValue.text.toLowerCase();
+          return availableSlats.where((s) {
+            final displayName = s.replaceFirst('-I', '-').toLowerCase();
+            return displayName.contains(query);
+          }).toList();
+        },
+        onSelected: (val) {
+          controller.text = val.replaceFirst('-I', '-');
+          onSelected(val);
+        },
+        fieldViewBuilder: (ctx, ctrl, focus, onSubmit) {
+          return TextField(
+            controller: ctrl,
+            focusNode: focus,
+            decoration: InputDecoration(labelText: label, isDense: true, border: const OutlineInputBorder()),
+            style: const TextStyle(fontSize: 14),
+            onSubmitted: (value) {
+              final searchValue = value.replaceFirst('-', '-I');
+              final match = availableSlats.firstWhere(
+                (s) => s == searchValue || s.replaceFirst('-I', '-').toLowerCase() == value.toLowerCase(),
+                orElse: () => '',
+              );
+              if (match.isNotEmpty) {
+                ctrl.text = match.replaceFirst('-I', '-');
+                controller.text = match.replaceFirst('-I', '-');
+                onSelected(match);
+                focus.unfocus();
+              }
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  /// A user can drag-select handles, making it easier to make block selections.  This is fired on an initiated drag.
+  void _onDragStart(DragStartDetails details) {
+    final RenderBox? box = _handleDisplayAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final localPosition = box.globalToLocal(details.globalPosition);
+    setState(() {
+      _isDragging = true;
+      _dragStart = localPosition;
+      _dragEnd = localPosition;
+    });
+  }
+
+  /// A user can drag-select handles, making it easier to make block selections.  This is fired during dragging.
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (!_isDragging) return;
+    final RenderBox? box = _handleDisplayAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final localPosition = box.globalToLocal(details.globalPosition);
+    setState(() {
+      _dragEnd = localPosition;
+    });
+  }
+
+  /// A user can drag-select handles, making it easier to make block selections.  This is fired when a drag-selection is complete.
+  void _onDragEnd(DragEndDetails details, HandleLinkManager linkManager, bool isShiftHeld) {
+
+    if (!_isDragging || _dragStart == null || _dragEnd == null) {
+      setState(() {
+        _isDragging = false;
+        _dragStart = null;
+        _dragEnd = null;
+      });
+      return;
+    }
+
+    // gets the entire display area for the slat linker window
+    final RenderBox? areaBox = _handleDisplayAreaKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (areaBox == null) {
+      setState(() {
+        _isDragging = false;
+        _dragStart = null;
+        _dragEnd = null;
+      });
+      return;
+    }
+
+    // Calculate selection rectangle in global coordinates
+    final areaOffset = areaBox.localToGlobal(Offset.zero);
+    final dragStartGlobal = areaOffset + _dragStart!;
+    final dragEndGlobal = areaOffset + _dragEnd!;
+
+    final selectionRect = Rect.fromPoints(dragStartGlobal, dragEndGlobal);
+
+    // Find all handles within the selection rectangle
+    final Set<HandleKey> newlySelected = {};
+    for (final entry in _handleButtonKeys.entries) {
+      final key = entry.value;
+
+      // gets the render box of an individual key button
+      final RenderBox? buttonBox = key.currentContext?.findRenderObject() as RenderBox?;
+      if (buttonBox == null) continue;
+
+      // converts to global coords
+      final buttonOffset = buttonBox.localToGlobal(Offset.zero);
+      final buttonRect = buttonOffset & buttonBox.size;
+
+      // checks if drag box overlaps
+      if (selectionRect.overlaps(buttonRect)) {
+        newlySelected.add(entry.key);
+        // Also add linked handles
+        for (var linkedHandle in linkManager.getLinkedHandles(entry.key)) {
+          newlySelected.add(linkedHandle);
+        }
+      }
+    }
+
+    setState(() {
+      if (isShiftHeld) {
+        // Shift held: add to existing selection
+        selectedHandles.addAll(newlySelected);
+      } else {
+        // No shift: replace selection
+        selectedHandles = newlySelected;
+      }
+      _isDragging = false;
+      _dragStart = null;
+      _dragEnd = null;
     });
   }
 
@@ -266,7 +446,6 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
       selectedSlat2ID = null;
     }
 
-    final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     // final windowHeight = screenHeight * 0.33; // Increased for more rows
     final width = 1100.0;
@@ -335,58 +514,18 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
-                    // Slat 1 selector
-                    SizedBox(
-                      width: 160,
-                      child: Autocomplete<String>(
-                        displayStringForOption: (option) => option.replaceFirst('-I', '-'),
-                        optionsBuilder: (v) => availableSlats.where((s) => s.toLowerCase().contains(v.text.toLowerCase())),
-                        onSelected: (val) {
-                          _slat1Controller.text = val.replaceFirst('-I', '-');
-                          setState(() => selectedSlat1ID = val);
-                        },
-                        fieldViewBuilder: (ctx, ctrl, focus, onSubmit) {
-                          // Sync external controller with autocomplete's internal controller
-                          ctrl.addListener(() {
-                            if (_slat1Controller.text != ctrl.text) {
-                              _slat1Controller.text = ctrl.text;
-                            }
-                          });
-                          return TextField(
-                            controller: ctrl,
-                            focusNode: focus,
-                            decoration: const InputDecoration(labelText: 'Top Slat', isDense: true, border: OutlineInputBorder()),
-                            style: const TextStyle(fontSize: 14),
-                          );
-                        },
-                      ),
+                    _buildSlatSelector(
+                      label: 'Top Slat',
+                      availableSlats: availableSlats,
+                      controller: _slat1Controller,
+                      onSelected: (val) => setState(() => selectedSlat1ID = val),
                     ),
                     const SizedBox(width: 16),
-                    // Slat 2 selector
-                    SizedBox(
-                      width: 160,
-                      child: Autocomplete<String>(
-                        displayStringForOption: (option) => option.replaceFirst('-I', '-'),
-                        optionsBuilder: (v) => availableSlats.where((s) => s.toLowerCase().contains(v.text.toLowerCase())),
-                        onSelected: (val) {
-                          _slat2Controller.text = val.replaceFirst('-I', '-');
-                          setState(() => selectedSlat2ID = val);
-                        },
-                        fieldViewBuilder: (ctx, ctrl, focus, onSubmit) {
-                          // Sync external controller with autocomplete's internal controller
-                          ctrl.addListener(() {
-                            if (_slat2Controller.text != ctrl.text) {
-                              _slat2Controller.text = ctrl.text;
-                            }
-                          });
-                          return TextField(
-                            controller: ctrl,
-                            focusNode: focus,
-                            decoration: const InputDecoration(labelText: 'Bottom Slat', isDense: true, border: OutlineInputBorder()),
-                            style: const TextStyle(fontSize: 14),
-                          );
-                        },
-                      ),
+                    _buildSlatSelector(
+                      label: 'Bottom Slat',
+                      availableSlats: availableSlats,
+                      controller: _slat2Controller,
+                      onSelected: (val) => setState(() => selectedSlat2ID = val),
                     ),
                     const Spacer(),
                     // Action buttons
@@ -428,57 +567,84 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
               // Slat visualizations - each takes equal vertical space
               Expanded(
                 child: GestureDetector(
-                  onTap: _clearSelection,
+                  onPanStart: _onDragStart,
+                  onPanUpdate: _onDragUpdate,
+                  onPanEnd: (details) {
+                    final isShiftHeld = HardwareKeyboard.instance.isShiftPressed;
+                    _onDragEnd(details, appState.assemblyLinkManager, isShiftHeld);
+                  },
                   behavior: HitTestBehavior.translucent,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                    mainAxisAlignment:  MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  child: Stack(
+                    key: _handleDisplayAreaKey,
                     children: [
-                      // Top slat area - always takes half the space
-                      Expanded(
-                        flex: 1,
-                        child: selectedSlat1ID != null && appState.slats.containsKey(selectedSlat1ID)
-                            ? Center(
-                                child: _SlatHandleDisplay(
-                                  slat: appState.slats[selectedSlat1ID]!,
-                                  slatColor: appState.layerMap[appState.slats[selectedSlat1ID]!.layer]?['color'] ?? Colors.grey,
-                                  linkManager: appState.assemblyLinkManager,
-                                  selectedHandles: selectedHandles,
-                                  onHandleTap: _toggleHandleSelection,
-                                  label: selectedSlat1ID!,
-                                ),
-                              )
-                            : const Center(
-                                child: Text('Select a top slat', style: TextStyle(color: Colors.grey, fontSize: 15)),
-                              ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Top slat area - always takes half the space
+                            Expanded(
+                              flex: 1,
+                              child: selectedSlat1ID != null && appState.slats.containsKey(selectedSlat1ID)
+                                  ? Center(
+                                      child: _SlatHandleDisplay(
+                                        slat: appState.slats[selectedSlat1ID]!,
+                                        slatColor: appState.layerMap[appState.slats[selectedSlat1ID]!.layer]?['color'] ?? Colors.grey,
+                                        linkManager: appState.assemblyLinkManager,
+                                        selectedHandles: selectedHandles,
+                                        onHandleTap: _toggleHandleSelection,
+                                        label: selectedSlat1ID!,
+                                        onSelectAllH5: () => _toggleAllHandles(selectedSlat1ID!, 5, appState),
+                                        onSelectAllH2: () => _toggleAllHandles(selectedSlat1ID!, 2, appState),
+                                        getHandleKey: _getOrCreateHandleKey,
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Text('Select a top slat', style: TextStyle(color: Colors.grey, fontSize: 15)),
+                                    ),
+                            ),
+                            const Divider(height: 1),
+                            // Bottom slat area - always takes half the space
+                            Expanded(
+                              flex: 1,
+                              child: selectedSlat2ID != null && appState.slats.containsKey(selectedSlat2ID)
+                                  ? Center(
+                                      child: _SlatHandleDisplay(
+                                        slat: appState.slats[selectedSlat2ID]!,
+                                        slatColor: appState.layerMap[appState.slats[selectedSlat2ID]!.layer]?['color'] ?? Colors.grey,
+                                        linkManager: appState.assemblyLinkManager,
+                                        selectedHandles: selectedHandles,
+                                        onHandleTap: _toggleHandleSelection,
+                                        label: selectedSlat2ID!,
+                                        onSelectAllH5: () => _toggleAllHandles(selectedSlat2ID!, 5, appState),
+                                        onSelectAllH2: () => _toggleAllHandles(selectedSlat2ID!, 2, appState),
+                                        getHandleKey: _getOrCreateHandleKey,
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Text('Select a bottom slat', style: TextStyle(color: Colors.grey, fontSize: 15)),
+                                    ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const Divider(height: 1),
-                      // const SizedBox(height: 8),
-                      // Bottom slat area - always takes half the space
-                      Expanded(
-                        flex: 1,
-                        child: selectedSlat2ID != null && appState.slats.containsKey(selectedSlat2ID)
-                            ? Center(
-                                child: _SlatHandleDisplay(
-                                  slat: appState.slats[selectedSlat2ID]!,
-                                  slatColor: appState.layerMap[appState.slats[selectedSlat2ID]!.layer]?['color'] ?? Colors.grey,
-                                  linkManager: appState.assemblyLinkManager,
-                                  selectedHandles: selectedHandles,
-                                  onHandleTap: _toggleHandleSelection,
-                                  label: selectedSlat2ID!,
-                                ),
-                              )
-                            : const Center(
-                                child: Text('Select a bottom slat', style: TextStyle(color: Colors.grey, fontSize: 15)),
+                      // Drag selection rectangle overlay
+                      if (_isDragging && _dragStart != null && _dragEnd != null)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: _DragSelectionPainter(
+                                start: _dragStart!,
+                                end: _dragEnd!,
                               ),
-                      ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-            ),
             ],
           ),
         ),
@@ -505,6 +671,9 @@ class _SlatHandleDisplay extends StatelessWidget {
   final Set<HandleKey> selectedHandles;
   final void Function(HandleKey, HandleLinkManager) onHandleTap;
   final String label;
+  final VoidCallback? onSelectAllH5;
+  final VoidCallback? onSelectAllH2;
+  final GlobalKey Function(HandleKey)? getHandleKey;
 
   const _SlatHandleDisplay({
     required this.slat,
@@ -513,6 +682,9 @@ class _SlatHandleDisplay extends StatelessWidget {
     required this.selectedHandles,
     required this.onHandleTap,
     required this.label,
+    this.onSelectAllH5,
+    this.onSelectAllH2,
+    this.getHandleKey,
   });
 
   @override
@@ -575,13 +747,13 @@ class _SlatHandleDisplay extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // H5 row label
-        _buildSideLabel('H5'),
+        _buildSideLabel('H5', onSelectAllH5),
         const SizedBox(height: 2),
         // H5 handles - single row of all positions
         _buildHandleRow(5, 1, slat.maxLength),
         const SizedBox(height: 8),
         // H2 row label
-        _buildSideLabel('H2'),
+        _buildSideLabel('H2', onSelectAllH2),
         const SizedBox(height: 2),
         // H2 handles - single row of all positions
         _buildHandleRow(2, 1, slat.maxLength),
@@ -644,19 +816,33 @@ class _SlatHandleDisplay extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // H5 label
-        _buildSideLabel('H5'),
+        _buildSideLabel('H5', onSelectAllH5),
         const SizedBox(height: 2),
         buildBarrelPair(5),
         const SizedBox(height: 8),
         // H2 label
-        _buildSideLabel('H2'),
+        _buildSideLabel('H2', onSelectAllH2),
         const SizedBox(height: 2),
         buildBarrelPair(2),
       ],
     );
   }
 
-  Widget _buildSideLabel(String text) {
+  Widget _buildSideLabel(String text, VoidCallback? onTap) {
+    if (onTap != null) {
+      return OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          side: BorderSide(color: Colors.grey.shade400),
+          foregroundColor: Colors.grey.shade700,
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        ),
+        child: Text(text),
+      );
+    }
     return Text(
       text,
       style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
@@ -672,14 +858,15 @@ class _SlatHandleDisplay extends StatelessWidget {
 
     for (int i = 0; i < positions.length; i++) {
       final pos = positions[i];
-      final key = (slat.id, pos, side);
+      final handleKey = (slat.id, pos, side);
       final handleData = side == 5 ? slat.h5Handles[pos] : slat.h2Handles[pos];
       widgets.add(_HandleButton(
-        handleKey: key,
+        key: getHandleKey?.call(handleKey),
+        handleKey: handleKey,
         handleData: handleData,
         linkManager: linkManager,
-        isSelected: selectedHandles.contains(key),
-        onTap: () => onHandleTap(key, linkManager),
+        isSelected: selectedHandles.contains(handleKey),
+        onTap: () => onHandleTap(handleKey, linkManager),
       ));
 
       // Add vertical divider after every 4th button (not position), but not at the end
@@ -739,6 +926,7 @@ class _HandleButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const _HandleButton({
+    super.key,
     required this.handleKey,
     required this.handleData,
     required this.linkManager,
@@ -839,5 +1027,36 @@ class _HandleButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Painter for the drag selection rectangle
+class _DragSelectionPainter extends CustomPainter {
+  final Offset start;
+  final Offset end;
+
+  _DragSelectionPainter({required this.start, required this.end});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromPoints(start, end);
+
+    // Fill
+    final fillPaint = Paint()
+      ..color = Colors.blue.withValues(alpha: 0.1)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(rect, fillPaint);
+
+    // Border
+    final borderPaint = Paint()
+      ..color = Colors.blue.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawRect(rect, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(_DragSelectionPainter oldDelegate) {
+    return start != oldDelegate.start || end != oldDelegate.end;
   }
 }

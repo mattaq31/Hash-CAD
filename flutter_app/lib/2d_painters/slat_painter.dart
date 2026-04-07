@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../crisscross_core/slats.dart';
+import '../echo_and_experimental_helpers/echo_plate_constants.dart' show slatDisplayName;
 import 'helper_functions.dart';
 import '../app_management/shared_app_state.dart';
 import '../app_management/action_state.dart';
@@ -756,7 +757,7 @@ class SlatPainter extends CustomPainter {
       if (actionState.displaySlatIDs && slat.layer == selectedLayer){
         final textPainter = TextPainter(
           text: TextSpan(
-            text: slat.id.replaceFirst('-I', '-') + (slat.slatType != 'tube' ? ' (${slat.slatType})' : ''),
+            text: slatDisplayName(slat, layerMap) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : ''),
             style: TextStyle(
               color: Colors.white,
               fontFamily: 'Roboto',

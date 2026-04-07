@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../app_management/shared_app_state.dart';
 import '../../app_management/action_state.dart';
 import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/slats.dart';
 import '../../dialogs/alert_window.dart';
 import 'grid_control_contract.dart';
 
@@ -78,6 +79,7 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
     } else if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
       // when drag mode is activated, the slat will again follow the cursor (similar to the mouse hover mode)
       setState(() {
+        lastPointerPosition = event.position;
         if (hiddenSlats.isEmpty) {
           for (var slat in appState.selectedSlats) {
             hiddenSlats.add(slat);
@@ -226,13 +228,17 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
     } else if (getActionMode(actionState) == 'Slat-Move') {
       setState(() {
         if (hoverValid && dragActive && hoverPosition != null) {
-          // finalizes slat move and applies flips if requested
+          // finalizes slat move and applies flips and rotations if requested
           var convCoordHoverPosition = appState.convertRealSpacetoCoordinateSpace(hoverPosition!);
           var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
+          var anchorCoord = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
           List<Map<int, Offset>> transformedCoordinates = [];
           for (var slat in appState.selectedSlats) {
-            transformedCoordinates.add(appState.slats[slat]!.slatPositionToCoordinate
-                .map((key, value) => MapEntry(key, value + convCoordHoverPosition - convCoordAnchor)));
+            Map<int, Offset> rotatedCoords = {};
+            for (var entry in appState.slats[slat]!.slatPositionToCoordinate.entries) {
+              rotatedCoords[entry.key] = rotateCoordinateSpace(entry.value, anchorCoord, moveRotationSteps, appState.gridMode) + convCoordHoverPosition - convCoordAnchor;
+            }
+            transformedCoordinates.add(rotatedCoords);
           }
           appState.updateMultiSlatPosition(appState.selectedSlats, transformedCoordinates, requestFlip: moveFlipRequested);
         }
@@ -241,6 +247,7 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
         slatMoveAnchor = Offset.zero;
         moveFlipRequested = false; // reset the flip request
+        moveRotationSteps = 0; // reset the rotation counter
       });
     } else if (getActionMode(actionState) == 'Cargo-Move') {
       setState(() {

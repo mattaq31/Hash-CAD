@@ -42,10 +42,10 @@ def parse_tiff_calibration(image_file):
     # Compute scale (inverted)
     unit_per_pixel = 1.0 / xpixcal
 
-    # Print results
+    # Print noflank_results
     print(f"TEM scale is {unit_per_pixel} {unit}/pixel")
 
-    # Return results if needed
+    # Return noflank_results if needed
     return {
         "XpixCal": xpixcal,
         "YpixCal": ypixcal,

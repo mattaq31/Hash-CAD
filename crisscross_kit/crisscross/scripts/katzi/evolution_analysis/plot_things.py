@@ -21,7 +21,7 @@ FIGSIZE = (8, 5)
 
 def load_results_pkl(in_path):
     """
-    Load results previously saved with save_results_pkl(...).
+    Load noflank_results previously saved with save_results_pkl(...).
     """
     with open(in_path, "rb") as f:
         return pickle.load(f)
