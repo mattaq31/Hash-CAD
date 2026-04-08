@@ -47,6 +47,14 @@ if __name__ == '__main__':
             pickle.dump(off_target_energies, f)
         print('Saved energy data to pkl files.')
 
+    # scale all energies by RT to make them dimensionless
+    R = 0.001987  # kcal/(mol·K)
+    T = 37 + 273.15  # K
+    RT = R * T
+    on_target_energies = tuple(e / RT if isinstance(e, np.ndarray) else np.array(e) / RT for e in on_target_energies)
+    off_target_energies = {k: v / RT for k, v in off_target_energies.items()}
+    print(f'Scaled all NUPACK energies by RT = {RT:.4f} kcal/mol to obtain dimensionless units.')
+
     def build_combination_matrices(megastructure):
         """
         Builds two matrices containing all pairwise handle vs antihandle comparisons
@@ -229,7 +237,7 @@ if __name__ == '__main__':
 
         complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
         nt_match_lookup = np.zeros((n_seqs + 1, n_seqs + 1), dtype=np.float64)
-        shifts = range(-(seq_len - 1), seq_len) if allow_shifts else [0]
+        shifts = range(-(seq_len - 1), seq_len) if allow_shifts else [2]  # shift=2 skips tt linkers on each side
         for i in range(n_seqs):
             for j in range(n_seqs):
                 rev_anti = seq_pairs[j][1][::-1]
@@ -269,7 +277,7 @@ if __name__ == '__main__':
 
         complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
         nn_match_lookup = np.zeros((n_seqs + 1, n_seqs + 1), dtype=np.float64)
-        shifts = range(-(seq_len - 1), seq_len) if allow_shifts else [0]
+        shifts = range(-(seq_len - 1), seq_len) if allow_shifts else [2]  # shift=2 skips tt linkers on each side
         for i in range(n_seqs):
             for j in range(n_seqs):
                 rev_anti = seq_pairs[j][1][::-1]
