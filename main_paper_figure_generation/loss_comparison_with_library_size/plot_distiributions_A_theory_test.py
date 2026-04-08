@@ -1,3 +1,4 @@
+from math import comb
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ from crisscross.slat_handle_match_evolver.tubular_slat_match_compute import (
 
 
 MM_PER_INCH = 25.4
+SLAT_LEN = 32
 
 
 def mm_to_in(mm: float) -> float:
@@ -41,12 +43,13 @@ STYLE = {
     "PANEL_GAP_MM": 5.0,
     "ROW_GAP_MM": 6.0,
     "DESIGN_GAP_MM": 16.0,
+    "THEORY_LINEWIDTH_MM": 0.3,
 }
 
 
 HANDLE_COUNTS = [8, 16, 32, 48, 64]
 DEFAULT_OUTPUT = Path(
-    r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\final_figures\revision\figure_SA\plot_distribution_A.svg"
+    r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\final_figures\revision\figure_SA\plot_distribution_A_theory_test.svg"
 )
 DESIGNS = [
     {
@@ -74,9 +77,10 @@ DESIGNS = [
 ]
 
 
-def apply_plot_style() -> tuple[float, float]:
+def apply_plot_style() -> tuple[float, float, float]:
     lw_pt = mm_to_pt(STYLE["LINEWIDTH_MM"])
     tick_len_pt = mm_to_pt(STYLE["TICK_LEN_MM"])
+    theory_lw_pt = mm_to_pt(STYLE["THEORY_LINEWIDTH_MM"])
     plt.rcParams.update(
         {
             "svg.fonttype": "none",
@@ -91,11 +95,11 @@ def apply_plot_style() -> tuple[float, float]:
             "font.family": "Arial",
         }
     )
-    return lw_pt, tick_len_pt
+    return lw_pt, tick_len_pt, theory_lw_pt
 
 
 def make_panel_figure(n_designs: int, ncols: int, rows_per_design: int = 2):
-    lw_pt, tick_len_pt = apply_plot_style()
+    lw_pt, tick_len_pt, theory_lw_pt = apply_plot_style()
     nrows = n_designs * rows_per_design
 
     fig_w_mm = (
@@ -115,7 +119,6 @@ def make_panel_figure(n_designs: int, ncols: int, rows_per_design: int = 2):
     fig = plt.figure(figsize=(mm_to_in(fig_w_mm), mm_to_in(fig_h_mm)))
 
     left = STYLE["MARGIN_L_MM"] / fig_w_mm
-    bottom = STYLE["MARGIN_B_MM"] / fig_h_mm
     ax_w = STYLE["BOX_W_MM"] / fig_w_mm
     ax_h = STYLE["BOX_H_MM"] / fig_h_mm
     col_gap = STYLE["PANEL_GAP_MM"] / fig_w_mm
@@ -155,16 +158,45 @@ def make_panel_figure(n_designs: int, ncols: int, rows_per_design: int = 2):
             ax.xaxis.labelpad = 0.5
             ax.yaxis.labelpad = 0.5
 
-    return fig, axes, lw_pt
+    return fig, axes, lw_pt, theory_lw_pt
+
+
+def omega_array(l: int, s: int) -> np.ndarray:
+    i = np.arange(1, l + s)
+    return np.maximum(0, np.minimum.reduce([i, np.full_like(i, s), (l + s) - i]))
+
+
+def aggregated_pmf_binomial(l: int, s: int, n: int, m_max: int) -> tuple[np.ndarray, np.ndarray]:
+    omega = omega_array(l, s)
+    m_vals = np.arange(0, m_max + 1)
+    success_prob = 1.0 / n
+    terms = np.zeros((omega.shape[0], m_vals.shape[0]), dtype=float)
+
+    for idx, overlap in enumerate(omega):
+        for jdx, m in enumerate(m_vals):
+            if m <= overlap:
+                terms[idx, jdx] = (
+                    comb(int(overlap), int(m))
+                    * (success_prob ** m)
+                    * ((1.0 - success_prob) ** (int(overlap) - int(m)))
+                )
+
+    pmf = terms.mean(axis=0)
+    pmf /= pmf.sum()
+    return m_vals, pmf
+
+
+def theoretical_counts(handle_count: int, total_count: int, xmax: int) -> tuple[np.ndarray, np.ndarray]:
+    m_vals, pmf = aggregated_pmf_binomial(SLAT_LEN, SLAT_LEN, handle_count, xmax)
+    return m_vals, pmf * total_count
 
 
 def get_counts_in_dict(handle_array_file: Path, slat_array: np.ndarray) -> dict:
-    slat_len = 32
     handle_array = read_handle_log(str(handle_array_file))
     handle_dict, antihandle_dict = extract_handle_dicts(handle_array, slat_array)
-    hamming_results = oneshot_hamming_compute(handle_dict, antihandle_dict, slat_len)
+    hamming_results = oneshot_hamming_compute(handle_dict, antihandle_dict, SLAT_LEN)
 
-    matches = -(hamming_results - slat_len)
+    matches = -(hamming_results - SLAT_LEN)
     flat_matches = matches.flatten()
     score = in_sc(flat_matches)
     match_type, counts = np.unique(flat_matches, return_counts=True)
@@ -173,6 +205,7 @@ def get_counts_in_dict(handle_array_file: Path, slat_array: np.ndarray) -> dict:
         "match_type": match_type,
         "counts": counts,
         "score": score,
+        "total_count": int(np.sum(counts)),
     }
 
 
@@ -195,7 +228,21 @@ def collect_all_distributions(input_root: Path, slat_array: np.ndarray) -> list[
     return all_data
 
 
-def draw_histogram(ax, match_types, counts, title, lw_pt, xmax, score, bar_color, y_limits):
+def draw_histogram(
+    ax,
+    match_types,
+    counts,
+    title,
+    lw_pt,
+    ymax,
+    xmax,
+    score,
+    bar_color,
+    handle_count,
+    theory_lw_pt,
+    show_theory,
+    y_limits,
+):
     ax.bar(
         match_types,
         counts,
@@ -205,6 +252,25 @@ def draw_histogram(ax, match_types, counts, title, lw_pt, xmax, score, bar_color
         align="center",
         width=0.8,
     )
+
+    if show_theory:
+        theory_x, theory_y = theoretical_counts(handle_count, int(np.sum(counts)), xmax)
+        ax.plot(
+            theory_x,
+            theory_y,
+            color="black",
+            linewidth=theory_lw_pt,
+            zorder=5,
+            label="Predicted",
+        )
+        ax.legend(
+            loc="upper left",
+            bbox_to_anchor=(0.12, 1.01),
+            frameon=False,
+            handlelength=1.5,
+            borderaxespad=0.2,
+        )
+
     ax.set_title(title)
     ax.set_xlim(-0.6, xmax + 0.6)
     ax.set_xticks(np.arange(0, xmax + 1, 1))
@@ -215,17 +281,17 @@ def draw_histogram(ax, match_types, counts, title, lw_pt, xmax, score, bar_color
     ax.yaxis.set_minor_locator(plt.NullLocator())
     ax.text(
         0.98,
-        0.98,
+        0.955,
         f"Loss = {score:.2f}",
         transform=ax.transAxes,
         ha="right",
         va="top",
-        fontsize=STYLE["FONTSIZE_TITLE"],
+        fontsize=STYLE["FONTSIZE_LEGEND"],
     )
 
 
 def plot_grid(all_design_data: list[dict], savepath: Path) -> None:
-    fig, axes, lw_pt = make_panel_figure(
+    fig, axes, lw_pt, theory_lw_pt = make_panel_figure(
         n_designs=len(all_design_data),
         ncols=len(HANDLE_COUNTS),
     )
@@ -236,7 +302,8 @@ def plot_grid(all_design_data: list[dict], savepath: Path) -> None:
         for dataset in design_data["distributions"]
         for state in ("initial", "final")
     )
-    global_ymax = 10 ** np.ceil(np.log10(global_ymax * 1.05))
+    global_ymax = 10 ** np.ceil(np.log10(global_ymax * 1.1))
+
     for design_index, design_data in enumerate(all_design_data):
         top_row = 2 * design_index
         bottom_row = top_row + 1
@@ -251,6 +318,7 @@ def plot_grid(all_design_data: list[dict], savepath: Path) -> None:
             y_limits = (0.5, 3e5)
         else:
             y_limits = (0.5, global_ymax)
+
         for col, dataset in enumerate(design_data["distributions"]):
             draw_histogram(
                 axes[top_row][col],
@@ -258,9 +326,13 @@ def plot_grid(all_design_data: list[dict], savepath: Path) -> None:
                 dataset["initial"]["counts"],
                 f'{dataset["handle_count"]} Handles',
                 lw_pt,
+                global_ymax,
                 xmax,
                 dataset["initial"]["score"],
                 design_data["bar_color"],
+                dataset["handle_count"],
+                theory_lw_pt,
+                design_data["name"] == "square",
                 y_limits,
             )
             draw_histogram(
@@ -269,9 +341,13 @@ def plot_grid(all_design_data: list[dict], savepath: Path) -> None:
                 dataset["final"]["counts"],
                 "",
                 lw_pt,
+                global_ymax,
                 xmax,
                 dataset["final"]["score"],
                 design_data["bar_color"],
+                dataset["handle_count"],
+                theory_lw_pt,
+                design_data["name"] == "square",
                 y_limits,
             )
 
@@ -316,14 +392,6 @@ def main() -> None:
         )
 
     plot_grid(all_design_data, DEFAULT_OUTPUT)
-
-    for design_data in all_design_data:
-        for dataset in design_data["distributions"]:
-            print(
-                f'{design_data["name"]} {dataset["handle_count"]} handles: '
-                f'initial={dataset["initial"]["score"]}, '
-                f'generation_2000={dataset["final"]["score"]}'
-            )
     print(f"Saved: {DEFAULT_OUTPUT}")
 
 
