@@ -2,7 +2,7 @@ import os
 import textwrap
 from crisscross.helper_functions import plate96, plate384
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Circle, Patch
+from matplotlib.patches import Rectangle, Circle, Patch, Wedge
 from string import ascii_uppercase
 import platform
 
@@ -76,16 +76,26 @@ def visualize_plate_with_color_labels(plate_size, well_color_dict,
 
         if well in well_color_dict:
             color = well_color_dict[well]
-            circle = Circle((x, y), radius=0.3, fill=True, facecolor=color, edgecolor='black')
-            # adds the well label if it exists
+            if not isinstance(color, list):
+                color = [color]
+            if len(color) > 1:
+                # draw equal wedge segments for multi-color wells
+                angle_per_segment = 360 / len(color)
+                for i, c in enumerate(color):
+                    start_angle = 90 + i * angle_per_segment  # start from top
+                    wedge = Wedge((x, y), 0.3, start_angle, start_angle + angle_per_segment,
+                                  facecolor=c, edgecolor='black', linewidth=0.5)
+                    ax.add_patch(wedge)
+            else:
+                circle = Circle((x, y), radius=0.3, fill=True, facecolor=color[0], edgecolor='black')
+                ax.add_patch(circle)
         else:
             # empty well
             circle = Circle((x, y), radius=0.3, fill=None)
+            ax.add_patch(circle)
 
         if well_label_dict is not None and well in well_label_dict:
             ax.text(x, y, well_label_dict[well] if isinstance(well_label_dict[well], str) else str(well_label_dict[well]), ha='center', va='center', fontsize=12)
-
-        ax.add_patch(circle)
 
     # adding lines to help with well identification
     plt.hlines(y=total_row_letters/2, color='black', linewidth=1, linestyle='dashed',
