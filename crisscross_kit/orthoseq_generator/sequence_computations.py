@@ -393,6 +393,106 @@ def create_sequence_pairs_pool(length=7, fivep_ext="", threep_ext="", avoid_gggg
     return list(enumerate(unique_flanked_n_mers))
 
 
+def create_seqwalk_sequence_pairs_pool(
+    length=7,
+    k=3,
+    seed=None,
+    fivep_ext="",
+    threep_ext="",
+    alphabet="ACGT",
+    avoid_reverse_complements=True,
+    gc_lims=None,
+    prevented_patterns=None,
+    verbose=True,
+):
+    """
+    Generates sequence pairs from SeqWalk and converts them into this module's pair format.
+
+    This is a thin integration layer around ``seqwalk.design.max_size``.
+    SeqWalk designs a maximal library of core sequences for a chosen sequence-symmetry
+    minimization (SSM) ``k`` value, optionally excluding reverse complements. The
+    resulting core sequences are then converted into canonical
+    ``(seq, revcom(seq))`` pairs with optional flanks.
+
+    :param length: Length of the core DNA sequences produced by SeqWalk.
+    :type length: int
+
+    :param k: Sequence symmetry minimization (SSM) k value passed to SeqWalk.
+    :type k: int
+
+    :param seed: Optional Python random seed for deterministic SeqWalk output.
+    :type seed: int or None
+
+    :param fivep_ext: Optional 5′ flank prepended to both strands.
+    :type fivep_ext: str
+
+    :param threep_ext: Optional 3′ flank appended to both strands.
+    :type threep_ext: str
+
+    :param alphabet: Allowed DNA alphabet passed to SeqWalk.
+    :type alphabet: str
+
+    :param avoid_reverse_complements: If True, request an RC-free SeqWalk library.
+    :type avoid_reverse_complements: bool
+
+    :param gc_lims: Optional ``(min_gc, max_gc)`` tuple passed to SeqWalk.
+    :type gc_lims: tuple[int, int] or None
+
+    :param prevented_patterns: Optional list of forbidden patterns passed to SeqWalk.
+    :type prevented_patterns: list[str] or None
+
+    :param verbose: If True, allow SeqWalk to print progress information.
+    :type verbose: bool
+
+    :returns: List of ``(index, (sequence, reverse_complement))`` tuples.
+    :rtype: list[tuple[int, tuple[str, str]]]
+    """
+
+    try:
+        from seqwalk import design
+    except ImportError as exc:
+        raise ImportError(
+            "SeqWalk is required for create_seqwalk_sequence_pairs_pool(). "
+            "Install it with `pip install seqwalk`."
+        ) from exc
+
+    if prevented_patterns is None:
+        prevented_patterns = ["AAAA", "CCCC", "GGGG", "TTTT"]
+
+    random_state = None
+    if seed is not None:
+        random_state = random.getstate()
+        random.seed(seed)
+
+    try:
+        seqwalk_cores = design.max_size(
+            length,
+            k,
+            alphabet=alphabet,
+            RCfree=avoid_reverse_complements,
+            GClims=gc_lims,
+            prevented_patterns=prevented_patterns,
+            verbose=verbose,
+        )
+    finally:
+        if random_state is not None:
+            random.setstate(random_state)
+
+    unique_pairs = []
+    seen_pairs = set()
+    for core_seq in seqwalk_cores:
+        pair = sorted_key(
+            f"{fivep_ext}{core_seq}{threep_ext}",
+            f"{fivep_ext}{revcom(core_seq)}{threep_ext}",
+        )
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
+        unique_pairs.append(pair)
+
+    return list(enumerate(unique_pairs))
+
+
 
 
 
@@ -512,11 +612,31 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
 
             if energy > -1:
                 energy = -1.0
+        elif type == 'totalu':
+            # association free energy using partition function (pfunc)
+            # tube reference: dG = G_AB - G_A - G_B  (homodimer: G_AB - 2*G_A)
+
+            if homo:
+                results = complex_analysis([complex_obj, mono_obj_A], model=model1, compute=['pfunc'])
+                G_AB = results[complex_obj].free_energy
+                G_A = results[mono_obj_A].free_energy
+                G_B = G_A
+                energy = G_AB #- 2.0 * G_A
+            else:
+                results = complex_analysis([complex_obj, mono_obj_A, mono_obj_B], model=model1, compute=['pfunc'])
+                G_AB = results[complex_obj].free_energy
+                G_A = results[mono_obj_A].free_energy
+                G_B = results[mono_obj_B].free_energy
+                energy = G_AB #- G_A - G_B
+
+            if energy > -1:
+                energy = -1.0
+
 
 
 
         else:
-            raise ValueError('type must be either "minimum" or "total"')
+            raise ValueError('type must be either "minimum", "total", or "totalu"')
 
         return energy, G_A, G_B
 
@@ -526,7 +646,7 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         return -1.0
 
 
-def _init_worker(lib_filename, use_lib, nupack_params):
+def _init_worker(lib_filename, use_lib, energy_type, nupack_params):
     """
     Initializes worker processes for parallel energy computations by configuring
     the precompute library filename and cache usage flag.
@@ -537,6 +657,9 @@ def _init_worker(lib_filename, use_lib, nupack_params):
     :param use_lib: Whether to use the precompute library in this worker.
     :type use_lib: bool
 
+    :param energy_type: Energy mode used by low-level NUPACK computations.
+    :type energy_type: str
+
     :returns: None
     :rtype: None
     """
@@ -544,6 +667,7 @@ def _init_worker(lib_filename, use_lib, nupack_params):
     hf.NUPACK_PARAMS= nupack_params
     hf._precompute_library_filename = lib_filename
     hf.USE_LIBRARY = use_lib
+    hf.ENERGY_TYPE = energy_type
     #print("Worker using", _precompute_library_filename, USE_LIBRARY)
 
 
@@ -564,7 +688,11 @@ def compute_pair_energy_on(i, seq, rc_seq):
     :returns: Tuple `(i, pair_energy, self_energy_seq, self_energy_rc_seq)`.
     :rtype: tuple[int, float, float, float]
     """
-    pair_e, self_e1, self_e2 = nupack_compute_energy_precompute_library_fast(seq,rc_seq)
+    pair_e, self_e1, self_e2 = nupack_compute_energy_precompute_library_fast(
+        seq,
+        rc_seq,
+        type=hf.ENERGY_TYPE,
+    )
     return i, pair_e, self_e1, self_e2
 
 
@@ -598,7 +726,12 @@ def compute_ontarget_energies(sequence_list):
     print(f"Calculating with {max_workers} cores...")
 
     # parallelize energy computation
-    pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
+    pool_args = (
+        hf._precompute_library_filename,
+        hf.USE_LIBRARY,
+        hf.ENERGY_TYPE,
+        hf.NUPACK_PARAMS,
+    )
     if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
         for i, (seq, rc_seq) in tqdm(enumerate(sequence_list), total=len(sequence_list)):
             _, energy, self_e_seq, self_e_rc_seq = compute_pair_energy_on(i, seq, rc_seq)
@@ -665,7 +798,11 @@ def compute_pair_energy_off(i, j, seq1, seq2):
      :returns: Tuple `(i, j, energy)` where `energy` is the computed Gibbs free energy.
      :rtype: tuple (int, int, float)
      """
-    bind_energy , _, _ = nupack_compute_energy_precompute_library_fast(seq1, seq2)
+    bind_energy , _, _ = nupack_compute_energy_precompute_library_fast(
+        seq1,
+        seq2,
+        type=hf.ENERGY_TYPE,
+    )
     return i, j, bind_energy
 
 
@@ -728,7 +865,12 @@ def compute_offtarget_energies(sequence_pairs):
     def parallel_energy_computation(seqs1, seqs2, energy_matrix, condition):
         max_workers = _max_workers()  # Use only 3 quarters of all possible cores on the machine
         print(f'Calculating with {max_workers} cores...')
-        pool_args = (hf._precompute_library_filename, hf.USE_LIBRARY, hf.NUPACK_PARAMS)
+        pool_args = (
+            hf._precompute_library_filename,
+            hf.USE_LIBRARY,
+            hf.ENERGY_TYPE,
+            hf.NUPACK_PARAMS,
+        )
 
         if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
             for i, seq1 in enumerate(seqs1):
@@ -1333,8 +1475,8 @@ def compute_offtarget_fraction_below_limit(off_energies, off_limit):
 
 
 
-def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_path=None, show_plot=True, 
-                                 vlines=None):
+def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_path=None, show_plot=True,
+                                 vlines=None, title=None, xlim=None):
     """
     Plots histograms comparing on-target and off-target Gibbs free energy distributions.
 
@@ -1369,7 +1511,14 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
                    Special keys: 'min_ontarget', 'max_ontarget', 'offtarget_limit'.
     :type vlines: dict or None
 
+    :param title: Optional custom plot title. If None, a default title is used.
+    :type title: str or None
+
+    :param xlim: Optional x-axis limits as ``(xmin, xmax)``. If None, limits are inferred from data.
+    :type xlim: tuple[float, float] or None
+
     :returns: Dictionary of summary statistics:
+              - 'min_on'   : Minimum on-target energy
               - 'mean_on'  : Mean of on-target energies  
               - 'std_on'   : Standard deviation of on-target energies  
               - 'max_on'   : Maximum on-target energy  
@@ -1411,11 +1560,15 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
         for val in vlines.values():
             combined_min = min(combined_min, val)
             combined_max = max(combined_max, val)
+
+    if xlim is not None:
+        combined_min, combined_max = map(float, xlim)
             
     bin_edges = np.linspace(combined_min, combined_max, bins + 1)
 
 
     # Compute statistics
+    min_on = np.min(on_energies)
     mean_on = np.mean(on_energies)
     std_on = np.std(on_energies)
     max_on = np.max(on_energies)
@@ -1432,12 +1585,12 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
 
 
     ax.hist(
-        off_energies, bins=bin_edges, alpha=0.8, label='Off-target',
-        color=color_off, edgecolor='black', linewidth=2, density=True
+        on_energies, bins=bin_edges, alpha=0.8, label='On-target',
+        color=color_on, edgecolor='black', linewidth=2, density=True, zorder=1
     )
     ax.hist(
-        on_energies, bins=bin_edges, alpha=0.8, label='On-target',
-        color=color_on, edgecolor='black', linewidth=2, density=True
+        off_energies, bins=bin_edges, alpha=0.8, label='Off-target',
+        color=color_off, edgecolor='black', linewidth=2, density=True, zorder=2
     )
 
     # Draw vertical lines if requested
@@ -1448,10 +1601,20 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
             ax.axvline(vlines['max_ontarget'], color='blue', linestyle='--', linewidth=3, label='Max On-Target')
         if 'offtarget_limit' in vlines:
             ax.axvline(vlines['offtarget_limit'], color='red', linestyle='--', linewidth=3, label='Off-Target Limit')
+    ax.axvline(
+        min_off,
+        color='gray',
+        linestyle='--',
+        linewidth=3,
+        label=f'Off-target cutoff = {min_off:.2f}',
+    )
 
     ax.set_xlabel('Gibbs free energy (kcal/mol)', fontsize=FONTSIZE_LABELS)
     ax.set_ylabel('Normalized frequency', fontsize=FONTSIZE_LABELS)
-    ax.set_title('On-target vs Off-target Energy Distribution', fontsize=FONTSIZE_TITLE, pad=10)
+    if title is None:
+        title = 'On-target vs Off-target Energy Distribution'
+    ax.set_title(title, fontsize=FONTSIZE_TITLE, pad=10)
+    ax.set_xlim(combined_min, combined_max)
 
     ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.tick_params(axis='x', which='minor', length=4, width=1.2)
@@ -1478,6 +1641,7 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
 
     # Print statistics
     print("\nSummary statistics:")
+    print(f"Min On-Target Energy:   {min_on:.3f} kcal/mol")
     print(f"Mean On-Target Energy:  {mean_on:.3f} kcal/mol")
     print(f"Std Dev On-Target:      {std_on:.3f} kcal/mol")
     print(f"Max On-Target Energy:   {max_on:.3f} kcal/mol")
@@ -1488,6 +1652,7 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
 
     # Return statistics
     return {
+        'min_on': min_on,
         'mean_on': mean_on,
         'std_on': std_on,
         'max_on': max_on,
