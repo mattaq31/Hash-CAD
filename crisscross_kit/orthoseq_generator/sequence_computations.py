@@ -1507,8 +1507,8 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     :param show_plot: Whether to call plt.show() to display the plot.
     :type show_plot: bool
 
-    :param vlines: Dictionary of vertical lines to draw. Keys are labels, values are x-positions.
-                   Special keys: 'min_ontarget', 'max_ontarget', 'offtarget_limit'.
+    :param vlines: Optional dictionary of additional vertical lines to draw.
+                   Special keys: 'min_ontarget'.
     :type vlines: dict or None
 
     :param title: Optional custom plot title. If None, a default title is used.
@@ -1596,11 +1596,20 @@ def plot_on_off_target_histograms(on_energies, off_energies, bins=80, output_pat
     # Draw vertical lines if requested
     if vlines:
         if 'min_ontarget' in vlines:
-            ax.axvline(vlines['min_ontarget'], color='blue', linestyle='--', linewidth=3, label='Min On-Target')
-        if 'max_ontarget' in vlines:
-            ax.axvline(vlines['max_ontarget'], color='blue', linestyle='--', linewidth=3, label='Max On-Target')
-        if 'offtarget_limit' in vlines:
-            ax.axvline(vlines['offtarget_limit'], color='red', linestyle='--', linewidth=3, label='Off-Target Limit')
+            ax.axvline(
+                vlines['min_ontarget'],
+                color='blue',
+                linestyle='--',
+                linewidth=3,
+                label=f"Min on-target = {vlines['min_ontarget']:.3f}",
+            )
+    ax.axvline(
+        max_on,
+        color='blue',
+        linestyle='--',
+        linewidth=3,
+        label=f'Max on-target = {max_on:.2f}',
+    )
     ax.axvline(
         min_off,
         color='gray',
