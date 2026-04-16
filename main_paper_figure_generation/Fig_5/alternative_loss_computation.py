@@ -1,3 +1,5 @@
+# plots and compares a variety of alternatives to our standard loss function.  Uses the 4 squares designs from Figure 5 as comparison points.
+
 if __name__ == '__main__':
     from crisscross.core_functions.megastructures import Megastructure
     from itertools import product
@@ -7,6 +9,7 @@ if __name__ == '__main__':
     from orthoseq_generator import helper_functions as hf
     from orthoseq_generator import sequence_computations as sc
     import matplotlib.pyplot as plt
+    import pickle
 
     design_dir = Path('/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/supplementary_data/figure_5_designs_and_data')
 
@@ -24,7 +27,6 @@ if __name__ == '__main__':
         sequence_pairs.append((str(row[1]), str(row[2])))
     print(f'Loaded {len(sequence_pairs)} sequence pairs from assembly_handle_pairs.xlsx')
 
-    import pickle
     on_target_pkl = Path('on_target_energies.pkl')
     off_target_pkl = Path('off_target_energies.pkl')
 
@@ -37,6 +39,7 @@ if __name__ == '__main__':
         print(f'Loaded on-target and off-target energies from cache.')
     else:
         hf.USE_LIBRARY = False
+        hf.ENERGY_TYPE = "totalu"
         on_target_energies = sc.compute_ontarget_energies(sequence_pairs)
         print('On-target energies for sequence pairs computed.')
         off_target_energies = sc.compute_offtarget_energies(sequence_pairs)
@@ -54,13 +57,14 @@ if __name__ == '__main__':
     on_target_energies = tuple(e / RT if isinstance(e, np.ndarray) else np.array(e) / RT for e in on_target_energies)
     off_target_energies = {k: v / RT for k, v in off_target_energies.items()}
     print(f'Scaled all NUPACK energies by RT = {RT:.4f} kcal/mol to obtain dimensionless units.')
+    pair_energies = on_target_energies[0]
 
     def build_combination_matrices(megastructure):
         """
-        Builds two matrices containing all pairwise handle vs antihandle comparisons
+        Builds two matrices containing all pairwise plus vs minus handle comparisons
         across all 4 shift/flip orientations (matching the layout of precise_hamming_compute).
 
-        For each (handle, antihandle) pair and slat_length positions, 4 orientations are generated:
+        For each (plus handle, minus handle) pair and slat_length positions, 4 orientations are generated:
           1. handle shifted left
           2. handle shifted right
           3. reversed handle shifted left
@@ -97,7 +101,6 @@ if __name__ == '__main__':
             combination_matrix_2[base:base + single_combo, :] = antihandle_slat
 
         return combination_matrix_1, combination_matrix_2, list(handle_dict.keys()), list(antihandle_dict.keys()), slat_length
-
 
     def validate_standard_loss(combo_1, combo_2, h_keys, ah_keys, slat_len, megastructure, fudge_dg=10):
         """Computes max bond count and effective bond count from combination matrices
@@ -173,6 +176,7 @@ if __name__ == '__main__':
         for i in range(n_handles):
             full_energy[i + 1, i + 1] = pair_energies[i]
         # off-target: handle i with antihandle j (i != j)
+        # NB: dict key says 'antihandle_handle' but the matrix is indexed [handle_i, antihandle_j]
         ha_energies = off_target_energy_dict['antihandle_handle_energies']
         for i in range(n_handles):
             for j in range(n_handles):
@@ -193,22 +197,24 @@ if __name__ == '__main__':
               f'effective interaction energy: {effective_energy:.4f}')
         return effective_energy
 
-    def nucleotide_match_loss(combo_1, combo_2, h_keys, ah_keys, seq_pairs):
+    def nucleotide_match_loss(combo_1, combo_2, h_keys, ah_keys, seq_pairs, allow_shifts=True):
         """Counts the total number of matching nucleotides across all overlapping handle positions
-        for each orientation. Reports the worst case (max total matching nucleotides)."""
+        for each orientation. Reports the average total matching nucleotides.
+        Note: only considers contiguous shifted alignments, not bulges or hairpins."""
         n_seqs = len(seq_pairs)
         seq_len = len(seq_pairs[0][0])
+        shift_label = 'with shifts' if allow_shifts else 'no shifts'
 
         # precompute nucleotide match counts for all (handle_i, antihandle_j) pairs
         # nt_match_lookup[i, j] = number of complementary base pairs (A-T, G-C)
         complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
         nt_match_lookup = np.zeros((n_seqs + 1, n_seqs + 1), dtype=np.int32)  # ID 0 → 0 matches
+        shifts = range(-(seq_len - 1), seq_len) if allow_shifts else [2]  # shift=2 skips tt linkers on each side
         for i in range(n_seqs):
             for j in range(n_seqs):
                 rev_anti = seq_pairs[j][1][::-1]
                 best = 0
-                # try all shifts: positive = handle shifted right, negative = handle shifted left
-                for s in range(-(seq_len - 1), seq_len):
+                for s in shifts:
                     h_start = max(0, s)
                     a_start = max(0, -s)
                     overlap = seq_len - abs(s)
@@ -223,7 +229,7 @@ if __name__ == '__main__':
         nt_matches_per_row = np.sum(nt_match_lookup[combo_1, combo_2], axis=1)
 
         average_nt_matches = np.average(nt_matches_per_row)
-        print(f'  nucleotide match loss - average nucleotide matches: {average_nt_matches}')
+        print(f'  nucleotide match loss ({shift_label}) - average nucleotide matches: {average_nt_matches}')
         return average_nt_matches
 
     def nucleotide_weighted_loss(combo_1, combo_2, h_keys, ah_keys, seq_pairs, fudge_dg=10, allow_shifts=True):
@@ -311,8 +317,6 @@ if __name__ == '__main__':
               f'effective: {effective_loss:.4f}')
         return effective_loss
 
-    pair_energies = on_target_energies[0]
-
     # collect effective losses for plotting
     design_names = []
     standard_losses = []
@@ -323,6 +327,7 @@ if __name__ == '__main__':
     nn_losses = []
     nn_noshift_losses = []
     plain_hamming_losses = []
+    plain_hamming_noshift_losses = []
 
     print('======================')
     for name, mega in designs.items():
@@ -334,8 +339,10 @@ if __name__ == '__main__':
         ew_loss = energy_weighted_loss(combo_1, combo_2, h_keys, ah_keys, pair_energies)
         print('Full energy loss (on-target + off-target):')
         fe_loss = full_energy_loss(combo_1, combo_2, h_keys, ah_keys, pair_energies, off_target_energies)
-        print('Nucleotide match loss:')
-        nt_loss = nucleotide_match_loss(combo_1, combo_2, h_keys, ah_keys, sequence_pairs)
+        print('Nucleotide match loss (with shifts):')
+        nt_loss = nucleotide_match_loss(combo_1, combo_2, h_keys, ah_keys, sequence_pairs, allow_shifts=True)
+        print('Nucleotide match loss (no shifts):')
+        nt_noshift_loss = nucleotide_match_loss(combo_1, combo_2, h_keys, ah_keys, sequence_pairs, allow_shifts=False)
         print('Nucleotide-weighted loss (with shifts):')
         ntw_loss = nucleotide_weighted_loss(combo_1, combo_2, h_keys, ah_keys, sequence_pairs, allow_shifts=True)
         print('Nucleotide-weighted loss (no shifts):')
@@ -354,6 +361,7 @@ if __name__ == '__main__':
         nn_losses.append(nn_loss)
         nn_noshift_losses.append(nn_noshift_loss)
         plain_hamming_losses.append(nt_loss)
+        plain_hamming_noshift_losses.append(nt_noshift_loss)
         print('======================')
 
     # normalize all losses to design 2-1 (first entry) as fold increase
@@ -362,6 +370,7 @@ if __name__ == '__main__':
         'Nupack Energy Loss': energy_weighted_losses,
         'Loss with Nupack Off-Target Binding': full_energy_losses,
         'Direct Nucleotide Complementarity (with shifts)': plain_hamming_losses,
+        'Direct Nucleotide Complementarity (no shifts)': plain_hamming_noshift_losses,
         'Nucleotide Complementarity Loss (with shifts)': full_nt_losses,
         'Nucleotide Complementarity Loss (no shifts)': full_nt_noshift_losses,
         'Nearest Neighbour Complementarity Loss (with shifts)': nn_losses,
@@ -376,36 +385,98 @@ if __name__ == '__main__':
     plt.rcParams.update({
         'font.family': 'Helvetica',
         'font.size': 12,
-        'axes.labelsize': 16,
+        'axes.labelsize': 14,
         'axes.titlesize': 16,
         'xtick.labelsize': 13,
         'ytick.labelsize': 13,
         'legend.fontsize': 11,
     })
 
-    dark2 = plt.colormaps['Dark2']
-    n_bars = len(all_losses)
-    x = np.arange(len(design_names))
-    group_width = 0.85
-    gap = 0.01  # absolute gap between bars
-    bar_width = (group_width - gap * (n_bars - 1)) / n_bars
+    # color scheme: paired metrics share a base hue (darker = primary, lighter = secondary)
+    # secondary member of each pair gets cross-hatching
+    bar_colors = {
+        'Standard Loss': '#4477AA',
+        'Nupack Energy Loss': '#EE6677',
+        'Loss with Nupack Off-Target Binding': '#F4B0BA',
+        'Direct Nucleotide Complementarity (with shifts)': '#228833',
+        'Direct Nucleotide Complementarity (no shifts)': '#7ABB8A',
+        'Nucleotide Complementarity Loss (with shifts)': '#CCBB44',
+        'Nucleotide Complementarity Loss (no shifts)': '#EBE2A0',
+        'Nearest Neighbour Complementarity Loss (with shifts)': '#66CCEE',
+        'Nearest Neighbour Complementarity Loss (no shifts)': '#B5E8F7',
+    }
+    bar_hatches = {
+        'Loss with Nupack Off-Target Binding': '///',
+        'Direct Nucleotide Complementarity (no shifts)': '///',
+        'Nucleotide Complementarity Loss (no shifts)': '///',
+        'Nearest Neighbour Complementarity Loss (no shifts)': '///',
+    }
+    display_labels = {
+        'Standard Loss': 'Standard Loss',
+        'Nupack Energy Loss': 'NUPACK On-Target Loss',
+        'Loss with Nupack Off-Target Binding': 'NUPACK On+Off-Target Loss',
+        'Direct Nucleotide Complementarity (with shifts)': 'Average No. of Complementary Nucleotides (shifts included)',
+        'Direct Nucleotide Complementarity (no shifts)': 'Average No. of Complementary Nucleotides (no shifts)',
+        'Nucleotide Complementarity Loss (with shifts)': 'Nucleotide Complementarity (shifts included, with Loss equation)',
+        'Nucleotide Complementarity Loss (no shifts)': 'Nucleotide Complementarity (no shifts, with Loss equation)',
+        'Nearest Neighbour Complementarity Loss (with shifts)': 'Nearest-Neighbour Complementarity (shifts included, with Loss equation)',
+        'Nearest Neighbour Complementarity Loss (no shifts)': 'Nearest-Neighbour Complementarity (no shifts, with Loss equation)',
+    }
+
+    # define sub-groups: bars within a sub-group are tight, gaps between sub-groups are wider
+    # each entry is a list of dict keys from all_losses
+    bar_groups = [
+        ['Standard Loss'],
+        ['Nupack Energy Loss', 'Loss with Nupack Off-Target Binding'],
+        ['Nucleotide Complementarity Loss (with shifts)', 'Nucleotide Complementarity Loss (no shifts)'],
+        ['Nearest Neighbour Complementarity Loss (with shifts)', 'Nearest Neighbour Complementarity Loss (no shifts)'],
+        ['Direct Nucleotide Complementarity (with shifts)', 'Direct Nucleotide Complementarity (no shifts)'],
+    ]
+
+    bar_width = 0.08
+    intra_gap = 0.005  # tight gap within a pair
+    inter_gap = 0.04   # wider gap between sub-groups
+
+    # compute per-bar offsets relative to group center
+    offsets = []
+    pos = 0.0
+    for gi, group in enumerate(bar_groups):
+        for bi, _ in enumerate(group):
+            offsets.append(pos)
+            if bi < len(group) - 1:
+                pos += bar_width + intra_gap
+        if gi < len(bar_groups) - 1:
+            pos += bar_width + inter_gap
+    # center the offsets around 0
+    offsets = np.array(offsets)
+    offsets -= offsets.mean()
+
+    # flatten bar_groups into an ordered key list
+    ordered_keys = [k for group in bar_groups for k in group]
 
     display_names = [n.replace('-', '.') for n in design_names]
+    x = np.arange(len(design_names))
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    step = bar_width + gap
-    offsets = np.arange(n_bars) * step - (n_bars - 1) * step / 2
-    for i, (label, values) in enumerate(normalized_losses.items()):
-        ax.bar(x + offsets[i], values, bar_width,
-               label=label, color=dark2(i / n_bars), edgecolor='black', linewidth=0.5)
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    for i, key in enumerate(ordered_keys):
+        ax.bar(x + offsets[i], normalized_losses[key], bar_width,
+               label=display_labels[key],
+               color=bar_colors[key],
+               edgecolor='black', linewidth=0.5,
+               hatch=bar_hatches.get(key, ''),
+               zorder=3)
 
-    ax.axhline(y=1.0, color='grey', linestyle='--', linewidth=0.8)
-    ax.set_xlabel('Square Design Variant (Loss value provided)')
-    ax.set_ylabel('Fold increase over 2.1 design')
+    ax.axhline(y=1.0, color='grey', linestyle='--', linewidth=0.8, zorder=2)
+    ax.set_xlabel('Square Design Variant (Labelled by Standard Loss)')
+    ax.set_ylabel('Fold Increase Over 2.1 Design')
     ax.set_xticks(x)
     ax.set_xticklabels(display_names)
-    ax.legend()
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    ax.legend(loc='upper left', framealpha=0, edgecolor='none')
 
     fig.tight_layout()
-    # fig.savefig('loss_comparison.png', dpi=300)
+    fig.savefig('loss_comparison.png', dpi=600, bbox_inches='tight')
     plt.show()

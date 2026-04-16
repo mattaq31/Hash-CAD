@@ -895,7 +895,7 @@ def compute_offtarget_energies(sequence_pairs):
                     energy_matrix[i, j] = energy
 
     # Parallelize handle-handle energy computation
-    print(f'Computing off-target energies for handle-handle interactions')
+    print(f'Computing off-target energies for plus-plus interactions')
     computations = int(len(handles) * (len(handles)+1)/2)
     logger.info(f"Computing off-target energies for {computations} plus-plus interactions")
     parallel_energy_computation(handles, handles, crosscorrelated_handle_handle_energies, lambda i, j: j <= i)
@@ -907,7 +907,7 @@ def compute_offtarget_energies(sequence_pairs):
     parallel_energy_computation(antihandles, antihandles, crosscorrelated_antihandle_antihandle_energies, lambda i, j: j <= i)
 
     # Parallelize handle-antihandle energy computation
-    print(f'Computing off-target energies for handle-antihandle interactions')
+    print(f'Computing off-target energies for plus-minus interactions')
     computations = len(handles) * (len(antihandles))-len(handles)
     logger.info(f"Computing off-target energies for {computations} plus-minus interactions")
     parallel_energy_computation(handles, antihandles, crosscorrelated_handle_antihandle_energies, lambda i, j: j != i)
