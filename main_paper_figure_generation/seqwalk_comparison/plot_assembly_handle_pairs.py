@@ -73,7 +73,7 @@ def load_sequence_pairs_from_excel(workbook_path):
 def strip_terminal_tt(sequence):
     sequence = sequence.strip().upper()
     if not sequence.startswith("TT"):
-        raise ValueError(f"Expected sequence to start with 5' TT extension, got: {sequence}")
+        raise ValueError(f"Expected sequence to start with 5' TT flank, got: {sequence}")
     return sequence[2:]
 
 
@@ -118,7 +118,6 @@ if __name__ == "__main__":
     output_plot = output_dir / "assembly_handle_pairs_on_off_target_hist.svg"
     trimmed_output_plot = output_dir / "assembly_handle_pairs_no_tt_on_off_target_hist.svg"
     XLIM = (-13.5, 0.0)
-
     sequence_pairs = load_sequence_pairs_from_excel(workbook_path)
     trimmed_sequence_pairs = remove_tt_extensions(sequence_pairs)
     sequence_count = len(sequence_pairs)
@@ -126,7 +125,7 @@ if __name__ == "__main__":
     changed_pairs = sum(
         1 for original, trimmed in zip(sequence_pairs, trimmed_sequence_pairs) if original != trimmed
     )
-    print(f"Removed 5' TT extensions from {changed_pairs} sequence pairs.")
+    print(f"Removed 5' TT flanks from {changed_pairs} sequence pairs.")
     hf.ENERGY_TYPE = "totalu"
     hf.USE_LIBRARY = False
     hf.set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025)
@@ -139,7 +138,7 @@ if __name__ == "__main__":
         off_energies,
         output_path=str(output_plot),
         show_plot=True,
-        title=f"{sequence_count} Assembly Handle Pairs",
+        title=f"{sequence_count} Assembly Handle Pairs, 5' TT Flank",
         xlim=XLIM,
     )
     print(f"Plot saved to: {output_plot}")
@@ -154,7 +153,7 @@ if __name__ == "__main__":
         trimmed_off_energies,
         output_path=str(trimmed_output_plot),
         show_plot=True,
-        title=f"{sequence_count} Assembly Handle Pairs Without TT Extensions",
+        title=f"{sequence_count} Assembly Handle Pairs, No Flank",
         xlim=XLIM,
     )
     print(f"Plot saved to: {trimmed_output_plot}")
