@@ -9,8 +9,8 @@ standard_out = Path(__file__).resolve().parents[1] / "default_outputs"
 
 direct_config = NupackTubeConfig(
     sequences=[
-        ["TTTAAAATTTACTGGGCGCTGCAAGTTTTTTTTTTT", 1000],
-        ["ACTTGCAGGCCCAGTTTTTTTAAAAAAAAAAAAA", 1000],
+        ["TTTTTTTTTTTTAAAAAGGGGGCAGGCTTTTTTTTTTTTTTT", 1000],
+        ["AAAAAAAAAAAAAAAAAAAAAAAAAAACCCCTACTCGAAATTT", 1000],
     ],
     material="dna",
     celsius=37,
@@ -24,6 +24,8 @@ direct_config = NupackTubeConfig(
 # parameters for the plotter. We use a relaxation algorithm. Its a toy version of a force field simulation
 set_simulation_params(brownian_jitter=0.0)
 set_simulation_params(relaxation_steps= 15000)
+set_simulation_params(centering=0.0006)
+#set_simulation_params(reference_sequence_length=300)#"start_radius": 95,"reference_sequence_length": 16,
 
 direct_result = run_nupack_analysis(direct_config)
 print_binding_summary(title, direct_result, save=standard_out)
