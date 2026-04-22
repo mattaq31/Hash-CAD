@@ -1,13 +1,10 @@
 from pathlib import Path
-import sys
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-
-from Nupack_wrapper import NupackTubeConfig, print_binding_summary, run_nupack_analysis
-from dot_brac_plotter import plot_nupack_result, set_simulation_params
+from sec_struc_pred.nupack_wrapper import NupackTubeConfig, print_binding_summary, run_nupack_analysis
+from sec_struc_pred.dot_brac_plotter import plot_nupack_result, set_simulation_params
 
 
-title = "test1"
+title = "test12"
 standard_out = Path(__file__).resolve().parents[1] / "default_outputs"
 
 direct_config = NupackTubeConfig(
@@ -24,9 +21,9 @@ direct_config = NupackTubeConfig(
     tube_name=title,
     strand_prefix="seq",
 )
-
+# parameters for the plotter. We use a relaxation algorithm. Its a toy version of a force field simulation
 set_simulation_params(brownian_jitter=0.0)
-set_simulation_params(relaxation_steps= 55000)
+set_simulation_params(relaxation_steps= 15000)
 
 direct_result = run_nupack_analysis(direct_config)
 print_binding_summary(title, direct_result, save=standard_out)

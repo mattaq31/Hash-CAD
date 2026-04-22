@@ -26,6 +26,7 @@ BASE_SIMULATION_PARAMS = {
     "text_gap": 600,
     "brownian_jitter": 0,
     "text_line_width": 105,
+    "terminal_circle_radius": 6,
 }
 DEFAULT_SIMULATION_PARAMS = dict(BASE_SIMULATION_PARAMS)
 
@@ -210,6 +211,16 @@ def _backbone_point_sets(sequences, positions):
     return point_sets
 
 
+def _strand_terminal_indices(sequences):
+    indices = []
+    start = 0
+    for sequence in sequences:
+        end = start + len(sequence) - 1
+        indices.append((start, end))
+        start = end + 1
+    return indices
+
+
 def _complex_metadata_lines(complex_data):
     lines = []
     if "total_free_energy" in complex_data:
@@ -272,6 +283,25 @@ def _complex_svg(complex_data, center_x, center_y, radius, params):
         x2, y2 = positions[right_i]
         svg.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" class="bond"/>')
 
+    terminal_bond_length = params["backbone_distance"] / 2 * 1.333
+    for start_i, end_i in _strand_terminal_indices(sequences):
+        terminal_data = [
+            (start_i, start_i + 1, "5'", "five-prime"),
+            (end_i, end_i - 1, "3'", "three-prime"),
+        ]
+        for index, neighbor_i, label, end_class in terminal_data:
+            x, y = positions[index]
+            neighbor_x, neighbor_y = positions[neighbor_i]
+            dx = x - neighbor_x
+            dy = y - neighbor_y
+            distance = (dx * dx + dy * dy) ** 0.5 or 1
+            label_x = x + terminal_bond_length * dx / distance
+            label_y = y + terminal_bond_length * dy / distance
+            svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{label_x:.1f}" y2="{label_y:.1f}" class="terminal-bond"/>')
+            terminal_radius = params["terminal_circle_radius"]
+            svg.append(f'<circle cx="{label_x:.1f}" cy="{label_y:.1f}" r="{terminal_radius}" class="terminal-circle terminal-{end_class}"/>')
+            svg.append(f'<text x="{label_x:.1f}" y="{label_y + 4:.1f}" class="end-label">{label}</text>')
+
     for (x, base_y), base in zip(positions, labels):
         svg.append(f'<circle cx="{x:.1f}" cy="{base_y:.1f}" r="12" class="{_base_class(base)}"/>')
 
@@ -321,7 +351,12 @@ def plot_dot_bracket_complexes(complexes, output_path, simulation_params=None, f
         ".title { font-size: 18px; font-weight: 700; fill: #222; }",
         ".subtle { font-size: 13px; fill: #555; }",
         ".base { font-size: 13px; font-weight: 700; text-anchor: middle; fill: #111; }",
+        ".end-label { font-size: 9px; font-weight: 700; text-anchor: middle; fill: #333; }",
         ".base-circle { stroke: #222; stroke-width: 1.4; }",
+        ".terminal-circle { stroke: #666; stroke-width: 1.0; }",
+        ".terminal-five-prime { fill: #008b8b; }",
+        ".terminal-three-prime { fill: #ff7f11; }",
+        ".terminal-bond { stroke: #999; stroke-width: 1.5; stroke-linecap: round; }",
         ".base-circle-A { fill: #9bbcff; }",
         ".base-circle-C { fill: #91d7a7; }",
         ".base-circle-G { fill: #c1a7e8; }",
