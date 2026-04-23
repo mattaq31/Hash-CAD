@@ -20,10 +20,10 @@ BASE_SIMULATION_PARAMS = {
     "centering": 0.0006,
     "neighbor_repulsion": 40,
     "base_repulsion": 1500,
-    "scale": 0.5,
-    "row_padding": 1000,
-    "left_padding": 650,
-    "text_gap": 600,
+    "scale": 0.85,
+    "row_padding": 200,
+    "left_padding": 80,
+    "text_gap": 120,
     "brownian_jitter": 0,
     "text_line_width": 105,
     "terminal_circle_radius": 6,
@@ -255,7 +255,12 @@ def _base_class(base):
     return f"base-circle base-circle-{base.upper()}"
 
 
-def _complex_svg(complex_data, center_x, center_y, radius, params):
+BASE_COLORS = {"A": "#9bbcff", "C": "#91d7a7", "G": "#c1a7e8", "T": "#d6b06a", "U": "#d6b06a"}
+TERMINAL_COLORS = {"five-prime": "#008b8b", "three-prime": "#ff7f11"}
+
+
+def _compute_complex_layout(complex_data, center_x, center_y, radius, params):
+    """Compute positions and drawing elements for a single complex (format-agnostic)."""
     title = complex_data["title"]
     sequences = complex_data["sequences"]
     dot_bracket = complex_data["dot_bracket"]
@@ -264,94 +269,179 @@ def _complex_svg(complex_data, center_x, center_y, radius, params):
     if len(labels) != len(dot_bracket.replace("+", "")):
         raise ValueError(f"{title}: sequence length does not match dot-bracket length")
 
-    text_x = center_x + radius + params["text_gap"]
-    text_y = center_y - 85
-    svg = []
-    for i, line in enumerate(_complex_text_lines(complex_data, params)):
-        class_name = "title" if i == 0 else "subtle"
-        svg.append(f'<text x="{text_x:.1f}" y="{text_y + i * 18:.1f}" class="{class_name}">{escape(line)}</text>')
-
-    for points in _backbone_point_sets(sequences, positions):
-        path = " ".join(
-            f"{'M' if i == 0 else 'L'} {x:.1f} {y:.1f}"
-            for i, (x, y) in enumerate(points)
-        )
-        svg.append(f'<path d="{path}" class="backbone"/>')
-
-    for left_i, right_i in pairs:
-        x1, y1 = positions[left_i]
-        x2, y2 = positions[right_i]
-        svg.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" class="bond"/>')
+    text_lines = _complex_text_lines(complex_data, params)
+    backbone_sets = _backbone_point_sets(sequences, positions)
 
     terminal_bond_length = params["backbone_distance"] / 2 * 1.333
+    terminals = []
     for start_i, end_i in _strand_terminal_indices(sequences):
-        terminal_data = [
-            (start_i, start_i + 1, "5'", "five-prime"),
-            (end_i, end_i - 1, "3'", "three-prime"),
-        ]
-        for index, neighbor_i, label, end_class in terminal_data:
+        for index, neighbor_i, label, end_class in [
+            (start_i, start_i + 1, "5'", "five-prime"), (end_i, end_i - 1, "3'", "three-prime"),
+        ]:
             x, y = positions[index]
-            neighbor_x, neighbor_y = positions[neighbor_i]
-            dx = x - neighbor_x
-            dy = y - neighbor_y
-            distance = (dx * dx + dy * dy) ** 0.5 or 1
-            label_x = x + terminal_bond_length * dx / distance
-            label_y = y + terminal_bond_length * dy / distance
-            svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{label_x:.1f}" y2="{label_y:.1f}" class="terminal-bond"/>')
-            terminal_radius = params["terminal_circle_radius"]
-            svg.append(f'<circle cx="{label_x:.1f}" cy="{label_y:.1f}" r="{terminal_radius}" class="terminal-circle terminal-{end_class}"/>')
-            svg.append(f'<text x="{label_x:.1f}" y="{label_y + 4:.1f}" class="end-label">{label}</text>')
+            nx, ny = positions[neighbor_i]
+            dx, dy = x - nx, y - ny
+            dist = (dx * dx + dy * dy) ** 0.5 or 1
+            lx = x + terminal_bond_length * dx / dist
+            ly = y + terminal_bond_length * dy / dist
+            terminals.append({"x": x, "y": y, "lx": lx, "ly": ly, "label": label, "end_class": end_class,
+                              "radius": params["terminal_circle_radius"]})
 
-    for (x, base_y), base in zip(positions, labels):
-        svg.append(f'<circle cx="{x:.1f}" cy="{base_y:.1f}" r="12" class="{_base_class(base)}"/>')
+    return {"positions": positions, "labels": labels, "pairs": pairs, "radius": radius,
+            "text_lines": text_lines, "backbone_sets": backbone_sets, "terminals": terminals}
 
-    for (x, base_y), base in zip(positions, labels):
-        svg.append(f'<text x="{x:.1f}" y="{base_y + 5:.1f}" class="base">{escape(base)}</text>')
+
+def _complex_svg(layout, text_x, text_y, struct_offset_x):
+    """Render a complex layout to SVG elements. Text on left, structure shifted right by struct_offset_x."""
+    svg = []
+    for i, line in enumerate(layout["text_lines"]):
+        cls = "title" if i == 0 else "subtle"
+        svg.append(f'<text x="{text_x:.1f}" y="{text_y + i * 20:.1f}" class="{cls}">{escape(line)}</text>')
+
+    for points in layout["backbone_sets"]:
+        path = " ".join(f"{'M' if i == 0 else 'L'} {x + struct_offset_x:.1f} {y:.1f}"
+                        for i, (x, y) in enumerate(points))
+        svg.append(f'<path d="{path}" class="backbone"/>')
+
+    for left_i, right_i in layout["pairs"]:
+        x1, y1 = layout["positions"][left_i]
+        x2, y2 = layout["positions"][right_i]
+        svg.append(f'<line x1="{x1 + struct_offset_x:.1f}" y1="{y1:.1f}" '
+                   f'x2="{x2 + struct_offset_x:.1f}" y2="{y2:.1f}" class="bond"/>')
+
+    for t in layout["terminals"]:
+        svg.append(f'<line x1="{t["x"] + struct_offset_x:.1f}" y1="{t["y"]:.1f}" '
+                   f'x2="{t["lx"] + struct_offset_x:.1f}" y2="{t["ly"]:.1f}" class="terminal-bond"/>')
+        svg.append(f'<circle cx="{t["lx"] + struct_offset_x:.1f}" cy="{t["ly"]:.1f}" r="{t["radius"]}" '
+                   f'class="terminal-circle terminal-{t["end_class"]}"/>')
+        svg.append(f'<text x="{t["lx"] + struct_offset_x:.1f}" y="{t["ly"] + 3:.1f}" '
+                   f'class="end-label">{t["label"]}</text>')
+
+    for (x, y), base in zip(layout["positions"], layout["labels"]):
+        svg.append(f'<circle cx="{x + struct_offset_x:.1f}" cy="{y:.1f}" r="12" class="{_base_class(base)}"/>')
+
+    for (x, y), base in zip(layout["positions"], layout["labels"]):
+        svg.append(f'<text x="{x + struct_offset_x:.1f}" y="{y + 5:.1f}" class="base">{escape(base)}</text>')
 
     return svg
 
 
-def _write_plot_output(svg_text, output_path, file_format):
+def _render_complexes_to_matplotlib(layouts, text_col_width, view_width, view_height, output_path, params):
+    """Render complex layouts directly to PDF using matplotlib (no system dependencies needed)."""
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle as MplCircle
+
+    fig_w = view_width * params["scale"] / 72
+    fig_h = view_height * params["scale"] / 72
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.set_xlim(0, view_width)
+    ax.set_ylim(view_height, 0)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    row_padding = params["row_padding"]
+    text_x = params["left_padding"]
+    struct_center_x = text_col_width + params["text_gap"]
+
+    y = 20
+    for layout in layouts:
+        radius = layout["radius"]
+        row_height = 2 * radius + row_padding
+        center_y = y + radius + row_padding / 2
+        text_y = center_y - 50
+
+        for i, line in enumerate(layout["text_lines"]):
+            fontsize = 11 if i == 0 else 8
+            weight = "bold" if i == 0 else "normal"
+            color = "#222" if i == 0 else "#555"
+            ax.text(text_x, text_y + i * 16, line,
+                    fontsize=fontsize, fontweight=weight, color=color, fontfamily="sans-serif", va="top")
+
+        struct_offset_x = struct_center_x
+        for points in layout["backbone_sets"]:
+            xs = [p[0] + struct_offset_x for p in points]
+            ys = [p[1] for p in points]
+            ax.plot(xs, ys, color="#999", linewidth=1.5, solid_capstyle="round", solid_joinstyle="round", zorder=1)
+
+        for left_i, right_i in layout["pairs"]:
+            x1, y1 = layout["positions"][left_i]
+            x2, y2 = layout["positions"][right_i]
+            ax.plot([x1 + struct_offset_x, x2 + struct_offset_x], [y1, y2],
+                    color="#b3263a", linewidth=2.4, alpha=0.9, zorder=2)
+
+        for t in layout["terminals"]:
+            ax.plot([t["x"] + struct_offset_x, t["lx"] + struct_offset_x], [t["y"], t["ly"]],
+                    color="#999", linewidth=0.75, zorder=3)
+            circ = MplCircle((t["lx"] + struct_offset_x, t["ly"]), t["radius"],
+                             facecolor=TERMINAL_COLORS[t["end_class"]], edgecolor="#666", linewidth=0.5, zorder=4)
+            ax.add_patch(circ)
+            ax.text(t["lx"] + struct_offset_x, t["ly"], t["label"], fontsize=4, fontweight="bold", color="#333",
+                    ha="center", va="center", fontfamily="sans-serif", zorder=5)
+
+        for (x, bx_y), base in zip(layout["positions"], layout["labels"]):
+            circ = MplCircle((x + struct_offset_x, bx_y), 12, facecolor=BASE_COLORS.get(base.upper(), "#ccc"),
+                             edgecolor="#222", linewidth=0.7, zorder=6)
+            ax.add_patch(circ)
+
+        for (x, bx_y), base in zip(layout["positions"], layout["labels"]):
+            ax.text(x + struct_offset_x, bx_y, base, fontsize=8, fontweight="bold", color="#111",
+                    ha="center", va="center", fontfamily="sans-serif", zorder=7)
+
+        y += row_height
+
+    fig.savefig(str(output_path), format="pdf", bbox_inches="tight", pad_inches=0.1)
+    plt.close(fig)
+
+
+def _write_svg(svg_text, output_path):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if file_format == "svg":
-        output_path.write_text(svg_text)
-    elif file_format == "pdf":
-        try:
-            import cairosvg
-            cairosvg.svg2pdf(bytestring=svg_text.encode(), write_to=str(output_path))
-        except (ImportError, OSError) as exc:
-            raise RuntimeError(
-                "PDF output needs cairosvg and the Cairo system library. "
-                "In this conda environment, try: conda install -c conda-forge cairo cairosvg. "
-                "Or use file_format='svg'."
-            ) from exc
-    else:
-        raise ValueError("file_format must be 'svg' or 'pdf'")
-
+    output_path.write_text(svg_text)
     return output_path
 
 
 def plot_dot_bracket_complexes(complexes, output_path, simulation_params=None, file_format="svg"):
+    if file_format not in ("svg", "pdf"):
+        raise ValueError("file_format must be 'svg' or 'pdf'")
+
     params = _simulation_params(simulation_params)
     row_padding = params["row_padding"]
-    max_radius = max(_complex_radius(complex_data, params) for complex_data in complexes)
-    row_heights = [2 * _complex_radius(complex_data, params) + row_padding for complex_data in complexes]
-    text_width = _longest_text_line(complexes, params) * 8
-    view_width = int(max(900, 2 * max_radius + params["left_padding"] + params["text_gap"] + text_width + 80))
-    width = int(view_width * params["scale"])
-    height = int((sum(row_heights) + 60) * params["scale"])
-    view_height = int(sum(row_heights) + 60)
+    max_radius = max(_complex_radius(cd, params) for cd in complexes)
+    row_heights = [2 * _complex_radius(cd, params) + row_padding for cd in complexes]
+    text_col_width = _longest_text_line(complexes, params) * 10
+    struct_col_width = 2 * max_radius + 80
+    view_width = int(params["left_padding"] + text_col_width + params["text_gap"] + struct_col_width + 40)
+    view_height = int(sum(row_heights) + 40)
 
+    layouts = []
+    y = 20
+    for complex_data, row_height in zip(complexes, row_heights):
+        radius = _complex_radius(complex_data, params)
+        center_x = 0
+        center_y = y + radius + row_padding / 2
+        layouts.append(_compute_complex_layout(complex_data, center_x, center_y, radius, params))
+        y += row_height
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if file_format == "pdf":
+        _render_complexes_to_matplotlib(layouts, text_col_width, view_width, view_height, output_path, params)
+        return output_path
+
+    text_x = params["left_padding"]
+    struct_offset_x = text_col_width + params["text_gap"]
+    width = int(view_width * params["scale"])
+    height = int(view_height * params["scale"])
     svg = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {view_width} {view_height}">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {view_width} {view_height}">',
         "<style>",
         "text { font-family: Helvetica, Arial, sans-serif; }",
-        ".title { font-size: 18px; font-weight: 700; fill: #222; }",
-        ".subtle { font-size: 13px; fill: #555; }",
+        ".title { font-size: 20px; font-weight: 700; fill: #222; }",
+        ".subtle { font-size: 14px; fill: #555; }",
         ".base { font-size: 13px; font-weight: 700; text-anchor: middle; fill: #111; }",
-        ".end-label { font-size: 9px; font-weight: 700; text-anchor: middle; fill: #333; }",
+        ".end-label { font-size: 7px; font-weight: 700; text-anchor: middle; fill: #333; }",
         ".base-circle { stroke: #222; stroke-width: 1.4; }",
         ".terminal-circle { stroke: #666; stroke-width: 1.0; }",
         ".terminal-five-prime { fill: #008b8b; }",
@@ -367,23 +457,16 @@ def plot_dot_bracket_complexes(complexes, output_path, simulation_params=None, f
         "</style>",
     ]
 
-    y = 30
-    for complex_data, row_height in zip(complexes, row_heights):
-        radius = _complex_radius(complex_data, params)
-        center_x = max_radius + params["left_padding"]
+    y = 20
+    for layout, row_height in zip(layouts, row_heights):
+        radius = layout["radius"]
         center_y = y + radius + row_padding / 2
-        svg.extend(_complex_svg(
-            complex_data,
-            center_x,
-            center_y,
-            radius,
-            params,
-        ))
+        text_y = center_y - 50
+        svg.extend(_complex_svg(layout, text_x, text_y, struct_offset_x))
         y += row_height
 
     svg.append("</svg>")
-
-    return _write_plot_output("\n".join(svg), output_path, file_format)
+    return _write_svg("\n".join(svg), output_path)
 
 
 def _safe_filename(title):
