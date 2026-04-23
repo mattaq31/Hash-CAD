@@ -4,6 +4,10 @@ from pathlib import Path
 from nupack import Model, SetSpec, Strand, Tube, tube_analysis
 
 
+def _normalize_sequence(sequence):
+    return "".join(str(sequence).split())
+
+
 class NupackTubeConfig:
     """Small config object for NUPACK nucleic acid tube analysis.
 
