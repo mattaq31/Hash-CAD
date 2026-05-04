@@ -14,6 +14,7 @@ import '../2d_painters/helper_functions.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
+import '../app_management/action_state.dart';
 import '../main_windows/floating_switches.dart';
 import './custom_3d_meshes.dart';
 import '../crisscross_core/seed.dart';
@@ -728,9 +729,16 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   }
 
   /// Adds all provided slats into the 3D scene, updating existing slats if necessary.
-  void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette){
+  void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette,
+      ActionState actionState, String selectedLayerKey) {
 
     if (!isSetupComplete) return;
+
+    slats = slats.where((slat) {
+      if (layerMap[slat.layer]?['hidden'] == true) return false;
+      if (actionState.isolateSlatLayerView && slat.layer != selectedLayerKey) return false;
+      return true;
+    }).toList();
 
     Set localIDs = slats.map((slat) => slat.id).toSet();
 
@@ -807,7 +815,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
     }
   }
 
-  void manageSeeds(Map<(String, String, Offset), Seed> seedRoster, Map<String, Map<String, dynamic>> layerMap, Color color){
+  void manageSeeds(Map<(String, String, Offset), Seed> seedRoster, Map<String, Map<String, dynamic>> layerMap, Color color,
+      ActionState actionState, String selectedLayerKey) {
     if (!isSetupComplete) return;
 
     if (gridMode != lastGridMode){
@@ -817,6 +826,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       lastGridMode = gridMode;
       seedIDs.clear();
     }
+
+    seedRoster = Map.fromEntries(seedRoster.entries.where((seed) {
+      if (layerMap[seed.key.$1]?['hidden'] == true) return false;
+      if (actionState.isolateSlatLayerView && seed.key.$1 != selectedLayerKey) return false;
+      return true;
+    }));
 
     Set localIDs = seedRoster.keys.toSet();
     Set removedIDs = seedIDs.difference(localIDs);
@@ -1054,8 +1069,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         }
       }
 
-      manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
-      manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color);
+      final actionState = context.watch<ActionState>();
+      manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette, actionState, appState.selectedLayerKey);
+      manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color, actionState, appState.selectedLayerKey);
 
       if (hoverView) {
         manageHoverPreview(appState);
@@ -1123,7 +1139,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                         onChanged: (val) => setState(() {
                           helixBundleView = val;
                           clearScene();
-                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette, actionState, appState.selectedLayerKey);
                         }),
                       ),
                       buildFabIcon(
@@ -1134,7 +1150,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                         onChanged: (val) => setState(() {
                           slatTipExtendView = val;
                           clearScene();
-                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette, actionState, appState.selectedLayerKey);
                         }),
                       ),
                       buildFabIcon(
