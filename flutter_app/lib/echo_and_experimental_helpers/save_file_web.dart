@@ -7,6 +7,7 @@ const Map<String, String> _mimeTypes = {
   'png': 'image/png',
   'svg': 'image/svg+xml',
   'pdf': 'application/pdf',
+  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
 
 Future<void> saveFileBytes(Uint8List bytes, String fileName, String extension) async {

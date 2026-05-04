@@ -2,7 +2,6 @@
 
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
-import '../app_management/design_io_constants.dart';
 import 'cargo.dart';
 
 
@@ -72,8 +71,7 @@ class PlateLibrary {
   /// Reconstructs the plate library from raw row data (as stored in design files).
   void readPlatesFromRawData(Map<String, List<List<dynamic>>> rawDataMap) {
     for (var entry in rawDataMap.entries) {
-      // Strip the input plate prefix to get the plate name
-      final name = entry.key.startsWith(inputPlateSheetPrefix) ? entry.key.substring(inputPlateSheetPrefix.length) : entry.key;
+      final name = entry.key;
       final rows = entry.value;
       if (rows.isEmpty) continue;
 

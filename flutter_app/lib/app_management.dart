@@ -12,7 +12,7 @@ export 'app_management/slat_undo_stack.dart';
 export 'app_management/update_state.dart';
 export 'app_management/update_service.dart';
 export 'app_management/version_tracker.dart';
-export 'app_management/main_design_io.dart';
+export 'app_management/design_io/design_io.dart';
 export 'app_management/git_version_updater.dart';
 // Mixins
 export 'app_management/design_state_mixins/design_state_contract.dart';

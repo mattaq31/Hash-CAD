@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/seed.dart';
 import '../../echo_and_experimental_helpers/plate_layout_state.dart';
-import '../main_design_io.dart';
+import '../design_io/design_io.dart';
 import '../shared_app_state.dart' show nextCapitalLetter;
 import '../slat_undo_stack.dart';
 import 'design_state_contract.dart';
@@ -201,7 +201,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
 
     // Restore echo plate layout if present in the design file
     if (result.echoPlateData != null) {
-      echoPlateLayoutState = PlateLayoutState.fromExcelSheets(result.echoPlateData!, slats, layerMap);
+      echoPlateLayoutState = PlateLayoutState.fromExcelSheets(result.echoPlateData!, slats, layerMap, labMetadata: result.labMetadata);
       echoPlateLayoutFromImport = echoPlateLayoutState != null;
     }
 

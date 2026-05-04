@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/handle_plates.dart';
-import '../main_design_io.dart';
+import '../design_io/design_io.dart';
 import 'design_state_contract.dart';
 
 /// Mixin containing plate import and handle assignment operations for DesignState

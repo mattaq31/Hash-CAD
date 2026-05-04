@@ -5,7 +5,7 @@ import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/parasitic_valency.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
 import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
-import '../main_design_io.dart';
+import '../design_io/design_io.dart';
 import 'design_state_handle_link_mixin.dart';
 import 'design_state_contract.dart';
 

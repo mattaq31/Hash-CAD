@@ -14,6 +14,8 @@ import 'echo_plate_pdf_export.dart';
 import 'echo_plate_sidebar.dart';
 import 'echo_plate_well.dart';
 import 'echo_well_config_dialog.dart';
+import 'master_mix_config.dart';
+import 'master_mix_export.dart';
 import 'plate_layout_state.dart';
 import 'plate_undo_stack.dart';
 
@@ -57,8 +59,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   // Metric view toggle
   bool _showMetricView = false;
 
-  // Export options
-  bool _normalizeVolumes = false;
+  // Export options (stored on _layoutState for persistence)
 
   // Last used well config (remembered across config dialogs)
   WellConfig _lastUsedConfig = const WellConfig();
@@ -876,8 +877,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
   Widget _buildExportSection(DesignState appState) {
     final hasIncompleteSlats = _hasIncompleteSlats(appState.slats);
-    // Check if any slats are assigned at all
     final hasAssignments = _layoutState!.plateAssignments.values.any((plate) => plate.values.any((v) => v != null));
+    final hasAnyFormat =
+        _layoutState!.generatePdf || _layoutState!.generateCsv || _layoutState!.generateHelperSheets;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -888,29 +890,17 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: Checkbox(
-                      value: _normalizeVolumes,
-                      onChanged: (v) => setState(() => _normalizeVolumes = v ?? false),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text('Normalize volumes', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-                ],
-              ),
-            ),
+          const Expanded(child: SizedBox.shrink()),
+          IconButton(
+            icon: const Icon(Icons.settings, size: 22),
+            tooltip: 'Export settings',
+            onPressed: () => _showSettingsDialog(appState),
           ),
+          const SizedBox(width: 8),
           FilledButton.icon(
-            onPressed: hasIncompleteSlats || !hasAssignments ? null : () => _showExportDialog(appState),
+            onPressed: hasIncompleteSlats || !hasAssignments || !hasAnyFormat
+                ? null
+                : () => _runExport(appState),
             icon: const Icon(Icons.download, size: 20),
             label: const Text('Export', style: TextStyle(fontSize: 14)),
             style: FilledButton.styleFrom(
@@ -936,68 +926,35 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     );
   }
 
-  Future<void> _showExportDialog(DesignState appState) async {
-    bool generatePdf = true;
-    bool generateCsv = true;
-
+  Future<void> _showSettingsDialog(DesignState appState) async {
     _dialogOpen = true;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Export Echo Instructions'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CheckboxListTile(
-                value: generatePdf,
-                onChanged: (v) => setDialogState(() => generatePdf = v ?? false),
-                title: const Text('Generate PDF plate layouts', style: TextStyle(fontSize: 14)),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              CheckboxListTile(
-                value: generateCsv,
-                onChanged: (v) => setDialogState(() => generateCsv = v ?? false),
-                title: const Text('Generate Echo CSV instructions', style: TextStyle(fontSize: 14)),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              CheckboxListTile(
-                value: false,
-                onChanged: null,
-                title: Text('Generate lab helper sheets', style: TextStyle(fontSize: 14, color: Colors.grey.shade400)),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: generatePdf || generateCsv ? () => Navigator.pop(ctx, true) : null,
-              child: const Text('Go'),
-            ),
-          ],
-        ),
-      ),
+    final result = await showExportSettingsDialog(
+      context,
+      generatePdf: _layoutState!.generatePdf,
+      generateCsv: _layoutState!.generateCsv,
+      generateHelperSheets: _layoutState!.generateHelperSheets,
+      normalizeVolumes: _layoutState!.normalizeVolumes,
+      config: _layoutState!.masterMixConfig,
     );
     _dialogOpen = false;
-
-    if (confirmed == true) {
-      await _runExport(appState, generatePdf: generatePdf, generateCsv: generateCsv);
+    if (result != null) {
+      setState(() {
+        _layoutState!.generatePdf = result.pdf;
+        _layoutState!.generateCsv = result.csv;
+        _layoutState!.generateHelperSheets = result.helper;
+        _layoutState!.normalizeVolumes = result.normalize;
+        _layoutState!.masterMixConfig = result.config;
+      });
+      _syncLayoutToAppState();
     }
   }
 
-  Future<void> _runExport(DesignState appState, {required bool generatePdf, required bool generateCsv}) async {
+  Future<void> _runExport(DesignState appState) async {
     final files = <String, Uint8List>{};
     final baseName = appState.designName;
     EchoCsvResult? csvResult;
 
-    if (generatePdf) {
+    if (_layoutState!.generatePdf) {
       final pdfBytes = await buildPlateLayoutPdf(
         _layoutState!.plateAssignments,
         appState.slats,
@@ -1010,16 +967,29 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       files['${baseName}_plate_layout.pdf'] = pdfBytes;
     }
 
-    if (generateCsv) {
+    if (_layoutState!.generateCsv) {
       csvResult = generateEchoCsv(
         plateAssignments: _layoutState!.plateAssignments,
         wellConfigs: _layoutState!.wellConfigs,
         plateNames: _layoutState!.plateNames,
         slats: appState.slats,
         layerMap: appState.layerMap,
-        normalizeVolumes: _normalizeVolumes,
+        normalizeVolumes: _layoutState!.normalizeVolumes,
       );
       files['${baseName}_echo_instructions.csv'] = csvResult.csvBytes;
+    }
+
+    if (_layoutState!.generateHelperSheets) {
+      final mmBytes = generateMasterMixExcel(
+        plateAssignments: _layoutState!.plateAssignments,
+        wellConfigs: _layoutState!.wellConfigs,
+        plateNames: _layoutState!.plateNames,
+        slats: appState.slats,
+        layerMap: appState.layerMap,
+        mixConfig: _layoutState!.masterMixConfig,
+        experimentTitle: _layoutState!.experimentTitle,
+      );
+      files['${baseName}_master_mix.xlsx'] = mmBytes;
     }
 
     if (files.isEmpty) return;

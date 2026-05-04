@@ -1,7 +1,8 @@
-import '../app_management/design_io_constants.dart';
+import '../app_management/design_io/design_io_constants.dart';
 import '../crisscross_core/slats.dart';
 import 'echo_export.dart' show generatePlateLayout96;
 import 'echo_plate_constants.dart';
+import 'master_mix_config.dart';
 
 final List<String> _plate96Wells = generatePlateLayout96();
 
@@ -89,6 +90,15 @@ class PlateLayoutState {
   /// User-assigned experiment title, persisted with the design file.
   String experimentTitle;
 
+  /// Master mix configuration, persisted with the design file.
+  MasterMixConfig masterMixConfig;
+
+  /// Export format flags, persisted with the design file.
+  bool generatePdf;
+  bool generateCsv;
+  bool generateHelperSheets;
+  bool normalizeVolumes;
+
   PlateLayoutState({
     List<String>? unassignedSlats,
     Map<int, Map<String, String?>>? plateAssignments,
@@ -97,6 +107,11 @@ class PlateLayoutState {
     Map<int, String>? plateNames,
     Map<int, Map<String, WellConfig>>? wellConfigs,
     this.experimentTitle = 'Experiment',
+    this.masterMixConfig = const MasterMixConfig(),
+    this.generatePdf = true,
+    this.generateCsv = true,
+    this.generateHelperSheets = false,
+    this.normalizeVolumes = false,
   })  : unassignedSlats = unassignedSlats ?? [],
         plateAssignments = plateAssignments ?? {},
         duplicateGroups = duplicateGroups ?? {},
@@ -534,13 +549,26 @@ class PlateLayoutState {
     return result;
   }
 
+  /// Exports all export settings and master mix config as key-value pairs
+  /// for writing to the lab_metadata sheet.
+  Map<String, String> exportLabMetadata() {
+    return {
+      'generate_pdf': generatePdf.toString(),
+      'generate_csv': generateCsv.toString(),
+      'generate_helper_sheets': generateHelperSheets.toString(),
+      'normalize_volumes': normalizeVolumes.toString(),
+      ...masterMixConfig.toMap(),
+    };
+  }
+
   /// Reconstructs a PlateLayoutState from echo plate sheets in a design file.
   /// Returns null if no echo plate sheets are found.
   static PlateLayoutState? fromExcelSheets(
     Map<String, List<List<dynamic>>> sheets,
     Map<String, Slat> slats,
-    Map<String, Map<String, dynamic>> layerMap,
-  ) {
+    Map<String, Map<String, dynamic>> layerMap, {
+    Map<String, String>? labMetadata,
+  }) {
     // Find echo plate sheets with format p{N}_{name}
     final plateSheetRegex = RegExp(r'^' + echoPlateSheetPrefix + r'(\d+)_(.+)$');
     final plateSheetNames = sheets.keys.where((k) => plateSheetRegex.hasMatch(k)).toList()
@@ -607,6 +635,14 @@ class PlateLayoutState {
       }
     }
 
+    // Parse lab metadata (master mix config + export settings)
+    final m = labMetadata ?? {};
+    final parsedMixConfig = MasterMixConfig.fromMap(m);
+    final parsedGeneratePdf = m['generate_pdf'] != 'false';
+    final parsedGenerateCsv = m['generate_csv'] != 'false';
+    final parsedGenerateHelper = m['generate_helper_sheets'] == 'true';
+    final parsedNormalize = m['normalize_volumes'] == 'true';
+
     // Rebuild duplicateGroups and counters in a single pass
     final duplicateGroups = <String, Set<String>>{};
     final duplicateCounters = <String, int>{};
@@ -637,6 +673,11 @@ class PlateLayoutState {
       plateNames: parsedPlateNames,
       wellConfigs: parsedWellConfigs,
       experimentTitle: parsedExperimentTitle,
+      masterMixConfig: parsedMixConfig,
+      generatePdf: parsedGeneratePdf,
+      generateCsv: parsedGenerateCsv,
+      generateHelperSheets: parsedGenerateHelper,
+      normalizeVolumes: parsedNormalize,
     )..ensureDefaultConfigs();
   }
 
@@ -657,6 +698,11 @@ class PlateLayoutState {
           e.key: {for (var w in e.value.entries) w.key: w.value.copy()},
       },
       experimentTitle: experimentTitle,
+      masterMixConfig: masterMixConfig,
+      generatePdf: generatePdf,
+      generateCsv: generateCsv,
+      generateHelperSheets: generateHelperSheets,
+      normalizeVolumes: normalizeVolumes,
     );
   }
 
