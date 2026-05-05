@@ -14,7 +14,7 @@ logger.addHandler(logging.NullHandler())
 
 
 
-def heuristic_vertex_cover_optimized2(E, avoid_V=None, cleanup=True):
+def greedy_vertex_cover_heuristic(E, avoid_V=None, cleanup=True):
         """
         This function is the core of the sequence search algorithm. It’s a heuristic approach
         to solve the NP-hard minimum vertex cover problem.
@@ -291,24 +291,19 @@ def select_vertices_to_remove(vertex_cover, num_vertices_to_remove):
     return set(random.sample(list(vertex_cover), min(num_vertices_to_remove, len(vertex_cover))))
 
 
-def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150, max_iterations=200, limit=+np.inf, multistart=30, population_size=5, show_progress=False):
+def iterative_vertex_cover_refinement(V, E, avoid_V=None, num_vertices_to_remove=150, max_iterations=200, limit=+np.inf, show_progress=False):
     """
-    Attempts to find a small vertex cover via multiple randomized restarts and iterative refinement. Strategically calls heuristic_vertex_cover_optimized2
+    Attempts to find a small vertex cover via iterative randomized refinement.
+    Strategically calls greedy_vertex_cover_heuristic.
 
     Algorithm Outline
     -----------------
-    1. For each of `multistart` attempts:
-       a. Compute an initial cover via the greedy heuristic.
-       b. Initialize a population containing that cover.
-       c. Repeat up to `max_iterations`:
-          * For each cover in the population:
-            - Remove `num_vertices_to_remove` random vertices (respecting `avoid_V`).
-            - Find uncovered edges and re-cover via the heuristic.
-            - If the new cover is smaller, reset the population to this cover.
-            - If it’s the same size but unique, add it to the population.
-          * Trim the population to `population_size` by random sampling.
-          * Optionally print progress.
-       d. If this attempt’s best cover is smaller than the global best, update it.
+    1. Compute an initial cover via the greedy heuristic.
+    2. Repeat up to `max_iterations`:
+       a. Remove `num_vertices_to_remove` random vertices from the current best cover.
+       b. Find uncovered edges and re-cover them via the greedy heuristic.
+       c. If the repaired cover is no larger than the best-so-far cover, keep it.
+       d. Optionally print progress.
 
     Notes
     -----
@@ -334,17 +329,11 @@ def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150,
     :param limit: Target threshold for |V| - |cover|; stops early if reached.
     :type limit: float
 
-    :param multistart: Number of independent greedy restarts.
-    :type multistart: int
-
-    :param population_size: Max number of equal-sized covers to retain each iteration.
-    :type population_size: int
-
     :param show_progress: If True, prints status each iteration.
     :type show_progress: bool
 
-    :returns: Tuple of (best_vertex_cover, trajectories), where trajectories is a list
-              of per-multistart lists of independent set sizes over iterations.
+    :returns: Tuple of (best_vertex_cover, trajectories), where trajectories stores
+              the independent set size after each refinement iteration.
     :rtype: tuple[set, list[list[int]]]
     """
 
@@ -354,99 +343,46 @@ def iterative_vertex_cover_multi(V, E, avoid_V=None, num_vertices_to_remove=150,
     def avoid_overlap_size(cover):
         return len(cover & avoid_V)
 
-    # This keeps track of the overall best (i.e., smallest) vertex cover found across all multistart iterations.
-    # There is also a separate "best_vertex_cover" inside each iteration (the inner loop).
-    bestest_vertex_cover = None
-    trajectories = []
+    best_vertex_cover = greedy_vertex_cover_heuristic(E, avoid_V=avoid_V)
+    size_trajectory = []
 
-    for i in range(multistart):
-        
-        
-        # Create one initial greedy cover.
-        best_vertex_cover = heuristic_vertex_cover_optimized2(E, avoid_V=avoid_V)
-        current_vertex_cover = best_vertex_cover.copy()
-        population = [current_vertex_cover]  # Start with the best vertex cover as the initial population
-        iteration = 0
-        size_trajectory = []
-        
-        
-        
-        while iteration < max_iterations:
-            iteration += 1
-
-            # Early exit if desired independent set size reached
-            if -len(best_vertex_cover) + len(V) >= limit:
-                if show_progress:
-                    print('found desired set')
-                break
-
-            # print('population is of lenght')
-            # print(len(population))
-            
-            new_guys = []
-            #Do the following for all good candidates already in the population
-            for current_cover in population:
-               
-                current_cover2 = current_cover.copy()  # Create a copy to avoid modifying the original in the population
-
-                # Step a: Remove random vertices from the current cover
-                vertices_to_remove = select_vertices_to_remove(current_cover2, num_vertices_to_remove)
-                current_cover2 -= vertices_to_remove
-
-                # Step b: find uncovered edges that appeared due to step a and build a new graph with these uncovered endges
-                uncovered_edges = find_uncovered_edges(E, current_cover2)
-                
-
-
-                # Re-run the heuristic on the new sub graph of uncovered edges
-                additional_cover = heuristic_vertex_cover_optimized2(uncovered_edges, avoid_V=None)
-                current_cover2 |= additional_cover  # Add the newly found cover of the sub graph to the remaining cover  to create again a complete vertex cover
-
-                # Step d: Compare and update best solution
-                # if a smaller cover is found replace the best cover and reset the population
-                if len(current_cover2) < len(best_vertex_cover):
-                    best_vertex_cover = current_cover2.copy()  # Copy to ensure best_vertex_cover remains separate
-                    #
-                    population = [best_vertex_cover]  # Reset population with the new best cover
-                    new_guys = []
-                    break
-
-                # if the same size is found add it to the population to diversify the search. Its only added to the population if its not already in there. To avoid having duplicates. 
-                elif len(current_cover2) == len(best_vertex_cover):
-                    if all(current_cover2 != cover for cover in population):
-                        new_guys.append(current_cover2.copy())  # Add a unique copy of the equal-sized cover
-                        
-            # update the population outside the population loop to avoid making the loop longer while in it 
-            population = new_guys + population
-            
-            # limit the population but ensure random search
-            if len(population) > population_size:
-                population = random.sample(population, population_size)
-                
-            size_trajectory.append(-len(best_vertex_cover) + len(V))
+    for iteration in range(1, max_iterations + 1):
+        if len(V) - len(best_vertex_cover) >= limit:
             if show_progress:
-                print(
-                    f"Iteration {iteration+1}: Found {len(population)} sets of size {-len(best_vertex_cover) + len(V)}"
-                )
+                print("found desired set")
+            break
 
-        # update the bestest_vertex_cover. keep record which of the multistarts resulted in the best.
-        if bestest_vertex_cover is None or len(best_vertex_cover) < len(bestest_vertex_cover):
-            bestest_vertex_cover = best_vertex_cover.copy()
-        elif len(best_vertex_cover) == len(bestest_vertex_cover):
-            if avoid_overlap_size(best_vertex_cover) > avoid_overlap_size(bestest_vertex_cover):
-                bestest_vertex_cover = best_vertex_cover.copy()
-        trajectories.append(size_trajectory)
-        if len(size_trajectory) > 20:
-            head = ", ".join(str(x) for x in size_trajectory[:10])
-            tail = ", ".join(str(x) for x in size_trajectory[-10:])
-            traj_str = f"[{head}, ..., {tail}]"
-        else:
-            traj_str = "[" + ", ".join(str(x) for x in size_trajectory) + "]"
-        print(
-            f"Iteration {i + 1} of {multistart}| current bestest independent set size: {len(V)-len(best_vertex_cover)} "
-            f"| set size trajectory: {traj_str}"
-        )
-    return bestest_vertex_cover, trajectories
+        candidate_cover = best_vertex_cover.copy()
+        vertices_to_remove = select_vertices_to_remove(candidate_cover, num_vertices_to_remove)
+        candidate_cover -= vertices_to_remove
+
+        uncovered_edges = find_uncovered_edges(E, candidate_cover)
+        additional_cover = greedy_vertex_cover_heuristic(uncovered_edges, avoid_V=None)
+        candidate_cover |= additional_cover
+
+        if len(candidate_cover) < len(best_vertex_cover):
+            best_vertex_cover = candidate_cover.copy()
+        elif len(candidate_cover) == len(best_vertex_cover):
+            if avoid_overlap_size(candidate_cover) > avoid_overlap_size(best_vertex_cover):
+                best_vertex_cover = candidate_cover.copy()
+
+        size_trajectory.append(len(V) - len(best_vertex_cover))
+        if show_progress:
+            print(
+                f"Iteration {iteration}: Independent set size {len(V) - len(best_vertex_cover)}"
+            )
+
+    if len(size_trajectory) > 20:
+        head = ", ".join(str(x) for x in size_trajectory[:10])
+        tail = ", ".join(str(x) for x in size_trajectory[-10:])
+        traj_str = f"[{head}, ..., {tail}]"
+    else:
+        traj_str = "[" + ", ".join(str(x) for x in size_trajectory) + "]"
+    print(
+        f"Current best independent set size: {len(V) - len(best_vertex_cover)} "
+        f"| set size trajectory: {traj_str}"
+    )
+    return best_vertex_cover, [size_trajectory]
 
 
 
@@ -577,7 +513,6 @@ def evolutionary_vertex_cover(
                 energy_max=max_ontarget,
                 self_energy_min=self_energy_limit,
                 max_size=subsetsize,
-                Use_Library=False,
                 avoid_indices=history,
                 timeout_s=20,
             )
@@ -610,12 +545,10 @@ def evolutionary_vertex_cover(
             Edges = build_edges(off_e_subset, indices, offtarget_limit)
 
             # Find sequences to remove via vertex-cover heuristic
-            multistart = 30
-            logger.info(f"Running vertex cover heuristic. Trying {multistart} independent starts.")
-            removed_vertices, _trajectories = iterative_vertex_cover_multi(
+            logger.info("Running vertex cover heuristic.")
+            removed_vertices, _trajectories = iterative_vertex_cover_refinement(
                 indices, Edges,
                 avoid_V=history,
-                multistart=multistart,
                 num_vertices_to_remove=len(indices) // 5
             )
 
@@ -681,17 +614,15 @@ if __name__ == "__main__":
     # Select sequences with on-target energy in desired range
     subset, indices, _, _ = select_subset_in_energy_range(
         ontarget7mer, energy_min=min_ontarget, energy_max=max_ontarget,
-        max_size=30, Use_Library=True, avoid_indices=set()
+        max_size=30, avoid_indices=set()
     )
     
     # Compute off-target energies for the subset
-    off_e_subset = compute_offtarget_energies(subset, Use_Library=False)
+    off_e_subset = compute_offtarget_energies(subset)
 
     # Build the off-target interaction graph
     Edges = build_edges(off_e_subset, indices, offtarget_limit)
     '''
-    hf.choose_precompute_library("my_new_cache.pkl")  # filename setter you already have
-    hf.USE_LIBRARY = False
     # Run the heuristic vertex cover algorithm
     self_energy_limit = -2.0
     orthogonal_seq_pairs = evolutionary_vertex_cover(
@@ -707,7 +638,6 @@ if __name__ == "__main__":
     
     print(hf.load_sequence_pairs_from_txt('my_sequences.txt'))
     
-    hf.USE_LIBRARY = False
     onef = sc.compute_ontarget_energies(orthogonal_seq_pairs)
     offef = sc.compute_offtarget_energies(orthogonal_seq_pairs)
     stats2 = sc.plot_on_off_target_histograms(onef, offef, output_path='dump/test.pdf')

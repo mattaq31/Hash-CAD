@@ -1,4 +1,3 @@
-import pickle
 import os
 import itertools
 import multiprocessing as mp
@@ -496,24 +495,18 @@ def create_seqwalk_sequence_pairs_pool(
 
 
 
-def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_Library=None):
+def compute_nupack_energy(seq1, seq2, type='total'):
     
     """
-    Computes the Gibbs free energy of hybridization between two DNA sequences using NUPACK,
-    with optional caching via a precompute library.
+    Computes the Gibbs free energy of hybridization between two DNA sequences
+    using NUPACK.
 
     Notes
     -----
-    - Uses a local cache to avoid redundant NUPACK calls when `Use_Library=True`. If the
-      argument is None, the global setting in `hf.USE_LIBRARY` is used.
-    - Energies are stored under a sorted key so (seq1, seq2) and (seq2, seq1) map identically.
-      This function does not write back to disk; cache updates are handled by callers.
-    - Called by multiprocessing; each worker loads its own cache copy once from file.
-    - Does not write to the cache during multiprocessing to prevent conflicts.
     - All energies larger than -1 kcal/mol are mapped to -1 kcal/mol. 0 is used in other
       routines as an indicator that the energy has not been computed. -1 kcal/mol is already
       extremely weak (virtually no interaction).
-    - Model parameters are fixed at 37°C, sodium=0.05 M, magnesium=0.025 M; change with a fresh cache.
+    - Uses the global NUPACK parameter bundle in `hf.NUPACK_PARAMS`.
 
     :param seq1: First DNA sequence.
     :type seq1: str
@@ -524,44 +517,15 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
     :param type: Either 'total' (partition sum) or 'minimum' (MFE) calculation. The result of 'total' is what you would use to compute a binding constant.
     :type type: str
 
-    :param Use_Library: If True, use and load the precompute cache; defaults to global setting.
-    :type Use_Library: bool or None
-
     :returns: Tuple `(energy, G_A, G_B)` where `energy` is the association free energy
               (kcal/mol). For homodimers, `G_B == G_A`. If NUPACK returns no MFE or
               an exception occurs, the function returns `-1.0` (scalar) instead.
     :rtype: tuple[float, float, float] or float
     """
-    
-    
-    # Use global state if no input is given
-    if Use_Library is None:         
-        Use_Library = hf.USE_LIBRARY
-   
-   
-   
     from nupack import Strand, Complex, Model, complex_analysis
 
     A = Strand(seq1, name='H1')  # name is required for strands
     B = Strand(seq2, name='H2')
-    library1 = {}
-    key = sorted_key(seq1, seq2)
-
-    # Try loading from library if requested
-    if Use_Library:
-        if not hasattr(nupack_compute_energy_precompute_library_fast, "library_cache"):
-            file_name = hf.get_library_path()
-            if os.path.exists(file_name):
-                with open(file_name, "rb") as file:
-                    nupack_compute_energy_precompute_library_fast.library_cache = pickle.load(file)
-            else:
-                nupack_compute_energy_precompute_library_fast.library_cache = {}
-        library1 = nupack_compute_energy_precompute_library_fast.library_cache
-    
-    # Return value from cache if available
-    if Use_Library and key in library1:
-        #print("retrived from lib")
-        return library1[key]
 
     try:
         # Define the complex (symmetric if seq1 == seq2)
@@ -646,16 +610,10 @@ def nupack_compute_energy_precompute_library_fast(seq1, seq2, type='total', Use_
         return -1.0
 
 
-def _init_worker(lib_filename, use_lib, energy_type, nupack_params):
+def _init_worker(energy_type, nupack_params):
     """
     Initializes worker processes for parallel energy computations by configuring
-    the precompute library filename and cache usage flag.
-
-    :param lib_filename: Name of the precompute library file to load.
-    :type lib_filename: str
-
-    :param use_lib: Whether to use the precompute library in this worker.
-    :type use_lib: bool
+    NUPACK energy settings.
 
     :param energy_type: Energy mode used by low-level NUPACK computations.
     :type energy_type: str
@@ -665,10 +623,7 @@ def _init_worker(lib_filename, use_lib, energy_type, nupack_params):
     """
     
     hf.NUPACK_PARAMS= nupack_params
-    hf._precompute_library_filename = lib_filename
-    hf.USE_LIBRARY = use_lib
     hf.ENERGY_TYPE = energy_type
-    #print("Worker using", _precompute_library_filename, USE_LIBRARY)
 
 
 
@@ -688,7 +643,7 @@ def compute_pair_energy_on(i, seq, rc_seq):
     :returns: Tuple `(i, pair_energy, self_energy_seq, self_energy_rc_seq)`.
     :rtype: tuple[int, float, float, float]
     """
-    pair_e, self_e1, self_e2 = nupack_compute_energy_precompute_library_fast(
+    pair_e, self_e1, self_e2 = compute_nupack_energy(
         seq,
         rc_seq,
         type=hf.ENERGY_TYPE,
@@ -702,9 +657,8 @@ def compute_ontarget_energies(sequence_list):
 
     Notes
     -----
-    - Uses `ProcessPoolExecutor` (with `initializer=_init_worker`) to parallelize calls to NUPACK via `nupack_compute_energy_precompute_library_fast`.
-    - If `hf.USE_LIBRARY` is True, the initializer function (`_init_worker`) passes the library filename and flag to each worker so that `nupack_compute_energy_precompute_library_fast` can load its cache. After all parallel computations finish, this function saves the cache with the new energies.
-    - Saves the updated cache atomically using `DelayedKeyboardInterrupt` to prevent corruption.
+    - Uses `ProcessPoolExecutor` (with `initializer=_init_worker`) to parallelize
+      direct NUPACK energy computations.
     - Prints progress and CPU core usage to the console.
 
     :param sequence_list: List of tuples, each containing a sequence and its reverse complement.
@@ -727,8 +681,6 @@ def compute_ontarget_energies(sequence_list):
 
     # parallelize energy computation
     pool_args = (
-        hf._precompute_library_filename,
-        hf.USE_LIBRARY,
         hf.ENERGY_TYPE,
         hf.NUPACK_PARAMS,
     )
@@ -754,26 +706,6 @@ def compute_ontarget_energies(sequence_list):
                 self_energies_seq[i] = self_e_seq
                 self_energies_rc_seq[i] = self_e_rc_seq
 
-    # update the precompute library if required
-    if hf.USE_LIBRARY:
-        # save to existing library or create a new one
-        file_name = hf.get_library_path()
-
-        if os.path.exists(file_name):
-            # open library if exists
-            with open(file_name, "rb") as file:
-                library1 = pickle.load(file)
-        else:
-            library1 = {}
-
-        for i, (seq, rc_seq) in enumerate(sequence_list):
-            library1[sorted_key(seq, rc_seq)] = energies[i]
-
-        # Save the updated dictionary
-        with hf.DelayedKeyboardInterrupt():
-            hf.save_pickle_atomic(library1, file_name)
-            print("saved stuff")
-
     return energies, self_energies_seq, self_energies_rc_seq
 
 
@@ -798,7 +730,7 @@ def compute_pair_energy_off(i, j, seq1, seq2):
      :returns: Tuple `(i, j, energy)` where `energy` is the computed Gibbs free energy.
      :rtype: tuple (int, int, float)
      """
-    bind_energy , _, _ = nupack_compute_energy_precompute_library_fast(
+    bind_energy , _, _ = compute_nupack_energy(
         seq1,
         seq2,
         type=hf.ENERGY_TYPE,
@@ -821,9 +753,6 @@ def compute_offtarget_energies(sequence_pairs):
     3. For each matrix, use `ProcessPoolExecutor` (via `compute_pair_energy_off`) to fill only the required entries:
        - i ≥ j for the two symmetric matrices
        - i ≠ j for the mixed handle-antihandle matrix
-    4. If `hf.USE_LIBRARY` is True, the initializer function (`_init_worker`) passes the library filename and flag to each worker so that `nupack_compute_energy_precompute_library_fast` can load its cache. After all parallel computations finish, this function saves the cache with the new energies.
-
-
     Notes
     -----
     - Off-target interactions are computed for:  
@@ -833,7 +762,6 @@ def compute_offtarget_energies(sequence_pairs):
     - Symmetric matrices only compute the lower triangle (i ≥ j) to avoid redundancy.  
     - Entries with no interaction or computation errors return -1.0 (mapped for any energy > -1.0).  
       A value of 0 indicates the energy was skipped due to redundancy.    
-    - Uses `DelayedKeyboardInterrupt` to ensure atomic writes when saving the updated cache.
 
     :param sequence_pairs: List of (sequence, reverse_complement) tuples.
     :type sequence_pairs: list of tuple
@@ -866,8 +794,6 @@ def compute_offtarget_energies(sequence_pairs):
         max_workers = _max_workers()  # Use only 3 quarters of all possible cores on the machine
         print(f'Calculating with {max_workers} cores...')
         pool_args = (
-            hf._precompute_library_filename,
-            hf.USE_LIBRARY,
             hf.ENERGY_TYPE,
             hf.NUPACK_PARAMS,
         )
@@ -911,41 +837,6 @@ def compute_offtarget_energies(sequence_pairs):
     computations = len(handles) * (len(antihandles))-len(handles)
     logger.info(f"Computing off-target energies for {computations} plus-minus interactions")
     parallel_energy_computation(handles, antihandles, crosscorrelated_handle_antihandle_energies, lambda i, j: j != i)
-
-
-    #update the precompute library to  make things faster in the future
-    if hf.USE_LIBRARY:
-        file_name = hf.get_library_path()
-        if os.path.exists(file_name):
-            with open(file_name, "rb") as file:
-                library1 = pickle.load(file)
-        else:
-            library1 = {}
-    # this is redundant. A double loop each that iterates over all the filled entries in the 3 arrays
-        for i, seq1 in enumerate(handles):
-            for j, seq2 in enumerate(handles):
-                # Corrected line: use [] to assign to a dictionary key
-                if j <= i:
-                    library1[sorted_key(seq1, seq2)] = crosscorrelated_handle_handle_energies[i, j]
-
-        for i, seq1 in enumerate(antihandles):
-            for j, seq2 in enumerate(antihandles):
-                # Corrected line: use [] to assign to a dictionary key
-                if j <= i:
-                    library1[sorted_key(seq1, seq2)] = crosscorrelated_antihandle_antihandle_energies[i, j]
-
-        for i, seq1 in enumerate(handles):
-            for j, seq2 in enumerate(antihandles):
-                # Corrected line: use [] to assign to a dictionary key
-                if j != i:
-                    library1[sorted_key(seq1, seq2)] = crosscorrelated_handle_antihandle_energies[i, j]
-
-        # Save the updated dictionary
-        #print(library1)
-        with hf.DelayedKeyboardInterrupt():
-            hf.save_pickle_atomic(library1, file_name)
-
-    # Report energies if required
 
     return{
             'handle_handle_energies': crosscorrelated_handle_handle_energies,
@@ -1046,7 +937,6 @@ def crossreference_sequences(
     pool,
     offtarget_limit,
     max_pair_violations=0,
-    Use_Library=None,
 ):
     """
     Checks off-target interactions between a candidate sequence pair and a
@@ -1071,19 +961,12 @@ def crossreference_sequences(
                                 before the candidate is rejected.
     :type max_pair_violations: int
 
-    :param Use_Library: Whether to use the precomputed energy library
-                        (overrides the global setting if not None).
-    :type Use_Library: bool or None
-
     :returns: Tuple `(passed, nupack_calls)` where `passed` is False if the
               number of violating pool pairs exceeds `max_pair_violations`,
               and `nupack_calls` is the number of direct energy computations
               performed during this cross-reference check.
     :rtype: tuple[bool, int]
     """
-    if Use_Library is None:
-        Use_Library = hf.USE_LIBRARY
-
     if not pool:
         return True, 0
 
@@ -1096,11 +979,10 @@ def crossreference_sequences(
         for a in (seq, rc_seq):
             for b in (pool_seq, pool_rc):
                 nupack_calls += 1
-                result = nupack_compute_energy_precompute_library_fast(
+                result = compute_nupack_energy(
                     a,
                     b,
                     type="total",
-                    Use_Library=Use_Library,
                 )
                 energy = result[0] if isinstance(result, tuple) else result
                 if energy < offtarget_limit:
@@ -1123,14 +1005,14 @@ def select_subset_in_energy_range(
     energy_max=np.inf,
     self_energy_min=-np.inf,
     max_size=np.inf,
-    Use_Library=None,
     avoid_indices=None,
     timeout_s=None,
-    history_pool=None,
+    retained_pairs=None,
     allowed_violations=0,
     offtarget_limit=None,
     max_nupack_calls=None,
     progress_every=None,
+    progress_interval_s=120.0,
 ):
     """
     Selects a random subset of sequence pairs that pass on-target energy,
@@ -1162,17 +1044,15 @@ def select_subset_in_energy_range(
     :param max_size: Maximum number of pairs to return.
     :type max_size: int
 
-    :param Use_Library: Whether to use the precomputed energy library (overrides global if not None).
-    :type Use_Library: bool or None
-
     :param avoid_indices: Indices to avoid when sampling.
     :type avoid_indices: set or None
 
     :param timeout_s: Optional wall-clock timeout in seconds; returns early if exceeded.
     :type timeout_s: float or None
 
-    :param history_pool: Optional list of accepted `(seq, rc_seq)` pairs to cross-reference against.
-    :type history_pool: list[tuple[str, str]] or None
+    :param retained_pairs: Optional list of retained `(seq, rc_seq)` pairs to
+                           cross-reference against.
+    :type retained_pairs: list[tuple[str, str]] or None
 
     :param allowed_violations: Maximum number of pool pairs allowed to violate `offtarget_limit`.
     :type allowed_violations: int
@@ -1186,6 +1066,12 @@ def select_subset_in_energy_range(
     :param progress_every: Optional attempt interval for progress prints.
     :type progress_every: int or None
 
+    :param progress_interval_s: Optional minimum wall-clock interval between
+                                progress updates during candidate sampling.
+                                Set to None to disable time-based progress
+                                updates.
+    :type progress_interval_s: float or None
+
     :returns: Tuple `(subset, indices, stopped_early, nupack_calls)` where `subset`
               is a list of `(seq, rc_seq)` pairs, `indices` are their corresponding
               global IDs, `stopped_early` indicates timeout or NUPACK-budget exit,
@@ -1194,14 +1080,11 @@ def select_subset_in_energy_range(
     :rtype: tuple[list[tuple[str, str]], list[int], bool, int]
     """
 
-    if Use_Library is None:
-        Use_Library = hf.USE_LIBRARY
-
     if avoid_indices is None:
         avoid_indices = set()
 
-    if history_pool is None:
-        history_pool = []
+    if retained_pairs is None:
+        retained_pairs = []
 
     subset = []
     indices = []
@@ -1210,6 +1093,16 @@ def select_subset_in_energy_range(
     nupack_calls = 0
 
     start_t = time.time()
+    last_progress_t = start_t
+
+    def _emit_progress():
+        elapsed_s = time.time() - start_t
+        print(
+            f"Subset selection progress: accepted {len(subset)}/{max_size} fresh pairs "
+            f"after {attempts} attempts and {nupack_calls} direct NUPACK calls "
+            f"({elapsed_s / 60.0:.1f} min elapsed).",
+            flush=True,
+        )
 
     def _evaluate_candidate(seq, rc_seq):
         nonlocal nupack_calls
@@ -1218,11 +1111,10 @@ def select_subset_in_energy_range(
             return None, "nupack_limit"
 
         nupack_calls += 1
-        energy, self_e_seq, self_e_rc_seq = nupack_compute_energy_precompute_library_fast(
+        energy, self_e_seq, self_e_rc_seq = compute_nupack_energy(
             seq,
             rc_seq,
             type="total",
-            Use_Library=Use_Library,
         )
 
         if not (
@@ -1235,10 +1127,9 @@ def select_subset_in_energy_range(
         if offtarget_limit is not None:
             passed_crossref, crossref_nupack_calls = crossreference_sequences(
                 (seq, rc_seq),
-                history_pool,
+                retained_pairs,
                 offtarget_limit,
                 max_pair_violations=allowed_violations,
-                Use_Library=Use_Library,
             )
             nupack_calls += crossref_nupack_calls
             if not passed_crossref:
@@ -1283,6 +1174,9 @@ def select_subset_in_energy_range(
                     f"Progress: {len(subset)}/{max_size} "
                     f"accepted after {attempts} attempts"
                 )
+            if progress_interval_s is not None and (time.time() - last_progress_t) >= progress_interval_s:
+                _emit_progress()
+                last_progress_t = time.time()
 
             accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
             if stop_reason is not None:
@@ -1347,6 +1241,9 @@ def select_subset_in_energy_range(
                 f"Progress: {len(subset)}/{max_size} "
                 f"accepted after {attempts} attempts"
             )
+        if progress_interval_s is not None and (time.time() - last_progress_t) >= progress_interval_s:
+            _emit_progress()
+            last_progress_t = time.time()
 
         accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
         if stop_reason is not None:
@@ -1377,20 +1274,19 @@ def select_subset_in_energy_range(
 
 
 
-def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, Use_Library=None, avoid_ids=None):
+def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, avoid_ids=None):
     """
       Selects all sequence pairs whose on-target energies fall within a given energy range.
 
       Description
       -----------
       Iterates through every `(global_index, (seq, rc_seq))` tuple, computes the on-target energy
-      using `nupack_compute_energy_precompute_library_fast`, and collects those where
+      using `compute_nupack_energy`, and collects those where
       `energy_min <= energy <= energy_max`, skipping any `global_index` values in `avoid_ids`.
       Note that the ID here refers to the global index in the original sequence-pair list.
 
       Notes
       -----
-      - If `Use_Library` is True, energies are fetched from or stored in the precompute cache.
       - Prints progress messages to the console.
 
       :param sequence_pairs: List of `(global_index, (seq, rc_seq))` tuples.
@@ -1402,9 +1298,6 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
       :param energy_max: Maximum allowed Gibbs free energy (inclusive).
       :type energy_max: float
 
-      :param Use_Library: Whether to use a precomputed energy library (overrides global if not None).
-      :type Use_Library: bool or None
-
       :param avoid_ids: Set of global indices to skip during selection.
       :type avoid_ids: set or None
 
@@ -1414,9 +1307,6 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
       :rtype: tuple (list of tuple, list of int)
       """
     print("Selecting sequences...")
-    
-    if Use_Library is None:
-        Use_Library = hf.USE_LIBRARY
     
     if avoid_ids is None:
         avoid_ids = set()
@@ -1428,8 +1318,8 @@ def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np
         if ID in avoid_ids:
             continue
 
-        energy,_,_ = nupack_compute_energy_precompute_library_fast(
-            seq, rc_seq, type='total', Use_Library=Use_Library
+        energy,_,_ = compute_nupack_energy(
+            seq, rc_seq, type='total'
         )
 
         if energy_min <= energy <= energy_max:
@@ -1782,7 +1672,6 @@ if __name__ == "__main__":
     #print(ontarget7mer)
     
     # Define energy thresholds
-    hf.choose_precompute_library("does_this_work.pkl")
     offtarget_limit = -5
     max_ontarget = -9.6
     min_ontarget = -10.4
@@ -1790,7 +1679,6 @@ if __name__ == "__main__":
    
     subset = select_subset(ontarget7mer, max_size=100)
     print(subset)
-    hf.USE_LIBRARY = True
     on_e_subset = compute_ontarget_energies(subset)
     on_e_subset = compute_ontarget_energies(subset)
     # Compute the off-target energies for the subset
@@ -1798,12 +1686,11 @@ if __name__ == "__main__":
     off_e_subset = compute_offtarget_energies(subset)
     t2= time.time()
     print(t2-t1)
-    hf.USE_LIBRARY= True
-    print("lib is on")
+    print("running again")
     off_e_subset = compute_offtarget_energies(subset)
     t3 = time.time()
     print(t3-t2)
-    print("lib is off")
+    print("running a third time")
     off_e_subset = compute_offtarget_energies(subset)
     t4 = time.time()
     print(t4-t3)

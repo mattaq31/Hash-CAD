@@ -101,8 +101,6 @@ def _run_compare_single_seed(run_seed, offtarget_limits, conflict_probs):
     num_vertices_to_remove = _COMPARE_CTX["num_vertices_to_remove"]
     max_iterations = _COMPARE_CTX["max_iterations"]
     limit = _COMPARE_CTX["limit"]
-    multistart = _COMPARE_CTX["multistart"]
-    population_size = _COMPARE_CTX["population_size"]
     show_progress = _COMPARE_CTX["show_progress"]
     pkl_path = _COMPARE_CTX["pkl_path"]
     run_idx_by_seed = _COMPARE_CTX["run_idx_by_seed"]
@@ -137,8 +135,6 @@ def _run_compare_single_seed(run_seed, offtarget_limits, conflict_probs):
             num_vertices_to_remove=num_vertices_to_remove,
             max_iterations=max_iterations,
             limit=limit,
-            multistart=multistart,
-            population_size=population_size,
             show_progress=show_progress,
         )
         print(f"alg=vertex_cover size={len(vc_sequences)} run={run_idx_by_seed[run_seed]} cutoff={float(cutoff)}")
@@ -246,7 +242,7 @@ def _run_naive(ids, id_to_seq, off_energies, cutoff, random_seed=41):
 
 def _run_vertex_cover(ids, id_to_seq, off_energies, cutoff, random_seed=41,
                       num_vertices_to_remove=None, max_iterations=200, limit=70,
-                      multistart=1, population_size=300, show_progress=True):
+                      show_progress=True):
     # Vertex-cover search with stochastic components.
     random.seed(random_seed)
     edges = vca.build_edges(off_energies, ids, float(cutoff))
@@ -255,15 +251,13 @@ def _run_vertex_cover(ids, id_to_seq, off_energies, cutoff, random_seed=41,
     if n_remove is None or n_remove == 0:
         n_remove = max(1, int(round(0.2 * len(vertices))))
 
-    vertex_cover, trajectories = vca.iterative_vertex_cover_multi(
+    vertex_cover, trajectories = vca.iterative_vertex_cover_refinement(
         vertices,
         edges,
         avoid_V=None,
         num_vertices_to_remove=n_remove,
         max_iterations=max_iterations,
         limit=limit,
-        multistart=multistart,
-        population_size=population_size,
         show_progress=show_progress,
     )
 
@@ -279,8 +273,6 @@ def run_compare(
     num_vertices_to_remove=None,
     max_iterations=100,
     limit=np.inf,
-    multistart=1,
-    population_size=900,
     show_progress=False,
     offtarget_step=0.1,
     target_conflict_prob=0.5,
@@ -339,8 +331,6 @@ def run_compare(
             "num_vertices_to_remove": num_vertices_to_remove,
             "max_iterations": max_iterations,
             "limit": limit,
-            "multistart": multistart,
-            "population_size": population_size,
             "show_progress": show_progress,
             "pkl_path": pkl_path,
             "run_idx_by_seed": run_idx_by_seed,
@@ -375,8 +365,6 @@ def run_compare(
             "num_vertices_to_remove": num_vertices_to_remove,
             "max_iterations": max_iterations,
             "limit": limit,
-            "multistart": multistart,
-            "population_size": population_size,
             "show_progress": show_progress,
             "pkl_path": pkl_path,
             "run_idx_by_seed": run_idx_by_seed,

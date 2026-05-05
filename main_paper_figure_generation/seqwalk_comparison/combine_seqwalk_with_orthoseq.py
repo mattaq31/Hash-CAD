@@ -136,15 +136,13 @@ def legacy_sequence_search(sequence_pairs, source_indices, off_energies, offtarg
         f"{len(edges)} edges at off-target cutoff {offtarget_limit:.3f} kcal/mol."
     )
 
-    vertex_cover, _trajectories = vca.iterative_vertex_cover_multi(
+    vertex_cover, _trajectories = vca.iterative_vertex_cover_refinement(
         vertices,
         edges,
         avoid_V=None,
         num_vertices_to_remove=20,
         max_iterations=200,
         limit=70,
-        multistart=3,
-        population_size=300,
         show_progress=False,
     )
 
@@ -307,7 +305,6 @@ if __name__ == "__main__":
     workbook = openpyxl.Workbook()
     workbook.remove(workbook.active)
 
-    hf.USE_LIBRARY = False
     hf.ENERGY_TYPE = "totalu"
     hf.set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025)
 

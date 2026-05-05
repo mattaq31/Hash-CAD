@@ -14,7 +14,6 @@ def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out
             energy_max=float(max_on),
             self_energy_min=float(self_energy_limit),
             max_size=refine_size,
-            Use_Library=False,
             timeout_s=20,
         )
 

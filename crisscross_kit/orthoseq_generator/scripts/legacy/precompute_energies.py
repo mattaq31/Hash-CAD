@@ -9,7 +9,7 @@ Main Steps:
     1. Fix the random seed for reproducibility.
     2. Generate all 7-mer handle/antihandle pairs with optional 'TT' 5′ extension,
        filtering out any sequences with four identical bases in a row.
-    3. Configure and enable the precomputed energy cache to avoid redundant NUPACK calls.
+    3. Configure the NUPACK model parameters.
     4. Define the on-target energy window and select all pairs within that range.
     5. Compute off-target energies for the selected subset.
     6. Package and save the subset, indices, and off-target energies to a pickle file.
@@ -34,11 +34,8 @@ if __name__ == "__main__":
         avoid_gggg=True
     )
 
-    # 3) Configure and enable the precompute‐energy cache.
-    #    The file "TT_7mers.pkl" will be created inside 'pre_computed_energies/' if missing,
-    #    or loaded if it already exists, to avoid recomputing the same energies.
-    hf.choose_precompute_library("TT_7mers.pkl")
-    hf.USE_LIBRARY = True
+    # 3) Configure the NUPACK model parameters.
+    hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
 
     # 4) Define the on-target energy window for inclusion
     max_ontarget = -9.6   # sequences must bind at least this strongly

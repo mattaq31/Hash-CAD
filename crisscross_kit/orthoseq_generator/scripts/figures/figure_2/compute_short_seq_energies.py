@@ -22,13 +22,10 @@ def run_compute_short_seq(
     fivep_ext="",
     threep_ext="",
     avoid_gggg=False,
-    use_library=False,
     output_dir=None,
 ):
     # Deterministic sampling for reproducibility.
     random.seed(random_seed)
-    hf.choose_precompute_library(f"short_seq_{length}mers.pkl")
-    hf.USE_LIBRARY = use_library
     hf.set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025)
 
     # Use a stable filename prefix for downstream scripts.
@@ -107,6 +104,5 @@ if __name__ == "__main__":
             run_compute_short_seq(
                 length=length,
                 range_sigma=sigma,
-                use_library=False,
                 output_dir=OUTPUT_DIR,
             )

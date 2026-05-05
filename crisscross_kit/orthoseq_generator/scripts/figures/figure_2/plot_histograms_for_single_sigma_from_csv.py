@@ -23,7 +23,6 @@ MAX_SIZE = 200
 AVOID_GGGG = False
 FIVEP_EXT = ""
 THREEP_EXT = ""
-USE_LIBRARY = False
 SELF_ENERGY_MIN = -np.inf
 TIMEOUT_S = 20
 SHOW_PLOT = False
@@ -72,8 +71,6 @@ def _run_for_length(meta):
 
     random.seed(RANDOM_SEED)
 
-    hf.choose_precompute_library(f"short_seq_{length}mers.pkl")
-    hf.USE_LIBRARY = USE_LIBRARY
     hf.set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025)
 
     sequence_pairs = sc.create_sequence_pairs_pool(
@@ -91,7 +88,6 @@ def _run_for_length(meta):
         energy_max=max_on,
         self_energy_min=SELF_ENERGY_MIN,
         max_size=max_size,
-        Use_Library=USE_LIBRARY,
         timeout_s=TIMEOUT_S,
     )
 

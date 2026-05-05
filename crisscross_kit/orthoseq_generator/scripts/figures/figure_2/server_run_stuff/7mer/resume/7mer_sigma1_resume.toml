@@ -16,8 +16,6 @@ num_runs = 5
 num_vertices_to_remove = 0
 max_iterations = 300
 limit = 1e9
-multistart = 1
-population_size = 900
 show_progress = false
 
 [plot]

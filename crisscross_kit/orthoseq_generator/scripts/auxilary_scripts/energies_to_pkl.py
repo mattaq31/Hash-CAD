@@ -9,9 +9,8 @@ if __name__ == "__main__":
 
     outpath = "/Users/floriankatzmeier/Documents/programming_stuff/data_hash/"
 
-    # 2) Optional: Enable precomputed energy cache for faster performance
-    #hf.choose_precompute_library("my_new_cache.pkl")
-    hf.USE_LIBRARY = False  # Set to True to use the cache, False to force recomputation
+    # 2) Configure the NUPACK model parameters
+    hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
 
 
     on_e = sc.compute_ontarget_energies(sequence_pairs)

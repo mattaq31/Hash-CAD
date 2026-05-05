@@ -14,13 +14,12 @@ def _search_worker(
     max_on,
     min_on,
     self_energy_limit,
-    init_subsetsize,
+    initial_fresh_pair_count,
     generations,
-    vc_multistart,
     vc_max_iterations,
     prune_fraction,
     max_nupack_calls,
-    history_subset_scale,
+    fresh_pair_scale,
     stop_event,
     out_q,
 ):
@@ -32,13 +31,12 @@ def _search_worker(
             max_on,
             min_on,
             self_energy_limit,
-            init_subsetsize=init_subsetsize,
+            initial_fresh_pair_count=initial_fresh_pair_count,
             generations=generations,
-            vc_multistart=vc_multistart,
             vc_max_iterations=vc_max_iterations,
             prune_fraction=prune_fraction,
             max_nupack_calls=max_nupack_calls,
-            history_subset_scale=history_subset_scale,
+            fresh_pair_scale=fresh_pair_scale,
             stop_event=stop_event
         )
         if not res:
@@ -80,14 +78,6 @@ def render_search_tab(registry_factory, nupack_params):
             help="Number of requested sequence pairs used to build the initial trial pool."
         )
         st.number_input(
-            "Vertex-Cover Multistart",
-            min_value=1,
-            value=st.session_state.search_vc_multistart,
-            key="search_vc_multistart",
-            disabled=st.session_state.search_running,
-            help="Number of repeated runs of the graph-based optimization step per generation."
-        )
-        st.number_input(
             "Vertex-Cover Max Iterations",
             min_value=1,
             value=st.session_state.search_vc_max_iterations,
@@ -114,13 +104,13 @@ def render_search_tab(registry_factory, nupack_params):
             help="Limit on the number of NUPACK calls used while collecting fresh candidates in one generation. If this limit is reached, the number of allowed conflicts for newly sampled pairs is increased by 1 in later generations."
         )
         st.number_input(
-            "History Subset Scale",
+            "Fresh Pair Scale",
             min_value=0.0,
-            value=st.session_state.search_history_subset_scale,
+            value=st.session_state.search_fresh_pair_scale,
             step=0.1,
-            key="search_history_subset_scale",
+            key="search_fresh_pair_scale",
             disabled=st.session_state.search_running,
-            help="Once an orthogonal set has been established, this determines how many new sequence pairs are requested in later generations relative to the size of that retained set."
+            help="Once an orthogonal set has been established, this determines how many fresh sequence pairs are requested in later generations relative to the size of the retained best set."
         )
 
     col1, col2 = st.columns(2)
@@ -183,13 +173,12 @@ def render_search_tab(registry_factory, nupack_params):
         max_on = float(st.session_state.max_ontarget)
         min_on = float(st.session_state.min_ontarget)
         self_energy_limit = float(st.session_state.self_energy_limit)
-        init_subsetsize = int(st.session_state.subset_size_search)
+        initial_fresh_pair_count = int(st.session_state.subset_size_search)
         generations_ = int(st.session_state.generations)
-        vc_multistart = int(st.session_state.search_vc_multistart)
         vc_max_iterations = int(st.session_state.search_vc_max_iterations)
         prune_fraction = float(st.session_state.search_prune_fraction)
         max_nupack_calls = int(st.session_state.search_max_nupack_calls)
-        history_subset_scale = float(st.session_state.search_history_subset_scale)
+        fresh_pair_scale = float(st.session_state.search_fresh_pair_scale)
         stop_event = st.session_state.stop_event
         out_q = st.session_state.search_queue
         st.session_state.search_running = True
@@ -202,13 +191,12 @@ def render_search_tab(registry_factory, nupack_params):
                 max_on,
                 min_on,
                 self_energy_limit,
-                init_subsetsize,
+                initial_fresh_pair_count,
                 generations_,
-                vc_multistart,
                 vc_max_iterations,
                 prune_fraction,
                 max_nupack_calls,
-                history_subset_scale,
+                fresh_pair_scale,
                 stop_event,
                 out_q,
             ),

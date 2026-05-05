@@ -15,7 +15,7 @@ Main Steps:
     1. Set a fixed random seed for reproducibility.
     2. Generate all 7-mer sequence pairs (and their reverse complements), filtering out any
        with four identical bases in a row.
-    3. Point to (and enable) a precomputed energy cache to speed up repeated runs.
+    3. Configure the NUPACK model parameters.
     4. Randomly sample up to 50 sequence pairs from the pool.
     5. Compute on-target energies (pair-hybridization) and off-target energies (cross-hybridization).
     6. Plot and save the histograms of both distributions to 'energy_hist.pdf', printing summary stats.
@@ -47,12 +47,7 @@ if __name__ == "__main__":
         preselected_cores=seqwalk_cores,
     )
 
-    # 3) Configure and enable the precomputed energy cache.
-    #    The specified pickle file ('8mers.pkl') will be created automatically during execution
-    #    inside a folder called 'pre_computed_energies' (created if it doesn’t exist).
-    #    If the file already exists, the script will simply load and reuse it instead of recomputing energies.
-    hf.choose_precompute_library("20mers.pkl")
-    hf.USE_LIBRARY = False
+    # 3) Configure the NUPACK model parameters.
     hf.set_nupack_params(material='dna',celsius=37,sodium=0.05,magnesium=0.025)
 
     # 4) Randomly sample 250 sequence pairs for a quick pilot analysis

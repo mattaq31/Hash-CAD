@@ -14,11 +14,16 @@ from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.vertex_cover_algorithms import (
     build_edges,
-    iterative_vertex_cover_multi,
+    iterative_vertex_cover_refinement,
 )
 
 logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
+
+
+def _status(message):
+    print(message, flush=True)
+    logger.info(message)
 
 
 def estimate_offtarget_nupack_calls(num_sequence_pairs):
@@ -35,14 +40,12 @@ def hybrid_search(
     max_ontarget,
     min_ontarget,
     self_energy_limit,
-    init_subsetsize=200,
+    initial_fresh_pair_count=200,
     generations=100,
     allowed_violations=0,
     max_nupack_calls=50000,
     prune_fraction=0.2,
-    history_subset_scale=1.0,
-    vc_multistart=30,
-    vc_population_size=1,
+    fresh_pair_scale=1.0,
     vc_max_iterations=5000,
     stop_event=None,
 ):
@@ -67,13 +70,25 @@ def hybrid_search(
 
     Notes
     -----
-    - `history_ids` and `history_pool` represent the same preserved set in two
-      forms: IDs for bookkeeping and `(seq, rc_seq)` pairs for cross-reference
-      checks.
-    - If subset selection stops early because the NUPACK-call budget is hit,
-      `allowed_violations` is increased by one before the next generation.
+    - `retained_pair_ids` and `retained_pairs` represent the same carried-forward
+      best set in two forms: IDs for bookkeeping and `(seq, rc_seq)` pairs for
+      cross-reference checks.
+    - `max_ontarget` and `min_ontarget` bound the accepted on-target energy
+      window for new candidates. A candidate is accepted only if
+      `min_ontarget <= on_target_energy <= max_ontarget`.
+    - `self_energy_limit` is a lower bound on acceptable self-structure
+      energies for both strands in a pair.
+    - `max_nupack_calls` is a per-generation budget for direct NUPACK
+      computations made inside `select_subset_in_energy_range` while sampling
+      and screening new candidates. It does not terminate the whole hybrid
+      search, and it does not cap the later full-subset
+      `compute_offtarget_energies` call.
+    - If subset selection stops early because this per-generation sampling
+      budget is hit, `allowed_violations` is increased by one before the next
+      generation so later sampling becomes less strict.
     - `compute_offtarget_energies` is deterministic for a given subset, so its
-      NUPACK workload is estimated analytically and added to the running total.
+      NUPACK workload is estimated analytically and added to the running total
+      for reporting only.
 
     :param sequence_pairs: Candidate sequence source. Can be a
                            `SequencePairRegistry`-like object with
@@ -82,7 +97,9 @@ def hybrid_search(
     :type sequence_pairs: object or list
 
     :param offtarget_limit: Energy threshold below which an off-target
-                            interaction is considered incompatible.
+                            interaction is considered incompatible, both during
+                            history cross-reference checks and when building the
+                            incompatibility graph for the vertex-cover step.
     :type offtarget_limit: float
 
     :param max_ontarget: Upper bound for acceptable on-target energy.
@@ -94,42 +111,41 @@ def hybrid_search(
     :param self_energy_limit: Minimum acceptable self-energy for each strand.
     :type self_energy_limit: float
 
-    :param init_subsetsize: Initial number of new candidate pairs to request
-                            per generation before preserved history is re-added.
-    :type init_subsetsize: int
+    :param initial_fresh_pair_count: Initial target number of fresh candidate
+                                     pairs to collect in each generation before
+                                     retained pairs are re-added.
+    :type initial_fresh_pair_count: int
 
     :param generations: Maximum number of search generations to run.
     :type generations: int
 
-    :param allowed_violations: Initial number of violating history-pool pairs a
-                               new candidate may tolerate during cross-reference.
+    :param allowed_violations: Initial number of history-pool conflicts a new
+                               candidate may tolerate during cross-reference.
+                               This value can increase across generations if
+                               subset selection repeatedly hits the sampling
+                               NUPACK budget.
     :type allowed_violations: int
 
     :param max_nupack_calls: Maximum number of direct NUPACK computations
-                             allowed during each subset-selection step.
+                             allowed during each generation's subset-selection
+                             step. Hitting this limit stops candidate sampling
+                             for that generation only.
     :type max_nupack_calls: int or None
 
-    :param prune_fraction: Fraction of vertices to remove before each
-                           vertex-cover repair step.
+    :param prune_fraction: Fraction of the current vertex cover to remove
+                           before each repair iteration in the graph heuristic.
     :type prune_fraction: float
 
-    :param history_subset_scale: Multiplier used to derive the next generation's
-                                 requested fresh subset size from the number of
-                                 preserved history pairs. If history is non-empty,
-                                 the next `subsetsize` becomes
-                                 `int(len(history_ids) * history_subset_scale)`.
-    :type history_subset_scale: float
+    :param fresh_pair_scale: Multiplier used to derive the next generation's
+                             fresh-pair target from the number of retained best
+                             pairs. If retained pairs are available, the next
+                             target becomes
+                             `int(len(retained_pair_ids) * fresh_pair_scale)`.
+    :type fresh_pair_scale: float
 
-    :param vc_multistart: Number of independent starts used by the iterative
-                          vertex-cover heuristic.
-    :type vc_multistart: int
-
-    :param vc_population_size: Maximum number of equal-quality covers retained
-                               inside each vertex-cover run.
-    :type vc_population_size: int
-
-    :param vc_max_iterations: Maximum number of refinement iterations inside
-                              each vertex-cover run.
+    :param vc_max_iterations: Maximum number of repair/refinement iterations
+                              inside the vertex-cover heuristic for one
+                              generation.
     :type vc_max_iterations: int
 
     :param stop_event: Optional external stop signal.
@@ -150,21 +166,17 @@ def hybrid_search(
     sodium = hf.NUPACK_PARAMS.get("SODIUM")
     magnesium = hf.NUPACK_PARAMS.get("MAGNESIUM")
 
-    history_ids = set()
-    history_pool = []
+    retained_pair_ids = set()
+    retained_pairs = []
     non_cover_vertices = set()
     current_allowed_violations = allowed_violations
     total_nupack_calls = 0
-    subsetsize = init_subsetsize
+    target_fresh_pair_count = initial_fresh_pair_count
 
     if not 0 <= prune_fraction <= 1:
         raise ValueError("prune_fraction must be between 0 and 1.")
-    if history_subset_scale < 0:
-        raise ValueError("history_subset_scale must be non-negative.")
-    if vc_multistart < 1:
-        raise ValueError("vc_multistart must be at least 1.")
-    if vc_population_size < 1:
-        raise ValueError("vc_population_size must be at least 1.")
+    if fresh_pair_scale < 0:
+        raise ValueError("fresh_pair_scale must be non-negative.")
     if vc_max_iterations < 1:
         raise ValueError("vc_max_iterations must be at least 1.")
 
@@ -183,34 +195,35 @@ def hybrid_search(
         f"max on-target: {max_ontarget}, "
         f"min off-target: {offtarget_limit}, "
         f"min secondary-structure: {self_energy_limit}, "
-        f"initial subset size: {init_subsetsize}, "
+        f"initial fresh pair count: {initial_fresh_pair_count}, "
         f"generations: {generations}, "
         f"allowed violations: {allowed_violations}, "
         f"max NUPACK calls: {max_nupack_calls}, "
         f"prune fraction: {prune_fraction}, "
-        f"history subset scale: {history_subset_scale}, "
-        f"vc multistart: {vc_multistart}, "
-        f"vc population size: {vc_population_size}, "
+        f"fresh pair scale: {fresh_pair_scale}, "
         f"vc max iterations: {vc_max_iterations}"
     )
 
     try:
         for i in range(generations):
             if stop_event is not None and stop_event.is_set():
-                print("Stop event detected. Stopping search...")
-                logger.info("Stop event detected. Stopping hybrid search.")
+                _status("Stop event detected. Stopping hybrid search.")
                 break
+
+            _status(
+                f"Generation {i + 1}: selecting candidate subset "
+                f"(target fresh pairs: {target_fresh_pair_count})..."
+            )
 
             subset, indices, stopped_early, subset_nupack_calls = sc.select_subset_in_energy_range(
                 sequence_pairs,
                 energy_min=min_ontarget,
                 energy_max=max_ontarget,
                 self_energy_min=self_energy_limit,
-                max_size=subsetsize,
-                Use_Library=False,
-                avoid_indices=history_ids,
+                max_size=target_fresh_pair_count,
+                avoid_indices=retained_pair_ids,
                 timeout_s=None,
-                history_pool=history_pool,
+                retained_pairs=retained_pairs,
                 allowed_violations=current_allowed_violations,
                 offtarget_limit=offtarget_limit,
                 max_nupack_calls=max_nupack_calls,
@@ -218,38 +231,32 @@ def hybrid_search(
             total_nupack_calls += subset_nupack_calls
             if stopped_early:
                 current_allowed_violations += 1
-                print(
+                _status(
                     "Subset selection stopped early; "
                     f"increasing allowed violations to {current_allowed_violations}."
                 )
-                logger.info(
-                    "Subset selection stopped early; increasing allowed "
-                    f"violations to {current_allowed_violations}."
-                )
             else:
-                print(
-                    f"Current max_pair_violations: {current_allowed_violations}"
-                )
-                logger.info(
+                _status(
+                    f"Generation {i + 1}: sampled {len(indices)} fresh pairs "
+                    f"using {subset_nupack_calls} direct NUPACK calls. "
                     f"Current max_pair_violations: {current_allowed_violations}"
                 )
 
             # Re-add preserved sequences so they remain visible to the graph step.
-            sorted_history = sorted(history_ids)
+            sorted_retained_pair_ids = sorted(retained_pair_ids)
             if isinstance(sequence_pairs, list):
-                extra_pairs = [sequence_pairs[idx][1] for idx in sorted_history]
+                extra_pairs = [sequence_pairs[idx][1] for idx in sorted_retained_pair_ids]
             else:
-                extra_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted_history]
+                extra_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted_retained_pair_ids]
             subset += extra_pairs
-            indices += list(sorted_history)
+            indices += list(sorted_retained_pair_ids)
 
             if not indices:
                 msg = (
                     "No sequences found in the requested energy range "
                     "(NUPACK call limit hit or constraints too strict)."
                 )
-                print(msg)
-                logger.warning(msg)
+                _status(msg)
                 break
 
             # Ensure no duplicate indices
@@ -261,25 +268,23 @@ def hybrid_search(
 
             # This step dominates cost, so we track its deterministic workload
             # analytically instead of instrumenting the core computation path.
+            _status(
+                f"Generation {i + 1}: computing full off-target matrix for "
+                f"{len(subset)} pairs..."
+            )
             off_e_subset = sc.compute_offtarget_energies(subset)
             total_nupack_calls += estimate_offtarget_nupack_calls(len(subset))
-            logger.info("Building incompatibility graph...")
+            _status(f"Generation {i + 1}: building incompatibility graph...")
             Edges = build_edges(off_e_subset, indices, offtarget_limit)
 
-            print(
-                f"Running iterative_vertex_cover_multi with "
-                f"population_size={vc_population_size}"
+            _status(
+                f"Generation {i + 1}: refining graph solution "
+                f"(max iterations: {vc_max_iterations})..."
             )
-            logger.info(
-                "Running vertex cover heuristic. "
-                f"Trying {vc_multistart} independent starts."
-            )
-            removed_vertices, _trajectories = iterative_vertex_cover_multi(
+            removed_vertices, _trajectories = iterative_vertex_cover_refinement(
                 indices,
                 Edges,
-                avoid_V=history_ids,
-                multistart=vc_multistart,
-                population_size=vc_population_size,
+                avoid_V=retained_pair_ids,
                 max_iterations=vc_max_iterations,
                 num_vertices_to_remove=int(len(indices) * prune_fraction),
                 show_progress=False,
@@ -292,29 +297,23 @@ def hybrid_search(
             # sequence pool is rebuilt so subset selection can cross-reference it.
             if len(new_non_cover_vertices) >= len(non_cover_vertices):
                 if len(new_non_cover_vertices) > len(non_cover_vertices):
-                    history_ids.clear()
-                    history_pool = []
+                    retained_pair_ids.clear()
+                    retained_pairs = []
                 non_cover_vertices = new_non_cover_vertices
 
-                history_ids = set(non_cover_vertices)
+                retained_pair_ids = set(non_cover_vertices)
                 if isinstance(sequence_pairs, list):
-                    history_pool = [sequence_pairs[idx][1] for idx in sorted(history_ids)]
+                    retained_pairs = [sequence_pairs[idx][1] for idx in sorted(retained_pair_ids)]
                 else:
-                    history_pool = [sequence_pairs.get_pair_by_id(idx) for idx in sorted(history_ids)]
+                    retained_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted(retained_pair_ids)]
 
-            subsetsize = (
-                int(len(history_ids) * history_subset_scale)
-                if history_ids
-                else subsetsize
+            target_fresh_pair_count = (
+                int(len(retained_pair_ids) * fresh_pair_scale)
+                if retained_pair_ids
+                else target_fresh_pair_count
             )
 
-            print(
-                f"Generation: {i + 1:2d} | "
-                f"Current number of pairs: {len(new_non_cover_vertices):3d} | "
-                f"Largest number of pairs: {len(non_cover_vertices):3d} | "
-                f"Total NUPACK calls: {total_nupack_calls}"
-            )
-            logger.info(
+            _status(
                 f"Generation: {i + 1:2d} | "
                 f"Current number of pairs: {len(new_non_cover_vertices):3d} | "
                 f"Largest number of pairs: {len(non_cover_vertices):3d} | "
@@ -322,16 +321,14 @@ def hybrid_search(
             )
 
     except KeyboardInterrupt:
-        print("\nInterrupted by user. Saving best result so far...")
-        logger.info("Interrupted by user. Saving best result so far...")
+        _status("Interrupted by user. Saving best result so far...")
 
     if isinstance(sequence_pairs, list):
         final_pairs = [sequence_pairs[idx][1] for idx in sorted(non_cover_vertices)]
     else:
         final_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted(non_cover_vertices)]
 
-    print(f"Total NUPACK calls overall: {total_nupack_calls}")
-    logger.info(f"Total NUPACK calls overall: {total_nupack_calls}")
+    _status(f"Total NUPACK calls overall: {total_nupack_calls}")
     hf.save_sequence_pairs_to_txt(final_pairs)
     return final_pairs
 
@@ -355,20 +352,15 @@ if __name__ == "__main__":
     offtarget_limit = -7.2
     self_energy_limit = -2
 
-    hf.choose_precompute_library("8mers101.pkl")
-    hf.USE_LIBRARY = False
-
     orthogonal_seq_pairs = hybrid_search(
         sequence_pairs_object,
         offtarget_limit,
         max_ontarget,
         min_ontarget,
         self_energy_limit,
-        init_subsetsize=200,
+        initial_fresh_pair_count=200,
         generations=3000,
         allowed_violations=1,
-        vc_multistart=10,
-        vc_population_size=1,
         vc_max_iterations=5000,
         max_nupack_calls=8000,
     )
@@ -376,7 +368,6 @@ if __name__ == "__main__":
 
     hf.save_sequence_pairs_to_txt(orthogonal_seq_pairs, filename="ortho_test7mers.txt")
 
-    hf.USE_LIBRARY = False
     onef, self_e_A, self_e_B = sc.compute_ontarget_energies(orthogonal_seq_pairs)
     offef = sc.compute_offtarget_energies(orthogonal_seq_pairs)
 

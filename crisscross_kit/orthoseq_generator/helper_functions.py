@@ -1,12 +1,6 @@
-import signal
 import os
-import pickle
 from datetime import datetime
 
-# Default file name for the energy library
-_precompute_library_filename = None
-
-USE_LIBRARY = False
 ENERGY_TYPE = "total"
 NUPACK_PARAMS = {
     "MATERIAL": "dna",
@@ -22,8 +16,7 @@ def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
     Notes
     -----
     These values are read by functions in `sequence_computations` when building
-    a NUPACK `Model`. If you change parameters, you should also choose a new
-    precompute library filename to avoid mixing incompatible energies.
+    a NUPACK `Model`.
 
     :param material: NUPACK material type (e.g., "dna").
     :type material: str
@@ -44,118 +37,6 @@ def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
     NUPACK_PARAMS["CELSIUS"] = celsius
     NUPACK_PARAMS["SODIUM"] = sodium
     NUPACK_PARAMS["MAGNESIUM"] = magnesium
-
-
-
-
-def choose_precompute_library(filename):
-    """
-    Sets the name of the precomputed energy library file.
-
-    Notes
-    -----
-    Updates the global variable used by other functions to locate the correct library.
-
-    :param filename: Name of the pickle file where precomputed energies are or will be stored.
-    :type filename: str
-
-    :returns: None
-    :rtype: None
-    """
-
-    global _precompute_library_filename
-    _precompute_library_filename = filename
-
-
-
-class DelayedKeyboardInterrupt:
-    """
-    Context manager that delays KeyboardInterrupt (Ctrl+C) during critical operations.
-
-    This prevents corruption of the precomputed energy library by deferring interrupt
-    handling until the protected block (e.g., file writes) completes.
-
-    Usage
-    -----
-    with DelayedKeyboardInterrupt():
-        # perform critical operation, like saving files
-        save_pickle_atomic(...)
-
-    Notes
-    -----
-    - On entering, replaces the SIGINT handler to queue the signal.
-    - On exit, restores the original handler and re-raises if an interrupt was received.
-    """
-    
-    def __enter__(self):
-        self.signal_received = False
-        self.old_handler = signal.getsignal(signal.SIGINT)
-        signal.signal(signal.SIGINT, self.handler)
-
-    def handler(self, sig, frame):
-        print("\nDelayed KeyboardInterrupt until file writing is done...")
-        self.signal_received = (sig, frame)
-
-    def __exit__(self, type, value, traceback):
-        signal.signal(signal.SIGINT, self.old_handler)
-        if self.signal_received:
-            self.old_handler(*self.signal_received)
-
-
-
-
-def save_pickle_atomic(data, filepath):
-    """
-    Saves a Python object to disk as a pickle file in a safe and atomic way.
-
-    Notes
-    -----
-    - Writes data to a temporary file (`<filepath>.tmp`) first, then atomically replaces
-      the original file to avoid corruption if a crash occurs during writing.
-    - Creates the target directory if it does not exist.
-
-    :param data: Python object to save (typically a dictionary).
-    :type data: any
-
-    :param filepath: Full path to the target pickle file.
-    :type filepath: str
-
-    :returns: None
-    :rtype: None
-    """
-    
-    tmp_path = filepath + ".tmp"
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    with open(tmp_path, "wb") as f:
-        pickle.dump(data, f)
-
-    # This safely replaces the original file with the completed tmp file
-    os.replace(tmp_path, filepath)
-
-
-
-
-
-
-def get_library_path():
-    """
-    Returns the full file path to the currently selected precomputed energy library.
-
-    Description
-    -----------
-    Constructs a path by combining the 'pre_computed_energies' folder with the
-    filename set via `choose_precompute_library()`. If no filename has been set,
-    defaults to 'test_lib.pkl'.
-
-    :returns: Full path to the pickle file containing the precomputed Gibbs free energy dictionary.
-    :rtype: str
-    """
-    
-    folder = "pre_computed_energies"
-    filename = _precompute_library_filename or "test_lib.pkl"
-    return os.path.join(folder, filename)
-
-
 def get_default_results_folder():
 
     """

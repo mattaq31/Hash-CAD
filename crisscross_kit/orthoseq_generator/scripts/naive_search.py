@@ -21,7 +21,6 @@ def crossreference_sequences(
     pool,
     offtarget_limit,
     max_pair_violations=0,
-    Use_Library=None,
 ):
     """
     Checks all off-target interactions between a new sequence pair and the pool.
@@ -35,9 +34,6 @@ def crossreference_sequences(
     Counts violations per pool pair (not per sequence interaction). Returns
     False if violations exceed max_pair_violations.
     """
-    if Use_Library is None:
-        Use_Library = hf.USE_LIBRARY
-
     if not pool:
         return True
 
@@ -49,8 +45,8 @@ def crossreference_sequences(
         violated = False
         for a in (seq, rc_seq):
             for b in (pool_seq, pool_rc):
-                result = sc.nupack_compute_energy_precompute_library_fast(
-                    a, b, type="total", Use_Library=Use_Library
+                result = sc.compute_nupack_energy(
+                    a, b, type="total"
                 )
                 energy = result[0] if isinstance(result, tuple) else result
                 if energy < offtarget_limit:
@@ -90,11 +86,7 @@ if __name__ == "__main__":
     offtarget_limit = -8.5
     self_energy_limit = -0.5
 
-    # 4) Configure cache and NUPACK parameters
-    hf.choose_precompute_library("naive_search.pkl")
-    hf.USE_LIBRARY = False
-
-    # 5) Naive greedy search parameters
+    # 4) Naive greedy search parameters
     target_size = 1000
     max_attempts = 95000000
     progress_every = 250
@@ -121,8 +113,8 @@ if __name__ == "__main__":
 
             seq, rc_seq = pair
 
-            on_result = sc.nupack_compute_energy_precompute_library_fast(
-                seq, rc_seq, type="total", Use_Library=hf.USE_LIBRARY
+            on_result = sc.compute_nupack_energy(
+                seq, rc_seq, type="total"
             )
             if not isinstance(on_result, tuple):
                 continue
@@ -134,11 +126,11 @@ if __name__ == "__main__":
             if self_e_seq < self_energy_limit or self_e_rc < self_energy_limit:
                 continue
 
-            homo_seq = sc.nupack_compute_energy_precompute_library_fast(
-                seq, seq, type="total", Use_Library=hf.USE_LIBRARY
+            homo_seq = sc.compute_nupack_energy(
+                seq, seq, type="total"
             )
-            homo_rc = sc.nupack_compute_energy_precompute_library_fast(
-                rc_seq, rc_seq, type="total", Use_Library=hf.USE_LIBRARY
+            homo_rc = sc.compute_nupack_energy(
+                rc_seq, rc_seq, type="total"
             )
             homo_seq_energy = homo_seq[0] if isinstance(homo_seq, tuple) else homo_seq
             homo_rc_energy = homo_rc[0] if isinstance(homo_rc, tuple) else homo_rc
@@ -149,7 +141,6 @@ if __name__ == "__main__":
                 pair,
                 selected_pairs,
                 offtarget_limit,
-                Use_Library=hf.USE_LIBRARY,
             ):
                 continue
 
@@ -175,7 +166,6 @@ if __name__ == "__main__":
         print("No sequences found; skipping energy plots.")
         raise SystemExit(0)
 
-    hf.USE_LIBRARY = False
     on_e, self_e_a, self_e_b = sc.compute_ontarget_energies(selected_pairs)
     off_e = sc.compute_offtarget_energies(selected_pairs)
 

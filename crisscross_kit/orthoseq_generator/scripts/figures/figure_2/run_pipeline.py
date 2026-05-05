@@ -52,7 +52,6 @@ def main():
                         fivep_ext=compute_cfg.get("fivep_ext", ""),
                         threep_ext=compute_cfg.get("threep_ext", ""),
                         avoid_gggg=compute_cfg.get("avoid_gggg", False),
-                        use_library=compute_cfg.get("use_library", False),
                         output_dir=output_dir,
                     )
                 )
@@ -73,8 +72,6 @@ def main():
                 num_vertices_to_remove=compare_cfg.get("num_vertices_to_remove"),
                 max_iterations=compare_cfg.get("max_iterations", 200),
                 limit=compare_cfg.get("limit", float("inf")),
-                multistart=compare_cfg.get("multistart", 1),
-                population_size=compare_cfg.get("population_size", 300),
                 show_progress=compare_cfg.get("show_progress", False),
                 offtarget_step=compare_cfg.get("offtarget_step", 0.1),
                 target_conflict_prob=compare_cfg.get("target_conflict_prob", 0.5),

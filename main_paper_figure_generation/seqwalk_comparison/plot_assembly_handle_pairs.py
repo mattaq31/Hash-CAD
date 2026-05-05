@@ -127,7 +127,6 @@ if __name__ == "__main__":
     )
     print(f"Removed 5' TT flanks from {changed_pairs} sequence pairs.")
     hf.ENERGY_TYPE = "totalu"
-    hf.USE_LIBRARY = False
     hf.set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025)
 
     on_energies, _, _ = sc.compute_ontarget_energies(sequence_pairs)

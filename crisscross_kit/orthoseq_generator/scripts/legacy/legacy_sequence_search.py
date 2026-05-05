@@ -42,21 +42,17 @@ if __name__ == "__main__":
     edges = vca.build_edges(off_energies, ids, offtarget_limit)
     vertices = set(ids)
 
-    # 5) Run the iterative vertex-cover heuristic (single multistart here)
+    # 5) Run the iterative vertex-cover heuristic
     #    - num_vertices_to_remove: how many to drop in each perturbation
     #    - max_iterations: inner-loop iterations
     #    - limit: stop early if cover size reaches len(V)-limit
-    #    - multistart: number of random restarts
-    #    - population_size: max retained covers per generation
     #    - show_progress: display iteration logs
-    vertex_cover, _trajectories = vca.iterative_vertex_cover_multi(
+    vertex_cover, _trajectories = vca.iterative_vertex_cover_refinement(
         vertices, edges,
         avoid_V=None,
         num_vertices_to_remove=200,
         max_iterations=200,
         limit=70,
-        multistart=1,
-        population_size=300,
         show_progress=True
     )
 

@@ -194,9 +194,6 @@ def run_analysis(plus, minus, *, output_path="energy_hist_nupack_only.pdf"):
 
     print(pairs)
 
-    hf.choose_precompute_library("my_new_cache.pkl")
-    hf.USE_LIBRARY = False
-
     on_e = sc.compute_ontarget_energies(pairs)
     off_e = sc.compute_offtarget_energies(pairs)
 
@@ -268,4 +265,3 @@ if __name__ == "__main__":
     import shutil
 
     shutil.rmtree(chk_dir, ignore_errors=True)
-

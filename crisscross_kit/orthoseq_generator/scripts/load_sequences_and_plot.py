@@ -12,7 +12,7 @@ Purpose:
 
 Main Steps:
     1. Load sequence pairs from a previously saved .txt file.
-    2. Optionally enable use of a precomputed energy library for faster calculations.
+    2. Configure the NUPACK model parameters.
     3. Compute both on-target (self-binding) and off-target (cross-binding) energies.
     4. Plot and save the energy histograms, and print the summary statistics.
 '''
@@ -25,9 +25,8 @@ if __name__ == "__main__":
     # The file needs to be located in the noflank_results folder. This is where run_sequence_search script saves it.
     sequence_pairs = hf.load_sequence_pairs_from_txt('the_new_64_seq.txt')
 
-    # 2) Optional: Enable precomputed energy cache for faster performance
-    hf.choose_precompute_library("my_new_cache.pkl")
-    hf.USE_LIBRARY = False  # Set to True to use the cache, False to force recomputation
+    # 2) Configure the NUPACK model parameters
+    hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
 
     # 3) Compute on-target energies (self-hybridization)
     on_e,_,_ = sc.compute_ontarget_energies(sequence_pairs)
