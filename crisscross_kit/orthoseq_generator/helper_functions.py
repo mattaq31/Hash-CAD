@@ -15,7 +15,7 @@ def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
 
     Notes
     -----
-    These values are read by functions in `sequence_computations` when building
+    These values are read by functions in `energy_computations` when building
     a NUPACK `Model`.
 
     :param material: NUPACK material type (e.g., "dna").
