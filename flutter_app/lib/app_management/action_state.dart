@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+enum SlatColorMode { natural, layer, group }
+
 /// State management for action mode and display settings
 class ActionState extends ChangeNotifier {
   String slatMode;
@@ -34,12 +36,14 @@ class ActionState extends ChangeNotifier {
   bool assemblyRandomMode; // When true, each click places random handle value
   bool assemblyEnforceMode; // When true, placed handles are marked as enforced
   bool assemblyBlockMode; // When true, clicking places/removes blocks instead of handles
+  SlatColorMode slatColorMode;
 
   Map<int, String> panelMap = {
     0: 'slats',
-    1: 'assembly',
-    2: 'cargo',
-    3: 'settings',
+    1: 'grouping',
+    2: 'assembly',
+    3: 'cargo',
+    4: 'settings',
   };
 
   Map<String, dynamic> echoExportSettings =  {
@@ -75,6 +79,7 @@ class ActionState extends ChangeNotifier {
     this.assemblyRandomMode = false,
     this.assemblyEnforceMode = false,
     this.assemblyBlockMode = false,
+    this.slatColorMode = SlatColorMode.natural,
   });
 
   void updateEchoSetting(String setting, dynamic value){
@@ -243,6 +248,11 @@ class ActionState extends ChangeNotifier {
       assemblyRandomMode = false;
       assemblyEnforceMode = false;
     }
+    notifyListeners();
+  }
+
+  void setSlatColorMode(SlatColorMode mode) {
+    slatColorMode = mode;
     notifyListeners();
   }
 }

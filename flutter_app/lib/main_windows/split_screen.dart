@@ -176,13 +176,16 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                   selectedIndex: actionState.panelMode,
                   onDestinationSelected: (int index) {
                     actionState.setPanelMode(index);
+                    appState.preserveSelectionOnLayerChange = (index == 1);
 
-                    appState.clearSelection();
+                    if (index != 1) {
+                      appState.clearSelection();
+                    }
 
-                    if(index == 1){
+                    if(index == 2){
                       actionState.setAssemblyHandleDisplay(true);
                     }
-                    if (index == 2){
+                    if (index == 3){
                       actionState.setCargoHandleDisplay(true);
                     }
 
@@ -199,6 +202,7 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                   ),
                   destinations: const [
                     NavigationRailDestination(icon: Icon(Icons.brush), label: Text('Slat\nDesign', textAlign: TextAlign.center)),
+                    NavigationRailDestination(icon: Icon(Icons.workspaces), label: Text('Grouping', textAlign: TextAlign.center)),
                     NavigationRailDestination(icon: Icon(Icons.developer_board), label: Text('Assembly\nHandles', textAlign: TextAlign.center)),
                     NavigationRailDestination(icon: Icon(Icons.add_box), label: Text('Cargo\n& Seed', textAlign: TextAlign.center)),
                     NavigationRailDestination(icon: Icon(Icons.precision_manufacturing), label: Text('Echo\nConfig', textAlign: TextAlign.center)),

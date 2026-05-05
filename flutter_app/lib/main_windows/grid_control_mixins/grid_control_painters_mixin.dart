@@ -46,13 +46,14 @@ mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridContro
               hiddenAssembly,
               actionState,
               appState,
+              appState.groupVersion,
             ),
             child: Container(),
           ),
         ),
         CustomPaint(
           size: Size.infinite,
-          painter: actionState.panelMode == 0
+          painter: (actionState.panelMode == 0 || actionState.panelMode == 1)
               ? SlatHoverPainter(
                   scale,
                   offset,

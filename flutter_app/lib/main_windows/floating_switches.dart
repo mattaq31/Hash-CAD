@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../app_management/shared_app_state.dart';
 import '../dialogs/alert_window.dart';
 import '../app_management/action_state.dart';
 
@@ -164,6 +163,9 @@ class _TogglePanelState extends State<TogglePanel> {
             child: Icon(Icons.keyboard),
           ),
           const SizedBox(width: 8),
+          // Color mode popup
+          buildColorModeButton(context: context, actionState: widget.actionState),
+          const SizedBox(width: 8),
         ],
       ),
     );
@@ -240,5 +242,60 @@ Widget buildFreeToggleSwitch({
         ),
       ),
     ],
+  );
+}
+
+Widget buildColorModeButton({required BuildContext context, required ActionState actionState}) {
+  final colorScheme = Theme.of(context).colorScheme;
+  Color bgColor;
+  String tooltip;
+  switch (actionState.slatColorMode) {
+    case SlatColorMode.natural:
+      bgColor = Colors.grey[300]!;
+      tooltip = 'Color Mode: Off';
+    case SlatColorMode.layer:
+      bgColor = colorScheme.primary;
+      tooltip = 'Color Mode: Layer';
+    case SlatColorMode.group:
+      bgColor = Colors.teal;
+      tooltip = 'Color Mode: Group';
+  }
+
+  return PopupMenuButton<SlatColorMode>(
+    tooltip: tooltip,
+    onSelected: (mode) => actionState.setSlatColorMode(mode),
+    itemBuilder: (context) => [
+      PopupMenuItem(
+        value: SlatColorMode.natural,
+        child: Row(children: [
+          Icon(Icons.palette, color: actionState.slatColorMode == SlatColorMode.natural ? colorScheme.primary : null, size: 18),
+          const SizedBox(width: 8),
+          const Text('Off (Natural Colors)'),
+        ]),
+      ),
+      PopupMenuItem(
+        value: SlatColorMode.layer,
+        child: Row(children: [
+          Icon(Icons.layers, color: actionState.slatColorMode == SlatColorMode.layer ? colorScheme.primary : null, size: 18),
+          const SizedBox(width: 8),
+          const Text('Color by Layer'),
+        ]),
+      ),
+      PopupMenuItem(
+        value: SlatColorMode.group,
+        child: Row(children: [
+          Icon(Icons.workspaces, color: actionState.slatColorMode == SlatColorMode.group ? Colors.teal : null, size: 18),
+          const SizedBox(width: 8),
+          const Text('Color by Group'),
+        ]),
+      ),
+    ],
+    child: FloatingActionButton.small(
+      heroTag: 'colorModeBtn',
+      backgroundColor: bgColor,
+      foregroundColor: actionState.slatColorMode == SlatColorMode.natural ? Colors.black87 : Colors.white,
+      onPressed: null,
+      child: const Icon(Icons.palette, size: 20),
+    ),
   );
 }

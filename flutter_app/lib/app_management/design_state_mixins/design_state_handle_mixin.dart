@@ -344,6 +344,7 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
 
   @override
   void deleteSelectedHandles(String slatSide){
+    if (selectedAssemblyPositions.isEmpty) return;
     int integerSlatSide = getSlatSideFromLayer(layerMap, selectedLayerKey, slatSide);
     for (var coord in selectedAssemblyPositions) {
       var slat = slats[occupiedGridPoints[selectedLayerKey]?[coord]]!;

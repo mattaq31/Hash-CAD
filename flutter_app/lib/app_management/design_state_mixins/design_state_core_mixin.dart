@@ -110,7 +110,9 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
         seedRoster: seedRoster,
         phantomMap: phantomMap,
         assemblyLinkManager: assemblyLinkManager,
-        gridMode: gridMode));
+        gridMode: gridMode,
+        groupConfigurations: groupConfigurations,
+        activeGroupConfigId: activeGroupConfigId));
   }
 
   @override
@@ -138,6 +140,9 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
       assemblyLinkManager = newState.assemblyLinkManager;
       gridMode = newState.gridMode;
       phantomMap = newState.phantomMap;
+      groupConfigurations = newState.groupConfigurations;
+      activeGroupConfigId = newState.activeGroupConfigId;
+      groupVersion++;
       if (!cargoPalette.containsKey(cargoAdditionType)) {
         cargoAdditionType = null;
       }

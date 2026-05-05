@@ -17,6 +17,7 @@ import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
 import '../../echo_and_experimental_helpers/plate_layout_state.dart';
 import '../design_state_mixins/design_state_handle_link_mixin.dart';
+import '../design_state_mixins/design_state_grouping_mixin.dart';
 import 'design_io_constants.dart';
 import 'excel_utilities.dart';
 import 'file_picker_helpers.dart';
@@ -50,18 +51,24 @@ String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
 ///  - `cargo_layer_N_side_helix` — cargo handle assignments per layer/side
 ///  - `seed_layer_N_side_helix` — seed position markers
 ///  - `handle_interface_N` — assembly handle arrays
-///  - `metadata` — layer info, cargo palette, unique slat colours, grid mode
-///  - `slat_types` — per-slat tube/db classification
+///  - `metadata` — layer info, cargo palette, unique slat colours, group colours, grid mode
+///  - `slat_types` — per-slat tube/db classification + group membership per config
 ///  - `slat_handle_links` — handle link constraints
 ///  - `p{index}_{name}` — echo plate layouts (optional, from [echoPlateLayoutState])
 ///  - `input_source_plates` — all input plates in one sheet (optional, from [plateLibrary])
 ///  - `lab_metadata` — export flags and master mix config (optional)
 ///
+/// Optional parameters:
+///  - [echoPlateLayoutState] — echo plate grid data for lab export
+///  - [plateLibrary] — input source plate definitions
+///  - [groupConfigurations] — slat grouping configurations with colours and membership
+///
 /// On web, triggers a browser download. On desktop, opens a native save dialog.
 void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette,
     Map<String, Map<Offset, String>> occupiedCargoPoints, Map<(String, String, Offset), Seed> seedRoster, HandleLinkManager linkManager,
     double gridSize, String gridMode, String suggestedDesignName,
-    {PlateLayoutState? echoPlateLayoutState, PlateLibrary? plateLibrary}) async {
+    {PlateLayoutState? echoPlateLayoutState, PlateLibrary? plateLibrary,
+    Map<String, GroupConfiguration>? groupConfigurations}) async {
   Offset minPos;
   Offset maxPos;
   (minPos, maxPos) = extractGridBoundary(slats);
@@ -261,12 +268,48 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     colorIndex += 1;
   }
 
-  // ── Slat types sheet: tube/db classification sorted by layer then ID ──
+  // ── Metadata: group colour info section (config name + group name + colour per group) ──
+  int groupColorStartPoint = colorStartPoint + colorIndex;
+  if (groupConfigurations != null && groupConfigurations.isNotEmpty) {
+    metadataSheet.merge(CellIndex.indexByString('A$groupColorStartPoint'), CellIndex.indexByString('G$groupColorStartPoint'),
+        customValue: TextCellValue(metaSectionGroupColorInfo));
+    metadataSheet.cell(CellIndex.indexByString('A$groupColorStartPoint')).cellStyle = CellStyle(
+      horizontalAlign: HorizontalAlign.Center,
+    );
+    metadataSheet.cell(CellIndex.indexByString('A${groupColorStartPoint + 1}')).value = TextCellValue('Configuration');
+    metadataSheet.cell(CellIndex.indexByString('B${groupColorStartPoint + 1}')).value = TextCellValue('Group');
+    metadataSheet.cell(CellIndex.indexByString('C${groupColorStartPoint + 1}')).value = TextCellValue('Colour');
+    int gIndex = 2;
+    for (var config in groupConfigurations.values) {
+      for (var group in config.groups.values) {
+        metadataSheet.cell(CellIndex.indexByString('A${groupColorStartPoint + gIndex}')).value = TextCellValue(config.name);
+        metadataSheet.cell(CellIndex.indexByString('B${groupColorStartPoint + gIndex}')).value = TextCellValue(group.name);
+        metadataSheet.cell(CellIndex.indexByString('C${groupColorStartPoint + gIndex}')).value =
+            TextCellValue('#${group.color.value.toRadixString(16).substring(2).toUpperCase()}');
+        gIndex++;
+      }
+    }
+  }
+
+  // ── Slat types sheet: tube/db classification sorted by layer then ID + group configs ──
   Sheet slatTypeSheet = excel[slatTypesSheetName];
   slatTypeSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer');
   slatTypeSheet.cell(CellIndex.indexByString('B1')).value = TextCellValue('Slat ID');
   slatTypeSheet.cell(CellIndex.indexByString('C1')).value = TextCellValue('Type');
 
+  // Add group configuration columns (one per config)
+  List<GroupConfiguration> sortedConfigs = [];
+  if (groupConfigurations != null && groupConfigurations.isNotEmpty) {
+    sortedConfigs = groupConfigurations.values.toList();
+    for (int ci = 0; ci < sortedConfigs.length; ci++) {
+      int colIndex = 3 + ci; // D, E, F, ...
+      slatTypeSheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: 0)).value =
+          TextCellValue(sortedConfigs[ci].name);
+    }
+  }
+
+  // Build a map from (layerNum, slatIdNum) to slat ID for group lookup
+  Map<(int, int), String> layerSlatToId = {};
   List<List<CellValue>> rows = [];
 
   for (var slat in slats.values) {
@@ -275,6 +318,7 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     }
     int layerNum = layerMap[slat.layer]!['order'] + 1;
     int slatIdNum = int.parse(slat.id.split("-I").last);
+    layerSlatToId[(layerNum, slatIdNum)] = slat.id;
     rows.add([
       IntCellValue(layerNum),
       IntCellValue(slatIdNum),
@@ -291,8 +335,28 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     return idA.compareTo(idB);
   });
 
-  for (var row in rows) {
-    slatTypeSheet.appendRow(row);
+  for (int ri = 0; ri < rows.length; ri++) {
+    slatTypeSheet.appendRow(rows[ri]);
+    // Write group numbers for each configuration
+    if (sortedConfigs.isNotEmpty) {
+      int layerNum = (rows[ri][0] as IntCellValue).value;
+      int slatIdNum = (rows[ri][1] as IntCellValue).value;
+      String? slatId = layerSlatToId[(layerNum, slatIdNum)];
+      if (slatId != null) {
+        for (int ci = 0; ci < sortedConfigs.length; ci++) {
+          var config = sortedConfigs[ci];
+          var groupId = config.slatToGroup[slatId];
+          if (groupId != null) {
+            var group = config.groups[groupId];
+            if (group != null) {
+              int colIndex = 3 + ci;
+              slatTypeSheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: ri + 1)).value =
+                  TextCellValue(group.name);
+            }
+          }
+        }
+      }
+    }
   }
 
   // ── Handle link constraints sheet ──

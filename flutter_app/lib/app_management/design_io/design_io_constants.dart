@@ -44,6 +44,7 @@ const int metaLayerStartRow = 8;
 const String metaSectionLayerInfo = 'LAYER INFO';
 const String metaSectionCargoInfo = 'CARGO INFO';
 const String metaSectionSlatColorInfo = 'UNIQUE SLAT COLOUR INFO';
+const String metaSectionGroupColorInfo = 'GROUP COLOUR INFO';
 
 // --- Handle category strings ---
 const String categoryAssemblyHandle = 'ASSEMBLY_HANDLE';

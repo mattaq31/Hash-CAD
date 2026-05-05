@@ -10,6 +10,7 @@ import '../../echo_and_experimental_helpers/plate_layout_state.dart';
 import '../slat_undo_stack.dart';
 import '../shared_app_state.dart';
 import 'design_state_handle_link_mixin.dart';
+import 'design_state_grouping_mixin.dart';
 
 /// Contract defining all shared members between DesignState mixins.
 /// This enables IDE navigation (Find Usages) to work across mixins by
@@ -93,6 +94,15 @@ mixin DesignStateContract on ChangeNotifier {
   set echoPlateLayoutState(PlateLayoutState? value);
   bool get echoPlateLayoutFromImport;
   set echoPlateLayoutFromImport(bool value);
+  Map<String, GroupConfiguration> get groupConfigurations;
+  set groupConfigurations(Map<String, GroupConfiguration> value);
+  String? get activeGroupConfigId;
+  set activeGroupConfigId(String? value);
+  GroupConfiguration? get activeGroupConfig;
+  bool get preserveSelectionOnLayerChange;
+  set preserveSelectionOnLayerChange(bool value);
+  int get groupVersion;
+  set groupVersion(int value);
 
   // === Methods from DesignStateCoreMixin ===
   void setHoverPreview(HoverPreview? preview);
@@ -219,4 +229,24 @@ mixin DesignStateContract on ChangeNotifier {
   void linkHandlesAndPropagate(List<HandleKey> keys);
   void toggleHandleBlockAndApply(HandleKey key);
   void setHandleEnforcedValueAndApply(HandleKey key, int value);
+
+  // === Methods from DesignStateGroupingMixin ===
+  String? get selectedGroupId;
+  void createGroupConfiguration({String? name});
+  void deleteGroupConfiguration(String configId);
+  void renameGroupConfiguration(String configId, String newName);
+  void setActiveGroupConfiguration(String? configId);
+  void createGroupFromSelection();
+  void deleteGroup(String groupId);
+  void renameGroup(String groupId, String newName);
+  void recolorGroup(String groupId, Color color);
+  void addSlatsToGroup(String groupId, List<String> slatIds);
+  void removeSlatsFromGroup(String groupId, List<String> slatIds);
+  void selectGroupSlats(String groupId);
+  void updateGroupToSelection(String groupId);
+  void autoGroupSlats(int groupSize);
+  void clearAllGroups();
+  void cleanupDeletedSlat(String slatId);
+  void resetGroupState();
+  Color? resolveGroupColor(String slatId);
 }

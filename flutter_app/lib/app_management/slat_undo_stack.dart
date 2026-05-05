@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/seed.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
+import 'design_state_mixins/design_state_grouping_mixin.dart';
 
 class DesignSaveState {
   final Map<String, Slat> slats;
@@ -15,6 +16,8 @@ class DesignSaveState {
   final Map<String, Map<int, String>> phantomMap;
   final HandleLinkManager assemblyLinkManager;
   final String gridMode;
+  final Map<String, GroupConfiguration> groupConfigurations;
+  final String? activeGroupConfigId;
 
   DesignSaveState({
     required this.slats,
@@ -27,6 +30,8 @@ class DesignSaveState {
     required this.phantomMap,
     required this.assemblyLinkManager,
     required this.gridMode,
+    required this.groupConfigurations,
+    required this.activeGroupConfigId,
   });
 
   /// Deep copy constructor
@@ -56,7 +61,31 @@ class DesignSaveState {
       },
       assemblyLinkManager: assemblyLinkManager.copy(),
       gridMode: gridMode,
+      groupConfigurations: _copyGroupConfigurations(groupConfigurations),
+      activeGroupConfigId: activeGroupConfigId,
     );
+  }
+
+  /// Deep copies the full group configuration hierarchy.
+  static Map<String, GroupConfiguration> _copyGroupConfigurations(Map<String, GroupConfiguration> configs) {
+    return {
+      for (var e in configs.entries)
+        e.key: GroupConfiguration(
+          id: e.value.id,
+          name: e.value.name,
+          nextGroupNumber: e.value.nextGroupNumber,
+          groups: {
+            for (var g in e.value.groups.entries)
+              g.key: SlatGroup(
+                id: g.value.id,
+                name: g.value.name,
+                color: g.value.color,
+                slatIds: Set.from(g.value.slatIds),
+              )
+          },
+          slatToGroup: Map.from(e.value.slatToGroup),
+        )
+    };
   }
 }
 

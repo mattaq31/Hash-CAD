@@ -25,6 +25,7 @@ import 'design_state_mixins/design_state_cargo_mixin.dart';
 import 'design_state_mixins/design_state_seed_mixin.dart';
 import 'design_state_mixins/design_state_plate_mixin.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
+import 'design_state_mixins/design_state_grouping_mixin.dart';
 
 /// Finds the first free integer key in a map
 int firstFreeKey(Map<int, String> map, {int start = 1}) {
@@ -92,7 +93,8 @@ class DesignState extends ChangeNotifier
         DesignStateCargoMixin,
         DesignStateSeedMixin,
         DesignStatePlateMixin,
-        DesignStateHandleLinkMixin {
+        DesignStateHandleLinkMixin,
+        DesignStateGroupingMixin {
   // Grid and coordinate system constants
   @override
   final double gridSize = 10.0; // do not change
@@ -339,6 +341,7 @@ class DesignState extends ChangeNotifier
     gridMode = value;
     clearAll();
     undoStack = SlatUndoStack();
+    saveUndoState();
     notifyListeners();
   }
 

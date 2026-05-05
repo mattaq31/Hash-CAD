@@ -17,6 +17,7 @@ import '../../crisscross_core/common_utilities.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../design_state_mixins/design_state_handle_link_mixin.dart';
+import '../design_state_mixins/design_state_grouping_mixin.dart';
 import 'assembly_handle_io.dart';
 import 'design_io_constants.dart';
 import 'excel_utilities.dart';
@@ -116,13 +117,32 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
 
   for (;; colorCount++) {
     String slatID = readExcelString(metadataSheet, 'A${colorReadStart + colorCount}').trim();
-    if (slatID.isEmpty) break;
+    if (slatID.isEmpty || slatID == metaSectionGroupColorInfo) break;
     Color slatColor = Color(int.parse('0xFF${readExcelString(metadataSheet, 'B${colorReadStart + colorCount}').substring(1)}'));
     slatColors[slatID] = slatColor;
   }
 
-  // ── Slat types: tube vs double-barrel per (layer, slatID) ──
+  // ── Group colours (optional): config name + group name + colour per group ──
+  // Stored as a map of (configName, groupName) -> Color for later application
+  Map<(String, String), Color> groupColorOverrides = {};
+  int groupColorReadStart = colorReadStart + colorCount;
+  String groupColorMarker = readExcelString(metadataSheet, 'A$groupColorReadStart').trim();
+  if (groupColorMarker == metaSectionGroupColorInfo) {
+    int gOffset = 2; // skip header row
+    for (;; gOffset++) {
+      String configName = readExcelString(metadataSheet, 'A${groupColorReadStart + gOffset}').trim();
+      if (configName.isEmpty) break;
+      String groupName = readExcelString(metadataSheet, 'B${groupColorReadStart + gOffset}').trim();
+      String colorHex = readExcelString(metadataSheet, 'C${groupColorReadStart + gOffset}').trim();
+      if (groupName.isNotEmpty && colorHex.isNotEmpty) {
+        groupColorOverrides[(configName, groupName)] = Color(int.parse('0xFF${colorHex.substring(1)}'));
+      }
+    }
+  }
+
+  // ── Slat types: tube vs double-barrel per (layer, slatID) + group configurations ──
   Map<(int, int), String> slatTypeMap = {};
+  Map<String, GroupConfiguration> importedGroupConfigs = {};
 
   try {
     if (excel.tables.containsKey(slatTypesSheetName)) {
@@ -138,6 +158,19 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
           throw Exception("Missing required columns in slat_types sheet");
         }
 
+        // Identify group configuration columns (anything after Layer, Slat ID, Type)
+        List<int> groupColIndices = [];
+        List<String> groupConfigNames = [];
+        for (int ci = 0; ci < headers.length; ci++) {
+          if (ci != layerIndex && ci != slatIdIndex && ci != typeIndex && headers[ci].isNotEmpty) {
+            groupColIndices.add(ci);
+            groupConfigNames.add(headers[ci]);
+          }
+        }
+
+        // Temporary storage: configIndex -> Map<groupName, List<(layer, slatId)>>
+        List<Map<String, List<(int, int)>>> configGroupMembers = List.generate(groupColIndices.length, (_) => {});
+
         for (int i = 1; i < slatTypeSheet.rows.length; i++) {
           var row = slatTypeSheet.rows[i];
           if (row.isEmpty) continue;
@@ -151,8 +184,60 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
             var slatId = int.tryParse(slatIdStr);
             if (layer != null && slatId != null) {
               slatTypeMap[(layer, slatId)] = typeStr;
+
+              // Read group assignments for each configuration
+              for (int gi = 0; gi < groupColIndices.length; gi++) {
+                int colIdx = groupColIndices[gi];
+                if (colIdx < row.length) {
+                  var groupName = row[colIdx]?.value?.toString();
+                  if (groupName != null && groupName.isNotEmpty) {
+                    configGroupMembers[gi].putIfAbsent(groupName, () => []);
+                    configGroupMembers[gi][groupName]!.add((layer, slatId));
+                  }
+                }
+              }
             }
           }
+        }
+
+        // Build GroupConfiguration objects using layer order -> layer key lookup
+        List<String> defaultPalette = [
+          '#ebac23', '#b80058', '#008cf9', '#006e00', '#00bbad', '#d163e6',
+          '#b24602', '#ff9287', '#5954d6', '#00c6f8', '#878500', '#00a76c', '#bdbdbd'
+        ];
+        // Map layer order (1-based from file) to layer key
+        Map<int, String> orderToLayerKey = {};
+        for (var entry in layerMap.entries) {
+          orderToLayerKey[(entry.value['order'] as int) + 1] = entry.key;
+        }
+
+        for (int gi = 0; gi < groupConfigNames.length; gi++) {
+          if (configGroupMembers[gi].isEmpty) continue;
+          String configId = 'C${gi + 1}';
+          var config = GroupConfiguration(id: configId, name: groupConfigNames[gi]);
+          int groupNum = 1;
+          for (var entry in configGroupMembers[gi].entries) {
+            String groupId = 'G$groupNum';
+            // Use saved colour if available, otherwise fall back to default palette
+            Color groupColor = groupColorOverrides[(groupConfigNames[gi], entry.key)] ??
+                Color(int.parse('0xFF${defaultPalette[((groupNum - 1) % defaultPalette.length)].replaceFirst('#', '')}'));
+            var group = SlatGroup(
+              id: groupId,
+              name: entry.key,
+              color: groupColor,
+            );
+            for (var (layer, slatId) in entry.value) {
+              String? layerKey = orderToLayerKey[layer];
+              if (layerKey == null) continue;
+              String slatKey = '$layerKey-I$slatId';
+              group.slatIds.add(slatKey);
+              config.slatToGroup[slatKey] = groupId;
+            }
+            config.groups[groupId] = group;
+            groupNum++;
+          }
+          config.nextGroupNumber = groupNum;
+          importedGroupConfigs[configId] = config;
         }
       }
     }
@@ -462,6 +547,7 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
     echoPlateData: echoPlateData,
     inputPlateData: inputPlateData,
     labMetadata: labMetadata,
+    groupConfigurations: importedGroupConfigs,
   );
 }
 

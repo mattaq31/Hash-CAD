@@ -191,12 +191,13 @@ class SlatPainter extends CustomPainter {
   final List<Offset> hiddenAssembly;
   final ActionState actionState;
   final DesignState appState;
+  final int groupVersion;
   late Map<int, TextPainter> labelPainters;
 
 
   SlatPainter(this.scale, this.canvasOffset, this.slats,
       this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats,
-      this.hiddenCargo, this.hiddenAssembly, this.actionState, this.appState){
+      this.hiddenCargo, this.hiddenAssembly, this.actionState, this.appState, this.groupVersion){
 
     labelPainters = <int, TextPainter>{};
     TextStyle textStyle = TextStyle(
@@ -422,7 +423,15 @@ class SlatPainter extends CustomPainter {
       }
 
       // main slat paint setup
-      Color mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
+      Color mainColor;
+      switch (actionState.slatColorMode) {
+        case SlatColorMode.natural:
+          mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
+        case SlatColorMode.layer:
+          mainColor = layerMap[slat.layer]?['color'];
+        case SlatColorMode.group:
+          mainColor = appState.resolveGroupColor(slat.id) ?? layerMap[slat.layer]?['color'];
+      }
       Paint rodPaint = Paint()
         ..color = mainColor
         ..strokeWidth = appState.gridSize / 2
@@ -836,6 +845,7 @@ class SlatPainter extends CustomPainter {
         !listEquals(oldDelegate.selectedSlats, selectedSlats) ||
         !listEquals(oldDelegate.hiddenSlats, hiddenSlats) ||
         oldDelegate.actionState != actionState ||
+        oldDelegate.groupVersion != groupVersion ||
         oldDelegate.appState != appState;
   }
 }

@@ -5,6 +5,7 @@ import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../design_state_mixins/design_state_handle_link_mixin.dart';
+import '../design_state_mixins/design_state_grouping_mixin.dart';
 
 /// Contains all data extracted from a design file by [parseDesignInIsolate].
 ///
@@ -22,6 +23,7 @@ class ParsedDesignResult {
   final Map<String, List<List<dynamic>>>? echoPlateData;
   final Map<String, List<List<dynamic>>>? inputPlateData;
   final Map<String, String>? labMetadata;
+  final Map<String, GroupConfiguration> groupConfigurations;
 
   const ParsedDesignResult({
     required this.slats,
@@ -35,5 +37,6 @@ class ParsedDesignResult {
     this.echoPlateData,
     this.inputPlateData,
     this.labMetadata,
+    this.groupConfigurations = const {},
   });
 }

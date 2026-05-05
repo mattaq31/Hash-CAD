@@ -21,13 +21,15 @@ String _colorToHex(Color color) {
 /// Returns null if cancelled, otherwise returns a map of export options.
 Future<Map<String, dynamic>?> showSvgExportDialog(
   BuildContext context,
-  ActionState actionState,
-) async {
+  ActionState actionState, {
+  bool hasGroupConfig = false,
+}) async {
   bool exportPositionNumbers = actionState.slatNumbering;
   bool exportCargoHandles = actionState.displayCargoHandles;
   bool exportAssemblyHandles = actionState.displayAssemblyHandles;
   bool exportSlatIDs = actionState.displaySlatIDs;
   String layerMode = 'fullStack'; // 'fullStack' or 'highlightCurrent'
+  String colorMode = 'natural'; // 'natural', 'layer', 'group'
 
   return showDialog<Map<String, dynamic>>(
     context: context,
@@ -78,6 +80,39 @@ Future<Map<String, dynamic>?> showSvgExportDialog(
               ),
               const SizedBox(height: 16),
               const Text(
+                'Slat coloring:',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              RadioListTile<String>(
+                title: const Text('Natural'),
+                subtitle: const Text('Layer colors with custom slat overrides'),
+                value: 'natural',
+                groupValue: colorMode,
+                onChanged: (value) {
+                  setDialogState(() => colorMode = value!);
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('Layer only'),
+                subtitle: const Text('All slats use their layer color'),
+                value: 'layer',
+                groupValue: colorMode,
+                onChanged: (value) {
+                  setDialogState(() => colorMode = value!);
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('Group colors'),
+                subtitle: Text(hasGroupConfig ? 'Colors from active group configuration' : 'No group configuration active'),
+                value: 'group',
+                groupValue: colorMode,
+                onChanged: hasGroupConfig ? (value) {
+                  setDialogState(() => colorMode = value!);
+                } : null,
+              ),
+              const SizedBox(height: 16),
+              const Text(
                 'Layer rendering:',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
@@ -115,6 +150,7 @@ Future<Map<String, dynamic>?> showSvgExportDialog(
               'assemblyHandles': exportAssemblyHandles,
               'slatIDs': exportSlatIDs,
               'layerMode': layerMode,
+              'colorMode': colorMode,
             }),
             child: const Text('Export'),
           ),
@@ -136,6 +172,7 @@ Future<void> exportSlatsToSvg({
   final selectedLayer = appState.selectedLayerKey;
   final selectedLayerTopside = (layerMap[selectedLayer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
   final String layerMode = exportOptions['layerMode'] ?? 'fullStack';
+  final String colorMode = exportOptions['colorMode'] ?? 'natural';
   final bool highlightCurrentLayer = layerMode == 'highlightCurrent';
 
   double? minX, maxX, minY, maxY;
@@ -193,8 +230,17 @@ Future<void> exportSlatsToSvg({
       d.write(' L ${p.dx.toStringAsFixed(2)} ${p.dy.toStringAsFixed(2)}');
     }
 
-    // Use unique color if available
-    final Color slatColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'] ?? const Color(0xFF000000);
+    // Resolve color based on export color mode setting
+    final Color layerColor = layerMap[slat.layer]?['color'] ?? const Color(0xFF000000);
+    final Color slatColor;
+    switch (colorMode) {
+      case 'layer':
+        slatColor = layerColor;
+      case 'group':
+        slatColor = appState.resolveGroupColor(slat.id) ?? layerColor;
+      default:
+        slatColor = slat.uniqueColor ?? layerColor;
+    }
 
     // Build slat group with all elements
     final slatGroupBuilder = XmlBuilder();

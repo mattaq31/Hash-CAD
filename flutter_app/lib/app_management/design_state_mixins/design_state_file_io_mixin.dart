@@ -28,7 +28,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
       return;
     }
     exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, assemblyLinkManager, gridSize, gridMode, designName,
-        echoPlateLayoutState: echoPlateLayoutState, plateLibrary: plateStack);
+        echoPlateLayoutState: echoPlateLayoutState, plateLibrary: plateStack, groupConfigurations: groupConfigurations);
   }
 
   @override
@@ -104,6 +104,8 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     designName = newDesignName;
     phantomMap = newPhantomMap;
     assemblyLinkManager = newLinkManager;
+    groupConfigurations = result.groupConfigurations;
+    activeGroupConfigId = groupConfigurations.isNotEmpty ? groupConfigurations.keys.first : null;
     selectedLayerKey = layerMap.keys.first;
 
     // update nextLayerKey based on the largest letter in the new incoming layers (it might not necessarily be the last one)
@@ -261,6 +263,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     // state reset
     resetDefaults();
     assemblyLinkManager = HandleLinkManager();
+    resetGroupState();
     echoPlateLayoutState = null;
     echoPlateLayoutFromImport = false;
 

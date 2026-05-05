@@ -19,6 +19,8 @@ DesignSaveState _snapshotFromSlats(int slatCount) {
     phantomMap: {},
     assemblyLinkManager: HandleLinkManager(),
     gridMode: 'crisscross',
+    groupConfigurations: {},
+    activeGroupConfigId: null,
   );
 }
 
@@ -35,6 +37,8 @@ DesignSaveState _taggedSnapshot(String tag) {
     phantomMap: {},
     assemblyLinkManager: HandleLinkManager(),
     gridMode: tag,
+    groupConfigurations: {},
+    activeGroupConfigId: null,
   );
 }
 
