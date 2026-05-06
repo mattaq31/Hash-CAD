@@ -21,6 +21,8 @@ class SlatSidebar extends StatelessWidget {
   final ValueChanged<bool> onSplitSlatTypesChanged;
   final bool splitSlatLayers;
   final ValueChanged<bool> onSplitSlatLayersChanged;
+  final EchoWellColorMode echoColorMode;
+  final Color? Function(String slatId)? resolveGroupColor;
 
   const SlatSidebar({
     super.key,
@@ -37,6 +39,8 @@ class SlatSidebar extends StatelessWidget {
     required this.onSplitSlatTypesChanged,
     required this.splitSlatLayers,
     required this.onSplitSlatLayersChanged,
+    this.echoColorMode = EchoWellColorMode.natural,
+    this.resolveGroupColor,
   });
 
   @override
@@ -181,7 +185,7 @@ class SlatSidebar extends StatelessWidget {
                         slatId: slatId,
                         slat: slat,
                         displayName: slatDisplayName(slat, layerMap),
-                        designColor: designColorFor(slat, layerMap),
+                        designColor: echoDesignColorFor(slat, layerMap, echoColorMode, resolveGroupColor),
                       );
                     },
                   ),

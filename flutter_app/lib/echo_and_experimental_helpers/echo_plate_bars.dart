@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'echo_category_colors.dart';
+import 'echo_plate_constants.dart' show EchoWellColorMode;
 
 // ---------------------------------------------------------------------------
 // PlateHeaderBar — title bar with close/export and collapse toggle
@@ -109,6 +110,9 @@ class PlateActionBar extends StatelessWidget {
   final VoidCallback onDuplicateSelected;
   final VoidCallback onConfigAll;
   final VoidCallback onEditSelected;
+  final VoidCallback onSelectAll;
+  final VoidCallback onMarkManualHandles;
+  final VoidCallback onMassManualEdit;
   final bool hasSelection;
 
   const PlateActionBar({
@@ -118,6 +122,9 @@ class PlateActionBar extends StatelessWidget {
     required this.onDuplicateSelected,
     required this.onConfigAll,
     required this.onEditSelected,
+    required this.onSelectAll,
+    required this.onMarkManualHandles,
+    required this.onMassManualEdit,
     required this.hasSelection,
   });
 
@@ -130,8 +137,46 @@ class PlateActionBar extends StatelessWidget {
         border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          // Manual handle buttons on the left
+          TextButton.icon(
+            onPressed: hasSelection ? onMarkManualHandles : null,
+            icon: Icon(Icons.back_hand_outlined, size: 18,
+                color: hasSelection ? Colors.deepPurple.shade700 : Colors.grey),
+            label: Text('Mark Manual Pipetting Handles',
+                style: TextStyle(fontSize: 12,
+                    color: hasSelection ? Colors.deepPurple.shade700 : Colors.grey)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: onMassManualEdit,
+            icon: Icon(Icons.auto_fix_high, size: 18, color: Colors.deepPurple.shade700),
+            label: Text('Mass Manual Handle Marking',
+                style: TextStyle(fontSize: 12, color: Colors.deepPurple.shade700)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const Spacer(),
+          // Rest of the toolbar on the right
+          TextButton.icon(
+            onPressed: onSelectAll,
+            icon: Icon(Icons.select_all, size: 18, color: Colors.indigo.shade700),
+            label: Text('Select All', style: TextStyle(fontSize: 12, color: Colors.indigo.shade700)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 8),
           TextButton.icon(
             onPressed: onConfigAll,
             icon: Icon(Icons.tune, size: 18, color: Colors.teal.shade700),
@@ -169,7 +214,8 @@ class PlateActionBar extends StatelessWidget {
           const SizedBox(width: 8),
           TextButton.icon(
             onPressed: hasSelection ? onDeleteSelected : null,
-            icon: Icon(Icons.delete_outline, size: 18, color: hasSelection ? Colors.orange.shade700 : Colors.grey),
+            icon: Icon(Icons.delete_outline, size: 18,
+                color: hasSelection ? Colors.orange.shade700 : Colors.grey),
             label: Text('Remove Selected',
                 style: TextStyle(fontSize: 12, color: hasSelection ? Colors.orange.shade700 : Colors.grey)),
             style: TextButton.styleFrom(
@@ -211,8 +257,16 @@ class PlateColorKeyBar extends StatelessWidget {
 
   final bool showMetricView;
   final VoidCallback onToggleMetricView;
+  final EchoWellColorMode colorMode;
+  final ValueChanged<EchoWellColorMode> onColorModeChanged;
 
-  const PlateColorKeyBar({super.key, required this.showMetricView, required this.onToggleMetricView});
+  const PlateColorKeyBar({
+    super.key,
+    required this.showMetricView,
+    required this.onToggleMetricView,
+    required this.colorMode,
+    required this.onColorModeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -247,10 +301,87 @@ class PlateColorKeyBar extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: Alignment.centerRight,
-              child: _MetricViewToggle(active: showMetricView, onTap: onToggleMetricView),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ColorModeSelector(colorMode: colorMode, onChanged: onColorModeChanged),
+                  const SizedBox(width: 16),
+                  _MetricViewToggle(active: showMetricView, onTap: onToggleMetricView),
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ColorModeSelector extends StatefulWidget {
+  final EchoWellColorMode colorMode;
+  final ValueChanged<EchoWellColorMode> onChanged;
+  const _ColorModeSelector({required this.colorMode, required this.onChanged});
+
+  @override
+  State<_ColorModeSelector> createState() => _ColorModeSelectorState();
+}
+
+class _ColorModeSelectorState extends State<_ColorModeSelector> {
+  bool _hovering = false;
+
+  String get _label => switch (widget.colorMode) {
+    EchoWellColorMode.natural => 'Natural',
+    EchoWellColorMode.layer => 'By Layer',
+    EchoWellColorMode.group => 'By Group',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _hovering ? Colors.teal.shade900 : Colors.teal.shade700;
+    return PopupMenuButton<EchoWellColorMode>(
+      tooltip: 'Coloring Scheme',
+      onSelected: widget.onChanged,
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: EchoWellColorMode.natural,
+          child: Row(children: [
+            Icon(Icons.palette, size: 16,
+                color: widget.colorMode == EchoWellColorMode.natural ? Colors.teal : null),
+            const SizedBox(width: 8),
+            const Text('Natural', style: TextStyle(fontSize: 12)),
+          ]),
+        ),
+        PopupMenuItem(
+          value: EchoWellColorMode.layer,
+          child: Row(children: [
+            Icon(Icons.layers, size: 16,
+                color: widget.colorMode == EchoWellColorMode.layer ? Colors.teal : null),
+            const SizedBox(width: 8),
+            const Text('By Layer', style: TextStyle(fontSize: 12)),
+          ]),
+        ),
+        PopupMenuItem(
+          value: EchoWellColorMode.group,
+          child: Row(children: [
+            Icon(Icons.workspaces, size: 16,
+                color: widget.colorMode == EchoWellColorMode.group ? Colors.teal : null),
+            const SizedBox(width: 8),
+            const Text('By Group', style: TextStyle(fontSize: 12)),
+          ]),
+        ),
+      ],
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.palette, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(_label, style: TextStyle(fontSize: 11, color: color)),
+          ],
+        ),
       ),
     );
   }

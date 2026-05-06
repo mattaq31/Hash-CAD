@@ -20,7 +20,7 @@ class ParsedDesignResult {
   final Map<String, Map<int, String>> phantomMap;
   final HandleLinkManager linkManager;
   final String errorCode;
-  final Map<String, List<List<dynamic>>>? echoPlateData;
+  final List<List<dynamic>>? echoPlateData;
   final Map<String, List<List<dynamic>>>? inputPlateData;
   final Map<String, String>? labMetadata;
   final Map<String, GroupConfiguration> groupConfigurations;

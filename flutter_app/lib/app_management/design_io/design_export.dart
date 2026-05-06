@@ -382,22 +382,37 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
   );
 
   if (echoPlateLayoutState != null) {
-    final grids = echoPlateLayoutState.exportPlateGrids();
-    for (var entry in grids.entries) {
-      final sheetName = '$echoPlateSheetPrefix${entry.key}_${entry.value.name}';
-      Sheet echoSheet = excel[sheetName];
-      for (var r = 0; r < entry.value.grid.length; r++) {
-        final row = entry.value.grid[r];
-        for (var c = 0; c < row.length; c++) {
-          final isHeader = r == 0 || c == 0 || r == 10;
-          final style = isHeader ? echoHeaderStyle : echoDataStyle;
-          setCellValue(echoSheet, c, r, row[c], style: style);
+    final consolidatedGrid = echoPlateLayoutState.exportConsolidatedGrid();
+    Sheet echoSheet = excel[echoPlateConsolidatedSheetName];
+    final echoTitleStyle = CellStyle(
+      backgroundColorHex: '#4472C4'.excelColor,
+      fontColorHex: 'FFFFFF'.excelColor,
+      bold: true,
+      horizontalAlign: HorizontalAlign.Center,
+    );
+
+    for (var r = 0; r < consolidatedGrid.length; r++) {
+      final row = consolidatedGrid[r];
+      final firstCell = row.isNotEmpty ? row[0].toString() : '';
+      final isTitle = firstCell.startsWith(echoConsolidatedTitlePrefix) ||
+          firstCell == echoManualHandlesMarker;
+      final isBlankRow = row.every((c) => c == null || c.toString().isEmpty);
+
+      for (var c = 0; c < row.length; c++) {
+        final CellStyle? style;
+        if (isBlankRow) {
+          style = null;
+        } else if (isTitle) {
+          style = echoTitleStyle;
+        } else {
+          style = c == 0 ? echoHeaderStyle : echoDataStyle;
         }
+        setCellValue(echoSheet, c, r, row[c], style: style);
       }
-      echoSheet.setColumnWidth(0, 4.0);
-      for (var c = 1; c <= 12; c++) {
-        echoSheet.setColumnWidth(c, 16.0);
-      }
+    }
+    echoSheet.setColumnWidth(0, 36.0);
+    for (var c = 1; c <= 12; c++) {
+      echoSheet.setColumnWidth(c, 16.0);
     }
   }
 

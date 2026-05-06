@@ -7,11 +7,13 @@ class HandleBarcodePainter extends CustomPainter {
   final Map<int, Map<String, dynamic>> h2Handles;
   final Map<int, Map<String, dynamic>> h5Handles;
   final int maxLength;
+  final Set<(int, int)> manualPositions;
 
   HandleBarcodePainter({
     required this.h2Handles,
     required this.h5Handles,
     this.maxLength = 32,
+    this.manualPositions = const {},
   });
 
   /// Blocked handles (value '0') should display as FLAT staples.
@@ -35,8 +37,10 @@ class HandleBarcodePainter extends CustomPainter {
 
     // Top row: H5
     for (int i = 0; i < maxLength; i++) {
-      final handle = h5Handles[i + 1];
-      final color = categoryColor(_effectiveCategory(handle));
+      final pos = i + 1;
+      final handle = h5Handles[pos];
+      final isManual = manualPositions.contains((5, pos));
+      final color = isManual ? categoryColor('MANUAL') : categoryColor(_effectiveCategory(handle));
       final rect = Rect.fromLTWH(i * rectWidth, 0, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);
       canvas.drawRect(rect, linePaint);
@@ -44,8 +48,10 @@ class HandleBarcodePainter extends CustomPainter {
 
     // Bottom row: H2
     for (int i = 0; i < maxLength; i++) {
-      final handle = h2Handles[i + 1];
-      final color = categoryColor(_effectiveCategory(handle));
+      final pos = i + 1;
+      final handle = h2Handles[pos];
+      final isManual = manualPositions.contains((2, pos));
+      final color = isManual ? categoryColor('MANUAL') : categoryColor(_effectiveCategory(handle));
       final rect = Rect.fromLTWH(i * rectWidth, rowHeight, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);
       canvas.drawRect(rect, linePaint);
@@ -56,6 +62,8 @@ class HandleBarcodePainter extends CustomPainter {
   bool shouldRepaint(HandleBarcodePainter oldDelegate) {
     return h2Handles.length != oldDelegate.h2Handles.length ||
         h5Handles.length != oldDelegate.h5Handles.length ||
-        maxLength != oldDelegate.maxLength;
+        maxLength != oldDelegate.maxLength ||
+        manualPositions.length != oldDelegate.manualPositions.length ||
+        !manualPositions.containsAll(oldDelegate.manualPositions);
   }
 }

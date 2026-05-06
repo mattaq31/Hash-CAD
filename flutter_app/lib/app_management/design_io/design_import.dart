@@ -492,10 +492,9 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
   }
 
   // ── Echo plate, input plate, and lab metadata sheets (optional) ──
-  Map<String, List<List<dynamic>>>? echoPlateData;
-  final echoSheetNames = excel.tables.keys.where((key) => key.startsWith(echoPlateSheetPrefix)).toList()..sort();
-  if (echoSheetNames.isNotEmpty) {
-    echoPlateData = {for (var name in echoSheetNames) name: extractSheetRows(excel.tables[name]!)};
+  List<List<dynamic>>? echoPlateData;
+  if (excel.tables.containsKey(echoPlateConsolidatedSheetName)) {
+    echoPlateData = extractSheetRows(excel.tables[echoPlateConsolidatedSheetName]!);
   }
 
   Map<String, String>? labMetadata;

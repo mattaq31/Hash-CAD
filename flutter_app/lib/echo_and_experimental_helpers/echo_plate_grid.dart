@@ -31,8 +31,11 @@ class PlateGrid extends StatelessWidget {
   final int plateDisplayNumber;
   final VoidCallback? onRenamePlate;
   final VoidCallback? onConfigPlate;
+  final VoidCallback? onSelectAllPlate;
   final bool showMetricView;
   final Map<String, WellConfig>? plateWellConfigs;
+  final EchoWellColorMode echoColorMode;
+  final Color? Function(String slatId)? resolveGroupColor;
 
   const PlateGrid({
     super.key,
@@ -57,8 +60,11 @@ class PlateGrid extends StatelessWidget {
     this.onRemovePlate,
     this.onRenamePlate,
     this.onConfigPlate,
+    this.onSelectAllPlate,
     this.showMetricView = false,
     this.plateWellConfigs,
+    this.echoColorMode = EchoWellColorMode.natural,
+    this.resolveGroupColor,
   });
 
   @override
@@ -86,6 +92,11 @@ class PlateGrid extends StatelessWidget {
               if (onRenamePlate != null) ...[
                 const SizedBox(width: 4),
                 _HoverableIconButton(onTap: onRenamePlate!, icon: Icons.edit, hoverColor: Colors.blue),
+              ],
+              if (onSelectAllPlate != null) ...[
+                const SizedBox(width: 4),
+                _HoverableIconButton(
+                    onTap: onSelectAllPlate!, icon: Icons.select_all, hoverColor: Colors.indigo),
               ],
               if (onConfigPlate != null) ...[
                 const SizedBox(width: 4),
@@ -165,9 +176,10 @@ class PlateGrid extends StatelessWidget {
     final isSelected = selectedWells.contains(wellKey);
     final ghostState = ghostStateFor(plateIndex, well);
     final isSource = isSourceWellDuringGroupDrag(plateIndex, well);
-    final color = designColorFor(slat, layerMap);
+    final color = echoDesignColorFor(slat, layerMap, echoColorMode, resolveGroupColor);
     final isInDupGroup = slatId != null && layoutState.duplicateGroups.containsKey(baseSlatId(slatId));
     final displayName = slat != null ? slatDisplayName(slat, layerMap) : null;
+    final manualPos = lookupId != null ? layoutState.getManualHandles(lookupId) : const <(int, int)>{};
 
     return WellWidget(
       key: wellKeyFor(plateIndex, well),
@@ -184,6 +196,7 @@ class PlateGrid extends StatelessWidget {
       showMetricView: showMetricView,
       wellConfig: plateWellConfigs?[well],
       slatType: slat?.slatType,
+      manualPositions: manualPos,
       onWellToWell: onWellToWell,
       onSidebarToWell: onSidebarToWell,
       onWellClick: () => onWellClick(plateIndex, well),

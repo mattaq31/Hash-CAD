@@ -14,6 +14,8 @@ import 'echo_plate_pdf_export.dart';
 import 'echo_plate_sidebar.dart';
 import 'echo_plate_well.dart';
 import 'echo_well_config_dialog.dart';
+import 'manual_handle_dialog.dart';
+import 'mass_manual_handle_dialog.dart';
 import 'master_mix_config.dart';
 import 'master_mix_export.dart';
 import 'plate_layout_state.dart';
@@ -58,6 +60,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
   // Metric view toggle
   bool _showMetricView = false;
+
+  // Echo well color mode (local to this window)
+  EchoWellColorMode _echoColorMode = EchoWellColorMode.natural;
 
   // Export options (stored on _layoutState for persistence)
 
@@ -164,7 +169,6 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   /// Keeps appState's echo plate reference in sync (shares the same object — no deep copy).
-  /// Export calls exportPlateGrids() which only reads, so sharing is safe.
   void _syncLayoutToAppState() {
     final appState = context.read<DesignState>();
     appState.echoPlateLayoutState = _layoutState;
@@ -259,6 +263,91 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _selectedWells.clear();
     });
     _saveUndoState();
+  }
+
+  void _handleSelectAll() {
+    setState(() {
+      _selectedWells = {};
+      for (var plateEntry in _layoutState!.plateAssignments.entries) {
+        for (var wellEntry in plateEntry.value.entries) {
+          if (wellEntry.value != null) {
+            _selectedWells.add('${plateEntry.key}:${wellEntry.key}');
+          }
+        }
+      }
+    });
+  }
+
+  void _handleSelectAllPlate(int plateIndex) {
+    setState(() {
+      final plate = _layoutState!.plateAssignments[plateIndex];
+      if (plate == null) return;
+      for (var wellEntry in plate.entries) {
+        if (wellEntry.value != null) {
+          _selectedWells.add('$plateIndex:${wellEntry.key}');
+        }
+      }
+    });
+  }
+
+  Future<void> _handleMarkManualHandles(DesignState appState) async {
+    if (_selectedWells.isEmpty) return;
+
+    // Determine if all selected slats share the same manual handle config
+    final mixedConfig = !_layoutState!.selectedHaveSameManualConfig(_selectedWells);
+
+    // Get current manual positions from the first selected slat
+    Set<(int, int)> currentPositions = {};
+    for (var key in _selectedWells) {
+      final parts = key.split(':');
+      final plate = int.parse(parts[0]);
+      final well = parts[1];
+      final slatId = _layoutState!.plateAssignments[plate]?[well];
+      if (slatId != null) {
+        currentPositions = _layoutState!.getManualHandles(slatId);
+        break;
+      }
+    }
+
+    _dialogOpen = true;
+    final result = await showManualHandleDialog(
+      context,
+      currentManualPositions: currentPositions,
+      mixedConfig: mixedConfig,
+    );
+    _dialogOpen = false;
+
+    if (result != null) {
+      setState(() {
+        _layoutState!.applyManualHandlesToSelected(_selectedWells, result);
+      });
+      _saveUndoState();
+    }
+  }
+
+  Future<void> _handleMassManualEdit(DesignState appState) async {
+    _dialogOpen = true;
+    final result = await showMassManualHandleDialog(
+      context,
+      slats: appState.slats,
+      layoutState: _layoutState!,
+    );
+    _dialogOpen = false;
+
+    if (result != null) {
+      setState(() {
+        if (result.clearAll) {
+          _layoutState!.manualHandles.clear();
+        } else {
+          for (var slatId in result.affectedSlatIds) {
+            final existing = _layoutState!.getManualHandles(slatId);
+            final merged = Set<(int, int)>.from(existing)..addAll(result.positionsToMark);
+            _layoutState!.setManualHandles(slatId, merged);
+          }
+        }
+      });
+      _saveUndoState();
+    }
   }
 
   void _handleAddPlate() {
@@ -751,6 +840,12 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       // If a fresh import happened while hidden, replace the layout entirely
       if (appState.echoPlateLayoutFromImport && appState.echoPlateLayoutState != null) {
         _applyImportedLayout(appState);
+      } else if (_layoutState != null && appState.echoPlateLayoutState == null) {
+        // Design was cleared/switched while hidden — discard stale local state
+        _layoutState = null;
+        _undoStack.clear();
+        _selectedWells.clear();
+        _wellKeys.clear();
       }
       return const SizedBox.shrink();
     }
@@ -761,6 +856,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     } else if (appState.echoPlateLayoutFromImport && appState.echoPlateLayoutState != null) {
       // A fresh import happened while the echo window was open — replace layout
       _applyImportedLayout(appState);
+    } else if (appState.echoPlateLayoutState == null) {
+      // Design was cleared/switched without echo data — reset to fresh state
+      _initialize(appState);
     } else {
       // Sync with design on every rebuild (picks up added/removed slats)
       _layoutState!.syncWithDesign(appState.slats, appState.layerMap);
@@ -816,6 +914,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                   onDuplicateSelected: _handleDuplicateSelected,
                   onConfigAll: _handleConfigAll,
                   onEditSelected: _handleEditSelected,
+                  onSelectAll: _handleSelectAll,
+                  onMarkManualHandles: () => _handleMarkManualHandles(appState),
+                  onMassManualEdit: () => _handleMassManualEdit(appState),
                   hasSelection: _selectedWells.isNotEmpty,
                 ),
                 Expanded(
@@ -841,6 +942,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                           _splitSlatLayers = v;
                           if (v) _splitSlatTypes = false;
                         }),
+                        echoColorMode: _echoColorMode,
+                        resolveGroupColor: appState.resolveGroupColor,
                       ),
                       const VerticalDivider(width: 1, thickness: 1),
                       Expanded(
@@ -852,6 +955,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                 PlateColorKeyBar(
                   showMetricView: _showMetricView,
                   onToggleMetricView: () => setState(() => _showMetricView = !_showMetricView),
+                  colorMode: _echoColorMode,
+                  onColorModeChanged: (mode) => setState(() => _echoColorMode = mode),
                 ),
                 _buildExportSection(appState),
               ],
@@ -1075,11 +1180,14 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         plateDisplayNumber: i + 1,
                         onRenamePlate: () => _handleRenamePlate(plateIndex),
                         onConfigPlate: () => _handleConfigPlate(plateIndex),
+                        onSelectAllPlate: () => _handleSelectAllPlate(plateIndex),
                         onRemovePlate: _layoutState!.plateAssignments.length > 1
                             ? () => _handleRemovePlate(plateIndex)
                             : null,
                         showMetricView: _showMetricView,
                         plateWellConfigs: _layoutState!.wellConfigs[plateIndex],
+                        echoColorMode: _echoColorMode,
+                        resolveGroupColor: appState.resolveGroupColor,
                       );
                     }),
                   ],

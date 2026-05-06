@@ -29,6 +29,7 @@ class WellWidget extends StatefulWidget {
   final bool showMetricView;
   final WellConfig? wellConfig;
   final String? slatType;
+  final Set<(int, int)> manualPositions;
 
   const WellWidget({
     super.key,
@@ -45,6 +46,7 @@ class WellWidget extends StatefulWidget {
     this.showMetricView = false,
     this.wellConfig,
     this.slatType,
+    this.manualPositions = const {},
     required this.onWellToWell,
     required this.onSidebarToWell,
     required this.onWellClick,
@@ -161,6 +163,7 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
                               h2Handles: slat.h2Handles,
                               h5Handles: slat.h5Handles,
                               maxLength: slat.maxLength,
+                              manualPositions: widget.manualPositions,
                             ),
                           ),
                         ),

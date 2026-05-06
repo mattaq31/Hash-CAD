@@ -23,14 +23,35 @@ const List<int> plateCols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 // Shared helpers
 // ---------------------------------------------------------------------------
 
+/// Color mode for echo well outlines — local to the echo plate window.
+enum EchoWellColorMode { natural, layer, group }
+
 int wellRow(String well) => plateRows.indexOf(well[0]);
 int wellCol(String well) => int.parse(well.substring(1)) - 1;
 String wellName(int row, int col) => '${plateRows[row]}${col + 1}';
 
-/// Compute design color for a slat based on unique color or layer color.
+/// Compute design color for a slat based on unique color or layer color (legacy).
 Color? designColorFor(Slat? slat, Map<String, Map<String, dynamic>> layerMap) {
   if (slat == null) return null;
   return slat.uniqueColor ?? layerMap[slat.layer]?['color'] as Color?;
+}
+
+/// Computes the well outline color based on the selected echo color mode.
+Color? echoDesignColorFor(
+  Slat? slat,
+  Map<String, Map<String, dynamic>> layerMap,
+  EchoWellColorMode colorMode,
+  Color? Function(String slatId)? resolveGroupColor,
+) {
+  if (slat == null) return null;
+  switch (colorMode) {
+    case EchoWellColorMode.natural:
+      return slat.uniqueColor ?? layerMap[slat.layer]?['color'] as Color?;
+    case EchoWellColorMode.layer:
+      return layerMap[slat.layer]?['color'] as Color?;
+    case EchoWellColorMode.group:
+      return resolveGroupColor?.call(slat.id) ?? layerMap[slat.layer]?['color'] as Color?;
+  }
 }
 
 /// Returns a human-readable display name for a slat in the format `L{layer}-{number}`.

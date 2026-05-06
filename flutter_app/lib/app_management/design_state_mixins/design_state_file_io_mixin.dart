@@ -203,7 +203,8 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
 
     // Restore echo plate layout if present in the design file
     if (result.echoPlateData != null) {
-      echoPlateLayoutState = PlateLayoutState.fromExcelSheets(result.echoPlateData!, slats, layerMap, labMetadata: result.labMetadata);
+      echoPlateLayoutState = PlateLayoutState.fromConsolidatedSheet(
+          result.echoPlateData!, slats, layerMap, labMetadata: result.labMetadata);
       echoPlateLayoutFromImport = echoPlateLayoutState != null;
     }
 
