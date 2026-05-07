@@ -1,6 +1,7 @@
 from crisscross.plate_mapping.plate_constants import (sanitize_plate_map, base_directory, slat_core, \
                                                       flat_staple_plate_folder, seed_plate_folder, crisscross_h5_handle_plates,
-                                                      assembly_handle_plate_folder, crisscross_h2_handle_plates, \
+                                                      assembly_handle_plate_folder, latest_assembly_handle_plate_folder,
+                                                      crisscross_h2_handle_plates, \
                                                       seed_plug_plate_corner, seed_plug_plate_center,
                                                       seed_plug_plate_all, cargo_plate_folder,
                                                       nelson_quimby_antihandles,
@@ -69,11 +70,11 @@ def get_standard_plates(handle_library_v2=False):
     if handle_library_v2:
         crisscross_antihandle_y_plates = get_plateclass('HashCadPlate',
                                                         cckz_h2_antihandle_plates,
-                                                        assembly_handle_plate_folder)
+                                                        latest_assembly_handle_plate_folder)
 
         crisscross_handle_x_plates = get_plateclass('HashCadPlate',
                                                     cckz_h5_handle_plates,
-                                                    assembly_handle_plate_folder)
+                                                    latest_assembly_handle_plate_folder)
     else:
         crisscross_antihandle_y_plates = get_plateclass('HashCadPlate',
                                                         crisscross_h5_handle_plates[3:] + crisscross_h2_handle_plates,
@@ -98,12 +99,12 @@ def get_cutting_edge_plates(handle_library_working_stock_concentration=None):
 
     crisscross_antihandle_y_plates = get_plateclass('HashCadPlate',
                                                     cckz_h2_antihandle_plates,
-                                                    assembly_handle_plate_folder,
+                                                    latest_assembly_handle_plate_folder,
                                                     apply_working_stock_concentration=handle_library_working_stock_concentration)
 
     crisscross_handle_x_plates = get_plateclass('HashCadPlate',
                                                 cckz_h5_handle_plates,
-                                                assembly_handle_plate_folder,
+                                                latest_assembly_handle_plate_folder,
                                                 apply_working_stock_concentration=handle_library_working_stock_concentration)
 
     all_8064_seed_plugs = get_plateclass('HashCadPlate', seed_plug_plate_all_8064, seed_plate_folder)

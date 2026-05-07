@@ -4,6 +4,7 @@ from crisscross.helper_functions import base_directory
 # folder locations
 flat_staple_plate_folder = join(base_directory, 'crisscross','dna_source_plates', 'flat_staple_plates')
 assembly_handle_plate_folder = join(base_directory, 'crisscross','dna_source_plates', 'assembly_plates')
+latest_assembly_handle_plate_folder = join(base_directory, 'crisscross','dna_source_plates', 'latest_assembly_plates')
 cargo_plate_folder = join(base_directory,  'crisscross','dna_source_plates', 'cargo_plates')
 seed_plate_folder = join(base_directory,  'crisscross','dna_source_plates', 'seed_plates')
 

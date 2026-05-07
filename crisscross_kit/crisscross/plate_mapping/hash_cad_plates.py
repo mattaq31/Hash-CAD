@@ -1,6 +1,6 @@
 from crisscross.plate_mapping import get_plateclass
 from crisscross.core_functions.plate_handling import read_dna_plate_mapping
-from crisscross.plate_mapping.plate_constants import cckz_h5_handle_plates, cckz_h2_antihandle_plates, assembly_handle_plate_folder, seed_plate_folder, cargo_plate_folder, flat_staple_plate_folder
+from crisscross.plate_mapping.plate_constants import cckz_h5_handle_plates, cckz_h2_antihandle_plates, assembly_handle_plate_folder, latest_assembly_handle_plate_folder, seed_plate_folder, cargo_plate_folder, flat_staple_plate_folder
 from crisscross.plate_mapping import sanitize_plate_map
 
 from collections import defaultdict
@@ -132,5 +132,5 @@ if __name__ == "__main__":
     plate = get_plateclass('HashCadPlate', 'P3643_MA_combined_seeds_8064',seed_plate_folder)
     plate_2 = get_plateclass('HashCadPlate', 'sw_src009_control_max', flat_staple_plate_folder)
     plate_3 = get_plateclass('HashCadPlate', 'sw_src007_nelson_quimby_bart_edna', cargo_plate_folder)
-    assembly_handles = crisscross_handle_x_plates = get_plateclass('HashCadPlate', cckz_h5_handle_plates, assembly_handle_plate_folder)
-    mixed_handles = get_plateclass('HashCadPlate', [cckz_h5_handle_plates[0], cckz_h2_antihandle_plates[0]], assembly_handle_plate_folder)
+    assembly_handles = crisscross_handle_x_plates = get_plateclass('HashCadPlate', cckz_h5_handle_plates, latest_assembly_handle_plate_folder)
+    mixed_handles = get_plateclass('HashCadPlate', [cckz_h5_handle_plates[0], cckz_h2_antihandle_plates[0]], latest_assembly_handle_plate_folder)
