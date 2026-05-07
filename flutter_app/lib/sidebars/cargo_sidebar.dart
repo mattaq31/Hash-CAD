@@ -134,6 +134,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
 
     Color selectedColor = Colors.blue;
     bool shortNameEditedManually = false;
+    String? originalName;
 
     nameController.addListener(() {
       if (!shortNameEditedManually) {
@@ -144,7 +145,8 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
     });
 
     if (editMode) {
-      nameController.text = appState.cargoPalette[appState.cargoAdditionType!]!.name;
+      originalName = appState.cargoPalette[appState.cargoAdditionType!]!.name;
+      nameController.text = originalName;
       shortNameController.text = appState.cargoPalette[appState.cargoAdditionType!]!.shortName;
       selectedColor = appState.cargoPalette[appState.cargoAdditionType!]!.color;
     }
@@ -154,6 +156,13 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final name = nameController.text.trim();
+            // Disable save if name is empty, is a restricted name, or conflicts with an existing different cargo
+            bool nameConflicts = editMode
+                ? (name != originalName && appState.cargoPalette.containsKey(name))
+                : appState.cargoPalette.containsKey(name);
+            bool saveDisabled = name.isEmpty || restrictedCargo.contains(name) || nameConflicts;
+
             return AlertDialog(
               title: Text(editMode ? 'Edit Cargo' : 'Add Cargo'),
               content: Column(
@@ -162,7 +171,6 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
                   TextField(
                     controller: nameController,
                     decoration: const InputDecoration(labelText: 'Cargo Name'),
-                    enabled: !editMode,  // TODO: add a way for changing cargo name instead of preventing editing...
                     onChanged: (_) => setState(() {}),
                   ),
                   TextField(
@@ -190,13 +198,14 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
                   onPressed: () => Navigator.of(context).pop(),
                 ),
                 ElevatedButton(
-                  onPressed: (restrictedCargo.contains(nameController.text.trim()) && !editMode) || nameController.text.trim().isEmpty ? null : () {
-                    final name = nameController.text.trim();
+                  onPressed: saveDisabled ? null : () {
                     final shortName = shortNameController.text.trim();
-                    if (name.isNotEmpty) {
+                    if (editMode) {
+                      appState.renameCargoType(originalName!, name, newShortName: shortName, newColor: selectedColor);
+                    } else {
                       appState.addCargoType(Cargo(name: name, shortName: shortName, color: selectedColor));
-                      Navigator.of(context).pop();
                     }
+                    Navigator.of(context).pop();
                   },
                   child: Text(editMode ? 'Save' : 'Add'),
                 ),

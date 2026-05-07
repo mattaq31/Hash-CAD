@@ -197,7 +197,7 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
           // Warning indicator (top-left, shifted right if duplicate badge present)
           if (slat != null)
             Builder(builder: (context) {
-              final warning = wellWarningState(slat, widget.wellConfig);
+              final warning = wellWarningState(slat, widget.wellConfig, manualPositions: widget.manualPositions);
               if (!warning.incomplete && !warning.exceedsVolume) return const SizedBox.shrink();
               final leftOffset = widget.isInDuplicateGroup ? 12.0 : 1.0;
               if (warning.incomplete) {

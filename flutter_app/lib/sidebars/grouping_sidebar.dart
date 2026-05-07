@@ -30,42 +30,53 @@ class _GroupingToolsState extends State<GroupingTools> {
     super.dispose();
   }
 
-  /// Dialog for auto-grouping: partitions all slats into groups of N.
+  /// Dialog for auto-grouping: partitions slats into groups of N.
   void _showAutoGroupDialog(BuildContext context, DesignState appState, ActionState actionState) {
+    bool ungroupedOnly = false;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Auto-Group Slats'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Group all slats into groups of:'),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: 80,
-              child: TextField(
-                controller: _groupSizeController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Auto-Group Slats'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Group slats into groups of:'),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _groupSizeController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                ),
               ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(value: ungroupedOnly, onChanged: (v) => setDialogState(() => ungroupedOnly = v ?? false)),
+                  const Text('Ungrouped slats only', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                int? size = int.tryParse(_groupSizeController.text);
+                if (size != null && size > 0) {
+                  appState.autoGroupSlats(size, ungroupedOnly: ungroupedOnly);
+                  actionState.setSlatColorMode(SlatColorMode.group);
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('Group'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              int? size = int.tryParse(_groupSizeController.text);
-              if (size != null && size > 0) {
-                appState.autoGroupSlats(size);
-                actionState.setSlatColorMode(SlatColorMode.group);
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Group'),
-          ),
-        ],
       ),
     );
   }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'echo_plate_constants.dart' show echoMaxWellVolumeNl;
 import 'plate_layout_state.dart' show WellConfig;
 
 /// Shows a dialog to configure per-well Echo dispensing parameters.
@@ -8,12 +7,13 @@ import 'plate_layout_state.dart' show WellConfig;
 ///
 /// When [estimateVolumeNl] is provided, it is called with the current config
 /// to compute the estimated total transfer volume in nL. A warning is shown
-/// if this exceeds 25000 nL (25 µL).
+/// if this exceeds [maxWellVolumeNl].
 Future<WellConfig?> showWellConfigDialog(
   BuildContext context, {
   String title = 'Configure Wells',
   WellConfig initial = const WellConfig(),
   double Function(WellConfig config)? estimateVolumeNl,
+  double maxWellVolumeNl = 25000,
 }) {
   return showDialog<WellConfig>(
     context: context,
@@ -36,7 +36,7 @@ Future<WellConfig?> showWellConfigDialog(
           bool volumeTooHigh = false;
           if (estimateVolumeNl != null && isValid) {
             estimatedNl = estimateVolumeNl(WellConfig(ratio: ratio, volume: volume, scaffoldConc: scaffoldConc));
-            volumeTooHigh = estimatedNl > echoMaxWellVolumeNl;
+            volumeTooHigh = estimatedNl > maxWellVolumeNl;
           }
 
           void rebuild() => setDialogState(() {});
@@ -66,7 +66,7 @@ Future<WellConfig?> showWellConfigDialog(
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Estimated transfer volume (${(estimatedNl / 1000).toStringAsFixed(1)} µL) exceeds 25 µL',
+                            'Estimated transfer volume (${(estimatedNl / 1000).toStringAsFixed(1)} µL) exceeds ${(maxWellVolumeNl / 1000).toStringAsFixed(0)} µL',
                             style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
                           ),
                         ),

@@ -22,6 +22,55 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Renames a cargo type, updating the palette key, all slat handle references, and occupiedCargoPoints.
+  @override
+  void renameCargoType(String oldName, String newName, {String? newShortName, Color? newColor}) {
+    if (!cargoPalette.containsKey(oldName) || oldName == newName && newShortName == null && newColor == null) return;
+
+    Cargo oldCargo = cargoPalette[oldName]!;
+    Cargo updatedCargo = Cargo(
+      name: newName,
+      shortName: newShortName ?? oldCargo.shortName,
+      color: newColor ?? oldCargo.color,
+    );
+
+    // Update slat handle dictionaries that reference the old name
+    if (oldName != newName) {
+      for (var slat in slats.values) {
+        for (var handleDict in [slat.h2Handles, slat.h5Handles]) {
+          for (var position in handleDict.keys) {
+            if (handleDict[position]!['value'] == oldName) {
+              handleDict[position]!['value'] = newName;
+            }
+          }
+        }
+      }
+
+      // Update occupiedCargoPoints values
+      for (var layerSideMap in occupiedCargoPoints.values) {
+        for (var coord in layerSideMap.keys) {
+          if (layerSideMap[coord] == oldName) {
+            layerSideMap[coord] = newName;
+          }
+        }
+      }
+
+      // Update palette key
+      cargoPalette.remove(oldName);
+
+      // Update cargoAdditionType if it pointed to the old name
+      if (cargoAdditionType == oldName) {
+        cargoAdditionType = newName;
+      }
+    } else {
+      cargoPalette.remove(oldName);
+    }
+
+    cargoPalette[newName] = updatedCargo;
+    saveUndoState();
+    notifyListeners();
+  }
+
   @override
   void deleteCargoType(String cargoName) {
     // need to remove all cargo of this type from the slats and from the cargo occupancy map (otherwise will error out)

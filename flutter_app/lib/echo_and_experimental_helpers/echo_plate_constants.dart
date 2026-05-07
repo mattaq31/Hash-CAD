@@ -91,11 +91,20 @@ double slatTotalVolumeNl(Slat slat, WellConfig config) {
 }
 
 /// Computes warning state for a well: placeholder handles and/or volume exceeded.
-({bool incomplete, bool exceedsVolume}) wellWarningState(Slat slat, WellConfig? config) {
-  final incomplete = slat.placeholderList.isNotEmpty;
+///
+/// Placeholders that are also in [manualPositions] do not count as incomplete.
+({bool incomplete, bool exceedsVolume}) wellWarningState(Slat slat, WellConfig? config, {double? maxVolumeNl, Set<(int, int)> manualPositions = const {}}) {
+  final incomplete = slat.placeholderList.any((entry) {
+    final parts = entry.split('-');
+    if (parts.length < 3) return true;
+    final position = int.tryParse(parts[1]);
+    final helix = int.tryParse(parts[2].replaceFirst('h', ''));
+    if (position == null || helix == null) return true;
+    return !manualPositions.contains((helix, position));
+  });
   bool exceedsVolume = false;
   if (!incomplete && config != null) {
-    exceedsVolume = slatTotalVolumeNl(slat, config) > echoMaxWellVolumeNl;
+    exceedsVolume = slatTotalVolumeNl(slat, config) > (maxVolumeNl ?? echoMaxWellVolumeNl);
   }
   return (incomplete: incomplete, exceedsVolume: exceedsVolume);
 }

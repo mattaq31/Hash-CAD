@@ -516,14 +516,14 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
                   children: [
                     _buildSlatSelector(
                       label: 'Top Slat',
-                      availableSlats: availableSlats,
+                      availableSlats: availableSlats.where((s) => s != selectedSlat2ID).toList(),
                       controller: _slat1Controller,
                       onSelected: (val) => setState(() => selectedSlat1ID = val),
                     ),
                     const SizedBox(width: 16),
                     _buildSlatSelector(
                       label: 'Bottom Slat',
-                      availableSlats: availableSlats,
+                      availableSlats: availableSlats.where((s) => s != selectedSlat1ID).toList(),
                       controller: _slat2Controller,
                       onSelected: (val) => setState(() => selectedSlat2ID = val),
                     ),

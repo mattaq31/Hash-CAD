@@ -192,6 +192,7 @@ mixin DesignStateContract on ChangeNotifier {
 
   // === Methods from DesignStateCargoMixin ===
   void addCargoType(Cargo cargo);
+  void renameCargoType(String oldName, String newName, {String? newShortName, Color? newColor});
   void deleteCargoType(String cargoName);
   Cargo getCargoFromCoordinate(Offset coordinate, String layerID, String slatSide);
   void deleteAllCargo();
@@ -244,7 +245,7 @@ mixin DesignStateContract on ChangeNotifier {
   void removeSlatsFromGroup(String groupId, List<String> slatIds);
   void selectGroupSlats(String groupId);
   void updateGroupToSelection(String groupId);
-  void autoGroupSlats(int groupSize);
+  void autoGroupSlats(int groupSize, {bool ungroupedOnly = false});
   void clearAllGroups();
   void cleanupDeletedSlat(String slatId);
   void resetGroupState();

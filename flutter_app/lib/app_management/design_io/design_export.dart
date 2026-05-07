@@ -189,108 +189,6 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     }
   }
 
-  // ── Metadata sheet: grid mode, canvas offsets, layer interface string ──
-  Sheet metadataSheet = excel[metadataSheetName];
-  metadataSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer Interface Orientations');
-  metadataSheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('Connection Angle');
-  metadataSheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('File Format');
-  metadataSheet.cell(CellIndex.indexByString(metaCellFileFormat)).value = TextCellValue('#-CAD');
-  metadataSheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('Canvas Offset (Min)');
-  metadataSheet.cell(CellIndex.indexByString('A5')).value = TextCellValue('Canvas Offset (Max)');
-
-  metadataSheet.cell(CellIndex.indexByString(metaCellGridMode)).value = TextCellValue(gridMode);
-  metadataSheet.cell(CellIndex.indexByString(metaCellMinX)).value = DoubleCellValue(minPos.dx);
-  metadataSheet.cell(CellIndex.indexByString(metaCellMinY)).value = DoubleCellValue(minPos.dy);
-  metadataSheet.cell(CellIndex.indexByString(metaCellMaxX)).value = DoubleCellValue(maxPos.dx);
-  metadataSheet.cell(CellIndex.indexByString(metaCellMaxY)).value = DoubleCellValue(maxPos.dx);
-
-  metadataSheet.cell(CellIndex.indexByString(metaCellLayerInterface)).value = TextCellValue(generateLayerString(layerMap));
-
-  // ── Metadata: layer info section (direction, helices, colour per layer) ──
-  metadataSheet.merge(CellIndex.indexByString('A6'), CellIndex.indexByString('G6'), customValue: TextCellValue(metaSectionLayerInfo));
-  metadataSheet.cell(CellIndex.indexByString('A6')).cellStyle = CellStyle(
-    horizontalAlign: HorizontalAlign.Center,
-  );
-
-  metadataSheet.cell(CellIndex.indexByString('A7')).value = TextCellValue('ID');
-  metadataSheet.cell(CellIndex.indexByString('B7')).value = TextCellValue('Default Rotation');
-  metadataSheet.cell(CellIndex.indexByString('C7')).value = TextCellValue('Top Helix');
-  metadataSheet.cell(CellIndex.indexByString('D7')).value = TextCellValue('Bottom Helix');
-  metadataSheet.cell(CellIndex.indexByString('E7')).value = TextCellValue('Next Slat ID');
-  metadataSheet.cell(CellIndex.indexByString('F7')).value = TextCellValue('Slat Count');
-  metadataSheet.cell(CellIndex.indexByString('G7')).value = TextCellValue('Colour');
-
-  int layerStartPoint = metaLayerStartRow;
-  for (var l in layerMap.entries) {
-    metadataSheet.cell(CellIndex.indexByString('A${l.value['order'] + layerStartPoint}')).value = TextCellValue("Layer ${l.key}");
-    metadataSheet.cell(CellIndex.indexByString('B${l.value['order'] + layerStartPoint}')).value = IntCellValue(l.value['direction']);
-    metadataSheet.cell(CellIndex.indexByString('C${l.value['order'] + layerStartPoint}')).value = TextCellValue(l.value['top_helix']);
-    metadataSheet.cell(CellIndex.indexByString('D${l.value['order'] + layerStartPoint}')).value = TextCellValue(l.value['bottom_helix']);
-    metadataSheet.cell(CellIndex.indexByString('E${l.value['order'] + layerStartPoint}')).value = IntCellValue(l.value['next_slat_id']);
-    metadataSheet.cell(CellIndex.indexByString('F${l.value['order'] + layerStartPoint}')).value = IntCellValue(l.value['slat_count']);
-    metadataSheet.cell(CellIndex.indexByString('G${l.value['order'] + layerStartPoint}')).value =
-        TextCellValue('#${l.value['color'].value.toRadixString(16).substring(2).toUpperCase()}');
-  }
-
-  // ── Metadata: cargo palette section ──
-  int cargoStartPoint = layerStartPoint + layerMap.length;
-  metadataSheet.merge(
-      CellIndex.indexByString('A$cargoStartPoint'), CellIndex.indexByString('G$cargoStartPoint'), customValue: TextCellValue(metaSectionCargoInfo));
-  metadataSheet.cell(CellIndex.indexByString('A$cargoStartPoint')).cellStyle = CellStyle(
-    horizontalAlign: HorizontalAlign.Center,
-  );
-  metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint + 1}')).value = TextCellValue('ID');
-  metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint + 1}')).value = TextCellValue('Short Name');
-  metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint + 1}')).value = TextCellValue('Colour');
-  int cIndex = 2;
-  for (var c in cargoPalette.entries) {
-    metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.name);
-    metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.shortName);
-    metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint + cIndex}')).value =
-        TextCellValue('#${c.value.color.value.toRadixString(16).substring(2).toUpperCase()}');
-    cIndex += 1;
-  }
-
-  // ── Metadata: unique slat colour overrides section ──
-  int colorStartPoint = cargoStartPoint + cIndex;
-  metadataSheet.merge(CellIndex.indexByString('A$colorStartPoint'), CellIndex.indexByString('G$colorStartPoint'),
-      customValue: TextCellValue(metaSectionSlatColorInfo));
-  metadataSheet.cell(CellIndex.indexByString('A$colorStartPoint')).cellStyle = CellStyle(
-    horizontalAlign: HorizontalAlign.Center,
-  );
-  metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint + 1}')).value = TextCellValue('ID');
-  metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + 1}')).value = TextCellValue('Colour');
-  int colorIndex = 2;
-  for (var s in slats.values.where((slat) => slat.uniqueColor != null)) {
-    metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint + colorIndex}')).value = TextCellValue(s.id);
-    metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + colorIndex}')).value =
-        TextCellValue('#${s.uniqueColor!.value.toRadixString(16).substring(2).toUpperCase()}');
-    colorIndex += 1;
-  }
-
-  // ── Metadata: group colour info section (config name + group name + colour per group) ──
-  int groupColorStartPoint = colorStartPoint + colorIndex;
-  if (groupConfigurations != null && groupConfigurations.isNotEmpty) {
-    metadataSheet.merge(CellIndex.indexByString('A$groupColorStartPoint'), CellIndex.indexByString('G$groupColorStartPoint'),
-        customValue: TextCellValue(metaSectionGroupColorInfo));
-    metadataSheet.cell(CellIndex.indexByString('A$groupColorStartPoint')).cellStyle = CellStyle(
-      horizontalAlign: HorizontalAlign.Center,
-    );
-    metadataSheet.cell(CellIndex.indexByString('A${groupColorStartPoint + 1}')).value = TextCellValue('Configuration');
-    metadataSheet.cell(CellIndex.indexByString('B${groupColorStartPoint + 1}')).value = TextCellValue('Group');
-    metadataSheet.cell(CellIndex.indexByString('C${groupColorStartPoint + 1}')).value = TextCellValue('Colour');
-    int gIndex = 2;
-    for (var config in groupConfigurations.values) {
-      for (var group in config.groups.values) {
-        metadataSheet.cell(CellIndex.indexByString('A${groupColorStartPoint + gIndex}')).value = TextCellValue(config.name);
-        metadataSheet.cell(CellIndex.indexByString('B${groupColorStartPoint + gIndex}')).value = TextCellValue(group.name);
-        metadataSheet.cell(CellIndex.indexByString('C${groupColorStartPoint + gIndex}')).value =
-            TextCellValue('#${group.color.value.toRadixString(16).substring(2).toUpperCase()}');
-        gIndex++;
-      }
-    }
-  }
-
   // ── Slat types sheet: tube/db classification sorted by layer then ID + group configs ──
   Sheet slatTypeSheet = excel[slatTypesSheetName];
   slatTypeSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer');
@@ -459,6 +357,108 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     for (var col in colWidths.entries) {
       final width = min((col.value + 2) * 1.2, 50.0);
       inputSheet.setColumnWidth(col.key, width);
+    }
+  }
+
+  // ── Metadata sheet: grid mode, canvas offsets, layer interface string ──
+  Sheet metadataSheet = excel[metadataSheetName];
+  metadataSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer Interface Orientations');
+  metadataSheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('Connection Angle');
+  metadataSheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('File Format');
+  metadataSheet.cell(CellIndex.indexByString(metaCellFileFormat)).value = TextCellValue('#-CAD');
+  metadataSheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('Canvas Offset (Min)');
+  metadataSheet.cell(CellIndex.indexByString('A5')).value = TextCellValue('Canvas Offset (Max)');
+
+  metadataSheet.cell(CellIndex.indexByString(metaCellGridMode)).value = TextCellValue(gridMode);
+  metadataSheet.cell(CellIndex.indexByString(metaCellMinX)).value = DoubleCellValue(minPos.dx);
+  metadataSheet.cell(CellIndex.indexByString(metaCellMinY)).value = DoubleCellValue(minPos.dy);
+  metadataSheet.cell(CellIndex.indexByString(metaCellMaxX)).value = DoubleCellValue(maxPos.dx);
+  metadataSheet.cell(CellIndex.indexByString(metaCellMaxY)).value = DoubleCellValue(maxPos.dx);
+
+  metadataSheet.cell(CellIndex.indexByString(metaCellLayerInterface)).value = TextCellValue(generateLayerString(layerMap));
+
+  // ── Metadata: layer info section (direction, helices, colour per layer) ──
+  metadataSheet.merge(CellIndex.indexByString('A6'), CellIndex.indexByString('G6'), customValue: TextCellValue(metaSectionLayerInfo));
+  metadataSheet.cell(CellIndex.indexByString('A6')).cellStyle = CellStyle(
+    horizontalAlign: HorizontalAlign.Center,
+  );
+
+  metadataSheet.cell(CellIndex.indexByString('A7')).value = TextCellValue('ID');
+  metadataSheet.cell(CellIndex.indexByString('B7')).value = TextCellValue('Default Rotation');
+  metadataSheet.cell(CellIndex.indexByString('C7')).value = TextCellValue('Top Helix');
+  metadataSheet.cell(CellIndex.indexByString('D7')).value = TextCellValue('Bottom Helix');
+  metadataSheet.cell(CellIndex.indexByString('E7')).value = TextCellValue('Next Slat ID');
+  metadataSheet.cell(CellIndex.indexByString('F7')).value = TextCellValue('Slat Count');
+  metadataSheet.cell(CellIndex.indexByString('G7')).value = TextCellValue('Colour');
+
+  int layerStartPoint = metaLayerStartRow;
+  for (var l in layerMap.entries) {
+    metadataSheet.cell(CellIndex.indexByString('A${l.value['order'] + layerStartPoint}')).value = TextCellValue("Layer ${l.key}");
+    metadataSheet.cell(CellIndex.indexByString('B${l.value['order'] + layerStartPoint}')).value = IntCellValue(l.value['direction']);
+    metadataSheet.cell(CellIndex.indexByString('C${l.value['order'] + layerStartPoint}')).value = TextCellValue(l.value['top_helix']);
+    metadataSheet.cell(CellIndex.indexByString('D${l.value['order'] + layerStartPoint}')).value = TextCellValue(l.value['bottom_helix']);
+    metadataSheet.cell(CellIndex.indexByString('E${l.value['order'] + layerStartPoint}')).value = IntCellValue(l.value['next_slat_id']);
+    metadataSheet.cell(CellIndex.indexByString('F${l.value['order'] + layerStartPoint}')).value = IntCellValue(l.value['slat_count']);
+    metadataSheet.cell(CellIndex.indexByString('G${l.value['order'] + layerStartPoint}')).value =
+        TextCellValue('#${l.value['color'].value.toRadixString(16).substring(2).toUpperCase()}');
+  }
+
+  // ── Metadata: cargo palette section ──
+  int cargoStartPoint = layerStartPoint + layerMap.length;
+  metadataSheet.merge(
+      CellIndex.indexByString('A$cargoStartPoint'), CellIndex.indexByString('G$cargoStartPoint'), customValue: TextCellValue(metaSectionCargoInfo));
+  metadataSheet.cell(CellIndex.indexByString('A$cargoStartPoint')).cellStyle = CellStyle(
+    horizontalAlign: HorizontalAlign.Center,
+  );
+  metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint + 1}')).value = TextCellValue('ID');
+  metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint + 1}')).value = TextCellValue('Short Name');
+  metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint + 1}')).value = TextCellValue('Colour');
+  int cIndex = 2;
+  for (var c in cargoPalette.entries) {
+    metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.name);
+    metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.shortName);
+    metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint + cIndex}')).value =
+        TextCellValue('#${c.value.color.value.toRadixString(16).substring(2).toUpperCase()}');
+    cIndex += 1;
+  }
+
+  // ── Metadata: unique slat colour overrides section ──
+  int colorStartPoint = cargoStartPoint + cIndex;
+  metadataSheet.merge(CellIndex.indexByString('A$colorStartPoint'), CellIndex.indexByString('G$colorStartPoint'),
+      customValue: TextCellValue(metaSectionSlatColorInfo));
+  metadataSheet.cell(CellIndex.indexByString('A$colorStartPoint')).cellStyle = CellStyle(
+    horizontalAlign: HorizontalAlign.Center,
+  );
+  metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint + 1}')).value = TextCellValue('ID');
+  metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + 1}')).value = TextCellValue('Colour');
+  int colorIndex = 2;
+  for (var s in slats.values.where((slat) => slat.uniqueColor != null)) {
+    metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint + colorIndex}')).value = TextCellValue(s.id);
+    metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + colorIndex}')).value =
+        TextCellValue('#${s.uniqueColor!.value.toRadixString(16).substring(2).toUpperCase()}');
+    colorIndex += 1;
+  }
+
+  // ── Metadata: group colour info section (config name + group name + colour per group) ──
+  int groupColorStartPoint = colorStartPoint + colorIndex;
+  if (groupConfigurations != null && groupConfigurations.isNotEmpty) {
+    metadataSheet.merge(CellIndex.indexByString('A$groupColorStartPoint'), CellIndex.indexByString('G$groupColorStartPoint'),
+        customValue: TextCellValue(metaSectionGroupColorInfo));
+    metadataSheet.cell(CellIndex.indexByString('A$groupColorStartPoint')).cellStyle = CellStyle(
+      horizontalAlign: HorizontalAlign.Center,
+    );
+    metadataSheet.cell(CellIndex.indexByString('A${groupColorStartPoint + 1}')).value = TextCellValue('Configuration');
+    metadataSheet.cell(CellIndex.indexByString('B${groupColorStartPoint + 1}')).value = TextCellValue('Group');
+    metadataSheet.cell(CellIndex.indexByString('C${groupColorStartPoint + 1}')).value = TextCellValue('Colour');
+    int gIndex = 2;
+    for (var config in groupConfigurations.values) {
+      for (var group in config.groups.values) {
+        metadataSheet.cell(CellIndex.indexByString('A${groupColorStartPoint + gIndex}')).value = TextCellValue(config.name);
+        metadataSheet.cell(CellIndex.indexByString('B${groupColorStartPoint + gIndex}')).value = TextCellValue(group.name);
+        metadataSheet.cell(CellIndex.indexByString('C${groupColorStartPoint + gIndex}')).value =
+            TextCellValue('#${group.color.value.toRadixString(16).substring(2).toUpperCase()}');
+        gIndex++;
+      }
     }
   }
 

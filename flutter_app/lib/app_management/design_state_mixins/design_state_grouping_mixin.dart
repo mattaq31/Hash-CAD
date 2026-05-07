@@ -249,21 +249,25 @@ mixin DesignStateGroupingMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
-  /// Partitions all non-phantom slats into groups of [groupSize], chunking
+  /// Partitions non-phantom slats into groups of [groupSize], chunking
   /// within each layer independently (never mixing slats from different layers).
+  /// When [ungroupedOnly] is true, only slats not already in a group are assigned.
   @override
-  void autoGroupSlats(int groupSize) {
+  void autoGroupSlats(int groupSize, {bool ungroupedOnly = false}) {
     if (activeGroupConfig == null || groupSize <= 0) return;
     var config = activeGroupConfig!;
 
-    config.groups.clear();
-    config.slatToGroup.clear();
-    config.nextGroupNumber = 1;
+    if (!ungroupedOnly) {
+      config.groups.clear();
+      config.slatToGroup.clear();
+      config.nextGroupNumber = 1;
+    }
 
     // Bucket slats by layer, sorted by layer order
     Map<String, List<String>> slatsByLayer = {};
     for (var entry in slats.entries) {
       if (entry.value.phantomParent != null) continue;
+      if (ungroupedOnly && config.slatToGroup.containsKey(entry.key)) continue;
       slatsByLayer.putIfAbsent(entry.value.layer, () => []).add(entry.key);
     }
     List<String> sortedLayerKeys = slatsByLayer.keys.toList()

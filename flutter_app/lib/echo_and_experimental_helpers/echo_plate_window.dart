@@ -533,7 +533,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     final config = await showWellConfigDialog(context,
         title: 'Configure All Wells',
         initial: _lastUsedConfig,
-        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats),
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl);
     _dialogOpen = false;
     if (config == null) return;
     _lastUsedConfig = config;
@@ -557,7 +558,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     final config = await showWellConfigDialog(context,
         title: 'Edit Selected Wells',
         initial: initial,
-        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats),
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl);
     _dialogOpen = false;
     if (config == null) return;
     _lastUsedConfig = config;
@@ -574,7 +576,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     final config = await showWellConfigDialog(context,
         title: 'Configure Plate',
         initial: _lastUsedConfig,
-        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats),
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl);
     _dialogOpen = false;
     if (config == null) return;
     _lastUsedConfig = config;
@@ -969,12 +972,23 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
   /// Returns true if any assigned slat still has placeholder handles.
   bool _hasIncompleteSlats(Map<String, Slat> slats) {
+    final manualHandles = _layoutState!.manualHandles;
     for (var plate in _layoutState!.plateAssignments.values) {
       for (var slatId in plate.values) {
         if (slatId == null) continue;
         final base = baseSlatId(slatId);
         final slat = slats[base];
-        if (slat != null && slat.placeholderList.isNotEmpty) return true;
+        if (slat == null || slat.placeholderList.isEmpty) continue;
+        final manualPositions = manualHandles[base] ?? const {};
+        final hasNonManualPlaceholder = slat.placeholderList.any((entry) {
+          final parts = entry.split('-');
+          if (parts.length < 3) return true;
+          final position = int.tryParse(parts[1]);
+          final helix = int.tryParse(parts[2].replaceFirst('h', ''));
+          if (position == null || helix == null) return true;
+          return !manualPositions.contains((helix, position));
+        });
+        if (hasNonManualPlaceholder) return true;
       }
     }
     return false;
@@ -983,8 +997,6 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   Widget _buildExportSection(DesignState appState) {
     final hasIncompleteSlats = _hasIncompleteSlats(appState.slats);
     final hasAssignments = _layoutState!.plateAssignments.values.any((plate) => plate.values.any((v) => v != null));
-    final hasAnyFormat =
-        _layoutState!.generatePdf || _layoutState!.generateCsv || _layoutState!.generateHelperSheets;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -996,16 +1008,10 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       child: Row(
         children: [
           const Expanded(child: SizedBox.shrink()),
-          IconButton(
-            icon: const Icon(Icons.settings, size: 22),
-            tooltip: 'Export settings',
-            onPressed: () => _showSettingsDialog(appState),
-          ),
-          const SizedBox(width: 8),
           FilledButton.icon(
-            onPressed: hasIncompleteSlats || !hasAssignments || !hasAnyFormat
+            onPressed: hasIncompleteSlats || !hasAssignments
                 ? null
-                : () => _runExport(appState),
+                : () => _showExportDialog(appState),
             icon: const Icon(Icons.download, size: 20),
             label: const Text('Export', style: TextStyle(fontSize: 14)),
             style: FilledButton.styleFrom(
@@ -1031,7 +1037,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     );
   }
 
-  Future<void> _showSettingsDialog(DesignState appState) async {
+  Future<void> _showExportDialog(DesignState appState) async {
     _dialogOpen = true;
     final result = await showExportSettingsDialog(
       context,
@@ -1039,6 +1045,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       generateCsv: _layoutState!.generateCsv,
       generateHelperSheets: _layoutState!.generateHelperSheets,
       normalizeVolumes: _layoutState!.normalizeVolumes,
+      maxWellVolumeNl: _layoutState!.maxWellVolumeNl,
       config: _layoutState!.masterMixConfig,
     );
     _dialogOpen = false;
@@ -1048,15 +1055,20 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         _layoutState!.generateCsv = result.csv;
         _layoutState!.generateHelperSheets = result.helper;
         _layoutState!.normalizeVolumes = result.normalize;
+        _layoutState!.maxWellVolumeNl = result.maxWellVolumeNl;
         _layoutState!.masterMixConfig = result.config;
       });
       _syncLayoutToAppState();
+      if (result.runExport && (result.pdf || result.csv || result.helper)) {
+        _runExport(appState);
+      }
     }
   }
 
   Future<void> _runExport(DesignState appState) async {
     final files = <String, Uint8List>{};
-    final baseName = appState.designName;
+    final designName = appState.designName;
+    final expTitle = _layoutState!.experimentTitle;
     EchoCsvResult? csvResult;
 
     if (_layoutState!.generatePdf) {
@@ -1068,8 +1080,11 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         duplicateGroups: _layoutState!.duplicateGroups,
         layerMap: appState.layerMap,
         experimentTitle: _layoutState!.experimentTitle,
+        colorMode: _echoColorMode,
+        resolveGroupColor: appState.resolveGroupColor,
+        manualHandles: _layoutState!.manualHandles,
       );
-      files['${baseName}_plate_layout.pdf'] = pdfBytes;
+      files['${expTitle}_plate_layout.pdf'] = pdfBytes;
     }
 
     if (_layoutState!.generateCsv) {
@@ -1080,32 +1095,44 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         slats: appState.slats,
         layerMap: appState.layerMap,
         normalizeVolumes: _layoutState!.normalizeVolumes,
+        manualHandles: _layoutState!.manualHandles,
       );
-      files['${baseName}_echo_instructions.csv'] = csvResult.csvBytes;
+      files['${expTitle}_echo_instructions.csv'] = csvResult.csvBytes;
+      if (csvResult.manualCsvBytes != null) {
+        files['${expTitle}_manual_handles.csv'] = csvResult.manualCsvBytes!;
+      }
     }
 
+    MasterMixResult? mmResult;
     if (_layoutState!.generateHelperSheets) {
-      final mmBytes = generateMasterMixExcel(
+      mmResult = generateMasterMixExcel(
         plateAssignments: _layoutState!.plateAssignments,
         wellConfigs: _layoutState!.wellConfigs,
         plateNames: _layoutState!.plateNames,
         slats: appState.slats,
         layerMap: appState.layerMap,
         mixConfig: _layoutState!.masterMixConfig,
+        normalizeVolumes: _layoutState!.normalizeVolumes,
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl,
         experimentTitle: _layoutState!.experimentTitle,
+        manualHandles: _layoutState!.manualHandles,
       );
-      files['${baseName}_master_mix.xlsx'] = mmBytes;
+      files['${expTitle}_master_mix.xlsx'] = mmResult.bytes;
     }
 
     if (files.isEmpty) return;
 
-    // Show volume warning before saving, with option to cancel
-    if (csvResult != null && csvResult.warnings.isNotEmpty && mounted) {
-      final shouldContinue = await _showVolumeWarningDialog(csvResult.warnings);
+    // Collect all warnings and show a single pre-save dialog if any exist.
+    final allWarnings = <String>[
+      if (csvResult != null) ...csvResult.warnings,
+      if (mmResult != null) ...mmResult.warnings,
+    ];
+    if (allWarnings.isNotEmpty && mounted) {
+      final shouldContinue = await _showVolumeWarningDialog(allWarnings);
       if (!shouldContinue) return;
     }
 
-    final folderName = '${baseName}_echo_instructions';
+    final folderName = '${designName}_$expTitle';
     await saveMultipleFiles(files, folderName);
   }
 

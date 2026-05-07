@@ -1,3 +1,4 @@
+// PDF plate layout export with color mode support and manual handle visualization.
 import 'dart:typed_data';
 import 'package:flutter/material.dart' show Color;
 import 'package:flutter/services.dart' show rootBundle;
@@ -6,7 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../crisscross_core/slats.dart';
 import 'echo_category_colors.dart';
-import 'echo_plate_constants.dart' show designColorFor, slatDisplayName, wellWarningState;
+import 'echo_plate_constants.dart' show EchoWellColorMode, echoDesignColorFor, slatDisplayName, wellWarningState;
 import 'plate_layout_state.dart' show WellConfig, baseSlatId, isDuplicateSlatId;
 
 // ---------------------------------------------------------------------------
@@ -61,8 +62,10 @@ Future<Uint8List> buildPlateLayoutPdf(
   Map<String, Set<String>>? duplicateGroups,
   Map<String, Map<String, dynamic>>? layerMap,
   String experimentTitle = 'Experiment',
+  EchoWellColorMode colorMode = EchoWellColorMode.natural,
+  Color? Function(String slatId)? resolveGroupColor,
+  Map<String, Set<(int, int)>>? manualHandles,
 }) async {
-  // Load Roboto fonts for cross-platform Unicode support
   final regularData = await rootBundle.load('fonts/Roboto/Roboto-Regular.ttf');
   final boldData = await rootBundle.load('fonts/Roboto/Roboto-Bold.ttf');
   final regular = pw.Font.ttf(regularData);
@@ -93,6 +96,14 @@ Future<Uint8List> buildPlateLayoutPdf(
                 height: _titleHeight,
                 child: pw.Stack(
                   children: [
+                    pw.Positioned(
+                      left: 0,
+                      top: 2,
+                      child: pw.Text(
+                        _colorModeLabel(colorMode),
+                        style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                      ),
+                    ),
                     pw.Center(
                       child: pw.Text(
                         '$experimentTitle - $name',
@@ -168,13 +179,15 @@ Future<Uint8List> buildPlateLayoutPdf(
                                   plateConfigs,
                                   duplicateGroups,
                                   layerMap,
+                                  colorMode: colorMode,
+                                  resolveGroupColor: resolveGroupColor,
+                                  manualHandles: manualHandles,
                                 ),
                             ],
                           ),
                       ],
                     ),
-                    // Chamfered plate outline — expanded beyond the grid
-                    // so the chamfer diagonals clear all corner wells.
+                    // Chamfered plate outline
                     pw.Positioned(
                       left: _rowHeaderWidth - _outlineExpansion,
                       top: -_outlineExpansion,
@@ -235,8 +248,11 @@ pw.Widget _buildPdfWellCell(
   Map<String, Slat> slats,
   Map<String, WellConfig>? plateConfigs,
   Map<String, Set<String>>? duplicateGroups,
-  Map<String, Map<String, dynamic>>? layerMap,
-) {
+  Map<String, Map<String, dynamic>>? layerMap, {
+  EchoWellColorMode colorMode = EchoWellColorMode.natural,
+  Color? Function(String slatId)? resolveGroupColor,
+  Map<String, Set<(int, int)>>? manualHandles,
+}) {
   final slatId = assignments[wellName];
   final lookupId = slatId != null ? baseSlatId(slatId) : null;
   final slat = lookupId != null ? slats[lookupId] : null;
@@ -244,10 +260,15 @@ pw.Widget _buildPdfWellCell(
   final isDuplicate = slatId != null && isDuplicateSlatId(slatId);
   final config = plateConfigs?[wellName];
 
-  // Border color: match UI — use design color (unique or layer), fallback grey
-  final designColor = (slat != null && layerMap != null) ? designColorFor(slat, layerMap) : null;
+  // Border color: respects current echo color mode selection
+  final designColor = (slat != null && layerMap != null)
+      ? echoDesignColorFor(slat, layerMap, colorMode, resolveGroupColor)
+      : null;
   final borderColor = designColor != null ? _toPdfColor(designColor) : PdfColors.grey400;
   final borderWidth = designColor != null ? 1.5 : 0.75;
+
+  // Manual handle positions for this slat
+  final Set<(int, int)>? slatManualPositions = (lookupId != null && manualHandles != null) ? manualHandles[lookupId] : null;
 
   // Slat type label (full name)
   String? slatTypeLabel;
@@ -277,7 +298,7 @@ pw.Widget _buildPdfWellCell(
     volumeText = '${volStr}uL ${ratStr}x';
   }
 
-  const wellInset = 1.0; // gap between wells so colored borders don't overlap
+  const wellInset = 1.0;
   final barcodeWidth = _cellWidth - wellInset * 2 - 15;
 
   return pw.Container(
@@ -309,7 +330,7 @@ pw.Widget _buildPdfWellCell(
                 ),
               // Warning indicator (top-left, shifted right if duplicate badge present)
               () {
-                  final warning = wellWarningState(slat, config);
+                  final warning = wellWarningState(slat, config, manualPositions: slatManualPositions ?? const {});
                   if (!warning.incomplete && !warning.exceedsVolume) return pw.SizedBox();
                   final leftOffset = isDuplicate ? 12.0 : 1.5;
                   final color = warning.incomplete ? PdfColors.red : PdfColors.orange;
@@ -319,13 +340,11 @@ pw.Widget _buildPdfWellCell(
                     child: _buildPdfWarningTriangle(color),
                   );
                 }(),
-              // Centered pictogram block: name sits above, volume sits below
-              // Barcodes are centered; H5/H2 labels are positioned absolutely to the left
+              // Centered pictogram block
               pw.Positioned.fill(
                 child: pw.Column(
                   mainAxisAlignment: pw.MainAxisAlignment.center,
                   children: [
-                    // Slat ID (above the pictogram)
                     pw.Text(
                       displayId,
                       style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold),
@@ -334,14 +353,10 @@ pw.Widget _buildPdfWellCell(
                       textAlign: pw.TextAlign.center,
                     ),
                     pw.SizedBox(height: 1),
-                    // Position markers
                     _buildPositionMarkers(slat.maxLength, barcodeWidth),
-                    // H5 barcode (top) with label
-                    _buildLabeledBarcodeRow('H5', slat.h5Handles, slat.maxLength, barcodeWidth),
+                    _buildLabeledBarcodeRow('H5', slat.h5Handles, slat.maxLength, barcodeWidth, helix: 5, manualPositions: slatManualPositions),
                     pw.SizedBox(height: 0.5),
-                    // H2 barcode (bottom) with label
-                    _buildLabeledBarcodeRow('H2', slat.h2Handles, slat.maxLength, barcodeWidth),
-                    // Volume/ratio (below the pictogram)
+                    _buildLabeledBarcodeRow('H2', slat.h2Handles, slat.maxLength, barcodeWidth, helix: 2, manualPositions: slatManualPositions),
                     if (volumeText != null) ...[
                       pw.SizedBox(height: 2),
                       pw.Text(volumeText, style: pw.TextStyle(fontSize: 7, color: PdfColors.black)),
@@ -372,9 +387,7 @@ pw.Widget _buildPositionMarkers(int maxLength, double totalWidth) {
         for (var pos in markers)
           if (pos <= maxLength)
             () {
-              // Center of the rect for this position
               final center = (pos - 1) * rectWidth + rectWidth / 2;
-              // For first marker, left-align; for last, right-align; middle: center
               final pw.TextAlign align;
               final double left;
               const labelWidth = 12.0;
@@ -410,11 +423,18 @@ pw.Widget _buildPositionMarkers(int maxLength, double totalWidth) {
 // Labeled barcode row: barcode with side label (H2/H5) positioned to the left
 // ---------------------------------------------------------------------------
 
-pw.Widget _buildLabeledBarcodeRow(String label, Map<int, Map<String, dynamic>> handles, int maxLength, double barcodeWidth) {
+pw.Widget _buildLabeledBarcodeRow(
+  String label,
+  Map<int, Map<String, dynamic>> handles,
+  int maxLength,
+  double barcodeWidth, {
+  required int helix,
+  Set<(int, int)>? manualPositions,
+}) {
   return pw.Stack(
     overflow: pw.Overflow.visible,
     children: [
-      _buildPdfBarcodeRow(handles, maxLength, barcodeWidth, 6),
+      _buildPdfBarcodeRow(handles, maxLength, barcodeWidth, 6, helix: helix, manualPositions: manualPositions),
       pw.Positioned(
         left: 1.5,
         top: 0,
@@ -436,28 +456,22 @@ pw.Widget _buildPdfWarningTriangle(PdfColor color) {
     child: pw.CustomPaint(
       size: const PdfPoint(size, size),
       painter: (PdfGraphics canvas, PdfPoint s) {
-        // Draw filled triangle pointing up
         canvas
-          ..moveTo(s.x / 2, s.y) // top center
-          ..lineTo(0, 0) // bottom left
-          ..lineTo(s.x, 0) // bottom right
+          ..moveTo(s.x / 2, s.y)
+          ..lineTo(0, 0)
+          ..lineTo(s.x, 0)
           ..closePath();
         canvas.setFillColor(color);
         canvas.fillPath();
 
-        // Draw white '!' in the center of the triangle
-        // Triangle centroid is at (w/2, h/3) from bottom in PDF coords
         canvas.setFillColor(PdfColors.white);
-
-        // Exclamation mark stem
         const stemW = 1.0;
         const stemH = 3.2;
         final stemX = s.x / 2 - stemW / 2;
-        final stemY = s.y * 0.28; // slightly below centroid
+        final stemY = s.y * 0.28;
         canvas.drawRect(stemX, stemY, stemW, stemH);
         canvas.fillPath();
 
-        // Exclamation mark dot
         const dotSize = 1.0;
         final dotX = s.x / 2 - dotSize / 2;
         final dotY = stemY - dotSize - 0.6;
@@ -510,10 +524,17 @@ pw.Widget _buildDuplicateBadge() {
 }
 
 // ---------------------------------------------------------------------------
-// Barcode row
+// Barcode row — honors manual handle positions with orange override
 // ---------------------------------------------------------------------------
 
-pw.Widget _buildPdfBarcodeRow(Map<int, Map<String, dynamic>> handles, int maxLength, double totalWidth, double height) {
+pw.Widget _buildPdfBarcodeRow(
+  Map<int, Map<String, dynamic>> handles,
+  int maxLength,
+  double totalWidth,
+  double height, {
+  required int helix,
+  Set<(int, int)>? manualPositions,
+}) {
   final rectWidth = totalWidth / maxLength;
   return pw.Row(
     mainAxisAlignment: pw.MainAxisAlignment.center,
@@ -522,7 +543,9 @@ pw.Widget _buildPdfBarcodeRow(Map<int, Map<String, dynamic>> handles, int maxLen
         pw.Container(
           width: rectWidth,
           height: height,
-          color: pdfCategoryColor(handles[i + 1]?['category'] as String?),
+          color: (manualPositions != null && manualPositions.contains((helix, i + 1)))
+              ? PdfColor.fromInt(0xFFFF9800)
+              : pdfCategoryColor(handles[i + 1]?['category'] as String?),
         ),
     ],
   );
@@ -558,4 +581,15 @@ pw.Widget _buildLegendBar() {
       ],
     ),
   );
+}
+
+String _colorModeLabel(EchoWellColorMode mode) {
+  switch (mode) {
+    case EchoWellColorMode.natural:
+      return 'Colored Manually';
+    case EchoWellColorMode.layer:
+      return 'Colored by Layer';
+    case EchoWellColorMode.group:
+      return 'Colored by Group';
+  }
 }

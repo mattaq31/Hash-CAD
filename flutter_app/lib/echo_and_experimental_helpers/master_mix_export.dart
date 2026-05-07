@@ -1,3 +1,4 @@
+// Master mix Excel export with per-slat-type sheets and horizontal group layout.
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart' hide Border, BorderStyle;
@@ -8,6 +9,7 @@ import 'echo_plate_constants.dart';
 import 'master_mix_config.dart';
 import 'plate_layout_state.dart';
 
+/// Per-well entry used to compute volumes and group slats.
 class _WellEntry {
   final String slatId;
   final Slat slat;
@@ -28,6 +30,7 @@ class _WellEntry {
   });
 }
 
+/// Grouping key: slats with identical WellConfig triples share a recipe.
 class _GroupKey {
   final double ratio;
   final double volume;
@@ -44,46 +47,64 @@ class _GroupKey {
 }
 
 // ---------------------------------------------------------------------------
-// Shared styles
+// Shared border definitions
 // ---------------------------------------------------------------------------
 
-final _thin = excel_lib.Border(borderStyle: excel_lib.BorderStyle.Thin);
+final _hairBorder = excel_lib.Border(borderStyle: excel_lib.BorderStyle.Hair);
+final _mediumBorder = excel_lib.Border(borderStyle: excel_lib.BorderStyle.Medium);
 
-CellStyle _bordered({bool bold = false, String? bg}) {
+/// Internal cell style: hair-weight borders on all sides.
+CellStyle _inner({bool bold = false, String? bg, NumFormat? numFmt}) {
   final color = bg?.excelColor;
   return CellStyle(
     bold: bold,
     backgroundColorHex: color ?? '#FFFFFF'.excelColor,
-    leftBorder: _thin,
-    rightBorder: _thin,
-    topBorder: _thin,
-    bottomBorder: _thin,
+    leftBorder: _hairBorder,
+    rightBorder: _hairBorder,
+    topBorder: _hairBorder,
+    bottomBorder: _hairBorder,
+    numberFormat: numFmt ?? NumFormat.standard_0,
   );
 }
 
-final _bNormal = _bordered();
-final _bBold = _bordered(bold: true);
-final _bOrange = _bordered(bg: '#FFF2CC');
-final _bOrangeBold = _bordered(bold: true, bg: '#FFF2CC');
-final _bRed = _bordered(bg: '#FCE4EC');
-final _bHeader = _bordered(bold: true, bg: '#D9E1F2');
-final _headerNoBorder = CellStyle(bold: true, backgroundColorHex: '#D9E1F2'.excelColor);
+// Text/label styles (General format)
+final _sNormal = _inner();
+final _sBold = _inner(bold: true);
+final _sOrange = _inner(bg: '#FFF2CC');
+final _sOrangeBold = _inner(bold: true, bg: '#FFF2CC');
+final _sHeader = _inner(bold: true, bg: '#D9E1F2');
+
+// Numeric styles (0.00 format — for formula results and numeric values)
+final _sNum = _inner(numFmt: NumFormat.standard_2);
+final _sNumBold = _inner(bold: true, numFmt: NumFormat.standard_2);
+final _sNumOrange = _inner(bg: '#FFF2CC', numFmt: NumFormat.standard_2);
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-/// Generates a master mix Excel workbook (.xlsx bytes) with folding recipes and slat grouping.
-Uint8List generateMasterMixExcel({
+/// Result of master mix Excel generation, including any volume warnings.
+class MasterMixResult {
+  final Uint8List bytes;
+  final List<String> warnings;
+
+  const MasterMixResult({required this.bytes, this.warnings = const []});
+}
+
+/// Generates a master mix Excel workbook (.xlsx bytes) with per-slat-type sheets
+/// and horizontally-arranged recipe groups.
+MasterMixResult generateMasterMixExcel({
   required Map<int, Map<String, String?>> plateAssignments,
   required Map<int, Map<String, WellConfig>> wellConfigs,
   required Map<int, String> plateNames,
   required Map<String, Slat> slats,
   required Map<String, Map<String, dynamic>> layerMap,
   required MasterMixConfig mixConfig,
+  bool normalizeVolumes = false,
+  double maxWellVolumeNl = 25000,
   String experimentTitle = 'Experiment',
+  Map<String, Set<(int, int)>>? manualHandles,
 }) {
-  // Step 1: Build per-well entries
   final entries = <_WellEntry>[];
   for (var plateIndex in plateAssignments.keys.toList()..sort()) {
     final plate = plateAssignments[plateIndex]!;
@@ -119,291 +140,431 @@ Uint8List generateMasterMixExcel({
 
   if (entries.isEmpty) {
     final excel = Excel.createExcel();
-    return Uint8List.fromList(excel.save()!);
+    return MasterMixResult(bytes: Uint8List.fromList(excel.save()!));
   }
 
-  // Step 2: Group by WellConfig triple
+  final standardEntries = entries.where((e) => !_isDoubleBarrel(e.slat)).toList();
+  final dbEntries = entries.where((e) => _isDoubleBarrel(e.slat)).toList();
+
+  final excel = Excel.createExcel();
+
+  if (standardEntries.isNotEmpty) {
+    _buildTypeSheet(
+      excel: excel,
+      sheetName: 'Standard Slat Master Mixes',
+      entries: standardEntries,
+      mixConfig: mixConfig,
+      normalizeVolumes: normalizeVolumes,
+      useSingleStock: mixConfig.coreStaplesUseSingleStock,
+      stockConc: mixConfig.coreStaplesStockConc,
+      helixConcs: mixConfig.coreStaplesHelixConcs,
+      coreRatio: mixConfig.coreStaplesRatio,
+      bufferMode: mixConfig.bufferSlatsMode,
+      bufferPct: mixConfig.bufferSlatsPercentage,
+      bufferCount: mixConfig.bufferSlats,
+      layerMap: layerMap,
+      plateNames: plateNames,
+      manualHandles: manualHandles,
+    );
+  }
+
+  if (dbEntries.isNotEmpty) {
+    _buildTypeSheet(
+      excel: excel,
+      sheetName: 'Double Barrel Slat Master Mixes',
+      entries: dbEntries,
+      mixConfig: mixConfig,
+      normalizeVolumes: normalizeVolumes,
+      useSingleStock: mixConfig.dbCoreStaplesUseSingleStock,
+      stockConc: mixConfig.dbCoreStaplesStockConc,
+      helixConcs: mixConfig.dbCoreStaplesHelixConcs,
+      coreRatio: mixConfig.dbCoreStaplesRatio,
+      bufferMode: mixConfig.dbBufferSlatsMode,
+      bufferPct: mixConfig.dbBufferSlatsPercentage,
+      bufferCount: mixConfig.dbBufferSlats,
+      layerMap: layerMap,
+      plateNames: plateNames,
+      manualHandles: manualHandles,
+    );
+  }
+
+  if (excel.sheets.containsKey('Sheet1')) excel.delete('Sheet1');
+
+  // Check for manual handles that are placeholders (no plate assigned).
+  final warnings = <String>[];
+  int manualPlaceholderHandleCount = 0;
+  final manualPlaceholderSlatIds = <String>{};
+  if (manualHandles != null) {
+    for (var entry in entries) {
+      final base = baseSlatId(entry.slatId);
+      final slatManual = manualHandles[base];
+      if (slatManual == null || slatManual.isEmpty) continue;
+      for (var (helix, position) in slatManual) {
+        final handles = helix == 2 ? entry.slat.h2Handles : entry.slat.h5Handles;
+        final handleData = handles[position];
+        if (handleData == null) continue;
+        final conc = (handleData['concentration'] as num?)?.toDouble();
+        if (conc == null || conc <= 0) {
+          manualPlaceholderHandleCount++;
+          manualPlaceholderSlatIds.add(base);
+        }
+      }
+    }
+  }
+  if (manualPlaceholderHandleCount > 0) {
+    warnings.add(
+      '$manualPlaceholderHandleCount handle(s) across ${manualPlaceholderSlatIds.length} slat(s) '
+      'are marked manual without plate assignments — total handle volume is underestimated.',
+    );
+  }
+
+  // Check for slats exceeding the max well volume threshold.
+  final overflowSlats = entries.where((e) => e.totalHandleVolumeNl > maxWellVolumeNl).toList();
+  if (overflowSlats.isNotEmpty) {
+    final shown = overflowSlats.take(5).map((e) => slatDisplayName(e.slat, layerMap)).join(', ');
+    final extra = overflowSlats.length > 5 ? ' and ${overflowSlats.length - 5} more' : '';
+    final thresholdUl = (maxWellVolumeNl / 1000).toStringAsFixed(1);
+    warnings.add('${overflowSlats.length} slat(s) exceed the $thresholdUl µL well volume threshold: $shown$extra');
+  }
+
+  return MasterMixResult(bytes: Uint8List.fromList(excel.save()!), warnings: warnings);
+}
+
+// ---------------------------------------------------------------------------
+// Per-type sheet builder
+// ---------------------------------------------------------------------------
+
+/// Builds a single sheet with horizontally-arranged groups (one group per 5-column block).
+void _buildTypeSheet({
+  required Excel excel,
+  required String sheetName,
+  required List<_WellEntry> entries,
+  required MasterMixConfig mixConfig,
+  required bool normalizeVolumes,
+  required bool useSingleStock,
+  required double stockConc,
+  required List<double> helixConcs,
+  required double coreRatio,
+  required BufferSlatsMode bufferMode,
+  required double bufferPct,
+  required int bufferCount,
+  required Map<String, Map<String, dynamic>> layerMap,
+  required Map<int, String> plateNames,
+  Map<String, Set<(int, int)>>? manualHandles,
+}) {
+  final sheet = excel[sheetName];
+
   final groups = <_GroupKey, List<_WellEntry>>{};
   for (var e in entries) {
     final key = _GroupKey(e.config.ratio, e.config.volume, e.config.scaffoldConc);
     groups.putIfAbsent(key, () => []).add(e);
   }
+  final sortedKeys = groups.keys.toList();
 
-  final sortedGroupKeys = groups.keys.toList();
-  final useLabels = sortedGroupKeys.length > 1;
-  final groupLabels = <_GroupKey, String>{};
-  for (var i = 0; i < sortedGroupKeys.length; i++) {
-    groupLabels[sortedGroupKeys[i]] = useLabels ? 'Group ${String.fromCharCode(65 + i)}' : '';
-  }
-
-  final excel = Excel.createExcel();
-  final mmSheet = excel['Slat Folding & Master Mix'];
-  if (excel.sheets.containsKey('Sheet1')) excel.delete('Sheet1');
-
-  int row = 0;
-
-  for (var gi = 0; gi < sortedGroupKeys.length; gi++) {
-    final gKey = sortedGroupKeys[gi];
+  for (var gi = 0; gi < sortedKeys.length; gi++) {
+    final gKey = sortedKeys[gi];
     final groupEntries = groups[gKey]!;
-    final label = groupLabels[gKey]!;
     final config = groupEntries.first.config;
     final slatCount = groupEntries.length;
+    final colBase = gi * 5;
 
-    final minConcInGroup = groupEntries.map((e) => e.minHandleConcNm).reduce((a, b) => a < b ? a : b);
-    final maxConcInGroup = groupEntries.map((e) => e.minHandleConcNm).reduce((a, b) => a > b ? a : b);
+    final resolvedBuffer = bufferMode == BufferSlatsMode.percentage
+        ? (slatCount * bufferPct / 100).ceil()
+        : bufferCount;
+
+    // Reference volume is the max handle volume within this group.
+    // With normalization ON, water fills every well to this level.
+    // Without normalization, we use the worst case (highest volume = lowest conc).
+    final maxVolumeInGroup = groupEntries.map((e) => e.totalHandleVolumeNl).reduce((a, b) => a > b ? a : b);
+    final minVolumeInGroup = groupEntries.map((e) => e.totalHandleVolumeNl).reduce((a, b) => a < b ? a : b);
+    final volumeVaries = (maxVolumeInGroup - minVolumeInGroup).abs() > 25;
+
+    // Effective concentration accounts for dilution to the reference volume.
+    final effectiveConcs = groupEntries.map((e) {
+      if (maxVolumeInGroup <= 0) return 0.0;
+      return e.minHandleConcNm * e.totalHandleVolumeNl / maxVolumeInGroup;
+    }).toList();
+    final minConcInGroup = effectiveConcs.reduce((a, b) => a < b ? a : b);
+    final maxConcInGroup = effectiveConcs.reduce((a, b) => a > b ? a : b);
     final concVaries = (maxConcInGroup - minConcInGroup).abs() > 0.01;
 
-    final isDoubleBarrel = mixConfig.coreStaplesMode == CoreStaplesMode.doubleBarrel;
+    final cB = _colLetter(colBase + 1);
+    final cC = _colLetter(colBase + 2);
+    final cD = _colLetter(colBase + 3);
 
-    // =====================================================================
-    // Table 1: Single Slat Folding
-    // =====================================================================
-    final headerText =
-        useLabels ? '$label ($slatCount slats): Single Slat Folding' : 'Single Slat Folding ($slatCount slats)';
-    _setCell(mmSheet, 0, row, headerText, style: _bHeader);
-    _setCell(mmSheet, 1, row, '', style: _bHeader);
-    _setCell(mmSheet, 2, row, '', style: _bHeader);
-    _setCell(mmSheet, 3, row, '', style: _bHeader);
+    int row = 0;
+
+    // ===== Title row (spans 4 cols, only first cell gets header style) =====
+    final title = '${config.ratio}x, ${config.scaffoldConc}nM, ${config.volume}µL ($slatCount slats)';
+    _setCell(sheet, colBase, row, title, style: _sHeader);
+    _setCell(sheet, colBase + 1, row, '', style: _sHeader);
+    _setCell(sheet, colBase + 2, row, '', style: _sHeader);
+    _setCell(sheet, colBase + 3, row, '', style: _sHeader);
     row++;
 
-    _setCell(mmSheet, 0, row, 'Component', style: _bBold);
-    _setCell(mmSheet, 1, row, 'Stock Conc.', style: _bBold);
-    _setCell(mmSheet, 2, row, 'Final Conc.', style: _bBold);
-    _setCell(mmSheet, 3, row, 'Amount (\u00B5L)', style: _bBold);
+    // ===== Table 1: Single Slat Folding =====
+    final t1Start = row;
+    _setCell(sheet, colBase, row, 'Component', style: _sBold);
+    _setCell(sheet, colBase + 1, row, 'Stock Conc.', style: _sBold);
+    _setCell(sheet, colBase + 2, row, 'Final Conc.', style: _sBold);
+    _setCell(sheet, colBase + 3, row, 'Amount (µL)', style: _sBold);
     row++;
 
-    // Handles
     final handlesRow = row;
-    _setCell(mmSheet, 0, row, 'H2/H5 Handles (nM)', style: _bNormal);
-    _setCell(mmSheet, 1, row, minConcInGroup, style: _bOrange);
+    _setCell(sheet, colBase, row, 'H2/H5 Handles (nM)', style: _sNormal);
+    _setCell(sheet, colBase + 1, row, minConcInGroup, style: _sNumOrange);
+    _setCell(sheet, colBase + 2, row, '', style: _sNum);
+    _setCell(sheet, colBase + 3, row, '', style: _sNum);
     row++;
 
-    // Scaffold
     final scaffoldRow = row;
-    _setCell(mmSheet, 0, row, 'P8064 Scaffold (nM)', style: _bNormal);
-    _setCell(mmSheet, 1, row, mixConfig.scaffoldStockConc, style: _bRed);
-    _setCell(mmSheet, 2, row, config.scaffoldConc, style: _bNormal);
+    _setCell(sheet, colBase, row, 'P8064 Scaffold (nM)', style: _sNormal);
+    _setCell(sheet, colBase + 1, row, mixConfig.scaffoldStockConc, style: _sNum);
+    _setCell(sheet, colBase + 2, row, config.scaffoldConc, style: _sNum);
+    _setCell(sheet, colBase + 3, row, '', style: _sNum);
     row++;
 
-    // Handle final conc formula: =C{scaffoldRow}*{handleRatio}
     final sR = scaffoldRow + 1;
-    _setFormula(mmSheet, 2, handlesRow, 'C$sR*${config.ratio}', style: _bNormal);
+    _setFormula(sheet, colBase + 2, handlesRow, '$cC$sR*${config.ratio}', style: _sNum);
 
-    // Core Staples — standard or double barrel
     final coreStartRow = row;
-    if (isDoubleBarrel) {
-      for (var i = 0; i < 4; i++) {
-        _setCell(mmSheet, 0, row, 'Core Staples ${i + 1} (nM)', style: _bNormal);
-        _setCell(mmSheet, 1, row, mixConfig.coreStaplesGroupConcs[i], style: _bNormal);
-        _setFormula(mmSheet, 2, row, 'C$sR*${mixConfig.coreStaplesRatio}', style: _bNormal);
-        row++;
-      }
-      // DB-L
-      _setCell(mmSheet, 0, row, 'DB-L (nM)', style: _bNormal);
-      _setCell(mmSheet, 1, row, mixConfig.dbLStockConc, style: _bNormal);
-      _setFormula(mmSheet, 2, row, 'C$sR*${mixConfig.coreStaplesRatio}', style: _bNormal);
-      row++;
-      // DB-R
-      _setCell(mmSheet, 0, row, 'DB-R (nM)', style: _bNormal);
-      _setCell(mmSheet, 1, row, mixConfig.dbRStockConc, style: _bNormal);
-      _setFormula(mmSheet, 2, row, 'C$sR*${mixConfig.coreStaplesRatio}', style: _bNormal);
+    if (useSingleStock) {
+      _setCell(sheet, colBase, row, 'Core Staples (nM)', style: _sNormal);
+      _setCell(sheet, colBase + 1, row, stockConc, style: _sNum);
+      _setFormula(sheet, colBase + 2, row, '$cC$sR*$coreRatio', style: _sNum);
+      _setCell(sheet, colBase + 3, row, '', style: _sNum);
       row++;
     } else {
-      _setCell(mmSheet, 0, row, 'Core Staples (nM)', style: _bNormal);
-      _setCell(mmSheet, 1, row, mixConfig.coreStaplesStockConc, style: _bNormal);
-      _setFormula(mmSheet, 2, row, 'C$sR*${mixConfig.coreStaplesRatio}', style: _bNormal);
-      row++;
+      final helixLabels = ['Core Staples Helix 0 (nM)', 'Core Staples Helix 1 (nM)', 'Core Staples Helix 3 (nM)', 'Core Staples Helix 4 (nM)'];
+      for (var i = 0; i < 4; i++) {
+        _setCell(sheet, colBase, row, helixLabels[i], style: _sNormal);
+        _setCell(sheet, colBase + 1, row, helixConcs[i], style: _sNum);
+        _setFormula(sheet, colBase + 2, row, '$cC$sR*$coreRatio', style: _sNum);
+        _setCell(sheet, colBase + 3, row, '', style: _sNum);
+        row++;
+      }
     }
     final coreEndRow = row - 1;
 
-    // TEF
     final tefRow = row;
-    _setCell(mmSheet, 0, row, 'TEF (X)', style: _bNormal);
-    _setCell(mmSheet, 1, row, mixConfig.tefStock, style: _bNormal);
-    _setCell(mmSheet, 2, row, mixConfig.tefFinal, style: _bNormal);
+    _setCell(sheet, colBase, row, 'TEF (X)', style: _sNormal);
+    _setCell(sheet, colBase + 1, row, mixConfig.tefStock, style: _sNum);
+    _setCell(sheet, colBase + 2, row, mixConfig.tefFinal, style: _sNum);
+    _setCell(sheet, colBase + 3, row, '', style: _sNum);
     row++;
 
-    // MgCl2
     final mgcl2Row = row;
-    _setCell(mmSheet, 0, row, 'MgCl\u2082 (mM)', style: _bNormal);
-    _setCell(mmSheet, 1, row, mixConfig.mgcl2Stock, style: _bNormal);
-    _setCell(mmSheet, 2, row, mixConfig.mgcl2Final, style: _bNormal);
+    _setCell(sheet, colBase, row, 'MgCl₂ (mM)', style: _sNormal);
+    _setCell(sheet, colBase + 1, row, mixConfig.mgcl2Stock, style: _sNum);
+    _setCell(sheet, colBase + 2, row, mixConfig.mgcl2Final, style: _sNum);
+    _setCell(sheet, colBase + 3, row, '', style: _sNum);
     row++;
 
-    // UPW
     final upwRow = row;
-    _setCell(mmSheet, 0, row, 'UPW', style: _bNormal);
-    _setCell(mmSheet, 1, row, '', style: _bNormal);
-    _setCell(mmSheet, 2, row, '', style: _bNormal);
+    _setCell(sheet, colBase, row, 'UPW', style: _sNormal);
+    _setCell(sheet, colBase + 1, row, '', style: _sNormal);
+    _setCell(sheet, colBase + 2, row, '', style: _sNormal);
+    _setCell(sheet, colBase + 3, row, '', style: _sNum);
     row++;
 
-    // Total Volume
     final totalRow = row;
-    _setCell(mmSheet, 0, row, 'Total Volume (\u00B5L)', style: _bBold);
-    _setCell(mmSheet, 1, row, '', style: _bNormal);
-    _setCell(mmSheet, 2, row, '', style: _bNormal);
-    _setCell(mmSheet, 3, row, config.volume, style: _bBold);
+    _setCell(sheet, colBase, row, 'Total Volume (µL)', style: _sBold);
+    _setCell(sheet, colBase + 1, row, '', style: _sNormal);
+    _setCell(sheet, colBase + 2, row, '', style: _sNormal);
+    _setCell(sheet, colBase + 3, row, config.volume, style: _sNumBold);
     row++;
 
-    // Total Amount (pmol)
-    _setCell(mmSheet, 0, row, 'Total Amount (pmol)', style: _bNormal);
-    _setCell(mmSheet, 1, row, '', style: _bNormal);
-    _setCell(mmSheet, 2, row, '', style: _bNormal);
+    final pmolRow = row;
+    _setCell(sheet, colBase, row, 'Total Amount (pmol)', style: _sNormal);
+    _setCell(sheet, colBase + 1, row, '', style: _sNormal);
+    _setCell(sheet, colBase + 2, row, '', style: _sNormal);
+    _setCell(sheet, colBase + 3, row, '', style: _sNum);
     row++;
+    final t1End = row - 1;
 
-    // Excel row refs (1-indexed)
+    // Formulas for Table 1
     final hR = handlesRow + 1;
     final totalExcelRow = totalRow + 1;
     final tR = tefRow + 1;
     final mR = mgcl2Row + 1;
-    final uR = upwRow + 1;
 
-    // Amount formulas
-    _setFormula(mmSheet, 3, handlesRow, 'C$hR*D$totalExcelRow/B$hR', style: _bNormal);
-    _setFormula(mmSheet, 3, scaffoldRow, 'C$sR*D$totalExcelRow/B$sR', style: _bNormal);
-
-    // Core staples amounts
+    _setFormula(sheet, colBase + 3, handlesRow, '$cC$hR*$cD$totalExcelRow/$cB$hR', style: _sNum);
+    _setFormula(sheet, colBase + 3, scaffoldRow, '$cC$sR*$cD$totalExcelRow/$cB$sR', style: _sNum);
     for (var r = coreStartRow; r <= coreEndRow; r++) {
       final eR = r + 1;
-      _setFormula(mmSheet, 3, r, 'C$eR*D$totalExcelRow/B$eR', style: _bNormal);
+      _setFormula(sheet, colBase + 3, r, '$cC$eR*$cD$totalExcelRow/$cB$eR', style: _sNum);
+    }
+    _setFormula(sheet, colBase + 3, tefRow, '$cC$tR*$cD$totalExcelRow/$cB$tR', style: _sNum);
+    _setFormula(sheet, colBase + 3, mgcl2Row, '$cC$mR*$cD$totalExcelRow/$cB$mR', style: _sNum);
+    _setFormula(sheet, colBase + 3, upwRow, '$cD$totalExcelRow-SUM($cD$hR:$cD$mR)', style: _sNum);
+    _setFormula(sheet, colBase + 3, pmolRow, '$cD$totalExcelRow*$cC$sR/1000', style: _sNum);
+
+    _applyOuterBorder(sheet, colBase, colBase + 3, t1Start, t1End);
+
+    // Volume inconsistency warning (only relevant without normalization)
+    if (!normalizeVolumes && volumeVaries) {
+      row++;
+      _setCell(sheet, colBase, row, 'WARNING: Handle volumes vary', style: _sOrangeBold);
+      _setCell(sheet, colBase + 1, row, 'Min: ${(minVolumeInGroup / 1000).toStringAsFixed(2)} µL', style: _sOrange);
+      _setCell(sheet, colBase + 2, row, 'Max: ${(maxVolumeInGroup / 1000).toStringAsFixed(2)} µL', style: _sOrange);
+      row++;
+      _setCell(sheet, colBase, row, 'Recipe uses max vol. Minor per-slat variations.', style: _sOrange);
+      row++;
     }
 
-    _setFormula(mmSheet, 3, tefRow, 'C$tR*D$totalExcelRow/B$tR', style: _bNormal);
-    _setFormula(mmSheet, 3, mgcl2Row, 'C$mR*D$totalExcelRow/B$mR', style: _bNormal);
-    // UPW = total - sum of everything above
-    _setFormula(mmSheet, 3, upwRow, 'D$totalExcelRow-SUM(D$hR:D$mR)', style: _bNormal);
-    // Total Amount = total volume * scaffold final conc / 1000
-    _setFormula(mmSheet, 3, totalRow + 1, 'D$totalExcelRow*C$sR/1000', style: _bNormal);
-
-    // Concentration warning (outside border)
+    // Concentration variation note
     if (concVaries) {
       row++;
-      _setCell(mmSheet, 0, row, 'Note: Handle concentrations vary in this group', style: _bOrangeBold);
-      _setCell(mmSheet, 1, row, '', style: _bOrange);
-      _setCell(mmSheet, 2, row, '', style: _bOrange);
-      _setCell(mmSheet, 3, row, '', style: _bOrange);
-      row++;
-      _setCell(mmSheet, 0, row, 'Min: ${minConcInGroup.toStringAsFixed(1)} nM', style: _bOrange);
-      _setCell(mmSheet, 1, row, 'Max: ${maxConcInGroup.toStringAsFixed(1)} nM', style: _bOrange);
+      _setCell(sheet, colBase, row, 'Note: Effective handle concs vary', style: _sOrangeBold);
+      _setCell(sheet, colBase + 1, row, 'Min: ${minConcInGroup.toStringAsFixed(2)} nM', style: _sOrange);
+      _setCell(sheet, colBase + 2, row, 'Max: ${maxConcInGroup.toStringAsFixed(2)} nM', style: _sOrange);
       row++;
     }
 
-    row++; // blank spacer
+    // Manual handles without plate assignments warning
+    if (manualHandles != null) {
+      int groupManualCount = 0;
+      for (var e in groupEntries) {
+        final base = baseSlatId(e.slatId);
+        final slatManual = manualHandles[base];
+        if (slatManual == null || slatManual.isEmpty) continue;
+        for (var (helix, position) in slatManual) {
+          final handles = helix == 2 ? e.slat.h2Handles : e.slat.h5Handles;
+          final handleData = handles[position];
+          if (handleData == null) continue;
+          final conc = (handleData['concentration'] as num?)?.toDouble();
+          if (conc == null || conc <= 0) groupManualCount++;
+        }
+      }
+      if (groupManualCount > 0) {
+        row++;
+        _setCell(sheet, colBase, row, 'WARNING: $groupManualCount manual handle(s) lack plate assignments', style: _sOrangeBold);
+        row++;
+        _setCell(sheet, colBase, row, 'Total handle volume is underestimated.', style: _sOrange);
+        row++;
+      }
+    }
 
-    // =====================================================================
-    // Table 2: Master Mix Prep
-    // =====================================================================
-    _setCell(mmSheet, 0, row, 'Master Mix Prep', style: _bHeader);
-    _setCell(mmSheet, 1, row, 'Count / Volume (\u00B5L)', style: _bHeader);
-    _setCell(mmSheet, 2, row, '', style: _bHeader);
-    _setCell(mmSheet, 3, row, '', style: _bHeader);
+    row++; // spacer
+
+    // ===== Table 2: Master Mix Prep =====
+    final t2Start = row;
+    _setCell(sheet, colBase, row, 'Master Mix Prep', style: _sHeader);
+    _setCell(sheet, colBase + 1, row, 'Volume (µL)', style: _sHeader);
     row++;
 
     final countRow = row;
     final countExcelRow = countRow + 1;
-    _setCell(mmSheet, 0, row, 'Number of slats (+${mixConfig.bufferSlats} buffer)', style: _bNormal);
-    _setCell(mmSheet, 1, row, slatCount + mixConfig.bufferSlats, style: _bBold);
+    _setCell(sheet, colBase, row, 'Number of slats (+$resolvedBuffer buffer)', style: _sNormal);
+    _setCell(sheet, colBase + 1, row, slatCount + resolvedBuffer, style: _sBold);
     row++;
 
-    final mmScaffoldRow = row;
-    _setCell(mmSheet, 0, row, 'P8064 Scaffold', style: _bNormal);
-    _setFormula(mmSheet, 1, row, 'D$sR*B$countExcelRow', style: _bNormal);
+    _setCell(sheet, colBase, row, 'P8064 Scaffold', style: _sNormal);
+    _setFormula(sheet, colBase + 1, row, '$cD$sR*$cB$countExcelRow', style: _sNum);
     row++;
 
-    // Core staples master mix rows
     for (var r = coreStartRow; r <= coreEndRow; r++) {
-      final label_ = _getCellText(mmSheet, 0, r).replaceAll(' (nM)', '');
-      _setCell(mmSheet, 0, row, label_, style: _bNormal);
-      _setFormula(mmSheet, 1, row, 'D${r + 1}*B$countExcelRow', style: _bNormal);
+      final label = _getCellText(sheet, colBase, r).replaceAll(' (nM)', '');
+      _setCell(sheet, colBase, row, label, style: _sNormal);
+      _setFormula(sheet, colBase + 1, row, '$cD${r + 1}*$cB$countExcelRow', style: _sNum);
       row++;
     }
 
-    _setCell(mmSheet, 0, row, 'TEF', style: _bNormal);
-    _setFormula(mmSheet, 1, row, 'D$tR*B$countExcelRow', style: _bNormal);
+    _setCell(sheet, colBase, row, 'TEF', style: _sNormal);
+    _setFormula(sheet, colBase + 1, row, '$cD$tR*$cB$countExcelRow', style: _sNum);
     row++;
 
-    _setCell(mmSheet, 0, row, 'MgCl\u2082', style: _bNormal);
-    _setFormula(mmSheet, 1, row, 'D$mR*B$countExcelRow', style: _bNormal);
+    _setCell(sheet, colBase, row, 'MgCl₂', style: _sNormal);
+    _setFormula(sheet, colBase + 1, row, '$cD$mR*$cB$countExcelRow', style: _sNum);
     row++;
 
     final mmUpwRow = row;
-    _setCell(mmSheet, 0, row, 'UPW', style: _bNormal);
-    _setFormula(mmSheet, 1, row, 'D$uR*B$countExcelRow', style: _bNormal);
+    _setCell(sheet, colBase, row, 'UPW', style: _sNormal);
+    final uR = upwRow + 1;
+    _setFormula(sheet, colBase + 1, row, '$cD$uR*$cB$countExcelRow', style: _sNum);
     row++;
 
-    final mmTotalRow = row;
-    final mmScaffoldExcelRow = mmScaffoldRow + 1;
-    final mmTotalExcelRow = mmTotalRow + 1;
-    _setCell(mmSheet, 0, row, 'Total Volume', style: _bBold);
-    _setFormula(mmSheet, 1, row, 'SUM(B$mmScaffoldExcelRow:B${mmUpwRow + 1})', style: _bBold);
+    final mmScaffoldExcelRow = countRow + 2;
+    _setCell(sheet, colBase, row, 'Total Volume', style: _sBold);
+    _setFormula(sheet, colBase + 1, row, 'SUM($cB$mmScaffoldExcelRow:$cB${mmUpwRow + 1})', style: _sNumBold);
+    final mmTotalExcelRow = row + 1;
+    final t2End = row;
     row++;
 
-    row++; // blank spacer
+    _applyOuterBorder(sheet, colBase, colBase + 1, t2Start, t2End);
 
-    // =====================================================================
-    // Table 3: Final Slat Mixture (per slat)
-    // =====================================================================
-    _setCell(mmSheet, 0, row, 'Final Slat Mixture (per slat)', style: _bHeader);
-    _setCell(mmSheet, 1, row, 'Volume (\u00B5L)', style: _bHeader);
-    _setCell(mmSheet, 2, row, '', style: _bHeader);
-    _setCell(mmSheet, 3, row, '', style: _bHeader);
+    row++; // spacer
+
+    // ===== Table 3: Final Slat Mixture (per slat) =====
+    final t3Start = row;
+    _setCell(sheet, colBase, row, 'Final Slat Mixture (per slat)', style: _sHeader);
+    _setCell(sheet, colBase + 1, row, 'Volume (µL)', style: _sHeader);
     row++;
 
     final fmMmRow = row;
-    _setCell(mmSheet, 0, row, 'Master Mix', style: _bNormal);
-    _setFormula(mmSheet, 1, row, 'B$mmTotalExcelRow/B$countExcelRow', style: _bNormal);
+    _setCell(sheet, colBase, row, 'Master Mix', style: _sNormal);
+    _setFormula(sheet, colBase + 1, row, '$cB$mmTotalExcelRow/$cB$countExcelRow', style: _sNum);
     row++;
 
     final fmHandlesRow = row;
-    _setCell(mmSheet, 0, row, 'Slat Handle Mixture', style: _bNormal);
-    _setFormula(mmSheet, 1, row, 'D$hR', style: _bNormal);
+    _setCell(sheet, colBase, row, 'Slat Handle Mixture', style: _sNormal);
+    _setFormula(sheet, colBase + 1, row, '$cD$hR', style: _sNum);
     row++;
 
-    _setCell(mmSheet, 0, row, 'Total Volume', style: _bBold);
-    _setFormula(mmSheet, 1, row, 'B${fmMmRow + 1}+B${fmHandlesRow + 1}', style: _bBold);
+    _setCell(sheet, colBase, row, 'Total Volume', style: _sBold);
+    _setFormula(sheet, colBase + 1, row, '$cB${fmMmRow + 1}+$cB${fmHandlesRow + 1}', style: _sNumBold);
+    final t3End = row;
     row++;
 
-    // Spacing between groups
-    if (gi < sortedGroupKeys.length - 1) {
-      row += 2;
-    }
-  }
+    _applyOuterBorder(sheet, colBase, colBase + 1, t3Start, t3End);
 
-  // Set column widths
-  mmSheet.setColumnWidth(0, 32.0);
-  mmSheet.setColumnWidth(1, 16.0);
-  mmSheet.setColumnWidth(2, 14.0);
-  mmSheet.setColumnWidth(3, 14.0);
+    row++; // spacer
 
-  // --- Sheet 2: Slat Groups ---
-  final groupSheet = excel['Slat Groups'];
+    // ===== Table 4: Slat List =====
+    final t4Start = row;
+    _setCell(sheet, colBase, row, 'Slats in Group', style: _sHeader);
+    _setCell(sheet, colBase + 1, row, 'Well', style: _sHeader);
+    _setCell(sheet, colBase + 2, row, 'Plate', style: _sHeader);
+    row++;
 
-  _setCell(groupSheet, 0, 0, 'Group', style: _headerNoBorder);
-  _setCell(groupSheet, 1, 0, 'Slat ID', style: _headerNoBorder);
-  _setCell(groupSheet, 2, 0, 'Display Name', style: _headerNoBorder);
-  _setCell(groupSheet, 3, 0, 'Well', style: _headerNoBorder);
-  _setCell(groupSheet, 4, 0, 'Plate', style: _headerNoBorder);
-
-  int gRow = 1;
-  for (var gKey in sortedGroupKeys) {
-    final label = groupLabels[gKey]!;
-    final groupEntries = groups[gKey]!;
     for (var e in groupEntries) {
-      _setCell(groupSheet, 0, gRow, label);
-      _setCell(groupSheet, 1, gRow, baseSlatId(e.slatId));
-      _setCell(groupSheet, 2, gRow, slatDisplayName(e.slat, layerMap));
-      _setCell(groupSheet, 3, gRow, e.well);
-      _setCell(groupSheet, 4, gRow, plateNames[e.plateIndex] ?? 'Plate');
-      gRow++;
+      _setCell(sheet, colBase, row, slatDisplayName(e.slat, layerMap), style: _sNormal);
+      _setCell(sheet, colBase + 1, row, e.well, style: _sNormal);
+      _setCell(sheet, colBase + 2, row, plateNames[e.plateIndex] ?? 'Plate', style: _sNormal);
+      row++;
     }
+    final t4End = row - 1;
+
+    _applyOuterBorder(sheet, colBase, colBase + 2, t4Start, t4End);
   }
 
-  return Uint8List.fromList(excel.save()!);
+  for (var gi = 0; gi < sortedKeys.length; gi++) {
+    final colBase = gi * 5;
+    sheet.setColumnWidth(colBase, 30.0);
+    sheet.setColumnWidth(colBase + 1, 16.0);
+    sheet.setColumnWidth(colBase + 2, 14.0);
+    sheet.setColumnWidth(colBase + 3, 14.0);
+    sheet.setColumnWidth(colBase + 4, 3.0);
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Cell helpers
+// Helpers
 // ---------------------------------------------------------------------------
+
+bool _isDoubleBarrel(Slat slat) => slat.slatType.startsWith('DB-');
+
+/// Converts a 0-based column index to an Excel column letter (A, B, ..., Z, AA, AB, ...).
+String _colLetter(int col) {
+  var result = '';
+  var c = col;
+  while (true) {
+    result = String.fromCharCode(65 + (c % 26)) + result;
+    c = c ~/ 26 - 1;
+    if (c < 0) break;
+  }
+  return result;
+}
 
 void _setCell(Sheet sheet, int col, int row, dynamic val, {CellStyle? style}) {
   final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row));
@@ -430,4 +591,32 @@ String _getCellText(Sheet sheet, int col, int row) {
   if (v == null) return '';
   if (v is TextCellValue) return v.value.toString();
   return v.toString();
+}
+
+/// Applies a strong (Medium) outer border around a rectangular table region.
+/// Interior borders are left as-is (Hair weight from the cell styles).
+void _applyOuterBorder(Sheet sheet, int colStart, int colEnd, int rowStart, int rowEnd) {
+  for (var r = rowStart; r <= rowEnd; r++) {
+    for (var c = colStart; c <= colEnd; c++) {
+      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r));
+      final existing = cell.cellStyle;
+
+      final needsTop = r == rowStart;
+      final needsBottom = r == rowEnd;
+      final needsLeft = c == colStart;
+      final needsRight = c == colEnd;
+
+      if (!needsTop && !needsBottom && !needsLeft && !needsRight) continue;
+
+      cell.cellStyle = CellStyle(
+        bold: existing?.isBold ?? false,
+        backgroundColorHex: existing?.backgroundColor ?? '#FFFFFF'.excelColor,
+        numberFormat: existing?.numberFormat ?? NumFormat.standard_0,
+        topBorder: needsTop ? _mediumBorder : (existing?.topBorder ?? _hairBorder),
+        bottomBorder: needsBottom ? _mediumBorder : (existing?.bottomBorder ?? _hairBorder),
+        leftBorder: needsLeft ? _mediumBorder : (existing?.leftBorder ?? _hairBorder),
+        rightBorder: needsRight ? _mediumBorder : (existing?.rightBorder ?? _hairBorder),
+      );
+    }
+  }
 }

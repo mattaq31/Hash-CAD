@@ -20,17 +20,17 @@ class WellConfig {
   /// Total slat quantity in pmol: scaffoldConc * volume / 1000.
   double get totalSlatQuantity => scaffoldConc * volume / 1000;
 
-  /// Serializes to a compact string for Excel storage: "ratio_sVolume_sScaffoldConc".
-  String toExcelString() => '${ratio}_s${volume}_s$scaffoldConc';
+  /// Serializes to a descriptive string for Excel storage: "r{ratio}_v{volume}_sc{scaffoldConc}".
+  String toExcelString() => 'r${ratio}_v${volume}_sc$scaffoldConc';
 
   /// Parses a config string produced by [toExcelString].
   static WellConfig? fromExcelString(String s) {
     if (s.isEmpty) return null;
-    final parts = s.split('_s');
-    if (parts.length != 3) return null;
-    final r = double.tryParse(parts[0]);
-    final v = double.tryParse(parts[1]);
-    final sc = double.tryParse(parts[2]);
+    final match = RegExp(r'^r([^_]+)_v([^_]+)_sc(.+)$').firstMatch(s);
+    if (match == null) return null;
+    final r = double.tryParse(match.group(1)!);
+    final v = double.tryParse(match.group(2)!);
+    final sc = double.tryParse(match.group(3)!);
     if (r == null || v == null || sc == null) return null;
     return WellConfig(ratio: r, volume: v, scaffoldConc: sc);
   }
@@ -103,6 +103,9 @@ class PlateLayoutState {
   bool generateHelperSheets;
   bool normalizeVolumes;
 
+  /// Maximum allowed handle volume per well (nL) — used for warnings.
+  double maxWellVolumeNl;
+
   PlateLayoutState({
     List<String>? unassignedSlats,
     Map<int, Map<String, String?>>? plateAssignments,
@@ -117,6 +120,7 @@ class PlateLayoutState {
     this.generateCsv = true,
     this.generateHelperSheets = false,
     this.normalizeVolumes = false,
+    this.maxWellVolumeNl = 25000,
   })  : unassignedSlats = unassignedSlats ?? [],
         plateAssignments = plateAssignments ?? {},
         duplicateGroups = duplicateGroups ?? {},
@@ -657,10 +661,12 @@ class PlateLayoutState {
   /// for writing to the lab_metadata sheet.
   Map<String, String> exportLabMetadata() {
     return {
+      'experiment_title': experimentTitle,
       'generate_pdf': generatePdf.toString(),
       'generate_csv': generateCsv.toString(),
       'generate_helper_sheets': generateHelperSheets.toString(),
       'normalize_volumes': normalizeVolumes.toString(),
+      'max_well_volume_nl': maxWellVolumeNl.toString(),
       ...masterMixConfig.toMap(),
     };
   }
@@ -780,10 +786,12 @@ class PlateLayoutState {
     // Parse lab metadata (master mix config + export settings)
     final m = labMetadata ?? {};
     final parsedMixConfig = MasterMixConfig.fromMap(m);
+    final labExperimentTitle = m['experiment_title'];
     final parsedGeneratePdf = m['generate_pdf'] != 'false';
     final parsedGenerateCsv = m['generate_csv'] != 'false';
     final parsedGenerateHelper = m['generate_helper_sheets'] == 'true';
     final parsedNormalize = m['normalize_volumes'] == 'true';
+    final parsedMaxWellVolume = double.tryParse(m['max_well_volume_nl'] ?? '') ?? 25000;
 
     // Rebuild duplicateGroups and counters in a single pass
     final duplicateGroups = <String, Set<String>>{};
@@ -814,12 +822,13 @@ class PlateLayoutState {
       plateNames: parsedPlateNames,
       wellConfigs: parsedWellConfigs,
       manualHandles: parsedManualHandles,
-      experimentTitle: parsedExperimentTitle,
+      experimentTitle: labExperimentTitle ?? parsedExperimentTitle,
       masterMixConfig: parsedMixConfig,
       generatePdf: parsedGeneratePdf,
       generateCsv: parsedGenerateCsv,
       generateHelperSheets: parsedGenerateHelper,
       normalizeVolumes: parsedNormalize,
+      maxWellVolumeNl: parsedMaxWellVolume,
     )..ensureDefaultConfigs();
   }
 
@@ -848,6 +857,7 @@ class PlateLayoutState {
       generateCsv: generateCsv,
       generateHelperSheets: generateHelperSheets,
       normalizeVolumes: normalizeVolumes,
+      maxWellVolumeNl: maxWellVolumeNl,
     );
   }
 
