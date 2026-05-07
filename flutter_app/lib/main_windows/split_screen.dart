@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../graphics/3d_painter.dart';
 import '../graphics/crosshatch_shader.dart';
+import '../graphics/stl_exporter.dart';
+import '../graphics/stl_export_validation.dart';
 import 'grid_control.dart';
 import '../sidebars/sidebar_tools.dart';
 import '../app_management/shared_app_state.dart';
@@ -29,7 +31,7 @@ class SplitScreen extends StatefulWidget {
 }
 
 class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
-  // Initial divider position as a fraction of screen width
+  final GlobalKey<ThreeDisplayState> _threeDisplayKey = GlobalKey<ThreeDisplayState>();
 
   static const WidgetStateProperty<Icon> displayThumbIcon = WidgetStateProperty<Icon>.fromMap(
       <WidgetStatesConstraint, Icon>{
@@ -90,6 +92,41 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
   Future<AppExitResponse> didRequestAppExit() {
     shutdownServerIfAny();
     return super.didRequestAppExit();
+  }
+
+  /// Validates connectivity and exports the design as an STL file for 3D printing.
+  void _exportSTL(BuildContext context, DesignState appState) {
+    final validationError = validateFullConnectivity(
+      slats: appState.slats,
+      occupiedGridPoints: appState.occupiedGridPoints,
+      layerMap: appState.layerMap,
+    );
+
+    if (validationError != null) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Cannot Export STL'),
+          content: Text(validationError),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final threeState = _threeDisplayKey.currentState;
+    if (threeState == null) return;
+
+    exportDesignToSTL(
+      instanceManager: threeState.instanceManager,
+      slatInstanceNames: threeState.slatInstanceNames,
+      designName: appState.designName,
+    );
   }
 
   @override
@@ -156,7 +193,7 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                       width: rightPaneWidth,
                       child: FocusScope(
                         canRequestFocus: true,
-                          child: ThreeDisplay()),
+                          child: ThreeDisplay(key: _threeDisplayKey)),
                     ),
                   ]
                 ],
@@ -287,6 +324,14 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
             right: 16.0,
             child: Row(
               children: [
+                if (actionState.threeJSViewerActive)
+                  Tooltip(
+                    message: 'Export STL for 3D printing',
+                    child: IconButton(
+                      icon: const Icon(Icons.view_in_ar),
+                      onPressed: () => _exportSTL(context, appState),
+                    ),
+                  ),
                 Text("Activate 3D Display"),
                 Switch(
                   thumbIcon: displayThumbIcon,

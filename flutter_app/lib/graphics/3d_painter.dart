@@ -291,10 +291,10 @@ class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
 
   @override
-  State<ThreeDisplay> createState() => _ThreeDisplay();
+  State<ThreeDisplay> createState() => ThreeDisplayState();
 }
 
-class _ThreeDisplay extends State<ThreeDisplay> {
+class ThreeDisplayState extends State<ThreeDisplay> {
   late three.ThreeJS threeJs;
   bool isSetupComplete = false;
   double VFOV = 70;
