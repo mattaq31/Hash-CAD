@@ -66,6 +66,7 @@ dependencies:
   three_js_geometry: any
   three_js_math: any
   pdf: ^3.11.3
+  archive: ^3.6.1
 
 dependency_overrides:
   three_js_core_loaders:

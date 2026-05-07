@@ -140,7 +140,7 @@ MasterMixResult generateMasterMixExcel({
 
   if (entries.isEmpty) {
     final excel = Excel.createExcel();
-    return MasterMixResult(bytes: Uint8List.fromList(excel.save()!));
+    return MasterMixResult(bytes: Uint8List.fromList(excel.encode()!));
   }
 
   final standardEntries = entries.where((e) => !_isDoubleBarrel(e.slat)).toList();
@@ -227,7 +227,7 @@ MasterMixResult generateMasterMixExcel({
     warnings.add('${overflowSlats.length} slat(s) exceed the $thresholdUl µL well volume threshold: $shown$extra');
   }
 
-  return MasterMixResult(bytes: Uint8List.fromList(excel.save()!), warnings: warnings);
+  return MasterMixResult(bytes: Uint8List.fromList(excel.encode()!), warnings: warnings);
 }
 
 // ---------------------------------------------------------------------------
