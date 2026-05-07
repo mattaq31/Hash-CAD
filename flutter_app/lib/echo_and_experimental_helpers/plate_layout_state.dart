@@ -3,6 +3,7 @@ import '../crisscross_core/slats.dart';
 import 'echo_export.dart' show generatePlateLayout96;
 import 'echo_plate_constants.dart';
 import 'master_mix_config.dart';
+import 'peg_purification_config.dart';
 
 final List<String> _plate96Wells = generatePlateLayout96();
 
@@ -101,10 +102,14 @@ class PlateLayoutState {
   bool generatePdf;
   bool generateCsv;
   bool generateHelperSheets;
+  bool generatePegSheet;
   bool normalizeVolumes;
 
   /// Maximum allowed handle volume per well (nL) — used for warnings.
   double maxWellVolumeNl;
+
+  /// PEG purification configuration, persisted with the design file.
+  PegPurificationConfig pegConfig;
 
   PlateLayoutState({
     List<String>? unassignedSlats,
@@ -119,8 +124,10 @@ class PlateLayoutState {
     this.generatePdf = true,
     this.generateCsv = true,
     this.generateHelperSheets = false,
+    this.generatePegSheet = false,
     this.normalizeVolumes = false,
     this.maxWellVolumeNl = 25000,
+    this.pegConfig = const PegPurificationConfig(),
   })  : unassignedSlats = unassignedSlats ?? [],
         plateAssignments = plateAssignments ?? {},
         duplicateGroups = duplicateGroups ?? {},
@@ -665,9 +672,11 @@ class PlateLayoutState {
       'generate_pdf': generatePdf.toString(),
       'generate_csv': generateCsv.toString(),
       'generate_helper_sheets': generateHelperSheets.toString(),
+      'generate_peg_sheet': generatePegSheet.toString(),
       'normalize_volumes': normalizeVolumes.toString(),
       'max_well_volume_nl': maxWellVolumeNl.toString(),
       ...masterMixConfig.toMap(),
+      ...pegConfig.toMap(),
     };
   }
 
@@ -790,6 +799,8 @@ class PlateLayoutState {
     final parsedGeneratePdf = m['generate_pdf'] != 'false';
     final parsedGenerateCsv = m['generate_csv'] != 'false';
     final parsedGenerateHelper = m['generate_helper_sheets'] == 'true';
+    final parsedGeneratePeg = m['generate_peg_sheet'] == 'true';
+    final parsedPegConfig = PegPurificationConfig.fromMap(m);
     final parsedNormalize = m['normalize_volumes'] == 'true';
     final parsedMaxWellVolume = double.tryParse(m['max_well_volume_nl'] ?? '') ?? 25000;
 
@@ -827,8 +838,10 @@ class PlateLayoutState {
       generatePdf: parsedGeneratePdf,
       generateCsv: parsedGenerateCsv,
       generateHelperSheets: parsedGenerateHelper,
+      generatePegSheet: parsedGeneratePeg,
       normalizeVolumes: parsedNormalize,
       maxWellVolumeNl: parsedMaxWellVolume,
+      pegConfig: parsedPegConfig,
     )..ensureDefaultConfigs();
   }
 
@@ -856,8 +869,10 @@ class PlateLayoutState {
       generatePdf: generatePdf,
       generateCsv: generateCsv,
       generateHelperSheets: generateHelperSheets,
+      generatePegSheet: generatePegSheet,
       normalizeVolumes: normalizeVolumes,
       maxWellVolumeNl: maxWellVolumeNl,
+      pegConfig: pegConfig,
     );
   }
 

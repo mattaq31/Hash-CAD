@@ -18,6 +18,7 @@ import 'manual_handle_dialog.dart';
 import 'mass_manual_handle_dialog.dart';
 import 'master_mix_config.dart';
 import 'master_mix_export.dart';
+import 'peg_purification_export.dart';
 import 'plate_layout_state.dart';
 import 'plate_undo_stack.dart';
 
@@ -1044,9 +1045,11 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       generatePdf: _layoutState!.generatePdf,
       generateCsv: _layoutState!.generateCsv,
       generateHelperSheets: _layoutState!.generateHelperSheets,
+      generatePegSheet: _layoutState!.generatePegSheet,
       normalizeVolumes: _layoutState!.normalizeVolumes,
       maxWellVolumeNl: _layoutState!.maxWellVolumeNl,
       config: _layoutState!.masterMixConfig,
+      pegConfig: _layoutState!.pegConfig,
     );
     _dialogOpen = false;
     if (result != null) {
@@ -1054,12 +1057,14 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         _layoutState!.generatePdf = result.pdf;
         _layoutState!.generateCsv = result.csv;
         _layoutState!.generateHelperSheets = result.helper;
+        _layoutState!.generatePegSheet = result.pegSheet;
         _layoutState!.normalizeVolumes = result.normalize;
         _layoutState!.maxWellVolumeNl = result.maxWellVolumeNl;
         _layoutState!.masterMixConfig = result.config;
+        _layoutState!.pegConfig = result.pegConfig;
       });
       _syncLayoutToAppState();
-      if (result.runExport && (result.pdf || result.csv || result.helper)) {
+      if (result.runExport && (result.pdf || result.csv || result.helper || result.pegSheet)) {
         _runExport(appState);
       }
     }
@@ -1120,12 +1125,32 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       files['${expTitle}_master_mix.xlsx'] = mmResult.bytes;
     }
 
+    PegPurificationResult? pegResult;
+    if (_layoutState!.generatePegSheet) {
+      final pegGroups = await _resolvePegGroups(appState);
+      if (pegGroups != null) {
+        pegResult = generatePegPurificationExcel(
+          groups: pegGroups,
+          slats: appState.slats,
+          layerMap: appState.layerMap,
+          plateAssignments: _layoutState!.plateAssignments,
+          wellConfigs: _layoutState!.wellConfigs,
+          plateNames: _layoutState!.plateNames,
+          pegConfig: _layoutState!.pegConfig,
+          experimentTitle: _layoutState!.experimentTitle,
+          groupColors: _resolveGroupColors(appState),
+        );
+        files['${expTitle}_peg_purification.xlsx'] = pegResult.bytes;
+      }
+    }
+
     if (files.isEmpty) return;
 
     // Collect all warnings and show a single pre-save dialog if any exist.
     final allWarnings = <String>[
       if (csvResult != null) ...csvResult.warnings,
       if (mmResult != null) ...mmResult.warnings,
+      if (pegResult != null) ...pegResult.warnings,
     ];
     if (allWarnings.isNotEmpty && mounted) {
       final shouldContinue = await _showVolumeWarningDialog(allWarnings);
@@ -1163,6 +1188,75 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     );
     _dialogOpen = false;
     return result ?? false;
+  }
+
+  /// Resolves slat groups for PEG export. Returns null if the user cancels.
+  Future<Map<String, List<String>>?> _resolvePegGroups(DesignState appState) async {
+    final config = appState.activeGroupConfig;
+    if (config != null && config.groups.isNotEmpty) {
+      return {for (var g in config.groups.values) g.name: g.slatIds.toList()};
+    }
+
+    // No groups — ask user what to do
+    _dialogOpen = true;
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        final sizeCtrl = TextEditingController(text: '16');
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('No Slat Groups'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('PEG purification sheets require slat groups to organize slats into columns.'),
+                const SizedBox(height: 16),
+                const Text('Auto-group slats with group size:'),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: sizeCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(isDense: true),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancel PEG Export')),
+              FilledButton(
+                onPressed: () {
+                  final size = int.tryParse(sizeCtrl.text) ?? 16;
+                  Navigator.pop(ctx, size);
+                },
+                child: const Text('Auto-group'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    _dialogOpen = false;
+
+    if (result == null) return null;
+
+    // Create a group config if none exists, then auto-group
+    if (appState.activeGroupConfig == null) {
+      appState.createGroupConfiguration(name: 'PEG Groups');
+    }
+    appState.autoGroupSlats(result);
+
+    final updatedConfig = appState.activeGroupConfig;
+    if (updatedConfig == null || updatedConfig.groups.isEmpty) return null;
+    return {for (var g in updatedConfig.groups.values) g.name: g.slatIds.toList()};
+  }
+
+  Map<String, Color>? _resolveGroupColors(DesignState appState) {
+    final config = appState.activeGroupConfig;
+    if (config == null) return null;
+    return {for (var g in config.groups.values) g.name: g.color};
   }
 
   Widget _buildPlateScrollArea(DesignState appState) {

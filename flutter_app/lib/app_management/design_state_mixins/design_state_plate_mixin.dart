@@ -20,12 +20,45 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
   @override
   void removePlate(String plateName) {
     plateStack.removePlate(plateName);
+    _revertHandlesFromPlate(plateName);
     notifyListeners();
+  }
+
+  /// Reverts all handles sourced from [plateName] back to placeholders.
+  void _revertHandlesFromPlate(String plateName) {
+    for (var slat in slats.values) {
+      for (var entry in slat.h2Handles.entries.toList()) {
+        if (entry.value['plate'] == plateName && entry.value['placeholder'] != true) {
+          final value = entry.value['value'] as String? ?? '';
+          final category = entry.value['category'] as String? ?? '';
+          slat.h2Handles[entry.key] = {'value': value, 'category': category, 'placeholder': true};
+          final inputId = 'handle-${entry.key}-h2';
+          if (!slat.placeholderList.contains(inputId)) {
+            slat.placeholderList.add(inputId);
+          }
+        }
+      }
+      for (var entry in slat.h5Handles.entries.toList()) {
+        if (entry.value['plate'] == plateName && entry.value['placeholder'] != true) {
+          final value = entry.value['value'] as String? ?? '';
+          final category = entry.value['category'] as String? ?? '';
+          slat.h5Handles[entry.key] = {'value': value, 'category': category, 'placeholder': true};
+          final inputId = 'handle-${entry.key}-h5';
+          if (!slat.placeholderList.contains(inputId)) {
+            slat.placeholderList.add(inputId);
+          }
+        }
+      }
+    }
   }
 
   @override
   void removeAllPlates() {
+    final plateNames = plateStack.listPlateNames();
     plateStack.clear();
+    for (var plateName in plateNames) {
+      _revertHandlesFromPlate(plateName);
+    }
     notifyListeners();
   }
 

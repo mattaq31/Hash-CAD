@@ -1,6 +1,8 @@
 // Configuration classes and export settings dialog for master mix preparation.
 import 'package:flutter/material.dart';
 
+import 'peg_purification_config.dart';
+
 enum CoreStaplesMode { standard, doubleBarrel }
 
 enum BufferSlatsMode { percentage, count }
@@ -165,16 +167,18 @@ class MasterMixConfig {
 
 /// Shows the tabbed export settings dialog.
 ///
-/// Returns an updated record of (export flags, master mix config, runExport flag) on Save/Export,
-/// or null on Cancel.
-Future<({bool pdf, bool csv, bool helper, bool normalize, double maxWellVolumeNl, MasterMixConfig config, bool runExport})?> showExportSettingsDialog(
+/// Returns an updated record of (export flags, master mix config, PEG config, runExport flag)
+/// on Save/Export, or null on Cancel.
+Future<({bool pdf, bool csv, bool helper, bool pegSheet, bool normalize, double maxWellVolumeNl, MasterMixConfig config, PegPurificationConfig pegConfig, bool runExport})?> showExportSettingsDialog(
   BuildContext context, {
   required bool generatePdf,
   required bool generateCsv,
   required bool generateHelperSheets,
+  required bool generatePegSheet,
   required bool normalizeVolumes,
   required double maxWellVolumeNl,
   required MasterMixConfig config,
+  required PegPurificationConfig pegConfig,
 }) {
   return showDialog(
     context: context,
@@ -183,8 +187,12 @@ Future<({bool pdf, bool csv, bool helper, bool normalize, double maxWellVolumeNl
       bool pdf = generatePdf;
       bool csv = generateCsv;
       bool helper = generateHelperSheets;
+      bool pegSheet = generatePegSheet;
       bool normalize = normalizeVolumes;
       final maxWellVolCtrl = TextEditingController(text: _fmt(maxWellVolumeNl / 1000));
+
+      // PEG purification settings
+      int pegConcentration = pegConfig.pegConcentration;
 
       // Shared fields
       CoreStaplesMode mode = config.coreStaplesMode;
@@ -313,8 +321,8 @@ Future<({bool pdf, bool csv, bool helper, bool normalize, double maxWellVolumeNl
                       child: TabBarView(
                         children: [
                           // --- Tab 0: Output ---
-                          _buildOutputTab(pdf, csv, helper, (p, c, h) {
-                            setDialogState(() { pdf = p; csv = c; helper = h; });
+                          _buildOutputTab(pdf, csv, helper, pegSheet, (p, c, h, peg) {
+                            setDialogState(() { pdf = p; csv = c; helper = h; pegSheet = peg; });
                           }),
                           // --- Tab 1: Echo ---
                           _buildEchoTab(normalize, (v) => setDialogState(() => normalize = v), maxWellVolCtrl, rebuild),
@@ -354,7 +362,14 @@ Future<({bool pdf, bool csv, bool helper, bool normalize, double maxWellVolumeNl
                             onChanged: rebuild,
                           ),
                           // --- Tab 3: PEG Helpers ---
-                          const Center(child: Text('Coming soon', style: TextStyle(color: Colors.grey))),
+                          _buildPegHelpersTab(
+                            pegConcentration: pegConcentration,
+                            onChanged: (newConc) {
+                              setDialogState(() {
+                                pegConcentration = newConc;
+                              });
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -367,7 +382,8 @@ Future<({bool pdf, bool csv, bool helper, bool normalize, double maxWellVolumeNl
                   onPressed: isValid
                       ? () {
                           final maxVol = (double.tryParse(maxWellVolCtrl.text) ?? 25) * 1000;
-                          Navigator.pop(ctx, (pdf: pdf, csv: csv, helper: helper, normalize: normalize, maxWellVolumeNl: maxVol, config: buildConfig()!, runExport: false));
+                          final peg = PegPurificationConfig(pegConcentration: pegConcentration);
+                          Navigator.pop(ctx, (pdf: pdf, csv: csv, helper: helper, pegSheet: pegSheet, normalize: normalize, maxWellVolumeNl: maxVol, config: buildConfig()!, pegConfig: peg, runExport: false));
                         }
                       : null,
                   child: const Text('Save'),
@@ -376,7 +392,8 @@ Future<({bool pdf, bool csv, bool helper, bool normalize, double maxWellVolumeNl
                   onPressed: isValid
                       ? () {
                           final maxVol = (double.tryParse(maxWellVolCtrl.text) ?? 25) * 1000;
-                          Navigator.pop(ctx, (pdf: pdf, csv: csv, helper: helper, normalize: normalize, maxWellVolumeNl: maxVol, config: buildConfig()!, runExport: true));
+                          final peg = PegPurificationConfig(pegConcentration: pegConcentration);
+                          Navigator.pop(ctx, (pdf: pdf, csv: csv, helper: helper, pegSheet: pegSheet, normalize: normalize, maxWellVolumeNl: maxVol, config: buildConfig()!, pegConfig: peg, runExport: true));
                         }
                       : null,
                   child: const Text('Export'),
@@ -394,16 +411,18 @@ Future<({bool pdf, bool csv, bool helper, bool normalize, double maxWellVolumeNl
 // Tab builders
 // =============================================================================
 
-Widget _buildOutputTab(bool pdf, bool csv, bool helper, void Function(bool, bool, bool) onChanged) {
+Widget _buildOutputTab(bool pdf, bool csv, bool helper, bool pegSheet, void Function(bool, bool, bool, bool) onChanged) {
   return SingleChildScrollView(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _CheckRow(label: 'Generate PDF plate layouts', value: pdf, onChanged: (v) => onChanged(v, csv, helper)),
+        _CheckRow(label: 'Generate PDF plate layouts', value: pdf, onChanged: (v) => onChanged(v, csv, helper, pegSheet)),
         const SizedBox(height: 4),
-        _CheckRow(label: 'Generate Echo CSV instructions', value: csv, onChanged: (v) => onChanged(pdf, v, helper)),
+        _CheckRow(label: 'Generate Echo CSV instructions', value: csv, onChanged: (v) => onChanged(pdf, v, helper, pegSheet)),
         const SizedBox(height: 4),
-        _CheckRow(label: 'Generate lab helper sheets', value: helper, onChanged: (v) => onChanged(pdf, csv, v)),
+        _CheckRow(label: 'Generate slat folding master mix', value: helper, onChanged: (v) => onChanged(pdf, csv, v, pegSheet)),
+        const SizedBox(height: 4),
+        _CheckRow(label: 'Generate PEG purification sheet', value: pegSheet, onChanged: (v) => onChanged(pdf, csv, helper, v)),
       ],
     ),
   );
@@ -604,6 +623,36 @@ Widget _buildCoreStaplesSection({
 
 // =============================================================================
 // Helper widgets
+Widget _buildPegHelpersTab({
+  required int pegConcentration,
+  required void Function(int pegConcentration) onChanged,
+}) {
+  return SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('PEG Concentration', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 2, label: Text('2X PEG')),
+            ButtonSegment(value: 3, label: Text('3X PEG')),
+          ],
+          selected: {pegConcentration},
+          onSelectionChanged: (v) => onChanged(v.first),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          pegConcentration == 3
+              ? 'Target Mg after addition: 15 mM'
+              : 'Target Mg after addition: 20 mM',
+          style: const TextStyle(color: Colors.grey, fontSize: 12),
+        ),
+      ],
+    ),
+  );
+}
+
 // =============================================================================
 
 String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();

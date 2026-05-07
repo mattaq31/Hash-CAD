@@ -419,6 +419,8 @@ void _buildTypeSheet({
       _setCell(sheet, colBase + 1, row, 'Min: ${minConcInGroup.toStringAsFixed(2)} nM', style: _sOrange);
       _setCell(sheet, colBase + 2, row, 'Max: ${maxConcInGroup.toStringAsFixed(2)} nM', style: _sOrange);
       row++;
+      _setCell(sheet, colBase, row, 'May stem from volume normalization being off or 25 nL rounding by the Echo.', style: _sOrange);
+      row++;
     }
 
     // Manual handles without plate assignments warning
