@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0  # Fetch full history including tags
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.21.0
+        uses: subosito/flutter-action@v2.23.0
         with:
           channel: stable
 
@@ -322,7 +322,7 @@ jobs:
           cat SHA256SUMS
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ env.TAG }}
