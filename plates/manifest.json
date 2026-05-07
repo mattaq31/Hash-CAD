@@ -76,66 +76,6 @@
       "category": "assembly_plates"
     },
     {
-      "name": "P3649_MA_H5_handles_S1A",
-      "path": "assembly_plates/P3649_MA_H5_handles_S1A.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3650_MA_H5_handles_S1B",
-      "path": "assembly_plates/P3650_MA_H5_handles_S1B.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3651_MA_H5_handles_S1C",
-      "path": "assembly_plates/P3651_MA_H5_handles_S1C.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3652_MA_H5_handles_S2A",
-      "path": "assembly_plates/P3652_MA_H5_handles_S2A.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3653_MA_H5_handles_S2B",
-      "path": "assembly_plates/P3653_MA_H5_handles_S2B.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3654_MA_H5_handles_S2C",
-      "path": "assembly_plates/P3654_MA_H5_handles_S2C.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3655_MA_H2_antihandles_S1A",
-      "path": "assembly_plates/P3655_MA_H2_antihandles_S1A.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3656_MA_H2_antihandles_S1B",
-      "path": "assembly_plates/P3656_MA_H2_antihandles_S1B.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3657_MA_H2_antihandles_S1C",
-      "path": "assembly_plates/P3657_MA_H2_antihandles_S1C.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3658_MA_H2_antihandles_S2A",
-      "path": "assembly_plates/P3658_MA_H2_antihandles_S2A.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3659_MA_H2_antihandles_S2B",
-      "path": "assembly_plates/P3659_MA_H2_antihandles_S2B.xlsx",
-      "category": "assembly_plates"
-    },
-    {
-      "name": "P3660_MA_H2_antihandles_S2C",
-      "path": "assembly_plates/P3660_MA_H2_antihandles_S2C.xlsx",
-      "category": "assembly_plates"
-    },
-    {
       "name": "P3510_SSW_cnt_patterning",
       "path": "cargo_plates/P3510_SSW_cnt_patterning.xlsx",
       "category": "cargo_plates"
@@ -184,6 +124,66 @@
       "name": "sw_src009_control_max",
       "path": "flat_staple_plates/sw_src009_control_max.xlsx",
       "category": "flat_staple_plates"
+    },
+    {
+      "name": "P3649_MA_H5_handles_S1A",
+      "path": "latest_assembly_plates/P3649_MA_H5_handles_S1A.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3650_MA_H5_handles_S1B",
+      "path": "latest_assembly_plates/P3650_MA_H5_handles_S1B.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3651_MA_H5_handles_S1C",
+      "path": "latest_assembly_plates/P3651_MA_H5_handles_S1C.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3652_MA_H5_handles_S2A",
+      "path": "latest_assembly_plates/P3652_MA_H5_handles_S2A.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3653_MA_H5_handles_S2B",
+      "path": "latest_assembly_plates/P3653_MA_H5_handles_S2B.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3654_MA_H5_handles_S2C",
+      "path": "latest_assembly_plates/P3654_MA_H5_handles_S2C.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3655_MA_H2_antihandles_S1A",
+      "path": "latest_assembly_plates/P3655_MA_H2_antihandles_S1A.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3656_MA_H2_antihandles_S1B",
+      "path": "latest_assembly_plates/P3656_MA_H2_antihandles_S1B.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3657_MA_H2_antihandles_S1C",
+      "path": "latest_assembly_plates/P3657_MA_H2_antihandles_S1C.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3658_MA_H2_antihandles_S2A",
+      "path": "latest_assembly_plates/P3658_MA_H2_antihandles_S2A.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3659_MA_H2_antihandles_S2B",
+      "path": "latest_assembly_plates/P3659_MA_H2_antihandles_S2B.xlsx",
+      "category": "latest_assembly_plates"
+    },
+    {
+      "name": "P3660_MA_H2_antihandles_S2C",
+      "path": "latest_assembly_plates/P3660_MA_H2_antihandles_S2C.xlsx",
+      "category": "latest_assembly_plates"
     },
     {
       "name": "P2854_CW_seed_plug_center",
