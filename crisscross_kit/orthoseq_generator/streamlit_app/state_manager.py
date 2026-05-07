@@ -51,10 +51,14 @@ def init_session_state():
 
     if "orthogonal_seq_pairs" not in st.session_state:
         st.session_state.orthogonal_seq_pairs = None
+    if "search_run_data" not in st.session_state:
+        st.session_state.search_run_data = None
     if "search_completed" not in st.session_state:
         st.session_state.search_completed = False
     if "search_duration" not in st.session_state:
         st.session_state.search_duration = 0.0
+    if "search_report_path" not in st.session_state:
+        st.session_state.search_report_path = None
     
     # Committed parameters
     if "min_ontarget" not in st.session_state:
@@ -115,8 +119,11 @@ def init_session_state():
         st.session_state.search_vc_max_iterations = 5000
     if "search_prune_fraction" not in st.session_state:
         st.session_state.search_prune_fraction = 0.2
-    if "search_max_nupack_calls" not in st.session_state:
-        st.session_state.search_max_nupack_calls = 50000
+    if "search_fresh_pair_search_budget" not in st.session_state:
+        if "search_max_nupack_calls" in st.session_state:
+            st.session_state.search_fresh_pair_search_budget = st.session_state.search_max_nupack_calls
+        else:
+            st.session_state.search_fresh_pair_search_budget = 50000
     if "search_fresh_pair_scale" not in st.session_state:
         st.session_state.search_fresh_pair_scale = 1.0
     if "pilot_size" not in st.session_state:

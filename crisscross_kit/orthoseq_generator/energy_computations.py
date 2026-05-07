@@ -290,7 +290,7 @@ def select_subset_in_energy_range(
     retained_pairs=None,
     allowed_violations=0,
     offtarget_limit=None,
-    max_nupack_calls=None,
+    fresh_pair_search_budget=None,
     progress_every=None,
     progress_interval_s=120.0,
 ):
@@ -321,7 +321,7 @@ def select_subset_in_energy_range(
     def _evaluate_candidate(seq, rc_seq):
         nonlocal nupack_calls
 
-        if max_nupack_calls is not None and nupack_calls >= max_nupack_calls:
+        if fresh_pair_search_budget is not None and nupack_calls >= fresh_pair_search_budget:
             return None, "nupack_limit"
 
         nupack_calls += 1
@@ -345,7 +345,7 @@ def select_subset_in_energy_range(
             if not passed_crossref:
                 return False, None
 
-        if max_nupack_calls is not None and nupack_calls >= max_nupack_calls:
+        if fresh_pair_search_budget is not None and nupack_calls >= fresh_pair_search_budget:
             return None, "nupack_limit"
 
         return True, None
@@ -385,7 +385,7 @@ def select_subset_in_energy_range(
                 )
                 logger.info(
                     f"Only {len(subset)} of requested {max_size} found for given "
-                    f"parameters (max_nupack_calls = {max_nupack_calls})."
+                    f"parameters (fresh_pair_search_budget = {fresh_pair_search_budget})."
                 )
                 return subset, indices, True, nupack_calls
             if accepted:
@@ -441,7 +441,7 @@ def select_subset_in_energy_range(
             )
             logger.info(
                 f"Only {len(subset)} of requested {max_size} found for given "
-                f"parameters (max_nupack_calls = {max_nupack_calls})."
+                    f"parameters (fresh_pair_search_budget = {fresh_pair_search_budget})."
             )
             return subset, indices, True, nupack_calls
         if accepted:

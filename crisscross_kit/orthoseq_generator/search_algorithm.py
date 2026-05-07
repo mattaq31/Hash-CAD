@@ -21,6 +21,12 @@ logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 
 
+def _num_vertices_to_remove(vertex_count, prune_fraction):
+    if prune_fraction <= 0:
+        return 0
+    return max(1, int(round(int(vertex_count) * float(prune_fraction))))
+
+
 def _status(message):
     print(message, flush=True)
     logger.info(message)
@@ -43,11 +49,13 @@ def hybrid_search(
     initial_fresh_pair_count=200,
     generations=100,
     allowed_violations=0,
-    max_nupack_calls=50000,
+    fresh_pair_search_budget=50000,
+    total_nupack_budget=None,
     prune_fraction=0.2,
     fresh_pair_scale=1.0,
     vc_max_iterations=5000,
     stop_event=None,
+    return_diagnostics=False,
 ):
     """
     Searches for a large orthogonal sequence set by alternating between
@@ -78,7 +86,7 @@ def hybrid_search(
       `min_ontarget <= on_target_energy <= max_ontarget`.
     - `self_energy_limit` is a lower bound on acceptable self-structure
       energies for both strands in a pair.
-    - `max_nupack_calls` is a per-generation budget for direct NUPACK
+    - `fresh_pair_search_budget` is a per-generation budget for direct NUPACK
       computations made inside `select_subset_in_energy_range` while sampling
       and screening new candidates. It does not terminate the whole hybrid
       search, and it does not cap the later full-subset
@@ -126,11 +134,19 @@ def hybrid_search(
                                NUPACK budget.
     :type allowed_violations: int
 
-    :param max_nupack_calls: Maximum number of direct NUPACK computations
-                             allowed during each generation's subset-selection
-                             step. Hitting this limit stops candidate sampling
-                             for that generation only.
-    :type max_nupack_calls: int or None
+    :param fresh_pair_search_budget: Required positive per-generation budget for direct
+                             NUPACK computations during subset selection.
+                             Hitting this limit stops candidate sampling for
+                             that generation only.
+    :type fresh_pair_search_budget: int
+
+    :param total_nupack_budget: Optional total NUPACK-call budget for the whole
+                                hybrid search. This budget includes direct
+                                subset-selection calls and analytically
+                                estimated full off-target matrix calls. If the
+                                next full off-target matrix would exceed the
+                                budget, the search stops before that graph step.
+    :type total_nupack_budget: int or None
 
     :param prune_fraction: Fraction of the current vertex cover to remove
                            before each repair iteration in the graph heuristic.
@@ -151,9 +167,19 @@ def hybrid_search(
     :param stop_event: Optional external stop signal.
     :type stop_event: threading.Event or None
 
+    :param return_diagnostics: When True, return a structured run record with
+                               final pairs, generation metrics, and run
+                               metadata. When False, return only the final
+                               sequence pairs.
+    :type return_diagnostics: bool
+
     :returns: Final list of `(seq, rc_seq)` pairs for the best independent set
-              found during the search.
-    :rtype: list[tuple[str, str]]
+              found during the search, or a structured run record when
+              `return_diagnostics=True`. The diagnostics payload contains
+              `final_pairs`, `final_pair_ids`, `generation_data`,
+              `total_nupack_calls`, `search_params`, `sequence_source`,
+              `nupack`, and `stopped_reason`.
+    :rtype: list[tuple[str, str]] | dict
     """
     seq_length = getattr(sequence_pairs, "length", None)
     fivep_ext = getattr(sequence_pairs, "fivep_ext", None)
@@ -172,6 +198,8 @@ def hybrid_search(
     current_allowed_violations = allowed_violations
     total_nupack_calls = 0
     target_fresh_pair_count = initial_fresh_pair_count
+    generation_data = []
+    stopped_reason = None
 
     if not 0 <= prune_fraction <= 1:
         raise ValueError("prune_fraction must be between 0 and 1.")
@@ -179,6 +207,13 @@ def hybrid_search(
         raise ValueError("fresh_pair_scale must be non-negative.")
     if vc_max_iterations < 1:
         raise ValueError("vc_max_iterations must be at least 1.")
+    if fresh_pair_search_budget is None or int(fresh_pair_search_budget) < 1:
+        raise ValueError("fresh_pair_search_budget must be a positive integer.")
+    fresh_pair_search_budget = int(fresh_pair_search_budget)
+    if total_nupack_budget is not None:
+        total_nupack_budget = int(total_nupack_budget)
+        if total_nupack_budget < 1:
+            raise ValueError("total_nupack_budget must be a positive integer or None.")
 
     logger.info(
         "Search start params: "
@@ -198,7 +233,8 @@ def hybrid_search(
         f"initial fresh pair count: {initial_fresh_pair_count}, "
         f"generations: {generations}, "
         f"allowed violations: {allowed_violations}, "
-        f"max NUPACK calls: {max_nupack_calls}, "
+        f"fresh-pair search budget: {fresh_pair_search_budget}, "
+        f"total NUPACK budget: {total_nupack_budget}, "
         f"prune fraction: {prune_fraction}, "
         f"fresh pair scale: {fresh_pair_scale}, "
         f"vc max iterations: {vc_max_iterations}"
@@ -207,8 +243,18 @@ def hybrid_search(
     try:
         for i in range(generations):
             if stop_event is not None and stop_event.is_set():
+                stopped_reason = "stop_event"
                 _status("Stop event detected. Stopping hybrid search.")
                 break
+            if total_nupack_budget is not None and total_nupack_calls >= total_nupack_budget:
+                stopped_reason = "total_nupack_budget"
+                _status("Total NUPACK budget reached. Stopping hybrid search.")
+                break
+
+            generation_nupack_cap = fresh_pair_search_budget
+            if total_nupack_budget is not None:
+                remaining_budget = total_nupack_budget - total_nupack_calls
+                generation_nupack_cap = min(fresh_pair_search_budget, remaining_budget)
 
             _status(
                 f"Generation {i + 1}: selecting candidate subset "
@@ -226,8 +272,9 @@ def hybrid_search(
                 retained_pairs=retained_pairs,
                 allowed_violations=current_allowed_violations,
                 offtarget_limit=offtarget_limit,
-                max_nupack_calls=max_nupack_calls,
+                fresh_pair_search_budget=generation_nupack_cap,
             )
+            fresh_pairs_sampled = len(indices)
             total_nupack_calls += subset_nupack_calls
             if stopped_early:
                 current_allowed_violations += 1
@@ -256,7 +303,21 @@ def hybrid_search(
                     "No sequences found in the requested energy range "
                     "(NUPACK call limit hit or constraints too strict)."
                 )
+                stopped_reason = "no_sequences_found"
                 _status(msg)
+                break
+
+            off_target_nupack_calls = estimate_offtarget_nupack_calls(len(subset))
+            if (
+                total_nupack_budget is not None
+                and total_nupack_calls + off_target_nupack_calls > total_nupack_budget
+            ):
+                stopped_reason = "total_nupack_budget"
+                _status(
+                    "Stopping before full off-target matrix; "
+                    f"needed {off_target_nupack_calls} calls but only "
+                    f"{total_nupack_budget - total_nupack_calls} remain."
+                )
                 break
 
             # Ensure no duplicate indices
@@ -273,7 +334,7 @@ def hybrid_search(
                 f"{len(subset)} pairs..."
             )
             off_e_subset = sc.compute_offtarget_energies(subset)
-            total_nupack_calls += estimate_offtarget_nupack_calls(len(subset))
+            total_nupack_calls += off_target_nupack_calls
             _status(f"Generation {i + 1}: building incompatibility graph...")
             Edges = build_edges(off_e_subset, indices, offtarget_limit)
 
@@ -286,7 +347,7 @@ def hybrid_search(
                 Edges,
                 avoid_V=retained_pair_ids,
                 max_iterations=vc_max_iterations,
-                num_vertices_to_remove=int(len(indices) * prune_fraction),
+                num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
                 show_progress=False,
             )
 
@@ -313,6 +374,18 @@ def hybrid_search(
                 else target_fresh_pair_count
             )
 
+            generation_data.append(
+                {
+                    "generation": i + 1,
+                    "fresh_pairs_sampled": fresh_pairs_sampled,
+                    "pairs_in_graph_search": len(indices),
+                    "pairs_found": len(new_non_cover_vertices),
+                    "nupack_calls_executed": total_nupack_calls,
+                    "stopped_early": bool(stopped_early),
+                    "notes": None,
+                }
+            )
+
             _status(
                 f"Generation: {i + 1:2d} | "
                 f"Current number of pairs: {len(new_non_cover_vertices):3d} | "
@@ -321,15 +394,52 @@ def hybrid_search(
             )
 
     except KeyboardInterrupt:
+        stopped_reason = "keyboard_interrupt"
         _status("Interrupted by user. Saving best result so far...")
 
     if isinstance(sequence_pairs, list):
-        final_pairs = [sequence_pairs[idx][1] for idx in sorted(non_cover_vertices)]
+        final_pair_ids = sorted(non_cover_vertices)
+        final_pairs = [sequence_pairs[idx][1] for idx in final_pair_ids]
     else:
-        final_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted(non_cover_vertices)]
+        final_pair_ids = sorted(non_cover_vertices)
+        final_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in final_pair_ids]
 
     _status(f"Total NUPACK calls overall: {total_nupack_calls}")
-    hf.save_sequence_pairs_to_txt(final_pairs)
+    if return_diagnostics:
+        return {
+            "final_pairs": final_pairs,
+            "final_pair_ids": final_pair_ids,
+            "generation_data": generation_data,
+            "total_nupack_calls": int(total_nupack_calls),
+            "search_params": {
+                "offtarget_limit": float(offtarget_limit),
+                "max_ontarget": float(max_ontarget),
+                "min_ontarget": float(min_ontarget),
+                "self_energy_limit": float(self_energy_limit),
+                "initial_fresh_pair_count": int(initial_fresh_pair_count),
+                "generations": int(generations),
+                "allowed_violations_initial": int(allowed_violations),
+                "fresh_pair_search_budget": int(fresh_pair_search_budget),
+                "total_nupack_budget": None if total_nupack_budget is None else int(total_nupack_budget),
+                "prune_fraction": float(prune_fraction),
+                "fresh_pair_scale": float(fresh_pair_scale),
+                "vc_max_iterations": int(vc_max_iterations),
+            },
+            "sequence_source": {
+                "length": seq_length,
+                "fivep_ext": fivep_ext,
+                "threep_ext": threep_ext,
+                "unwanted_substrings": unwanted,
+                "apply_unwanted_to": apply_to,
+            },
+            "nupack": {
+                "material": material,
+                "celsius": celsius,
+                "sodium": sodium,
+                "magnesium": magnesium,
+            },
+            "stopped_reason": stopped_reason,
+        }
     return final_pairs
 
 
@@ -362,7 +472,7 @@ if __name__ == "__main__":
         generations=3000,
         allowed_violations=1,
         vc_max_iterations=5000,
-        max_nupack_calls=8000,
+        fresh_pair_search_budget=8000,
     )
 
 
