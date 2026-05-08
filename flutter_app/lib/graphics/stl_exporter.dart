@@ -16,11 +16,20 @@ import '3d_painter.dart';
 const double defaultPrintScaleMmPerUnit = 0.47;
 
 const List<String> _assemblyHandleInstanceNames = ['assHandle', 'honeyCombAssHandle'];
+const List<String> _seedInstanceNames = ['seed', 'tiltSeed', 'tiltSeedInvert'];
+const List<String> _cargoInstanceNames = ['cargoHandle'];
+
+/// Amount to shrink each cylinder toward its centroid. A 0.1% reduction creates
+/// a sub-micron gap between adjacent end-caps, eliminating non-manifold edges
+/// without any visible effect on the printed model.
+const double _shrinkFactor = 0.999;
 
 /// Exports all visible slat instances as a binary STL file.
 ///
 /// Iterates through each instanced mesh type, transforms template vertices
 /// by each allocated instance's matrix, applies scale, and writes binary STL.
+/// Each cylinder is shrunk by a tiny amount toward its center to prevent
+/// coincident cap faces between adjacent instances.
 Future<void> exportDesignToSTL({
   required Map<String, InstanceMetrics> instanceManager,
   required List<String> slatInstanceNames,
@@ -29,11 +38,17 @@ Future<void> exportDesignToSTL({
 }) async {
   final triangles = <_Triangle>[];
 
-  final allInstanceNames = [...slatInstanceNames, ..._assemblyHandleInstanceNames];
+  final allInstanceNames = [...slatInstanceNames, ..._assemblyHandleInstanceNames, ..._seedInstanceNames, ..._cargoInstanceNames];
+
+  // Track exported handle names to avoid duplicates — the same logical handle can
+  // exist in both assHandle and honeyCombAssHandle instance managers simultaneously.
+  final exportedHandleNames = <String>{};
 
   for (final instanceName in allInstanceNames) {
     final metrics = instanceManager[instanceName];
     if (metrics == null) continue;
+
+    final bool isAssemblyHandle = _assemblyHandleInstanceNames.contains(instanceName);
 
     final geometry = metrics.geometry;
     final posAttr = geometry.getAttribute(tmath.Attribute.position);
@@ -64,6 +79,12 @@ Future<void> exportDesignToSTL({
       if (pos == null) continue;
       if (pos.x > 90000) continue;
 
+      // Skip duplicate assembly handles (same handle registered in both managers)
+      if (isAssemblyHandle) {
+        if (exportedHandleNames.contains(name)) continue;
+        exportedHandleNames.add(name);
+      }
+
       // Build the 4x4 transform matrix from the stored matrixArray
       final tmath.Matrix4 matrix = tmath.Matrix4.identity();
       final int offset = idx * 16;
@@ -71,13 +92,37 @@ Future<void> exportDesignToSTL({
         matrix.storage[i] = metrics.matrixArray[offset + i];
       }
 
-      // Transform each vertex and store
+      // Transform each vertex and store.
+      // Snap near-zero components to exactly 0.0 — the cylinder geometry has
+      // duplicate seam vertices whose matrix products land at slightly different
+      // floating-point noise values (e.g. 1.6e-14 vs 1.64e-14), which makes
+      // PreForm see non-coincident vertices at shared edges.
       final List<tmath.Vector3> transformed = List.generate(vertexCount, (i) {
         final v = templateVertices[i].clone();
         v.applyMatrix4(matrix);
         v.scale(scaleFactor);
+        v.x = _snapToZero(v.x);
+        v.y = _snapToZero(v.y);
+        v.z = _snapToZero(v.z);
         return v;
       });
+
+      // Shrink each instance toward its centroid to create a sub-micron gap
+      // between any adjacent cylinders that would otherwise share a cap face.
+      double cx = 0, cy = 0, cz = 0;
+      for (final v in transformed) {
+        cx += v.x;
+        cy += v.y;
+        cz += v.z;
+      }
+      cx /= vertexCount;
+      cy /= vertexCount;
+      cz /= vertexCount;
+      for (final v in transformed) {
+        v.x = cx + (v.x - cx) * _shrinkFactor;
+        v.y = cy + (v.y - cy) * _shrinkFactor;
+        v.z = cz + (v.z - cz) * _shrinkFactor;
+      }
 
       // Emit triangles from index buffer
       for (int i = 0; i < indexCount; i += 3) {
@@ -96,6 +141,9 @@ Future<void> exportDesignToSTL({
   final fileName = '${designName}_model';
   await SaveFile.saveBytes(printName: fileName, fileType: 'stl', bytes: bytes);
 }
+
+/// Snaps values smaller than a single-precision ULP near the model's scale to zero.
+double _snapToZero(double v) => v.abs() < 1e-6 ? 0.0 : v;
 
 /// Computes the face normal for a triangle.
 tmath.Vector3 _computeNormal(tmath.Vector3 a, tmath.Vector3 b, tmath.Vector3 c) {
