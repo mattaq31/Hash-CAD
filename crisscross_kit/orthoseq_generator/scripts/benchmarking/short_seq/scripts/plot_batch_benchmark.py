@@ -42,7 +42,7 @@ ALGORITHM_LABELS = {
     "vertex_cover": "Vertex cover",
     "hybrid_offline": "Hybrid",
 }
-OUTPUT_FILENAME_STEM = "batch_benchmark_selected_set_size"
+OUTPUT_FILENAME_STEM = "batch_benchmark_found_pair_count"
 MM_PER_INCH = 25.4
 FIGURE_WIDTH_MM = 177.8 * 0.48
 FIGURE_HEIGHT_MM = 58.0
@@ -118,6 +118,12 @@ def read_metadata_value(metadata_df: pd.DataFrame, key: str):
     return rows.iloc[0]
 
 
+def read_metadata_value_with_fallback(metadata_df: pd.DataFrame, primary_key: str, fallback_key: str):
+    """Read one metadata value, falling back to a legacy key when needed."""
+    primary_value = read_metadata_value(metadata_df, primary_key)
+    return primary_value if primary_value is not None else read_metadata_value(metadata_df, fallback_key)
+
+
 def collect_runs(parent_dir: Path) -> pd.DataFrame:
     """Collect plotted benchmark rows from all datasets in the parent."""
     rows = []
@@ -128,16 +134,18 @@ def collect_runs(parent_dir: Path) -> pd.DataFrame:
             if parsed is None:
                 continue
             metadata_df = pd.read_excel(report_path, sheet_name="run_metadata")
+            length = read_metadata_value_with_fallback(metadata_df, "input.length", "dataset.length")
+            fivep_ext = read_metadata_value_with_fallback(metadata_df, "input.fivep_ext", "dataset.fivep_ext")
             rows.append(
                 {
                     "dataset_name": dataset_dir.name,
-                    "length": int(read_metadata_value(metadata_df, "dataset.length")),
-                    "fivep_ext": str(read_metadata_value(metadata_df, "dataset.fivep_ext") or ""),
-                    "has_tttt5p": str(read_metadata_value(metadata_df, "dataset.fivep_ext") or "") == "TTTT",
+                    "length": int(length),
+                    "fivep_ext": str(fivep_ext or ""),
+                    "has_tttt5p": str(fivep_ext or "") == "TTTT",
                     "algorithm": parsed["algorithm"],
                     "seed": parsed["seed"],
                     "target_conflict_density": parsed["target_conflict_density"],
-                    "selected_set_size": int(read_metadata_value(metadata_df, "selected_set_size")),
+                    "found_pair_count": int(read_metadata_value(metadata_df, "found_pair_count")),
                     "report_path": str(report_path),
                 }
             )
@@ -147,7 +155,7 @@ def collect_runs(parent_dir: Path) -> pd.DataFrame:
 def compute_shared_y_max(runs_df: pd.DataFrame) -> float:
     """Compute a shared y-axis maximum across all grouped benchmark bars."""
     grouped = (
-        runs_df.groupby(["has_tttt5p", "length", "target_conflict_density", "algorithm"])["selected_set_size"]
+        runs_df.groupby(["has_tttt5p", "length", "target_conflict_density", "algorithm"])["found_pair_count"]
         .agg(["mean", "std", "count"])
         .reset_index()
     )
@@ -199,7 +207,7 @@ def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float)
                     (group_df["length"] == length)
                     & (group_df["target_conflict_density"] == density)
                     & (group_df["algorithm"] == algorithm),
-                    "selected_set_size",
+                    "found_pair_count",
                 ].to_numpy(dtype=float)
                 if len(values) == 0:
                     continue

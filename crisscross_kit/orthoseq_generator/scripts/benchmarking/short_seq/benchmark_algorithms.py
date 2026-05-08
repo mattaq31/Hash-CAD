@@ -17,6 +17,7 @@ from benchmark_dataset_tools import (
     get_pair_by_global_id,
     get_selected_rows,
     load_dataset,
+    resolve_dataset_input_params,
 )
 from benchmark_analysis import build_conflict_data
 from orthoseq_generator.search_reporting import (
@@ -56,9 +57,9 @@ def _write_benchmark_result_xlsx(
     Purpose
     -------
     Benchmark runs start from precomputed dataset artifacts rather than the
-    live on-the-fly registry. This helper translates dataset-local metadata and
-    selected-sequence report entries into the common XLSX reporting contract
-    used by both benchmark and live workflows.
+    live on-the-fly registry. This helper translates dataset-local metadata
+    and found-pair report entries into the common XLSX reporting contract used
+    by both benchmark and live workflows.
 
     :param output_path: Destination workbook path.
     :type output_path: str or pathlib.Path
@@ -69,7 +70,7 @@ def _write_benchmark_result_xlsx(
     :param dataset: Loaded benchmark dataset bundle.
     :type dataset: dict
 
-    :param selected_sequence_data: Canonical selected-set report rows.
+    :param selected_sequence_data: Canonical found-pair report rows.
     :type selected_sequence_data: list[dict]
 
     :param verified: Verified energy payload from `verify_selected_pairs`.
@@ -98,14 +99,18 @@ def _write_benchmark_result_xlsx(
         self_energy_limit=float(search_params["self_energy_limit"]) if "self_energy_limit" in search_params else float("-inf"),
         offtarget_limit=float(search_params["offtarget_limit"]),
     )
-    dataset_info = {}
-    for section_name in ("inputs", "derived"):
-        dataset_info.update(dataset["metadata"].get(section_name, {}))
+    dataset_inputs = dataset["metadata"].get("inputs", {})
+    input_params = resolve_dataset_input_params(dataset_inputs)
+    dataset_info = {
+        "range_sigma": dataset_inputs.get("range_sigma"),
+        "random_seed": dataset_inputs.get("random_seed"),
+    }
+    dataset_info.update(dataset["metadata"].get("derived", {}))
     dataset_nupack_budget = estimate_dataset_nupack_budget(dataset)
     output_path = Path(output_path)
     benchmark_name = output_path.parent.name if output_path.parent.name != "results" else None
     merged_extra_metadata = {
-        "dataset.nupack_calls_to_build": dataset_nupack_budget,
+        "dataset.virtual_nupack_budget": dataset_nupack_budget,
         "benchmark_name": benchmark_name,
     }
     if extra_metadata:
@@ -117,11 +122,9 @@ def _write_benchmark_result_xlsx(
         selected_sequence_data=selected_sequence_data,
         verified=verified,
         search_params=search_params,
-        sequence_source={
-            "label": "benchmark_dataset",
-            "length": dataset_info.get("length"),
-            "fivep_ext": dataset_info.get("fivep_ext"),
-            "threep_ext": dataset_info.get("threep_ext"),
+        input_params={
+            "source_kind": "benchmark_dataset",
+            **input_params,
         },
         artifact_info={
             "dataset_dir": dataset["dataset_dir"],
@@ -228,6 +231,8 @@ def run_naive_search_to_xlsx(
             "min_ontarget": float(derived["min_ontarget_energy"]),
             "self_energy_limit": float(self_energy_limit),
             "random_seed": int(random_seed),
+            "prune_fraction": None,
+            "vc_max_iterations": None,
         },
         extra_sheets={"search_progress": progress_rows},
     )
@@ -241,7 +246,7 @@ def run_vertex_cover_search_to_xlsx(
     self_energy_limit: float,
     random_seed: int = 41,
     prune_fraction: float = 0.2,
-    max_iterations: int = 200,
+    vc_max_iterations: int = 200,
     show_progress: bool = False,
 ) -> Path:
     """
@@ -278,8 +283,9 @@ def run_vertex_cover_search_to_xlsx(
                            repair iteration.
     :type prune_fraction: float
 
-    :param max_iterations: Maximum number of refinement iterations.
-    :type max_iterations: int
+    :param vc_max_iterations: Maximum number of refinement iterations for the
+                              vertex-cover refinement routine.
+    :type vc_max_iterations: int
 
     :param show_progress: Whether to print refinement progress from the
                           underlying vertex-cover routine.
@@ -321,7 +327,7 @@ def run_vertex_cover_search_to_xlsx(
         edges,
         avoid_V=None,
         num_vertices_to_remove=n_remove,
-        max_iterations=max_iterations,
+        max_iterations=vc_max_iterations,
         limit=+np.inf,
         show_progress=show_progress,
     )
@@ -356,7 +362,8 @@ def run_vertex_cover_search_to_xlsx(
             "self_energy_limit": float(self_energy_limit),
             "random_seed": int(random_seed),
             "prune_fraction": float(prune_fraction),
-            "max_iterations": int(max_iterations),
+            "vc_max_iterations": int(vc_max_iterations),
+            "num_vertices_to_remove_effective": int(n_remove),
         },
         extra_sheets={"search_progress": progress_rows, "vc_trajectory": vc_rows},
     )
@@ -668,7 +675,7 @@ def run_hybrid_search_offline_to_xlsx(
                 "pairs_found": len(new_non_cover_vertices),
                 "nupack_calls_executed": total_nupack_calls,
                 "stopped_early": bool(stopped_early),
-                "notes": stopped_reason,
+                "notes": None,
             }
         )
     _status(f"Offline hybrid total virtual NUPACK calls: {total_nupack_calls}")

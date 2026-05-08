@@ -107,16 +107,20 @@ if __name__ == "__main__":
             "random_seed": RANDOM_SEED,
             "total_nupack_calls": search_result["total_nupack_calls"],
         },
-        sequence_source={"label": "on_the_fly_registry", **search_result["sequence_source"]},
+        input_params={"source_kind": "on_the_fly_registry", **search_result["sequence_source"]},
         artifact_info={"dataset_dir": None, "dataset_toml": None, "dataset_npz": None},
         nupack_params=search_result["nupack"],
         generation_data=search_result["generation_data"],
         validation_data=validation_data,
         dataset_info={},
+        extra_metadata={
+            "best_generation_result_size": len(selected_sequence_data),
+            "stopped_reason": search_result["stopped_reason"],
+        },
     )
     print(f"Saved verified run report to: {report_path}")
 
-    # 6) Compute and plot the on-target and off-target energy distributions for the selected set
+    # 6) Compute and plot the on-target and off-target energy distributions for the found pairs
     onef = verified["on_target_energies"]
     self_e_A = verified["self_energy_seqs"]
     self_e_B = verified["self_energy_rc_seqs"]

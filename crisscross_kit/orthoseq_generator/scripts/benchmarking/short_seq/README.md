@@ -23,7 +23,8 @@ The supported top-level workflow is:
 
 - `benchmark_algorithms.py`
   - run the benchmarked search variants against a saved dataset
-  - write XLSX benchmark reports
+  - write XLSX benchmark reports through the shared writer in
+    `orthoseq_generator/search_reporting.py`
 
 ## Supported Entrypoints
 
@@ -50,6 +51,21 @@ There is also one focused utility:
   - useful for spot checks and one-off comparisons
   - not the main reporting path
 
+## Report Schema
+
+Benchmark and live-search workbooks now share the same top-level report
+layout:
+
+- `found_pairs`
+  - final reported pairs
+- `run_metadata`
+  - shared `input.*`, `search.*`, `nupack.*`, and `artifact.*` keys
+  - benchmark-only dataset statistics remain under `dataset.*`
+
+The shared workbook writer is still named
+`write_hybrid_search_result_xlsx(...)` for historical reasons, but it is used
+by non-hybrid benchmark paths as well.
+
 ## Validation Utilities
 
 Ad hoc or legacy-style checks live in `scripts/validate/`.
@@ -74,7 +90,7 @@ Batch-level artifacts written at the dataset-parent level include:
 
 - `batch_params.toml`
 - `benchmark_summary_<benchmark_name>.toml`
-- `batch_benchmark_selected_set_size_*.svg`
+- `batch_benchmark_found_pair_count_*.svg`
 
 ## Notes
 

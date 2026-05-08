@@ -19,7 +19,7 @@ if __name__ == "__main__":
         self_energy_limit=-2.0,
         random_seed=8,
         prune_fraction=0.2,
-        max_iterations=5000,
+        vc_max_iterations=5000,
         show_progress=False,
     )
     print(f"Saved vertex-cover benchmark result to: {saved_path}")

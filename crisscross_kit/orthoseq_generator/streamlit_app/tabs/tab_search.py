@@ -291,12 +291,16 @@ def render_search_tab(registry_factory, nupack_params):
                         "total_nupack_calls": search_run_data["total_nupack_calls"],
                         "search_duration_s": st.session_state.search_duration,
                     },
-                    sequence_source={"label": "on_the_fly_registry", **search_run_data["sequence_source"]},
+                    input_params={"source_kind": "on_the_fly_registry", **search_run_data["sequence_source"]},
                     artifact_info={"dataset_dir": None, "dataset_toml": None, "dataset_npz": None},
                     nupack_params=search_run_data["nupack"],
                     generation_data=search_run_data["generation_data"],
                     validation_data=validation_data,
                     dataset_info={},
+                    extra_metadata={
+                        "best_generation_result_size": len(selected_sequence_data),
+                        "stopped_reason": search_run_data["stopped_reason"],
+                    },
                 )
                 st.session_state.search_report_path = report_path
 

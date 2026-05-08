@@ -15,7 +15,10 @@ from orthoseq_generator.energy_computations import (
     compute_offtarget_energies,
     compute_ontarget_energies,
 )
-from orthoseq_generator.sequence_generation import create_sequence_pairs_pool
+from orthoseq_generator.sequence_generation import (
+    LEGACY_AVOID_GGGG_SUBSTRINGS,
+    create_sequence_pairs_pool,
+)
 
 
 def _toml_string(value: str) -> str:
@@ -27,6 +30,28 @@ def _toml_string(value: str) -> str:
 def _toml_bool(value: bool) -> str:
     """Return the TOML literal for a Python boolean."""
     return "true" if value else "false"
+
+
+def resolve_dataset_input_params(raw_inputs: dict) -> dict:
+    """
+    Normalize dataset input metadata into the canonical search-input shape.
+
+    Existing datasets may only record the legacy `avoid_gggg` flag. Newer
+    datasets can store the full unwanted-substring input contract directly.
+    """
+    unwanted_substrings = raw_inputs.get("unwanted_substrings")
+    if unwanted_substrings is None:
+        unwanted_substrings = list(LEGACY_AVOID_GGGG_SUBSTRINGS) if raw_inputs.get("avoid_gggg") else []
+    else:
+        unwanted_substrings = [str(value) for value in unwanted_substrings]
+
+    return {
+        "length": raw_inputs.get("length"),
+        "fivep_ext": raw_inputs.get("fivep_ext"),
+        "threep_ext": raw_inputs.get("threep_ext"),
+        "unwanted_substrings": unwanted_substrings,
+        "apply_unwanted_to": raw_inputs.get("apply_unwanted_to", "core"),
+    }
 
 
 def _write_dataset_toml(metadata_path: Path, metadata: dict) -> None:
@@ -377,7 +402,7 @@ def get_pair_by_global_id(dataset: dict, global_id: int) -> tuple[str, str]:
 
 def get_selected_rows(dataset: dict, selected_global_ids) -> list[dict]:
     """
-    Build canonical report rows for a selected set of global pair IDs.
+    Build canonical report rows for a found-pair set of global pair IDs.
 
     Purpose
     -------
@@ -390,7 +415,7 @@ def get_selected_rows(dataset: dict, selected_global_ids) -> list[dict]:
     :param dataset: Loaded benchmark dataset bundle.
     :type dataset: dict
 
-    :param selected_global_ids: Global IDs to include in the selected-set
+    :param selected_global_ids: Global IDs to include in the found-pair
                                 output.
     :type selected_global_ids: iterable
 

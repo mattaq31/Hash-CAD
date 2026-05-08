@@ -1,5 +1,9 @@
 """
-Verified reporting helpers for hybrid-search runs.
+Verified reporting helpers for orthoseq search runs.
+
+Historically this module started around the hybrid-search workflow, but the
+shared workbook writer is now used by live hybrid runs, offline benchmark
+hybrid runs, standalone vertex-cover benchmarks, and naive benchmarks.
 """
 
 from __future__ import annotations
@@ -17,42 +21,38 @@ RUN_METADATA_KEY_ORDER = [
     "algorithm_name",
     "benchmark_name",
     "created_at",
-    "selected_set_size",
+    "found_pair_count",
     "verified_with_direct_nupack",
     "artifact.dataset_dir",
     "artifact.dataset_toml",
     "artifact.dataset_npz",
-    "sequence_source.label",
-    "sequence_source.length",
-    "sequence_source.fivep_ext",
-    "sequence_source.threep_ext",
-    "sequence_source.unwanted_substrings",
-    "sequence_source.apply_unwanted_to",
+    "input.source_kind",
+    "input.length",
+    "input.fivep_ext",
+    "input.threep_ext",
+    "input.unwanted_substrings",
+    "input.apply_unwanted_to",
     "search.offtarget_limit",
     "search.min_ontarget",
     "search.max_ontarget",
     "search.self_energy_limit",
     "search.random_seed",
-    "search.nupack_calls_executed",
+    "search.total_nupack_calls",
     "search.total_nupack_budget",
     "search.prune_fraction",
+    "search.vc_max_iterations",
     "search.initial_fresh_pair_count",
     "search.generations",
     "search.allowed_violations_initial",
     "search.fresh_pair_search_budget",
     "search.fresh_pair_scale",
-    "search.vc_max_iterations",
-    "search.max_iterations",
+    "search.num_vertices_to_remove_effective",
     "search.search_duration_s",
     "nupack.material",
     "nupack.celsius",
     "nupack.sodium",
     "nupack.magnesium",
-    "dataset.length",
     "dataset.range_sigma",
-    "dataset.avoid_gggg",
-    "dataset.fivep_ext",
-    "dataset.threep_ext",
     "dataset.random_seed",
     "dataset.total_candidate_count",
     "dataset.matrix_candidate_count",
@@ -60,7 +60,7 @@ RUN_METADATA_KEY_ORDER = [
     "dataset.std_ontarget_energy",
     "dataset.min_ontarget_energy",
     "dataset.max_ontarget_energy",
-    "dataset.nupack_calls_to_build",
+    "dataset.virtual_nupack_budget",
 ]
 
 
@@ -72,17 +72,17 @@ def _metadata_display_value(value):
 def verify_selected_pairs(selected_sequence_data: list[dict], nupack_params: dict | None = None) -> dict:
     """
     Recompute on-target, self-structure, and off-target energies for a final
-    selected set.
+    found-pair set.
 
     Purpose
     -------
     Reporting should be based on direct post-run NUPACK verification rather
     than cached estimates or search-time heuristics. This helper converts the
-    selected-sequence report entries back into sequence pairs, optionally
-    re-applies the recorded NUPACK parameters, and computes the verified energy
-    values used in the final workbook.
+    found-pair report entries back into sequence pairs, optionally re-applies
+    the recorded NUPACK parameters, and computes the verified energy values
+    used in the final workbook.
 
-    :param selected_sequence_data: Report entries for the selected set. Each
+    :param selected_sequence_data: Report entries for the found-pair set. Each
                                    entry must contain `seq` and `rc_seq`, and
                                    may also contain IDs or cached metadata.
     :type selected_sequence_data: list[dict]
@@ -130,7 +130,7 @@ def validate_selected_pairs(
     offtarget_limit: float,
 ) -> list[dict]:
     """
-    Summarize whether a verified selected set satisfies the intended search
+    Summarize whether a verified found-pair set satisfies the intended search
     criteria.
 
     Purpose
@@ -140,7 +140,7 @@ def validate_selected_pairs(
     review. This helper checks the verified values against the requested
     on-target window, self-energy bound, and pairwise off-target cutoff.
 
-    :param selected_sequence_data: Report entries for the selected set. Only
+    :param selected_sequence_data: Report entries for the found-pair set. Only
                                    the number of selected pairs matters here;
                                    the actual energy checks are based on the
                                    `verified` payload.
@@ -205,14 +205,14 @@ def build_selected_sequence_data(
     pair_ids: list[int],
 ) -> list[dict]:
     """
-    Build the canonical per-pair report entries for the `selected_pairs` sheet.
+    Build the canonical per-pair report entries for the `found_pairs` sheet.
 
     Purpose
     -------
     Search functions naturally return `(seq, rc_seq)` tuples and stable pair
     IDs, while the report writer expects a sheet-oriented structure. This
-    helper turns the algorithm result into the standard selected-sequence data
-    format used throughout reporting.
+    helper turns the algorithm result into the standard found-pair row format
+    used throughout reporting.
 
     :param final_pairs: Final selected sequence pairs in report order.
     :type final_pairs: list[tuple[str, str]]
@@ -245,7 +245,7 @@ def write_hybrid_search_result_xlsx(
     selected_sequence_data: list[dict],
     verified: dict,
     search_params: dict,
-    sequence_source: dict,
+    input_params: dict,
     artifact_info: dict,
     nupack_params: dict,
     generation_data: list[dict],
@@ -260,10 +260,14 @@ def write_hybrid_search_result_xlsx(
     Purpose
     -------
     This is the single shared workbook writer for orthoseq search outputs. It
-    assumes callers have already prepared selected-sequence report entries,
-    post-run verified energies, validation summaries, and progress data. The
-    function's job is to serialize that standardized reporting contract into a
-    consistent Excel artifact.
+    assumes callers have already prepared found-pair report entries, post-run
+    verified energies, validation summaries, and progress data. The function's
+    job is to serialize that standardized reporting contract into a consistent
+    Excel artifact.
+
+    The function name is legacy: despite the `hybrid` wording, this is the
+    shared workbook writer used across the benchmark and live-search code
+    paths.
 
     The `generation_data` input is written to the workbook's
     `search_progress` sheet. Callers are responsible for providing the shared
@@ -275,7 +279,7 @@ def write_hybrid_search_result_xlsx(
     :param algorithm_name: Name recorded in the workbook metadata.
     :type algorithm_name: str
 
-    :param selected_sequence_data: Canonical entries for the `selected_pairs`
+    :param selected_sequence_data: Canonical entries for the `found_pairs`
                                    sheet.
     :type selected_sequence_data: list[dict]
 
@@ -285,9 +289,9 @@ def write_hybrid_search_result_xlsx(
     :param search_params: Search parameters to record under `search.*`.
     :type search_params: dict
 
-    :param sequence_source: Shared sequence-source description recorded under
-                            `sequence_source.*`.
-    :type sequence_source: dict
+    :param input_params: Canonical input parameters recorded under
+                         `input.*`.
+    :type input_params: dict
 
     :param artifact_info: Shared artifact/file provenance recorded under
                           `artifact.*`.
@@ -323,25 +327,25 @@ def write_hybrid_search_result_xlsx(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    selected_set_size = len(selected_sequence_data)
-    if selected_set_size != len(verified["on_target_energies"]):
+    found_pair_count = len(selected_sequence_data)
+    if found_pair_count != len(verified["on_target_energies"]):
         raise ValueError("selected_sequence_data length must match verified energy array length.")
 
     metadata_values = {
         "algorithm_name": algorithm_name,
         "benchmark_name": None,
         "created_at": datetime.now().isoformat(timespec="seconds"),
-        "selected_set_size": selected_set_size,
+        "found_pair_count": found_pair_count,
         "verified_with_direct_nupack": True,
         "artifact.dataset_dir": artifact_info.get("dataset_dir"),
         "artifact.dataset_toml": artifact_info.get("dataset_toml"),
         "artifact.dataset_npz": artifact_info.get("dataset_npz"),
-        "sequence_source.label": sequence_source.get("label"),
-        "sequence_source.length": sequence_source.get("length"),
-        "sequence_source.fivep_ext": sequence_source.get("fivep_ext"),
-        "sequence_source.threep_ext": sequence_source.get("threep_ext"),
-        "sequence_source.unwanted_substrings": sequence_source.get("unwanted_substrings"),
-        "sequence_source.apply_unwanted_to": sequence_source.get("apply_unwanted_to"),
+        "input.source_kind": input_params.get("source_kind"),
+        "input.length": input_params.get("length"),
+        "input.fivep_ext": input_params.get("fivep_ext"),
+        "input.threep_ext": input_params.get("threep_ext"),
+        "input.unwanted_substrings": input_params.get("unwanted_substrings"),
+        "input.apply_unwanted_to": input_params.get("apply_unwanted_to"),
         "search.offtarget_limit": search_params.get("offtarget_limit"),
         "search.max_ontarget": search_params.get("max_ontarget"),
         "search.min_ontarget": search_params.get("min_ontarget"),
@@ -355,18 +359,14 @@ def write_hybrid_search_result_xlsx(
         "search.vc_max_iterations": search_params.get("vc_max_iterations"),
         "search.random_seed": search_params.get("random_seed"),
         "search.total_nupack_budget": search_params.get("total_nupack_budget"),
-        "search.nupack_calls_executed": search_params.get("total_nupack_calls"),
-        "search.max_iterations": search_params.get("max_iterations"),
+        "search.total_nupack_calls": search_params.get("total_nupack_calls"),
+        "search.num_vertices_to_remove_effective": search_params.get("num_vertices_to_remove_effective"),
         "search.search_duration_s": search_params.get("search_duration_s"),
         "nupack.material": nupack_params.get("material"),
         "nupack.celsius": nupack_params.get("celsius"),
         "nupack.sodium": nupack_params.get("sodium"),
         "nupack.magnesium": nupack_params.get("magnesium"),
-        "dataset.length": (dataset_info or {}).get("length"),
         "dataset.range_sigma": (dataset_info or {}).get("range_sigma"),
-        "dataset.avoid_gggg": (dataset_info or {}).get("avoid_gggg"),
-        "dataset.fivep_ext": (dataset_info or {}).get("fivep_ext"),
-        "dataset.threep_ext": (dataset_info or {}).get("threep_ext"),
         "dataset.random_seed": (dataset_info or {}).get("random_seed"),
         "dataset.total_candidate_count": (dataset_info or {}).get("total_candidate_count"),
         "dataset.matrix_candidate_count": (dataset_info or {}).get("matrix_candidate_count"),
@@ -374,7 +374,7 @@ def write_hybrid_search_result_xlsx(
         "dataset.std_ontarget_energy": (dataset_info or {}).get("std_ontarget_energy"),
         "dataset.min_ontarget_energy": (dataset_info or {}).get("min_ontarget_energy"),
         "dataset.max_ontarget_energy": (dataset_info or {}).get("max_ontarget_energy"),
-        "dataset.nupack_calls_to_build": None,
+        "dataset.virtual_nupack_budget": None,
     }
     if extra_metadata:
         metadata_values.update(extra_metadata)
@@ -388,22 +388,22 @@ def write_hybrid_search_result_xlsx(
         for key in sorted(extra_keys)
     )
 
-    selected_pairs_sheet = [dict(entry) for entry in selected_sequence_data]
-    for idx, entry in enumerate(selected_pairs_sheet):
+    found_pairs_sheet = [dict(entry) for entry in selected_sequence_data]
+    for idx, entry in enumerate(found_pairs_sheet):
         entry["on_target_energy_verified"] = verified["on_target_energies"][idx]
         entry["self_energy_seq_verified"] = verified["self_energy_seqs"][idx]
         entry["self_energy_rc_seq_verified"] = verified["self_energy_rc_seqs"][idx]
 
     handle_labels = []
     antihandle_labels = []
-    for idx, entry in enumerate(selected_pairs_sheet):
+    for idx, entry in enumerate(found_pairs_sheet):
         pair_label = entry.get("global_pair_id", entry.get("pair_idx", idx))
         handle_labels.append(f"{pair_label}:H:{entry['seq']}")
         antihandle_labels.append(f"{pair_label}:A:{entry['rc_seq']}")
 
     with pd.ExcelWriter(output_path) as writer:
         pd.DataFrame(metadata_rows).to_excel(writer, sheet_name="run_metadata", index=False)
-        pd.DataFrame(selected_pairs_sheet).to_excel(writer, sheet_name="selected_pairs", index=False)
+        pd.DataFrame(found_pairs_sheet).to_excel(writer, sheet_name="found_pairs", index=False)
         pd.DataFrame(
             verified["off_target"]["handle_handle_energies"], index=handle_labels, columns=handle_labels
         ).to_excel(writer, sheet_name="selected_hh")

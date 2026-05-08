@@ -9,6 +9,8 @@ import logging
 logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 
+LEGACY_AVOID_GGGG_SUBSTRINGS = ["AAAA", "CCCC", "GGGG", "TTTT"]
+
 
 def revcom(sequence):
     """

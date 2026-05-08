@@ -34,25 +34,31 @@ from benchmark_dataset_tools import estimate_dataset_nupack_budget, load_dataset
 
 
 DATASET_PARENT_NAME = "len4_7_tttt5p"
-BENCHMARK_NAME = "benchmark_1"
-TARGET_CONFLICT_DENSITIES = [0.1]
-SEEDS = [41]
+BENCHMARK_NAME = "benchmark_2"
+TARGET_CONFLICT_DENSITIES = [0.1,0.2,0.3]
+SEEDS = [1,2,3,4,5]
 SELF_ENERGY_LIMIT = -2.0
 
-HYBRID_PARAMS = {
+VC_CORE_PARAMS = {
+    "prune_fraction": 0.2,
+    "vc_max_iterations": 1000,
+}
+
+HYBRID_ONLY_PARAMS = {
     "initial_fresh_pair_count": 450,
     "generations": 5000,
     "allowed_violations": 0,
     "fresh_pair_search_budget": 5000,
-    "prune_fraction": 0.2,
     "fresh_pair_scale": 1.0,
-    "vc_max_iterations": 5000,
+}
+
+HYBRID_PARAMS = {
+    **VC_CORE_PARAMS,
+    **HYBRID_ONLY_PARAMS,
 }
 
 VERTEX_COVER_PARAMS = {
-    "prune_fraction": 0.2,
-    "max_iterations": 1000,
-    "show_progress": False,
+    **VC_CORE_PARAMS,
 }
 
 
@@ -72,9 +78,9 @@ def discover_dataset_dirs(parent_dir: Path) -> list[Path]:
     return dataset_dirs
 
 
-def read_selected_set_size(report_path: Path) -> int:
-    """Read the selected-set size from a benchmark workbook."""
-    selected_pairs = pd.read_excel(report_path, sheet_name="selected_pairs")
+def read_found_pair_count(report_path: Path) -> int:
+    """Read the found-pair count from a benchmark workbook."""
+    selected_pairs = pd.read_excel(report_path, sheet_name="found_pairs")
     return int(len(selected_pairs))
 
 
@@ -171,7 +177,7 @@ if __name__ == "__main__":
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
-                        "selected_set_size": read_selected_set_size(naive_path),
+                        "found_pair_count": read_found_pair_count(naive_path),
                         "report_path": str(naive_path),
                     }
                 )
@@ -198,7 +204,7 @@ if __name__ == "__main__":
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
-                        "selected_set_size": read_selected_set_size(vc_path),
+                        "found_pair_count": read_found_pair_count(vc_path),
                         "report_path": str(vc_path),
                     }
                 )
@@ -226,7 +232,7 @@ if __name__ == "__main__":
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
-                        "selected_set_size": read_selected_set_size(hybrid_path),
+                        "found_pair_count": read_found_pair_count(hybrid_path),
                         "report_path": str(hybrid_path),
                     }
                 )

@@ -31,31 +31,37 @@ from benchmark_dataset_tools import estimate_dataset_nupack_budget, load_dataset
 
 DATASET_PARENT_NAME = "len4_7_tttt5p"
 DATASET_NAME = "len6"
-BENCHMARK_NAME = "benchmark_test2"
+BENCHMARK_NAME = "benchmark_test3"
 TARGET_CONFLICT_DENSITIES = [0.1]
 SEEDS = [41]
 SELF_ENERGY_LIMIT = -2.0
 
-HYBRID_PARAMS = {
+VC_CORE_PARAMS = {
+    "prune_fraction": 0.2,
+    "vc_max_iterations": 1000,
+}
+
+HYBRID_ONLY_PARAMS = {
     "initial_fresh_pair_count": 450,
     "generations": 5000,
     "allowed_violations": 0,
     "fresh_pair_search_budget": 5000,
-    "prune_fraction": 0.2,
     "fresh_pair_scale": 1.0,
-    "vc_max_iterations": 5000,
+}
+
+HYBRID_PARAMS = {
+    **VC_CORE_PARAMS,
+    **HYBRID_ONLY_PARAMS,
 }
 
 VERTEX_COVER_PARAMS = {
-    "prune_fraction": 0.2,
-    "max_iterations": 5000,
-    "show_progress": False,
+    **VC_CORE_PARAMS,
 }
 
 
-def read_selected_set_size(report_path: Path) -> int:
-    """Read the selected-set size from a benchmark workbook."""
-    selected_pairs = pd.read_excel(report_path, sheet_name="selected_pairs")
+def read_found_pair_count(report_path: Path) -> int:
+    """Read the found-pair count from a benchmark workbook."""
+    selected_pairs = pd.read_excel(report_path, sheet_name="found_pairs")
     return int(len(selected_pairs))
 
 
@@ -84,7 +90,7 @@ def make_plot(summary_df: pd.DataFrame) -> None:
         means = []
         stds = []
         for density in TARGET_CONFLICT_DENSITIES:
-            values = algo_df.loc[algo_df["target_conflict_density"] == density, "selected_set_size"].to_numpy(dtype=float)
+            values = algo_df.loc[algo_df["target_conflict_density"] == density, "found_pair_count"].to_numpy(dtype=float)
             means.append(float(np.mean(values)))
             stds.append(float(np.std(values, ddof=1)) if len(values) > 1 else 0.0)
 
@@ -101,7 +107,7 @@ def make_plot(summary_df: pd.DataFrame) -> None:
         )
 
         for density_idx, density in enumerate(TARGET_CONFLICT_DENSITIES):
-            values = algo_df.loc[algo_df["target_conflict_density"] == density, "selected_set_size"].to_numpy(dtype=float)
+            values = algo_df.loc[algo_df["target_conflict_density"] == density, "found_pair_count"].to_numpy(dtype=float)
             if len(values) == 0:
                 continue
             dot_x = np.full(len(values), bar_x[density_idx])
@@ -111,7 +117,7 @@ def make_plot(summary_df: pd.DataFrame) -> None:
 
     ax.set_title(f"Benchmark Results for {DATASET_NAME}")
     ax.set_xlabel("Target Conflict Density")
-    ax.set_ylabel("Selected Set Size")
+    ax.set_ylabel("Number of pairs found")
     ax.set_xticks(x)
     ax.set_xticklabels(density_labels)
     ax.legend()
@@ -165,7 +171,7 @@ if __name__ == "__main__":
                     "achieved_conflict_density": achieved_density,
                     "self_energy_limit": SELF_ENERGY_LIMIT,
                     "seed": seed,
-                    "selected_set_size": read_selected_set_size(naive_path),
+                    "found_pair_count": read_found_pair_count(naive_path),
                     "report_path": str(naive_path),
                 }
             )
@@ -189,7 +195,7 @@ if __name__ == "__main__":
                     "achieved_conflict_density": achieved_density,
                     "self_energy_limit": SELF_ENERGY_LIMIT,
                     "seed": seed,
-                    "selected_set_size": read_selected_set_size(vc_path),
+                    "found_pair_count": read_found_pair_count(vc_path),
                     "report_path": str(vc_path),
                 }
             )
@@ -214,7 +220,7 @@ if __name__ == "__main__":
                     "achieved_conflict_density": achieved_density,
                     "self_energy_limit": SELF_ENERGY_LIMIT,
                     "seed": seed,
-                    "selected_set_size": read_selected_set_size(hybrid_path),
+                    "found_pair_count": read_found_pair_count(hybrid_path),
                     "report_path": str(hybrid_path),
                 }
             )

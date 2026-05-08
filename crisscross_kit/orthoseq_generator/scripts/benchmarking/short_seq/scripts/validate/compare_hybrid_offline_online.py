@@ -23,7 +23,7 @@ for path in (MODULE_DIR, PACKAGE_DIR):
         sys.path.insert(0, str(path))
 
 from benchmark_algorithms import run_hybrid_search_offline_to_xlsx
-from benchmark_dataset_tools import estimate_dataset_nupack_budget, load_dataset
+from benchmark_dataset_tools import estimate_dataset_nupack_budget, load_dataset, resolve_dataset_input_params
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator.search_reporting import (
     build_selected_sequence_data,
@@ -35,7 +35,7 @@ from orthoseq_generator.search_algorithm import hybrid_search
 from orthoseq_generator.sequence_generation import SequencePairRegistry
 
 
-BENCHMARK_NAME = "benchmark_compare_hybrid"
+BENCHMARK_NAME = "benchmark_compare_hybrid2"
 
 
 def print_result(label, ids, pairs):
@@ -100,18 +100,19 @@ def main():
         random_seed=random_seed,
     )
 
-    offline_rows = pd.read_excel(offline_path, sheet_name="selected_pairs")
+    offline_rows = pd.read_excel(offline_path, sheet_name="found_pairs")
     offline_ids = offline_rows["global_pair_id"].astype(int).tolist()
     offline_pairs = list(zip(offline_rows["seq"].astype(str), offline_rows["rc_seq"].astype(str)))
 
     print("starting online...")
     random.seed(random_seed)
+    canonical_inputs = resolve_dataset_input_params(inputs)
     online_source = SequencePairRegistry(
-        length=inputs["length"],
-        fivep_ext=inputs["fivep_ext"],
-        threep_ext=inputs["threep_ext"],
-        unwanted_substrings=["AAAA", "CCCC", "GGGG", "TTTT"] if inputs["avoid_gggg"] else [],
-        apply_unwanted_to="core",
+        length=canonical_inputs["length"],
+        fivep_ext=canonical_inputs["fivep_ext"],
+        threep_ext=canonical_inputs["threep_ext"],
+        unwanted_substrings=canonical_inputs["unwanted_substrings"],
+        apply_unwanted_to=canonical_inputs["apply_unwanted_to"],
         seed=random_seed,
     )
 
@@ -159,13 +160,17 @@ def main():
             "random_seed": random_seed,
             "total_nupack_calls": online_result["total_nupack_calls"],
         },
-        sequence_source={"label": "on_the_fly_registry", **online_result["sequence_source"]},
+        input_params={"source_kind": "on_the_fly_registry", **online_result["sequence_source"]},
         artifact_info={"dataset_dir": None, "dataset_toml": None, "dataset_npz": None},
         nupack_params=online_result["nupack"],
         generation_data=online_result["generation_data"],
         validation_data=online_validation,
         dataset_info={},
-        extra_metadata={"benchmark_name": BENCHMARK_NAME},
+        extra_metadata={
+            "benchmark_name": BENCHMARK_NAME,
+            "best_generation_result_size": len(online_sequence_data),
+            "stopped_reason": online_result["stopped_reason"],
+        },
     )
 
     print("benchmark name:", BENCHMARK_NAME)
