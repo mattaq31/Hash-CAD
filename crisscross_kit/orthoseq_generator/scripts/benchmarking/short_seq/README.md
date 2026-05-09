@@ -92,6 +92,76 @@ Batch-level artifacts written at the dataset-parent level include:
 - `benchmark_summary_<benchmark_name>.toml`
 - `batch_benchmark_found_pair_count_*.svg`
 
+## O2 Workflow
+
+The short-seq benchmark is run from a tracked repo checkout on O2 with the
+dataset files uploaded separately.
+
+### 1. Prepare the server checkout
+
+From the O2 repo checkout:
+
+```bash
+cd $HOME/Hash-CAD/crisscross_kit
+module load conda/miniforge3/24.11.3-0
+conda activate cc
+pip install -e .
+```
+
+This installs `crisscross-kit` in editable mode so the benchmark scripts use
+the checked-out source tree.
+
+### 2. Upload and unpack the dataset bundle
+
+Upload `data.zip` into:
+
+```text
+crisscross_kit/orthoseq_generator/scripts/benchmarking/short_seq/
+```
+
+Then unpack it there:
+
+```bash
+cd $HOME/Hash-CAD/crisscross_kit/orthoseq_generator/scripts/benchmarking/short_seq
+unzip data.zip
+```
+
+The canonical dataset parent should then exist at:
+
+```text
+data/len4_7_tttt5p/
+```
+
+### 3. Submit the batch job
+
+Submit from:
+
+```bash
+cd $HOME/Hash-CAD/crisscross_kit/orthoseq_generator/scripts/benchmarking/short_seq/scripts
+sbatch server_run_batch_benchmark_o2.sh
+```
+
+The server wrapper is intentionally local and ignored. It is not meant to be a
+tracked benchmark artifact.
+
+### 4. Monitor the run
+
+```bash
+squeue -u $USER
+sacct -j <jobid> --format=JobID,JobName,Partition,State,Elapsed,ExitCode
+tail -f slurm-shortseq_bench2-<jobid>.out
+```
+
+## Known O2 Details
+
+- The Slurm wrapper should use `SLURM_SUBMIT_DIR` when changing directories.
+  Under `sbatch`, `BASH_SOURCE[0]` points to Slurm's spool copy of the script,
+  not the original repo path. A plain `cd "$(dirname "${BASH_SOURCE[0]}")"`
+  will therefore break relative paths.
+- Do not `git pull` into a checkout that active jobs are using.
+- Uploaded zip files and Slurm log files are ignored under
+  `scripts/benchmarking/.gitignore`.
+
 ## Notes
 
 - A dataset is treated as complete only when both `dataset.toml` and
