@@ -34,7 +34,7 @@ from benchmark_dataset_tools import estimate_dataset_nupack_budget, load_dataset
 
 
 DATASET_PARENT_NAME = "len4_7_tttt5p"
-BENCHMARK_NAME = "benchmark_2"
+BENCHMARK_NAME = "benchmark_3"
 TARGET_CONFLICT_DENSITIES = [0.1,0.2,0.3]
 SEEDS = [1,2,3,4,5]
 SELF_ENERGY_LIMIT = -2.0
@@ -48,7 +48,7 @@ HYBRID_ONLY_PARAMS = {
     "initial_fresh_pair_count": 450,
     "generations": 5000,
     "allowed_violations": 0,
-    "fresh_pair_search_budget": 5000,
+    "fresh_pair_search_budget": 20000,
     "fresh_pair_scale": 1.0,
 }
 

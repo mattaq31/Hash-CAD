@@ -404,6 +404,7 @@ def build_server_script(
         f"#SBATCH -p {server_cfg['partition']}",
     ]
     email = str(server_cfg.get("email", "")).strip()
+    mp_start = str(server_cfg.get("mp_start", "")).strip()
     if email:
         lines.append("#SBATCH --mail-type=FAIL")
         lines.append(f"#SBATCH --mail-user={email}")
@@ -412,7 +413,39 @@ def build_server_script(
             "",
             f"module load {server_cfg['module_load']}",
             f"conda activate {server_cfg['conda_env']}",
-            f'PROJECT_ROOT="{server_cfg["project_root"]}"',
+        ]
+    )
+    if mp_start:
+        lines.append(f"export ORTHOSEQ_MP_START={mp_start}")
+    lines.extend(
+        [
+            "",
+            'if [[ -n "${HASHCAD_PROJECT_ROOT:-}" ]]; then',
+            '    PROJECT_ROOT="${HASHCAD_PROJECT_ROOT}"',
+            "else",
+            '    if [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then',
+            '        START_DIR="${SLURM_SUBMIT_DIR}"',
+            "    else",
+            '        START_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
+            "    fi",
+            '    SEARCH_DIR="${START_DIR}"',
+            '    PROJECT_ROOT=""',
+            '    while [[ "${SEARCH_DIR}" != "/" ]]; do',
+            '        if [[ -f "${SEARCH_DIR}/crisscross_kit/pyproject.toml" ]]; then',
+            '            PROJECT_ROOT="${SEARCH_DIR}"',
+            "            break",
+            "        fi",
+            '        SEARCH_DIR="$(dirname "${SEARCH_DIR}")"',
+            "    done",
+            "fi",
+            "",
+            'if [[ -z "${PROJECT_ROOT:-}" ]]; then',
+            '    echo "Could not locate Hash-CAD project root." >&2',
+            '    echo "Tried from: ${START_DIR:-<override-only>}" >&2',
+            '    echo "Set HASHCAD_PROJECT_ROOT to the repo root if needed." >&2',
+            "    exit 1",
+            "fi",
+            "",
             f'python -u "$PROJECT_ROOT/{runner_relpath}" --config "$PROJECT_ROOT/{config_relpath}"',
             "",
         ]

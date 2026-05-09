@@ -30,7 +30,7 @@ if str(MODULE_DIR) not in sys.path:
 
 
 DATASET_PARENT_NAME = "len4_7_tttt5p"
-BENCHMARK_NAME = "benchmark_1"
+BENCHMARK_NAME = "benchmark_2"
 ALGORITHM_ORDER = ["naive", "vertex_cover", "hybrid_offline"]
 ALGORITHM_COLORS = {
     "naive": "#808080",

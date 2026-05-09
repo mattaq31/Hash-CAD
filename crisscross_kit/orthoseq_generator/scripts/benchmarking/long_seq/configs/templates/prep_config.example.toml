@@ -1,6 +1,6 @@
 [run]
-lengths = [8]
-fivep_exts = ["", "TTTT"]
+lengths = [20]
+fivep_exts = ["TTTT"]
 threep_ext = ""
 unwanted_substrings = ["GGGG", "CCCC"]
 apply_unwanted_to = "full"
@@ -19,11 +19,11 @@ range_sigma = 1.0
 
 [physics]
 strand_concentration_nM = 1000.0
-offtarget_target_bound_fractions = [0.5, 0.05, 0.01]
+offtarget_target_bound_fractions = [ 0.01]
 self_target_unpaired_fraction = 0.2
 
 [budget]
-total_nupack_budget = 14000000
+total_nupack_budget = 5000000
 
 [naive]
 progress_every = 250
@@ -32,7 +32,7 @@ progress_every = 250
 initial_fresh_pair_count = 450
 generations = 15000
 allowed_violations = 0
-fresh_pair_search_budget = 5000
+fresh_pair_search_budget = 20000
 prune_fraction = 0.2
 fresh_pair_scale = 1.0
 vc_max_iterations = 1000
@@ -41,8 +41,9 @@ vc_max_iterations = 1000
 module_load = "conda/miniforge3/24.11.3-0"
 conda_env = "cc"
 project_root = "Hash-CAD"
-cpus = 20
-memory = "120G"
-time = "108:00:00"
+cpus = 6
+memory = "16G"
+time = "40:00:00"
 partition = "medium"
 email = ""
+mp_start = "spawn"
