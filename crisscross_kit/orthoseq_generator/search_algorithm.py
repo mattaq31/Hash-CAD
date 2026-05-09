@@ -7,8 +7,8 @@ Purpose:
     optional cross-reference (off-target) checks, and iterative graph pruning.
 """
 
-import random
 import logging
+import time
 
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
@@ -200,6 +200,7 @@ def hybrid_search(
     target_fresh_pair_count = initial_fresh_pair_count
     generation_data = []
     stopped_reason = None
+    start_t = time.time()
 
     if not 0 <= prune_fraction <= 1:
         raise ValueError("prune_fraction must be between 0 and 1.")
@@ -386,11 +387,13 @@ def hybrid_search(
                 }
             )
 
+            elapsed_s = time.time() - start_t
             _status(
                 f"Generation: {i + 1:2d} | "
                 f"Current number of pairs: {len(new_non_cover_vertices):3d} | "
                 f"Largest number of pairs: {len(non_cover_vertices):3d} | "
-                f"Total NUPACK calls: {total_nupack_calls}"
+                f"Total NUPACK calls: {total_nupack_calls} | "
+                f"elapsed={elapsed_s:.1f}s"
             )
 
     except KeyboardInterrupt:
@@ -404,7 +407,11 @@ def hybrid_search(
         final_pair_ids = sorted(non_cover_vertices)
         final_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in final_pair_ids]
 
-    _status(f"Total NUPACK calls overall: {total_nupack_calls}")
+    elapsed_s = time.time() - start_t
+    _status(
+        f"Total NUPACK calls overall: {total_nupack_calls} "
+        f"(elapsed={elapsed_s:.1f}s)"
+    )
     if return_diagnostics:
         return {
             "final_pairs": final_pairs,
@@ -424,6 +431,7 @@ def hybrid_search(
                 "prune_fraction": float(prune_fraction),
                 "fresh_pair_scale": float(fresh_pair_scale),
                 "vc_max_iterations": int(vc_max_iterations),
+                "search_duration_s": float(elapsed_s),
             },
             "sequence_source": {
                 "length": seq_length,
@@ -441,54 +449,3 @@ def hybrid_search(
             "stopped_reason": stopped_reason,
         }
     return final_pairs
-
-
-if __name__ == "__main__":
-    # Local entrypoint mirroring the packaged hybrid search flow.
-    RANDOM_SEED = 42
-    random.seed(RANDOM_SEED)
-    hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
-    sequence_pairs_object = sc.SequencePairRegistry(
-        length=7,
-        fivep_ext="TTTT",
-        threep_ext="",
-        unwanted_substrings=[],
-        apply_unwanted_to="core",
-        seed=RANDOM_SEED,
-        preselected_cores=None,
-    )
-    max_ontarget = -9.128
-    min_ontarget = -10.38
-    offtarget_limit = -7.2
-    self_energy_limit = -2
-
-    orthogonal_seq_pairs = hybrid_search(
-        sequence_pairs_object,
-        offtarget_limit,
-        max_ontarget,
-        min_ontarget,
-        self_energy_limit,
-        initial_fresh_pair_count=200,
-        generations=3000,
-        allowed_violations=1,
-        vc_max_iterations=5000,
-        fresh_pair_search_budget=8000,
-    )
-
-
-    hf.save_sequence_pairs_to_txt(orthogonal_seq_pairs, filename="ortho_test7mers.txt")
-
-    onef, self_e_A, self_e_B = sc.compute_ontarget_energies(orthogonal_seq_pairs)
-    offef = sc.compute_offtarget_energies(orthogonal_seq_pairs)
-
-    sc.plot_on_off_target_histograms(
-        onef,
-        offef,
-        output_path="ortho_10mers.pdf",
-    )
-
-    sc.plot_self_energy_histogram(
-        [self_e_A, self_e_B],
-        bins=30,
-        output_path="final_10mer_self_energies.pdf",
-    )

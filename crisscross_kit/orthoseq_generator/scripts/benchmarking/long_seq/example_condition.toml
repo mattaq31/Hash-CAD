@@ -1,0 +1,33 @@
+[run]
+length = 12
+fivep_ext = ""
+threep_ext = ""
+unwanted_substrings = []
+apply_unwanted_to = "core"
+random_seed = 41
+min_ontarget = -17.5
+max_ontarget = -15.0
+offtarget_limit = -8.5
+self_energy_limit = -2.0
+total_nupack_budget = 14000242
+
+[nupack]
+material = "dna"
+celsius = 37.0
+sodium = 0.05
+magnesium = 0.025
+
+[output]
+dir = "data/len7/5p_none"
+
+[naive]
+progress_every = 250
+
+[hybrid]
+initial_fresh_pair_count = 50
+generations = 5000
+allowed_violations = 0
+fresh_pair_search_budget = 5000
+prune_fraction = 0.2
+fresh_pair_scale = 1.0
+vc_max_iterations = 1000

@@ -44,6 +44,8 @@ def plot_on_off_target_histograms(
 
     if xlim is not None:
         combined_min, combined_max = map(float, xlim)
+    else:
+        combined_min -= 1.0
 
     bin_edges = np.linspace(combined_min, combined_max, bins + 1)
 
