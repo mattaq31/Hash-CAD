@@ -1,0 +1,4 @@
+__MACOSX/
+*.zip
+slurm-*.out
+slurm-*.err
