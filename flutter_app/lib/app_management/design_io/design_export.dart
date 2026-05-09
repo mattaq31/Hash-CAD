@@ -54,7 +54,7 @@ String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
 ///  - `metadata` — layer info, cargo palette, unique slat colours, group colours, grid mode
 ///  - `slat_types` — per-slat tube/db classification + group membership per config
 ///  - `slat_handle_links` — handle link constraints
-///  - `p{index}_{name}` — echo plate layouts (optional, from [echoPlateLayoutState])
+///  - `output_echo_plates` — consolidated echo plate layouts and well configs (optional, from [echoPlateLayoutState])
 ///  - `input_source_plates` — all input plates in one sheet (optional, from [plateLibrary])
 ///  - `lab_metadata` — export flags and master mix config (optional)
 ///
