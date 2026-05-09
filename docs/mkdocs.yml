@@ -107,6 +107,8 @@ nav:
     - Getting Started: flutter-dev/getting-started.md
     - State Management: flutter-dev/state-management.md
     - Grid Control: flutter-dev/grid-control.md
+    - Design I/O: flutter-dev/design-io.md
+    - Echo Plate System: flutter-dev/echo-plate-system.md
     - gRPC Integration: flutter-dev/grpc-integration.md
     - Components: flutter-dev/components.md
 

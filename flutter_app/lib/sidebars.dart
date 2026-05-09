@@ -13,4 +13,5 @@ export 'sidebars/slat_add_selection_panel.dart';
 export 'sidebars/slat_edit_selection_panel.dart';
 export 'sidebars/echo_sidebar.dart';
 export 'echo_and_experimental_helpers/echo_plate_window.dart';
+export 'sidebars/grouping_sidebar.dart';
 export 'sidebars/sidebar_tools.dart';

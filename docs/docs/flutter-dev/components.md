@@ -59,6 +59,7 @@ All sidebars are located in `lib/sidebars/`.
 | `AssemblyHandleDesignTools` | `assembly_handles_sidebar.dart` | Handle assignment, evolution controls |
 | `CargoTools` | `cargo_sidebar.dart` | Cargo and seed placement |
 | `EchoTools` | `echo_sidebar.dart` | Echo Liquid Handler export settings |
+| `GroupingSidebar` | `grouping_sidebar.dart` | Slat grouping configurations and colour assignment |
 | `LayerManager` | `layer_manager.dart` | Layer ordering and visibility |
 
 ### SlatDesignTools
@@ -111,6 +112,46 @@ Located in `lib/dialogs/`.
 
 Generic dialog for confirmations and warnings. Used throughout the app for destructive action confirmations.
 
+## Echo Plate Components
+
+Located in `lib/echo_and_experimental_helpers/`.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `EchoPlateWindow` | `echo_plate_window.dart` | Main 96-well plate layout editor (drag-drop, selection, keyboard) |
+| `EchoPlateGrid` | `echo_plate_grid.dart` | 96-well grid widget with colour modes |
+| `EchoPlateWell` | `echo_plate_well.dart` | Individual well rendering with barcode |
+| `EchoPlateSidebar` | `echo_plate_sidebar.dart` | Plate list and sidebar controls |
+| `EchoPlatePainters` | `echo_plate_painters.dart` | Plate outline with chamfered corners |
+| `EchoPlateBars` | `echo_plate_bars.dart` | Category breakdown bar chart |
+| `HandleBarcodePainter` | `echo_barcode_painter.dart` | Per-well handle barcode painter |
+| `WellConfigDialog` | `echo_well_config_dialog.dart` | Per-well ratio/volume/concentration editor |
+| `ManualHandleDialog` | `manual_handle_dialog.dart` | Mark specific handles as manual (non-Echo) |
+| `MassManualHandleDialog` | `mass_manual_handle_dialog.dart` | Bulk manual handle marking across slats |
+
+### PlateLayoutState
+
+**File**: `lib/echo_and_experimental_helpers/plate_layout_state.dart`
+
+The central state container for echo plate assignment. Manages:
+
+- `unassignedSlats` — slats not yet placed on any plate
+- `plateAssignments` — map of plate index → well → slat ID
+- `wellConfigs` — per-well dispensing parameters (ratio, volume, scaffold concentration)
+- `duplicateGroups` — tracking slat duplicates across plates
+- `manualHandles` — per-slat positions that are pipetted manually
+- `masterMixConfig` / `pegConfig` — lab protocol settings
+- Export format flags (PDF, CSV, helper sheets, PEG sheet, volume normalization)
+
+### Export Modules
+
+| Module | File | Output |
+|--------|------|--------|
+| `generateEchoCsv` | `echo_export.dart` | Echo liquid handler CSV transfer instructions |
+| `exportMasterMixWorkbook` | `master_mix_export.dart` | Master mix Excel with per-type sheets |
+| `exportPegPurificationWorkbook` | `peg_purification_export.dart` | PEG purification helper Excel sheet |
+| `exportPlateLayoutPdf` | `echo_plate_pdf_export.dart` | PDF plate layout report with barcode visuals |
+
 ## Graphics Components
 
 Located in `lib/graphics/`.
@@ -122,6 +163,9 @@ Located in `lib/graphics/`.
 | `LineChart` | `line_chart.dart` | Evolution metrics visualization |
 | `RatingIndicator` | `rating_indicator.dart` | Visual rating display |
 | `HoneycombPictogram` | `honeycomb_pictogram.dart` | Honeycomb pattern visualization |
+| `CrosshatchShader` | `crosshatch_shader.dart` | Crosshatch pattern for 2D fills |
+| `exportDesignToSTL` | `stl_exporter.dart` | Binary STL export for 3D printing |
+| `validateFullConnectivity` | `stl_export_validation.dart` | Assembly connectivity check before STL export |
 
 ### StatusIndicator
 

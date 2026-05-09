@@ -44,7 +44,8 @@ class DesignState extends ChangeNotifier
          DesignStateCargoMixin,
          DesignStateSeedMixin,
          DesignStatePlateMixin,
-         DesignStateHandleLinkMixin {
+         DesignStateHandleLinkMixin,
+         DesignStateGroupingMixin {
   // ...
 }
 ```
@@ -65,6 +66,7 @@ class DesignState extends ChangeNotifier
 | `DesignStateSeedMixin` | `design_state_seed_mixin.dart` | Seed geometry                             |
 | `DesignStatePlateMixin` | `design_state_plate_mixin.dart` | DNA plate management                      |
 | `DesignStateHandleLinkMixin` | `design_state_handle_link_mixin.dart` | Handle linking                            |
+| `DesignStateGroupingMixin` | `design_state_grouping_mixin.dart` | Slat grouping configurations              |
 
 ### Example Core Data Structures
 

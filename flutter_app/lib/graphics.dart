@@ -12,3 +12,5 @@ export 'graphics/rating_indicator.dart';
 export 'graphics/honeycomb_pictogram.dart';
 export 'graphics/status_indicator.dart';
 export 'graphics/crosshatch_shader.dart';
+export 'graphics/stl_exporter.dart';
+export 'graphics/stl_export_validation.dart';
