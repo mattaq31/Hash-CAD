@@ -21,6 +21,7 @@ Future<void> saveFileBytes(Uint8List bytes, String fileName, String extension) a
 
   if (filePath == null) return;
 
+  filePath = ensureExtension(filePath, extension);
   lastOpenDirectory = dirname(filePath);
   final file = File(filePath);
   await file.writeAsBytes(bytes);
