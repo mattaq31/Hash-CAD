@@ -221,7 +221,7 @@ void main() {
       expect(_numericValue(volCell), 75.0);
     });
 
-    test('unassigned slats fall back to default 50 µL', () {
+    test('group with all unassigned slats is excluded with warning', () {
       final slat = _createFullSlat(1, 'A');
       final result = generatePegPurificationExcel(
         groups: {'G1': ['slat-1']},
@@ -233,10 +233,81 @@ void main() {
         pegConfig: const PegPurificationConfig(),
         experimentTitle: 'Test',
       );
+      expect(result.warnings.any((w) => w.contains('no slats on output plates')), true);
+      expect(result.warnings.any((w) => w.contains('No slats assigned')), true);
+    });
+
+    test('partially assigned group only counts assigned slats', () {
+      final slat1 = _createFullSlat(1, 'A');
+      final slat2 = _createFullSlat(2, 'A');
+      final slat3 = _createFullSlat(3, 'A');
+      final result = generatePegPurificationExcel(
+        groups: {'G1': ['slat-1', 'slat-2', 'slat-3']},
+        slats: {'slat-1': slat1, 'slat-2': slat2, 'slat-3': slat3},
+        layerMap: _testLayerMap,
+        plateAssignments: _makePlateAssignments({'A1': 'slat-1', 'A2': 'slat-2'}),
+        wellConfigs: {},
+        plateNames: {},
+        pegConfig: const PegPurificationConfig(),
+        experimentTitle: 'Test',
+      );
       final excel = Excel.decodeBytes(result.bytes);
       final sheet = excel.tables['PEG Purification']!;
-      final volCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 2)).value;
-      expect(_numericValue(volCell), 50.0);
+      final countCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 3)).value;
+      expect(_numericValue(countCell), 2);
+      expect(result.warnings.any((w) => w.contains('2/3 slats on output plates')), true);
+    });
+
+    test('group with no plate assignments is excluded while others remain', () {
+      final slat1 = _createFullSlat(1, 'A');
+      final slat2 = _createFullSlat(2, 'A');
+      final result = generatePegPurificationExcel(
+        groups: {
+          'G1': ['slat-1'],
+          'G2': ['slat-2'],
+        },
+        slats: {'slat-1': slat1, 'slat-2': slat2},
+        layerMap: _testLayerMap,
+        plateAssignments: _makePlateAssignments({'A1': 'slat-1'}),
+        wellConfigs: {},
+        plateNames: {},
+        pegConfig: const PegPurificationConfig(),
+        experimentTitle: 'Test',
+      );
+      final excel = Excel.decodeBytes(result.bytes);
+      final sheet = excel.tables['PEG Purification']!;
+      final headerB = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value;
+      expect(_textValue(headerB), 'G1');
+      // Only 1 group column
+      final headerC = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 0)).value;
+      expect(headerC, isNull);
+      expect(result.warnings.any((w) => w.contains('G2') && w.contains('excluded')), true);
+    });
+
+    test('plate-assigned slats not in any group become leftover groups per layer', () {
+      final slat1 = _createFullSlat(1, 'A');
+      final slat2 = _createFullSlat(2, 'A');
+      final slat3 = _createFullSlat(3, 'A');
+      final result = generatePegPurificationExcel(
+        groups: {'G1': ['slat-1']},
+        slats: {'slat-1': slat1, 'slat-2': slat2, 'slat-3': slat3},
+        layerMap: _testLayerMap,
+        plateAssignments: _makePlateAssignments({'A1': 'slat-1', 'A2': 'slat-2', 'A3': 'slat-3'}),
+        wellConfigs: {},
+        plateNames: {},
+        pegConfig: const PegPurificationConfig(),
+        experimentTitle: 'Test',
+      );
+      final excel = Excel.decodeBytes(result.bytes);
+      final sheet = excel.tables['PEG Purification']!;
+      // G1 in column B, leftover group in column C
+      final headerB = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value;
+      final headerC = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 0)).value;
+      expect(_textValue(headerB), 'G1');
+      expect(_textValue(headerC), 'Leftover L1 Slats');
+      // Leftover group should have 2 slats
+      final countC = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 3)).value;
+      expect(_numericValue(countC), 2);
     });
 
     test('mixed volumes within group splits into subgroups', () {
