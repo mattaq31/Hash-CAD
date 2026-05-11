@@ -97,13 +97,60 @@ PegPurificationResult generatePegPurificationExcel({
     }
   }
 
+  // Filter each group to only include slats assigned to output plates.
+  final filteredGroups = <String, List<String>>{};
+  for (var groupName in groups.keys) {
+    final slatIds = groups[groupName]!;
+    final assigned = slatIds.where((id) => slatWellLookup.containsKey(baseSlatId(id))).toList();
+    if (assigned.isEmpty) {
+      warnings.add('Group "$groupName" has no slats on output plates; excluded from PEG sheet.');
+    } else {
+      if (assigned.length < slatIds.length) {
+        warnings.add(
+          'Group "$groupName": ${assigned.length}/${slatIds.length} slats on output plates; '
+          'PEG calculations use only those ${assigned.length}.',
+        );
+      }
+      filteredGroups[groupName] = assigned;
+    }
+  }
+
+  // Collect plate-assigned slats that don't belong to any group into per-layer leftover groups.
+  final allGroupedSlatIds = <String>{};
+  for (var ids in filteredGroups.values) {
+    allGroupedSlatIds.addAll(ids.map(baseSlatId));
+  }
+  final leftoversByLayer = <String, List<String>>{};
+  for (var slatId in slatWellLookup.keys) {
+    if (!allGroupedSlatIds.contains(slatId)) {
+      final slat = slats[slatId];
+      final layer = slat?.layer ?? '?';
+      leftoversByLayer.putIfAbsent(layer, () => []).add(slatId);
+    }
+  }
+  if (leftoversByLayer.isNotEmpty) {
+    final sortedLayers = leftoversByLayer.keys.toList()
+      ..sort((a, b) => (layerMap[a]?['order'] as int? ?? 0).compareTo(layerMap[b]?['order'] as int? ?? 0));
+    for (var layer in sortedLayers) {
+      final layerOrder = (layerMap[layer]?['order'] as int? ?? 0) + 1;
+      filteredGroups['Leftover L$layerOrder Slats'] = leftoversByLayer[layer]!;
+    }
+  }
+
+  if (filteredGroups.isEmpty) {
+    return PegPurificationResult(
+      bytes: Uint8List.fromList(excel.encode()!),
+      warnings: [...warnings, 'No slats assigned to output plates; PEG sheet is empty.'],
+    );
+  }
+
   // Split groups with mixed volumes into subgroups by volume.
   // Each subgroup becomes its own column in the output sheet.
   final resolvedGroups = <String, List<String>>{}; // subgroupName → slatIds
   final subgroupParent = <String, String>{}; // subgroupName → original group name
 
-  for (var groupName in groups.keys) {
-    final slatIds = groups[groupName]!;
+  for (var groupName in filteredGroups.keys) {
+    final slatIds = filteredGroups[groupName]!;
     final volumeBuckets = <double, List<String>>{};
     for (var slatId in slatIds) {
       final base = baseSlatId(slatId);

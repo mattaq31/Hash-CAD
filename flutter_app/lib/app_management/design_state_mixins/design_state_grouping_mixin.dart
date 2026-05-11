@@ -275,6 +275,8 @@ mixin DesignStateGroupingMixin on ChangeNotifier, DesignStateContract {
 
     // Chunk within each layer independently
     for (var layerKey in sortedLayerKeys) {
+      final layerOrder = (layerMap[layerKey]?['order'] as int? ?? 0) + 1;
+      var layerGroupNumber = 1;
       var layerSlats = slatsByLayer[layerKey]!
         ..sort((a, b) => slats[a]!.numericID.compareTo(slats[b]!.numericID));
 
@@ -283,10 +285,11 @@ mixin DesignStateGroupingMixin on ChangeNotifier, DesignStateContract {
         List<String> chunk = layerSlats.sublist(i, end);
 
         String groupId = 'G${config.nextGroupNumber}';
-        String groupName = 'Group ${config.nextGroupNumber}';
+        String groupName = 'L$layerOrder-Group$layerGroupNumber';
         int colorIndex = config.groups.length % colorPalette.length;
         Color groupColor = Color(int.parse('0xFF${colorPalette[colorIndex].replaceFirst('#', '')}'));
         config.nextGroupNumber++;
+        layerGroupNumber++;
 
         var group = SlatGroup(id: groupId, name: groupName, color: groupColor, slatIds: chunk.toSet());
         config.groups[groupId] = group;

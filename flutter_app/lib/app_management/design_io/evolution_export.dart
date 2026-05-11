@@ -22,6 +22,7 @@ Future<void> exportEvolutionParameters(Map<String, String> parameters) async {
   if (filePath == null) {
     return;
   }
+  filePath = ensureExtension(filePath, 'toml');
 
   final convertedParams = parameters.map((key, value) {
     final lower = value.toLowerCase().trim();
