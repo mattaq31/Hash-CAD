@@ -21,6 +21,9 @@ class SlatSidebar extends StatelessWidget {
   final ValueChanged<bool> onSplitSlatTypesChanged;
   final bool splitSlatLayers;
   final ValueChanged<bool> onSplitSlatLayersChanged;
+  final bool splitSlatGroups;
+  final bool splitSlatGroupsEnabled;
+  final ValueChanged<bool> onSplitSlatGroupsChanged;
   final EchoWellColorMode echoColorMode;
   final Color? Function(String slatId)? resolveGroupColor;
 
@@ -39,6 +42,9 @@ class SlatSidebar extends StatelessWidget {
     required this.onSplitSlatTypesChanged,
     required this.splitSlatLayers,
     required this.onSplitSlatLayersChanged,
+    required this.splitSlatGroups,
+    required this.splitSlatGroupsEnabled,
+    required this.onSplitSlatGroupsChanged,
     this.echoColorMode = EchoWellColorMode.natural,
     this.resolveGroupColor,
   });
@@ -141,6 +147,27 @@ class SlatSidebar extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text('Split layers', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.only(left: 30, right: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Checkbox(
+                    value: splitSlatGroups,
+                    onChanged: splitSlatGroupsEnabled ? (v) => onSplitSlatGroupsChanged(v ?? false) : null,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text('Split groups',
+                    style: TextStyle(fontSize: 11, color: splitSlatGroupsEnabled ? Colors.grey.shade700 : Colors.grey.shade400)),
               ],
             ),
           ),

@@ -58,6 +58,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   bool _overwriteExisting = false;
   bool _splitSlatTypes = false;
   bool _splitSlatLayers = false;
+  bool _splitSlatGroups = false;
 
   // Metric view toggle
   bool _showMetricView = false;
@@ -237,7 +238,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _layoutState!.autoAssign(appState.slats, appState.layerMap,
           columnsThreeToTenOnly: _columnsThreeToTenOnly,
           splitSlatTypes: _splitSlatTypes,
-          splitSlatLayers: _splitSlatLayers);
+          splitSlatLayers: _splitSlatLayers,
+          splitSlatGroups: _splitSlatGroups,
+          activeGroupConfig: appState.activeGroupConfig);
     });
     _saveUndoState();
   }
@@ -939,12 +942,18 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         splitSlatTypes: _splitSlatTypes,
                         onSplitSlatTypesChanged: (v) => setState(() {
                           _splitSlatTypes = v;
-                          if (v) _splitSlatLayers = false;
+                          if (v) { _splitSlatLayers = false; _splitSlatGroups = false; }
                         }),
                         splitSlatLayers: _splitSlatLayers,
                         onSplitSlatLayersChanged: (v) => setState(() {
                           _splitSlatLayers = v;
-                          if (v) _splitSlatTypes = false;
+                          if (v) { _splitSlatTypes = false; _splitSlatGroups = false; }
+                        }),
+                        splitSlatGroups: _splitSlatGroups,
+                        splitSlatGroupsEnabled: appState.activeGroupConfig != null,
+                        onSplitSlatGroupsChanged: (v) => setState(() {
+                          _splitSlatGroups = v;
+                          if (v) { _splitSlatTypes = false; _splitSlatLayers = false; }
                         }),
                         echoColorMode: _echoColorMode,
                         resolveGroupColor: appState.resolveGroupColor,
