@@ -1,4 +1,5 @@
 import '../app_management/design_io/design_io_constants.dart';
+import '../app_management/design_state_mixins/design_state_grouping_mixin.dart';
 import '../crisscross_core/slats.dart';
 import 'echo_export.dart' show generatePlateLayout96;
 import 'echo_plate_constants.dart';
@@ -481,8 +482,13 @@ class PlateLayoutState {
   /// Any already-assigned slats remain in place; unassigned slats fill empty wells.
   /// When [columnsThreeToTenOnly] is true, only wells in columns 3-10 (0-indexed 2-9) are used.
   /// When [splitSlatTypes] is true, different slat types are placed on separate plates.
+  /// When [splitSlatGroups] is true, each group in [activeGroupConfig] gets a separate plate.
   void autoAssign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap,
-      {bool columnsThreeToTenOnly = false, bool splitSlatTypes = false, bool splitSlatLayers = false}) {
+      {bool columnsThreeToTenOnly = false,
+      bool splitSlatTypes = false,
+      bool splitSlatLayers = false,
+      bool splitSlatGroups = false,
+      GroupConfiguration? activeGroupConfig}) {
     if (unassignedSlats.isEmpty) return;
 
     // Sort unassigned slats using the standard ordering
@@ -511,6 +517,26 @@ class PlateLayoutState {
 
       for (var layerGroup in groupsByLayer.values) {
         _autoAssignGroup(layerGroup, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
+      }
+    } else if (splitSlatGroups && activeGroupConfig != null) {
+      // Group slats by their assigned group, preserving sorted order within each group
+      final groupsByConfig = <String, List<String>>{};
+      final ungroupedSlats = <String>[];
+      for (var entry in toAssign) {
+        final groupId = activeGroupConfig.slatToGroup[entry.key];
+        if (groupId != null) {
+          groupsByConfig.putIfAbsent(groupId, () => []).add(entry.key);
+        } else {
+          ungroupedSlats.add(entry.key);
+        }
+      }
+
+      for (var group in groupsByConfig.values) {
+        _autoAssignGroup(group, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
+      }
+      // Ungrouped slats go on their own plate at the end
+      if (ungroupedSlats.isNotEmpty) {
+        _autoAssignGroup(ungroupedSlats, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
       }
     } else {
       _autoAssignGroup(toAssign.map((e) => e.key).toList(), columnsThreeToTenOnly: columnsThreeToTenOnly);
