@@ -22,6 +22,8 @@ dir = "data/len7/5p_none"
 
 [naive]
 progress_every = 250
+duplicate_streak_limit = 1000000
+min_progress_interval_s = 1.0
 
 [hybrid]
 initial_fresh_pair_count = 50

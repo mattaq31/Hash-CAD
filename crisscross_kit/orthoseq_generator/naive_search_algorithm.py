@@ -35,6 +35,8 @@ def naive_search(
     self_energy_limit,
     total_nupack_budget=None,
     progress_every=250,
+    duplicate_streak_limit=1_000_000,
+    min_progress_interval_s=1.0,
     stop_event=None,
     return_diagnostics=False,
 ):
@@ -66,6 +68,12 @@ def naive_search(
         progress_every = int(progress_every)
         if progress_every < 1:
             raise ValueError("progress_every must be a positive integer or None.")
+    duplicate_streak_limit = int(duplicate_streak_limit)
+    if duplicate_streak_limit < 1:
+        raise ValueError("duplicate_streak_limit must be a positive integer.")
+    min_progress_interval_s = float(min_progress_interval_s)
+    if min_progress_interval_s < 0:
+        raise ValueError("min_progress_interval_s must be non-negative.")
     if total_nupack_budget is not None:
         total_nupack_budget = int(total_nupack_budget)
         if total_nupack_budget < 1:
@@ -79,6 +87,8 @@ def naive_search(
     progress_rows = []
     stopped_reason = None
     start_t = time.time()
+    last_progress_t = start_t - min_progress_interval_s
+    duplicate_streak = 0
 
     logger.info(
         "Naive search start params: "
@@ -96,6 +106,8 @@ def naive_search(
         f"min off-target: {offtarget_limit}, "
         f"min secondary-structure: {self_energy_limit}, "
         f"progress every: {progress_every}, "
+        f"duplicate streak limit: {duplicate_streak_limit}, "
+        f"min progress interval s: {min_progress_interval_s}, "
         f"total NUPACK budget: {total_nupack_budget}"
     )
 
@@ -112,17 +124,31 @@ def naive_search(
 
             attempts += 1
             if progress_every and attempts % progress_every == 0:
-                elapsed_s = time.time() - start_t
-                _status(
-                    f"Naive progress: {len(selected_pairs)} accepted "
-                    f"after {attempts} attempts and {total_nupack_calls} NUPACK calls "
-                    f"(elapsed={elapsed_s:.1f}s)."
-                )
+                now_t = time.time()
+                if (now_t - last_progress_t) >= min_progress_interval_s:
+                    elapsed_s = now_t - start_t
+                    _status(
+                        f"Naive progress: {len(selected_pairs)} accepted "
+                        f"after {attempts} attempts and {total_nupack_calls} NUPACK calls "
+                        f"(elapsed={elapsed_s:.1f}s)."
+                    )
+                    last_progress_t = now_t
 
             pair_id, pair = sequence_pairs.sample_pair()
             if pair_id in tested_pair_ids:
+                duplicate_streak += 1
+                if duplicate_streak >= duplicate_streak_limit:
+                    stopped_reason = (
+                        f"duplicate_streak_limit_reached={duplicate_streak_limit}"
+                    )
+                    _status(
+                        "Duplicate streak limit reached. "
+                        f"Stopping naive search. duplicate_streak_limit={duplicate_streak_limit}"
+                    )
+                    break
                 continue
             tested_pair_ids.add(pair_id)
+            duplicate_streak = 0
 
             seq, rc_seq = pair
 
@@ -231,6 +257,8 @@ def naive_search(
                 "prune_fraction": None,
                 "fresh_pair_scale": None,
                 "vc_max_iterations": None,
+                "duplicate_streak_limit": int(duplicate_streak_limit),
+                "min_progress_interval_s": float(min_progress_interval_s),
                 "search_duration_s": float(elapsed_s),
             },
             "sequence_source": {

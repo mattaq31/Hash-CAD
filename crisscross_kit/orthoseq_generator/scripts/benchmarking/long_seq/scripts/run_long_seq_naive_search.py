@@ -88,14 +88,17 @@ def main():
     self_energy_limit = float(run_cfg["self_energy_limit"])
     total_nupack_budget = int(run_cfg["total_nupack_budget"])
     progress_every = int(naive_cfg.get("progress_every", 250))
+    duplicate_streak_limit = int(naive_cfg.get("duplicate_streak_limit", 1_000_000))
+    min_progress_interval_s = float(naive_cfg.get("min_progress_interval_s", 1.0))
 
     fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
     threep_label = f"3p_{threep_ext}" if threep_ext else "3p_none"
-    cutoff_label = str(offtarget_limit).replace("-", "m").replace(".", "p")
-    stem = f"naive_{threep_label}_limit{cutoff_label}_seed{RANDOM_SEED}"
+    cutoff_label = f"{offtarget_limit:.2f}".replace("-", "m").replace(".", "p")
+    stem = f"naive_len{length}_{fivep_label}_limit{cutoff_label}_seed{RANDOM_SEED}"
     benchmark_root = Path(__file__).resolve().parents[1]
     output_dir_cfg = config.get("output", {}).get("dir")
     if output_dir_cfg:
+
         output_dir = (
             Path(output_dir_cfg)
             if os.path.isabs(output_dir_cfg)
@@ -117,6 +120,8 @@ def main():
         self_energy_limit,
         total_nupack_budget=total_nupack_budget,
         progress_every=progress_every,
+        duplicate_streak_limit=duplicate_streak_limit,
+        min_progress_interval_s=min_progress_interval_s,
         stop_event=None,
         return_diagnostics=True,
     )

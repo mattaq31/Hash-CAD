@@ -350,6 +350,8 @@ def build_run_toml(
         "",
         "[naive]",
         f"progress_every = {toml_literal(int(naive_cfg.get('progress_every', 250)))}",
+        f"duplicate_streak_limit = {toml_literal(int(naive_cfg.get('duplicate_streak_limit', 1_000_000)))}",
+        f"min_progress_interval_s = {toml_literal(float(naive_cfg.get('min_progress_interval_s', 1.0)))}",
         "",
         "[hybrid]",
         f"initial_fresh_pair_count = {toml_literal(int(hybrid_cfg['initial_fresh_pair_count']))}",
@@ -565,7 +567,13 @@ def main():
     budget_cfg = cfg["budget"]
     naive_cfg = cfg.get("naive", {})
     hybrid_cfg = cfg["hybrid"]
-    server_cfg = cfg["server"]
+    shared_server_cfg = dict(cfg.get("server", {}))
+    server_naive_cfg = {**shared_server_cfg, **dict(cfg.get("server_naive", {}))}
+    server_hybrid_cfg = {**shared_server_cfg, **dict(cfg.get("server_hybrid", {}))}
+    if not server_naive_cfg:
+        raise KeyError("Prep config must define [server], [server_naive], or both.")
+    if not server_hybrid_cfg:
+        raise KeyError("Prep config must define [server], [server_hybrid], or both.")
 
     random_seed = int(run_cfg["random_seed"])
     random.seed(random_seed)
@@ -688,7 +696,7 @@ def main():
                         job_name=naive_job_name,
                         runner_relpath=runner_rel_naive,
                         config_relpath=condition_toml_rel,
-                        server_cfg=server_cfg,
+                        server_cfg=server_naive_cfg,
                     ),
                 )
                 write_text(
@@ -697,7 +705,7 @@ def main():
                         job_name=hybrid_job_name,
                         runner_relpath=runner_rel_hybrid,
                         config_relpath=condition_toml_rel,
-                        server_cfg=server_cfg,
+                        server_cfg=server_hybrid_cfg,
                     ),
                 )
                 generated_job_scripts.extend(

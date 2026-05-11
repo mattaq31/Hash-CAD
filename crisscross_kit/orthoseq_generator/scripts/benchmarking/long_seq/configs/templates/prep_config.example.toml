@@ -13,7 +13,7 @@ sodium = 0.05
 magnesium = 0.025
 
 [prep]
-name = "long_seq_batch"
+name = "long_batch_v"
 sample_size = 1000
 range_sigma = 1.0
 
@@ -27,6 +27,8 @@ total_nupack_budget = 5000000
 
 [naive]
 progress_every = 250
+duplicate_streak_limit = 1000000
+min_progress_interval_s = 1.0
 
 [hybrid]
 initial_fresh_pair_count = 450
@@ -41,9 +43,16 @@ vc_max_iterations = 1000
 module_load = "conda/miniforge3/24.11.3-0"
 conda_env = "cc"
 project_root = "Hash-CAD"
-cpus = 6
-memory = "18G"
-time = "40:00:00"
 partition = "medium"
 email = ""
 mp_start = "spawn"
+
+[server_naive]
+cpus = 3
+memory = "18G"
+time = "140:00:00"
+
+[server_hybrid]
+cpus = 6
+memory = "18G"
+time = "140:00:00"

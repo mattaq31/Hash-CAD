@@ -227,7 +227,7 @@ def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float)
                     edgecolor="black",
                     linewidth=BAR_EDGE_LINEWIDTH,
                     error_kw={"elinewidth": ERRORBAR_LINEWIDTH, "capthick": ERRORBAR_LINEWIDTH},
-                    alpha=0.9,
+                    alpha=1.0,
                     label=algorithm if (length_idx == 0 and density_idx == 0) else None,
                 )
 
@@ -284,7 +284,8 @@ def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float)
 
 def save_plot(fig: plt.Figure, output_dir: Path, title_suffix: str) -> Path:
     """Write one benchmark plot SVG and return its output path."""
-    output_path = output_dir / f"{OUTPUT_FILENAME_STEM}_{slugify_title_suffix(title_suffix)}.svg"
+    benchmark_slug = slugify_title_suffix(BENCHMARK_NAME)
+    output_path = output_dir / f"{OUTPUT_FILENAME_STEM}_{benchmark_slug}_{slugify_title_suffix(title_suffix)}.svg"
     fig.savefig(output_path, format="svg", bbox_inches="tight")
     return output_path
 

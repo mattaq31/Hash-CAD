@@ -97,8 +97,8 @@ def main():
 
     fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
     threep_label = f"3p_{threep_ext}" if threep_ext else "3p_none"
-    cutoff_label = str(offtarget_limit).replace("-", "m").replace(".", "p")
-    stem = f"hybrid_{threep_label}_limit{cutoff_label}_seed{RANDOM_SEED}"
+    cutoff_label = f"{offtarget_limit:.2f}".replace("-", "m").replace(".", "p")
+    stem = f"hybrid_len{length}_{fivep_label}_limit{cutoff_label}_seed{RANDOM_SEED}"
     benchmark_root = Path(__file__).resolve().parents[1]
     output_dir_cfg = config.get("output", {}).get("dir")
     if output_dir_cfg:

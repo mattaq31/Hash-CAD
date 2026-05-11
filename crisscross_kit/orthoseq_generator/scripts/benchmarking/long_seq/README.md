@@ -140,9 +140,10 @@ This is an important server-side detail. Without `spawn`, the hybrid
 off-target matrix computation can hang during worker startup on O2.
 
 - Current practical server settings for the benchmark campaign are:
+  - shared server env in `[server]`
+  - naive resources in `[server_naive]`
+  - hybrid resources in `[server_hybrid]`
   - `partition = "medium"`
-  - `cpus = 6`
-  - `memory = "16G"`
   - `total_nupack_budget = 5000000`
   - `fresh_pair_search_budget = 20000`
 
@@ -189,6 +190,7 @@ The batch config in `configs/templates/prep_config.example.toml` defines:
 - total compute budget
 - algorithm-specific runtime parameters
 - O2 submission settings
+- optional algorithm-specific server resource overrides
 
 The exact values in that file are examples and may change over time.
 
@@ -277,6 +279,48 @@ Each generated condition TOML contains:
 
 Both runners consume the same condition file. This is important because it
 means the algorithms are compared under matched physics and matched budget.
+
+## Server Resource Blocks
+
+The prep config supports three server blocks:
+
+- `[server]`
+  Shared environment settings and default Slurm fields used by both wrappers.
+- `[server_naive]`
+  Optional overrides for the generated naive `sbatch` scripts.
+- `[server_hybrid]`
+  Optional overrides for the generated hybrid `sbatch` scripts.
+
+The generator merges them as:
+
+- naive wrapper: `{**server, **server_naive}`
+- hybrid wrapper: `{**server, **server_hybrid}`
+
+This means you can keep shared fields such as `module_load`, `conda_env`,
+`partition`, `email`, and `mp_start` in `[server]`, then set different `cpus`,
+`memory`, and `time` values per algorithm. Older configs with only `[server]`
+still work.
+
+## Naive Runtime Controls
+
+The long-seq naive runner reads these fields from the `[naive]` block:
+
+- `progress_every`
+  Attempt-based progress cadence. The existing `Naive progress: ...` line is
+  considered every `progress_every` attempts.
+- `min_progress_interval_s`
+  Minimum wall-clock interval between those progress lines. This throttles log
+  spam during duplicate-heavy phases without changing the progress-line text.
+- `duplicate_streak_limit`
+  Benchmark-only stop condition for live naive search. The runner counts
+  consecutive sampled `pair_id`s that were already present in its local
+  `tested_pair_ids` set. The counter resets whenever a new unique `pair_id` is
+  found. If the streak reaches `duplicate_streak_limit`, the run stops and the
+  stop reason is recorded in the report metadata as
+  `duplicate_streak_limit_reached=<value>`.
+
+This stop rule is local to the naive benchmark loop. It does not change the
+underlying `SequencePairRegistry` behavior.
 
 ## Algorithm Roles
 
