@@ -340,10 +340,10 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         if (result.clearAll) {
           _layoutState!.manualHandles.clear();
         } else {
-          for (var slatId in result.affectedSlatIds) {
-            final existing = _layoutState!.getManualHandles(slatId);
-            final merged = Set<(int, int)>.from(existing)..addAll(result.positionsToMark);
-            _layoutState!.setManualHandles(slatId, merged);
+          for (var entry in result.perSlatPositions.entries) {
+            final existing = _layoutState!.getManualHandles(entry.key);
+            final merged = Set<(int, int)>.from(existing)..addAll(entry.value);
+            _layoutState!.setManualHandles(entry.key, merged);
           }
         }
       });

@@ -11,11 +11,11 @@ import 'plate_layout_state.dart' show PlateLayoutState, baseSlatId;
 
 /// Result of a mass manual edit operation.
 class MassManualEditResult {
-  final Set<(int helix, int position)> positionsToMark;
-  final Set<String> affectedSlatIds;
+  /// Per-slat positions to mark as manual — each slat gets only the positions relevant to it.
+  final Map<String, Set<(int helix, int position)>> perSlatPositions;
   final bool clearAll;
 
-  const MassManualEditResult({this.positionsToMark = const {}, this.affectedSlatIds = const {}, this.clearAll = false});
+  const MassManualEditResult({this.perSlatPositions = const {}, this.clearAll = false});
 }
 
 /// Shows the mass manual edit dialog.
@@ -150,82 +150,77 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
 
   /// Computes the result for Mode 1: by position/side/slat type.
   MassManualEditResult? _computeByPositionResult() {
-    final affectedIds = <String>{};
+    final perSlat = <String, Set<(int, int)>>{};
+    final pos = {(_selectedHelix, _selectedPosition)};
     for (var (base, slat) in _uniqueAssignedSlats()) {
       if (_selectedSlatType != 'all' && slat.slatType != _selectedSlatType) continue;
-      affectedIds.add(base);
+      perSlat[base] = pos;
     }
-    if (affectedIds.isEmpty) return null;
-    return MassManualEditResult(positionsToMark: {(_selectedHelix, _selectedPosition)}, affectedSlatIds: affectedIds);
+    if (perSlat.isEmpty) return null;
+    return MassManualEditResult(perSlatPositions: perSlat);
   }
 
   /// Computes the result for Mode 2: by assembly handle value + position.
   MassManualEditResult? _computeByHandleValueResult() {
     if (_selectedHandleValue == null) return null;
 
-    final affectedIds = <String>{};
-    final positions = <(int, int)>{};
+    final perSlat = <String, Set<(int, int)>>{};
 
     for (var (base, slat) in _uniqueAssignedSlats()) {
-      bool found = false;
+      final slatPositions = <(int, int)>{};
       final handles = _valueHelix == 2 ? slat.h2Handles : slat.h5Handles;
       if (_allPositions) {
         for (var entry in handles.entries) {
           if (_isAssemblyHandle(entry.value) && entry.value['value'] == _selectedHandleValue) {
-            positions.add((_valueHelix, entry.key));
-            found = true;
+            slatPositions.add((_valueHelix, entry.key));
           }
         }
       } else {
         final handle = handles[_valuePosition];
         if (handle != null && _isAssemblyHandle(handle) && handle['value'] == _selectedHandleValue) {
-          positions.add((_valueHelix, _valuePosition));
-          found = true;
+          slatPositions.add((_valueHelix, _valuePosition));
         }
       }
-      if (found) affectedIds.add(base);
+      if (slatPositions.isNotEmpty) perSlat[base] = slatPositions;
     }
 
-    if (affectedIds.isEmpty || positions.isEmpty) return null;
-    return MassManualEditResult(positionsToMark: positions, affectedSlatIds: affectedIds);
+    if (perSlat.isEmpty) return null;
+    return MassManualEditResult(perSlatPositions: perSlat);
   }
 
   /// Computes the result for Mode 3: by cargo value (all positions on all sides).
   MassManualEditResult? _computeByCargoValueResult() {
     if (_selectedCargoValue == null) return null;
 
-    final affectedIds = <String>{};
-    final positions = <(int, int)>{};
+    final perSlat = <String, Set<(int, int)>>{};
 
     for (var (base, slat) in _uniqueAssignedSlats()) {
-      bool found = false;
+      final slatPositions = <(int, int)>{};
       for (var entry in slat.h2Handles.entries) {
         if (_isCargoHandle(entry.value) && entry.value['value'] == _selectedCargoValue) {
-          positions.add((2, entry.key));
-          found = true;
+          slatPositions.add((2, entry.key));
         }
       }
       for (var entry in slat.h5Handles.entries) {
         if (_isCargoHandle(entry.value) && entry.value['value'] == _selectedCargoValue) {
-          positions.add((5, entry.key));
-          found = true;
+          slatPositions.add((5, entry.key));
         }
       }
-      if (found) affectedIds.add(base);
+      if (slatPositions.isNotEmpty) perSlat[base] = slatPositions;
     }
 
-    if (affectedIds.isEmpty || positions.isEmpty) return null;
-    return MassManualEditResult(positionsToMark: positions, affectedSlatIds: affectedIds);
+    if (perSlat.isEmpty) return null;
+    return MassManualEditResult(perSlatPositions: perSlat);
   }
 
   int _countAffected() {
     switch (_mode) {
       case _MassEditMode.byPosition:
-        return _computeByPositionResult()?.affectedSlatIds.length ?? 0;
+        return _computeByPositionResult()?.perSlatPositions.length ?? 0;
       case _MassEditMode.byAssemblyHandleValue:
-        return _computeByHandleValueResult()?.affectedSlatIds.length ?? 0;
+        return _computeByHandleValueResult()?.perSlatPositions.length ?? 0;
       case _MassEditMode.byCargoValue:
-        return _computeByCargoValueResult()?.affectedSlatIds.length ?? 0;
+        return _computeByCargoValueResult()?.perSlatPositions.length ?? 0;
     }
   }
 
