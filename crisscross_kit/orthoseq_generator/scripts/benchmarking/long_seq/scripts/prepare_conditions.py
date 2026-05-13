@@ -280,6 +280,8 @@ def build_run_toml(
     max_ontarget: float,
     offtarget_limit: float,
     self_energy_limit: float,
+    total_nupack_budget: int,
+    initial_fresh_pair_count: int,
 ) -> str:
     """
     Build one generated long-seq condition TOML.
@@ -289,8 +291,8 @@ def build_run_toml(
     contains shared run metadata plus both the `[naive]` and `[hybrid]`
     parameter sections so one physical condition is represented by one file.
 
-    :param run_cfg: Per-condition run settings such as length, flanks,
-                    random seed, and total NUPACK budget.
+    :param run_cfg: Per-condition run settings such as length, flanks, and
+                    random seed.
     :type run_cfg: dict
 
     :param nupack_cfg: Shared NUPACK chemistry settings.
@@ -301,7 +303,7 @@ def build_run_toml(
     :type naive_cfg: dict
 
     :param hybrid_cfg: Hybrid-search runner settings written into the
-                       `[hybrid]` section.
+                       `[hybrid]` section (shared scalars only).
     :type hybrid_cfg: dict
 
     :param output_dir: Relative output directory written into the `[output]`
@@ -322,6 +324,13 @@ def build_run_toml(
                               unpaired fraction.
     :type self_energy_limit: float
 
+    :param total_nupack_budget: Total NUPACK call budget for this condition.
+    :type total_nupack_budget: int
+
+    :param initial_fresh_pair_count: Number of pairs to collect in pass 1
+                                     (seed) for this condition.
+    :type initial_fresh_pair_count: int
+
     :returns: Full TOML file contents.
     :rtype: str
     """
@@ -337,7 +346,7 @@ def build_run_toml(
         f"max_ontarget = {toml_literal(float(max_ontarget))}",
         f"offtarget_limit = {toml_literal(float(offtarget_limit))}",
         f"self_energy_limit = {toml_literal(float(self_energy_limit))}",
-        f"total_nupack_budget = {toml_literal(int(run_cfg['total_nupack_budget']))}",
+        f"total_nupack_budget = {toml_literal(int(total_nupack_budget))}",
         "",
         "[nupack]",
         f"material = {toml_literal(str(nupack_cfg['material']))}",
@@ -354,12 +363,8 @@ def build_run_toml(
         f"min_progress_interval_s = {toml_literal(float(naive_cfg.get('min_progress_interval_s', 1.0)))}",
         "",
         "[hybrid]",
-        f"initial_fresh_pair_count = {toml_literal(int(hybrid_cfg['initial_fresh_pair_count']))}",
-        f"generations = {toml_literal(int(hybrid_cfg['generations']))}",
-        f"allowed_violations = {toml_literal(int(hybrid_cfg['allowed_violations']))}",
-        f"fresh_pair_search_budget = {toml_literal(int(hybrid_cfg['fresh_pair_search_budget']))}",
+        f"initial_fresh_pair_count = {toml_literal(int(initial_fresh_pair_count))}",
         f"prune_fraction = {toml_literal(float(hybrid_cfg['prune_fraction']))}",
-        f"fresh_pair_scale = {toml_literal(float(hybrid_cfg['fresh_pair_scale']))}",
         f"vc_max_iterations = {toml_literal(int(hybrid_cfg['vc_max_iterations']))}",
         "",
     ]
@@ -372,6 +377,7 @@ def build_server_script(
     runner_relpath: str,
     config_relpath: str,
     server_cfg: dict,
+    output_stem: str,
 ) -> str:
     """
     Build one `sbatch` wrapper script for a generated condition.
@@ -394,12 +400,18 @@ def build_server_script(
                        commands.
     :type server_cfg: dict
 
+    :param output_stem: Descriptive filename stem for Slurm stdout/stderr
+                        log files. The Slurm `%j` token appends the job ID.
+    :type output_stem: str
+
     :returns: Shell script contents ready to be written to disk.
     :rtype: str
     """
     lines = [
         "#!/bin/bash",
         f"#SBATCH -J {job_name}",
+        f"#SBATCH -o {output_stem}_%j.out",
+        f"#SBATCH -e {output_stem}_%j.err",
         f"#SBATCH -c {int(server_cfg['cpus'])}",
         f"#SBATCH --mem={server_cfg['memory']}",
         f"#SBATCH -t {server_cfg['time']}",
@@ -599,6 +611,9 @@ def main():
     target_bound_fractions = [float(x) for x in physics_cfg["offtarget_target_bound_fractions"]]
     target_unpaired_fraction = float(physics_cfg["self_target_unpaired_fraction"])
 
+    total_nupack_budgets = [int(x) for x in budget_cfg["total_nupack_budgets"]]
+    initial_fresh_pair_counts = [int(x) for x in hybrid_cfg["initial_fresh_pair_counts"]]
+
     benchmark_root = Path(__file__).resolve().parents[1]
     batch_dir_name = batch_tag(batch_name, range_sigma, random_seed)
     config_root = benchmark_root / "configs" / "generated" / batch_dir_name
@@ -649,7 +664,10 @@ def main():
             min_on = mean_on - window_delta
             max_on = mean_on
 
-            output_rel_dir = f"data/len{length}/" + (f"5p_{fivep_ext}" if fivep_ext else "5p_none")
+            output_rel_dir = (
+                f"data/{batch_dir_name}/len{length}/"
+                + (f"5p_{fivep_ext}" if fivep_ext else "5p_none")
+            )
             run_base_cfg = {
                 "length": length,
                 "fivep_ext": fivep_ext,
@@ -657,7 +675,6 @@ def main():
                 "unwanted_substrings": unwanted_substrings,
                 "apply_unwanted_to": apply_unwanted_to,
                 "random_seed": random_seed,
-                "total_nupack_budget": int(budget_cfg["total_nupack_budget"]),
             }
 
             for target_fraction in target_bound_fractions:
@@ -667,75 +684,101 @@ def main():
                     float(nupack_cfg["celsius"]),
                 )
                 frac_label = slugify_float(target_fraction)
-                run_toml_text = build_run_toml(
-                    run_cfg=run_base_cfg,
-                    nupack_cfg=nupack_cfg,
-                    naive_cfg=naive_cfg,
-                    hybrid_cfg=hybrid_cfg,
-                    output_dir=output_rel_dir,
-                    min_ontarget=min_on,
-                    max_ontarget=max_on,
-                    offtarget_limit=offtarget_limit,
-                    self_energy_limit=self_energy_limit,
-                )
 
-                condition_toml_rel = (
-                    "crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/"
-                    f"configs/generated/{batch_dir_name}/{tag}/condition_fb{frac_label}.toml"
-                )
-                condition_toml_path = config_dir / f"condition_fb{frac_label}.toml"
-                write_text(condition_toml_path, run_toml_text)
+                for nupack_budget in total_nupack_budgets:
+                    budget_label = str(nupack_budget)
 
-                naive_job_name = f"ls_naive_l{length}_fb{frac_label}"
-                hybrid_job_name = f"ls_hybrid_l{length}_fb{frac_label}"
-                naive_script_path = config_dir / f"naive_fb{frac_label}.sh"
-                hybrid_script_path = config_dir / f"hybrid_fb{frac_label}.sh"
-                write_text(
-                    naive_script_path,
-                    build_server_script(
-                        job_name=naive_job_name,
-                        runner_relpath=runner_rel_naive,
-                        config_relpath=condition_toml_rel,
-                        server_cfg=server_naive_cfg,
-                    ),
-                )
-                write_text(
-                    hybrid_script_path,
-                    build_server_script(
-                        job_name=hybrid_job_name,
-                        runner_relpath=runner_rel_hybrid,
-                        config_relpath=condition_toml_rel,
-                        server_cfg=server_hybrid_cfg,
-                    ),
-                )
-                generated_job_scripts.extend(
-                    [
-                        f"{tag}/{naive_script_path.name}",
-                        f"{tag}/{hybrid_script_path.name}",
-                    ]
-                )
-                summary_rows.append(
-                    {
-                        "family_tag": tag,
-                        "length": length,
-                        "fivep_ext": fivep_ext,
-                        "threep_ext": threep_ext,
-                        "target_fraction_bound": float(target_fraction),
-                        "derived_offtarget_limit": float(offtarget_limit),
-                        "min_ontarget": float(min_on),
-                        "max_ontarget": float(max_on),
-                        "self_energy_limit": float(self_energy_limit),
-                        "sampled_mean_ontarget": float(mean_on),
-                        "sampled_std_ontarget": float(std_on),
-                        "output_rel_dir": output_rel_dir,
-                        "condition_toml": str(condition_toml_path),
-                        "naive_sbatch": str(naive_script_path),
-                        "hybrid_sbatch": str(hybrid_script_path),
-                    }
-                )
-                print(
-                    f"{tag}: fb={target_fraction:.4f} -> offtarget_limit={offtarget_limit:.4f}"
-                )
+                    for initial_count in initial_fresh_pair_counts:
+                        init_label = str(initial_count)
+                        condition_stem = (
+                            f"fb{frac_label}_budget{budget_label}_init{init_label}"
+                        )
+
+                        run_toml_text = build_run_toml(
+                            run_cfg=run_base_cfg,
+                            nupack_cfg=nupack_cfg,
+                            naive_cfg=naive_cfg,
+                            hybrid_cfg=hybrid_cfg,
+                            output_dir=output_rel_dir,
+                            min_ontarget=min_on,
+                            max_ontarget=max_on,
+                            offtarget_limit=offtarget_limit,
+                            self_energy_limit=self_energy_limit,
+                            total_nupack_budget=nupack_budget,
+                            initial_fresh_pair_count=initial_count,
+                        )
+
+                        condition_toml_rel = (
+                            "crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/"
+                            f"configs/generated/{batch_dir_name}/{tag}/condition_{condition_stem}.toml"
+                        )
+                        condition_toml_path = config_dir / f"condition_{condition_stem}.toml"
+                        write_text(condition_toml_path, run_toml_text)
+
+                        fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
+                        naive_output_stem = (
+                            f"naive_len{length}_{fivep_label}_{condition_stem}_seed{random_seed}"
+                        )
+                        hybrid_output_stem = (
+                            f"hybrid_len{length}_{fivep_label}_{condition_stem}_seed{random_seed}"
+                        )
+
+                        naive_job_name = f"ls_naive_l{length}_{condition_stem}"
+                        hybrid_job_name = f"ls_hybrid_l{length}_{condition_stem}"
+                        naive_script_path = config_dir / f"naive_{condition_stem}.sh"
+                        hybrid_script_path = config_dir / f"hybrid_{condition_stem}.sh"
+                        write_text(
+                            naive_script_path,
+                            build_server_script(
+                                job_name=naive_job_name,
+                                runner_relpath=runner_rel_naive,
+                                config_relpath=condition_toml_rel,
+                                server_cfg=server_naive_cfg,
+                                output_stem=naive_output_stem,
+                            ),
+                        )
+                        write_text(
+                            hybrid_script_path,
+                            build_server_script(
+                                job_name=hybrid_job_name,
+                                runner_relpath=runner_rel_hybrid,
+                                config_relpath=condition_toml_rel,
+                                server_cfg=server_hybrid_cfg,
+                                output_stem=hybrid_output_stem,
+                            ),
+                        )
+                        generated_job_scripts.extend(
+                            [
+                                f"{tag}/{naive_script_path.name}",
+                                f"{tag}/{hybrid_script_path.name}",
+                            ]
+                        )
+                        summary_rows.append(
+                            {
+                                "family_tag": tag,
+                                "length": length,
+                                "fivep_ext": fivep_ext,
+                                "threep_ext": threep_ext,
+                                "target_fraction_bound": float(target_fraction),
+                                "derived_offtarget_limit": float(offtarget_limit),
+                                "total_nupack_budget": nupack_budget,
+                                "initial_fresh_pair_count": initial_count,
+                                "min_ontarget": float(min_on),
+                                "max_ontarget": float(max_on),
+                                "self_energy_limit": float(self_energy_limit),
+                                "sampled_mean_ontarget": float(mean_on),
+                                "sampled_std_ontarget": float(std_on),
+                                "output_rel_dir": output_rel_dir,
+                                "condition_toml": str(condition_toml_path),
+                                "naive_sbatch": str(naive_script_path),
+                                "hybrid_sbatch": str(hybrid_script_path),
+                            }
+                        )
+                        print(
+                            f"{tag}: fb={target_fraction:.4f} "
+                            f"budget={nupack_budget} init={initial_count} "
+                            f"-> offtarget_limit={offtarget_limit:.4f}"
+                        )
 
     submit_lines = [
         "#!/bin/bash",
@@ -761,6 +804,8 @@ def main():
             "sample_size": sample_size,
             "strand_concentration_nM": conc_nm,
             "offtarget_target_bound_fractions": target_bound_fractions,
+            "total_nupack_budgets": total_nupack_budgets,
+            "initial_fresh_pair_counts": initial_fresh_pair_counts,
             "self_target_unpaired_fraction": target_unpaired_fraction,
             "self_energy_limit": float(self_energy_limit),
         },

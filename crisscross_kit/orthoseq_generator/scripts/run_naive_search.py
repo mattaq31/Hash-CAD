@@ -55,6 +55,7 @@ if __name__ == "__main__":
 
     # 3) Define energy thresholds based on prior analysis
     hf.set_nupack_params(material="rna", celsius=37, sodium=0.050, magnesium=0.025)
+    hf.set_energy_type("total")
     max_ontarget = -15
     min_ontarget = -17.5
     offtarget_limit = -8.5

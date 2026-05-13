@@ -41,12 +41,13 @@ if __name__ == "__main__":
     # 1) Set a random seed for reproducibility 
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
+    res_name = "ortho_16mers8p16_new_sheettest6.xlsx"
 
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=7,
+        length=16,
         fivep_ext="",
         threep_ext="",
-        unwanted_substrings=[],
+        unwanted_substrings=["GGGG","CCCC"],
         apply_unwanted_to="core",
         seed=RANDOM_SEED
     )
@@ -54,31 +55,27 @@ if __name__ == "__main__":
 
     # 3) Define energy thresholds based on prior analysis
     hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
-    max_ontarget = -9.128
-    min_ontarget = -10.38
-    offtarget_limit = -7.2
-    self_energy_limit = -2
-    TOTAL_NUPACK_BUDGET = 778338
+    hf.set_energy_type("total")
+    max_ontarget = -19.2693004082526
+    min_ontarget = -21.3125901333289
+    offtarget_limit = -8.16042278445031
+    self_energy_limit = -0.991947123099227
+    TOTAL_NUPACK_BUDGET = 50000
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
-    # 4) Run the hybrid search algorithm to find an orthogonal set of sequences
-    # The subset size is the number of fresh sequence pairs requested each generation.
-    # Higher subset sizes make the computation significantly slower. 
+
     search_result = hybrid_search(
         sequence_pairs_object,
         offtarget_limit,
         max_ontarget,
         min_ontarget,
         self_energy_limit,
-        initial_fresh_pair_count=30,
-        generations=3,
-        allowed_violations=0,
-        fresh_pair_search_budget=500,
+        initial_fresh_pair_count=25,
         total_nupack_budget=TOTAL_NUPACK_BUDGET,
         prune_fraction=0.2,
-        fresh_pair_scale=1.0,
         vc_max_iterations=5000,
         stop_event=None,
         return_diagnostics=True,
+        progress_report_interval_min=60
     )
     orthogonal_seq_pairs = search_result["final_pairs"]
     selected_sequence_data = build_selected_sequence_data(
@@ -96,9 +93,15 @@ if __name__ == "__main__":
         self_energy_limit=self_energy_limit,
         offtarget_limit=offtarget_limit,
     )
+    seed_sequence_data = build_selected_sequence_data(
+        search_result["seed_pairs"],
+        search_result["seed_pair_ids"],
+    )
+    seed_verified = search_result["seed_verified"]
+
     results_dir = Path(hf.get_default_results_folder())
     report_path = write_hybrid_search_result_xlsx(
-        results_dir / "ortho_10mers7.xlsx",
+        results_dir / res_name,
         algorithm_name="hybrid_search",
         selected_sequence_data=selected_sequence_data,
         verified=verified,
@@ -112,6 +115,8 @@ if __name__ == "__main__":
         nupack_params=search_result["nupack"],
         generation_data=search_result["generation_data"],
         validation_data=validation_data,
+        seed_sequence_data=seed_sequence_data,
+        seed_verified=seed_verified,
         dataset_info={},
         extra_metadata={
             "best_generation_result_size": len(selected_sequence_data),

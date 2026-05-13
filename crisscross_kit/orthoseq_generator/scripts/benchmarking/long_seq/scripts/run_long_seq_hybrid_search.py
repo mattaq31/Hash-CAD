@@ -70,6 +70,7 @@ def main():
         sodium=float(nupack_cfg["sodium"]),
         magnesium=float(nupack_cfg["magnesium"]),
     )
+    hf.set_energy_type("total")
 
     sequence_pairs_object = sc.SequencePairRegistry(
         length=length,
@@ -88,17 +89,19 @@ def main():
     total_nupack_budget = int(run_cfg["total_nupack_budget"])
 
     initial_fresh_pair_count = int(hybrid_cfg["initial_fresh_pair_count"])
-    generations = int(hybrid_cfg["generations"])
-    allowed_violations = int(hybrid_cfg["allowed_violations"])
-    fresh_pair_search_budget = int(hybrid_cfg["fresh_pair_search_budget"])
     prune_fraction = float(hybrid_cfg["prune_fraction"])
-    fresh_pair_scale = float(hybrid_cfg["fresh_pair_scale"])
     vc_max_iterations = int(hybrid_cfg["vc_max_iterations"])
+    progress_report_interval_min = hybrid_cfg.get("progress_report_interval_min")
+    if progress_report_interval_min is not None:
+        progress_report_interval_min = int(progress_report_interval_min)
 
     fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
     threep_label = f"3p_{threep_ext}" if threep_ext else "3p_none"
     cutoff_label = f"{offtarget_limit:.2f}".replace("-", "m").replace(".", "p")
-    stem = f"hybrid_len{length}_{fivep_label}_limit{cutoff_label}_seed{RANDOM_SEED}"
+    stem = (
+        f"hybrid_len{length}_{fivep_label}_limit{cutoff_label}"
+        f"_budget{total_nupack_budget}_init{initial_fresh_pair_count}_seed{RANDOM_SEED}"
+    )
     benchmark_root = Path(__file__).resolve().parents[1]
     output_dir_cfg = config.get("output", {}).get("dir")
     if output_dir_cfg:
@@ -122,15 +125,12 @@ def main():
         min_ontarget,
         self_energy_limit,
         initial_fresh_pair_count=initial_fresh_pair_count,
-        generations=generations,
-        allowed_violations=allowed_violations,
-        fresh_pair_search_budget=fresh_pair_search_budget,
         total_nupack_budget=total_nupack_budget,
         prune_fraction=prune_fraction,
-        fresh_pair_scale=fresh_pair_scale,
         vc_max_iterations=vc_max_iterations,
         stop_event=None,
         return_diagnostics=True,
+        progress_report_interval_min=progress_report_interval_min,
     )
     orthogonal_seq_pairs = search_result["final_pairs"]
 
@@ -152,6 +152,12 @@ def main():
         self_energy_limit=self_energy_limit,
         offtarget_limit=offtarget_limit,
     )
+    seed_sequence_data = build_selected_sequence_data(
+        search_result["seed_pairs"],
+        search_result["seed_pair_ids"],
+    )
+    seed_verified = search_result["seed_verified"]
+
     report_path = write_hybrid_search_result_xlsx(
         output_dir / f"{stem}.xlsx",
         algorithm_name="hybrid_search",
@@ -167,6 +173,8 @@ def main():
         nupack_params=search_result["nupack"],
         generation_data=search_result["generation_data"],
         validation_data=validation_data,
+        seed_sequence_data=seed_sequence_data,
+        seed_verified=seed_verified,
         dataset_info={},
         extra_metadata={
             "benchmark_name": "long_seq",

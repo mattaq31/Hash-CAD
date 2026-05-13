@@ -20,13 +20,11 @@ def _search_worker(
     min_on,
     self_energy_limit,
     initial_fresh_pair_count,
-    generations,
     vc_max_iterations,
     prune_fraction,
-    fresh_pair_search_budget,
-    fresh_pair_scale,
     stop_event,
     out_q,
+    progress_report_interval_min=None,
 ):
     start_time = time.time()
     try:
@@ -37,13 +35,11 @@ def _search_worker(
             min_on,
             self_energy_limit,
             initial_fresh_pair_count=initial_fresh_pair_count,
-            generations=generations,
             vc_max_iterations=vc_max_iterations,
             prune_fraction=prune_fraction,
-            fresh_pair_search_budget=fresh_pair_search_budget,
-            fresh_pair_scale=fresh_pair_scale,
             stop_event=stop_event,
             return_diagnostics=True,
+            progress_report_interval_min=progress_report_interval_min,
         )
         if not res["final_pairs"]:
             out_q.put(("done", None, time.time() - start_time, "No sequences found before termination."))
@@ -65,15 +61,6 @@ def render_search_tab(registry_factory, nupack_params):
     )
 
     # Inputs (locked while running)
-    st.number_input(
-        "Number of Generations",
-        min_value=1,
-        value=st.session_state.generations,
-        key="generations",
-        disabled=st.session_state.search_running,
-        help="How many generations the search should run. More generations usually give the algorithm more chances to improve the result, but they also take longer."
-    )
-
     with st.expander("Advanced Search Parameters", expanded=False):
         st.number_input(
             "Initial Subset Size",
@@ -81,7 +68,7 @@ def render_search_tab(registry_factory, nupack_params):
             value=st.session_state.subset_size_search,
             key="subset_size_search",
             disabled=st.session_state.search_running,
-            help="Number of requested sequence pairs used to build the initial trial pool."
+            help="Number of sequence pairs collected in the seed pass before the first vertex-cover run."
         )
         st.number_input(
             "Vertex-Cover Max Iterations",
@@ -102,21 +89,12 @@ def render_search_tab(registry_factory, nupack_params):
             help="Controls how strongly the current graph-based solution is perturbed before it is refined again."
         )
         st.number_input(
-            "Fresh-Pair Search Budget",
-            min_value=1,
-            value=st.session_state.search_fresh_pair_search_budget,
-            key="search_fresh_pair_search_budget",
+            "Progress Report Interval (min)",
+            min_value=0,
+            value=st.session_state.search_progress_interval_min,
+            key="search_progress_interval_min",
             disabled=st.session_state.search_running,
-            help="Limit on the number of NUPACK calls used while collecting fresh candidates in one generation. If this limit is reached, the number of allowed conflicts for newly sampled pairs is increased by 1 in later generations."
-        )
-        st.number_input(
-            "Fresh Pair Scale",
-            min_value=0.0,
-            value=st.session_state.search_fresh_pair_scale,
-            step=0.1,
-            key="search_fresh_pair_scale",
-            disabled=st.session_state.search_running,
-            help="Once an orthogonal set has been established, this determines how many fresh sequence pairs are requested in later generations relative to the size of the retained best set."
+            help="During collection, report estimated pair count at this interval. 0 = disabled."
         )
 
     col1, col2 = st.columns(2)
@@ -182,11 +160,10 @@ def render_search_tab(registry_factory, nupack_params):
         min_on = float(st.session_state.min_ontarget)
         self_energy_limit = float(st.session_state.self_energy_limit)
         initial_fresh_pair_count = int(st.session_state.subset_size_search)
-        generations_ = int(st.session_state.generations)
         vc_max_iterations = int(st.session_state.search_vc_max_iterations)
         prune_fraction = float(st.session_state.search_prune_fraction)
-        fresh_pair_search_budget = int(st.session_state.search_fresh_pair_search_budget)
-        fresh_pair_scale = float(st.session_state.search_fresh_pair_scale)
+        progress_interval_raw = int(st.session_state.search_progress_interval_min)
+        progress_report_interval_min = progress_interval_raw if progress_interval_raw > 0 else None
         stop_event = st.session_state.stop_event
         out_q = st.session_state.search_queue
         st.session_state.search_running = True
@@ -200,13 +177,11 @@ def render_search_tab(registry_factory, nupack_params):
                 min_on,
                 self_energy_limit,
                 initial_fresh_pair_count,
-                generations_,
                 vc_max_iterations,
                 prune_fraction,
-                fresh_pair_search_budget,
-                fresh_pair_scale,
                 stop_event,
                 out_q,
+                progress_report_interval_min,
             ),
             daemon=True
         )
@@ -279,6 +254,11 @@ def render_search_tab(registry_factory, nupack_params):
                     self_energy_limit=float(st.session_state.self_energy_limit),
                     offtarget_limit=float(st.session_state.offtarget_limit),
                 )
+                seed_sequence_data = build_selected_sequence_data(
+                    search_run_data["seed_pairs"],
+                    search_run_data["seed_pair_ids"],
+                )
+                seed_verified = search_run_data["seed_verified"]
                 results_dir = Path(hf.get_default_results_folder())
                 report_path = write_hybrid_search_result_xlsx(
                     results_dir / "ortho_sequences_ui.xlsx",
@@ -296,6 +276,8 @@ def render_search_tab(registry_factory, nupack_params):
                     nupack_params=search_run_data["nupack"],
                     generation_data=search_run_data["generation_data"],
                     validation_data=validation_data,
+                    seed_sequence_data=seed_sequence_data,
+                    seed_verified=seed_verified,
                     dataset_info={},
                     extra_metadata={
                         "best_generation_result_size": len(selected_sequence_data),

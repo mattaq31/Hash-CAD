@@ -251,6 +251,37 @@ def compute_offtarget_energies(sequence_pairs):
 
 
 def crossreference_sequences(new_pair, pool, offtarget_limit, max_pair_violations=0):
+    """
+    Check whether a candidate pair is compatible with all pairs in a pool.
+
+    Purpose
+    -------
+    During pass 2 of the hybrid search, each fresh candidate must be
+    cross-referenced against the retained set before acceptance. This function
+    checks all four strand combinations (handle-handle, handle-antihandle,
+    antihandle-handle, antihandle-antihandle) between the candidate and every
+    pool member. If any interaction energy falls below `offtarget_limit`, that
+    pool member counts as a violation.
+
+    The check short-circuits: it returns False as soon as violations exceed
+    `max_pair_violations`, avoiding unnecessary NUPACK calls for candidates
+    that clearly conflict with the retained set.
+
+    :param new_pair: Candidate pair as (seq, rc_seq).
+    :type new_pair: tuple[str, str]
+    :param pool: Retained pairs to check against, each as (seq, rc_seq).
+    :type pool: list[tuple[str, str]]
+    :param offtarget_limit: Energy threshold below which an interaction is a
+        conflict.
+    :type offtarget_limit: float
+    :param max_pair_violations: Maximum number of pool members the candidate
+        may conflict with before rejection. Zero means any single conflict
+        causes rejection.
+    :type max_pair_violations: int
+    :returns: (passed, nupack_calls) — whether the candidate is compatible and
+        how many NUPACK calls were consumed.
+    :rtype: tuple[bool, int]
+    """
     if not pool:
         return True, 0
 
@@ -263,7 +294,7 @@ def crossreference_sequences(new_pair, pool, offtarget_limit, max_pair_violation
         for a in (seq, rc_seq):
             for b in (pool_seq, pool_rc):
                 nupack_calls += 1
-                result = compute_nupack_energy(a, b, type="total")
+                result = compute_nupack_energy(a, b, type=hf.ENERGY_TYPE)
                 energy = result[0] if isinstance(result, tuple) else result
                 if energy < offtarget_limit:
                     violated = True
@@ -293,21 +324,134 @@ def select_subset_in_energy_range(
     fresh_pair_search_budget=None,
     progress_every=None,
     progress_interval_s=120.0,
+    stop_event=None,
+    quiet_timeout=False,
+    prior_state=None,
 ):
-    if avoid_indices is None:
-        avoid_indices = set()
+    """
+    Sample sequence pairs that pass energy filters and optional cross-referencing.
 
+    Purpose
+    -------
+    Candidate collection workhorse for both passes of `hybrid_search`. Draws
+    random pairs from the source (finite list or infinite
+    `SequencePairRegistry`), evaluates on-target energy and self-energy,
+    optionally cross-references against a retained pool, and accumulates
+    accepted pairs until a stop condition fires.
+
+    Supports hot-start via `prior_state`: pass the state dict from a previous
+    call to resume collection where it left off (same tested set, counters,
+    and accumulated pairs). Used by `hybrid_search` to chunk collection into
+    timed intervals for progress reporting with peek vertex covers.
+
+    The budget check accounts for the downstream vertex cover cost:
+    stops when `nupack_calls + 2 * len(subset)^2 >= fresh_pair_search_budget`.
+
+    Stop conditions (returned as `stop_reason` string):
+    - "nupack_limit" — `fresh_pair_search_budget` reached (incl. VC reserve)
+    - "timeout" — `timeout_s` wall-clock seconds elapsed
+    - "stop_event" — external threading.Event set
+    - "keyboard_interrupt" — KeyboardInterrupt caught
+    - None — normal completion (`max_size` reached or pool exhausted)
+
+    :param sequence_pairs: Source of candidate pairs. Either a list of
+        `(index, (seq, rc_seq))` or an object with a `sample_pair()` method.
+    :type sequence_pairs: list or SequencePairRegistry
+
+    :param energy_min: Lower bound for acceptable on-target energy.
+    :type energy_min: float
+
+    :param energy_max: Upper bound for acceptable on-target energy.
+    :type energy_max: float
+
+    :param self_energy_min: Minimum acceptable self-energy for both strands.
+    :type self_energy_min: float
+
+    :param max_size: Maximum number of pairs to collect.
+    :type max_size: int or float
+
+    :param avoid_indices: Set of pair IDs to skip. Ignored when `prior_state`
+        is provided (the state already contains the full tested set).
+    :type avoid_indices: set or None
+
+    :param timeout_s: Wall-clock timeout in seconds. None disables.
+    :type timeout_s: float or None
+
+    :param retained_pairs: Pool of retained pairs for cross-referencing. When
+        provided together with `offtarget_limit`, each candidate is checked
+        against this pool before acceptance.
+    :type retained_pairs: list[tuple[str, str]] or None
+
+    :param allowed_violations: Maximum number of pool conflicts tolerated per
+        candidate during cross-referencing.
+    :type allowed_violations: int
+
+    :param offtarget_limit: Energy threshold for cross-reference conflicts.
+        Required when `retained_pairs` is provided.
+    :type offtarget_limit: float or None
+
+    :param fresh_pair_search_budget: Total NUPACK call budget for this
+        collection pass (including estimated final VC cost). None disables.
+    :type fresh_pair_search_budget: int or None
+
+    :param progress_every: Print progress every N attempts.
+    :type progress_every: int or None
+
+    :param progress_interval_s: Minimum wall-clock interval between progress
+        prints (default 120 s).
+    :type progress_interval_s: float
+
+    :param stop_event: External stop signal (threading.Event).
+    :type stop_event: threading.Event or None
+
+    :param quiet_timeout: Suppress verbose timeout message. Used when timeout
+        serves as a chunking mechanism for progress reporting.
+    :type quiet_timeout: bool
+
+    :param prior_state: State dict from a previous call to resume from.
+        Contains subset, indices, tested_indices, attempts, nupack_calls,
+        and passed_ontarget_and_self.
+    :type prior_state: dict or None
+
+    :returns: (subset, indices, stop_reason, nupack_calls, state)
+        stop_reason is None for normal completion, or one of:
+        "timeout", "nupack_limit", "stop_event", "keyboard_interrupt".
+        state is a dict suitable for passing back as `prior_state`.
+    :rtype: tuple[list, list, str|None, int, dict]
+    """
     if retained_pairs is None:
         retained_pairs = []
 
-    subset = []
-    indices = []
-    tested_indices = set(avoid_indices)
-    attempts = 0
-    nupack_calls = 0
+    if prior_state is not None:
+        subset = list(prior_state["subset"])
+        indices = list(prior_state["indices"])
+        tested_indices = prior_state["tested_indices"]
+        attempts = prior_state["attempts"]
+        nupack_calls = prior_state["nupack_calls"]
+        passed_energy_filter = prior_state["passed_ontarget_and_self"]
+    else:
+        if avoid_indices is None:
+            avoid_indices = set()
+        subset = []
+        indices = []
+        tested_indices = set(avoid_indices)
+        attempts = 0
+        nupack_calls = 0
+        passed_energy_filter = 0
 
     start_t = time.time()
     last_progress_t = start_t
+
+    def _build_state():
+        return {
+            "attempts": attempts,
+            "passed_ontarget_and_self": passed_energy_filter,
+            "accepted": len(subset),
+            "tested_indices": tested_indices,
+            "nupack_calls": nupack_calls,
+            "subset": subset,
+            "indices": indices,
+        }
 
     def _emit_progress():
         elapsed_s = time.time() - start_t
@@ -319,13 +463,13 @@ def select_subset_in_energy_range(
         )
 
     def _evaluate_candidate(seq, rc_seq):
-        nonlocal nupack_calls
+        nonlocal nupack_calls, passed_energy_filter
 
-        if fresh_pair_search_budget is not None and nupack_calls >= fresh_pair_search_budget:
+        if fresh_pair_search_budget is not None and nupack_calls + 2 * len(subset) ** 2 >= fresh_pair_search_budget:
             return None, "nupack_limit"
 
         nupack_calls += 1
-        energy, self_e_seq, self_e_rc_seq = compute_nupack_energy(seq, rc_seq, type="total")
+        energy, self_e_seq, self_e_rc_seq = compute_nupack_energy(seq, rc_seq, type=hf.ENERGY_TYPE)
 
         if not (
             energy_min <= energy <= energy_max
@@ -333,6 +477,8 @@ def select_subset_in_energy_range(
             and self_e_rc_seq >= self_energy_min
         ):
             return False, None
+
+        passed_energy_filter += 1
 
         if offtarget_limit is not None:
             passed_crossref, crossref_nupack_calls = crossreference_sequences(
@@ -345,29 +491,49 @@ def select_subset_in_energy_range(
             if not passed_crossref:
                 return False, None
 
-        if fresh_pair_search_budget is not None and nupack_calls >= fresh_pair_search_budget:
-            return None, "nupack_limit"
-
         return True, None
 
+    # Candidate drawing: list-based (finite pool) vs registry-based (infinite)
     if isinstance(sequence_pairs, list):
         total = len(sequence_pairs)
 
-        while len(indices) < max_size and len(tested_indices) < total:
-            if timeout_s is not None and (time.time() - start_t) >= timeout_s:
-                elapsed_s = time.time() - start_t
-                print(f"Only {len(subset)} of requested {max_size} found (timeout after {elapsed_s:.2f}s).")
-                logger.info(
-                    f"Only {len(subset)} of requested {max_size} found for given "
-                    f"parameters (timeout = {timeout_s}s)."
-                )
-                return subset, indices, True, nupack_calls
+        def _draw():
+            return random.choice(sequence_pairs)
 
-            index, (seq, rc_seq) = random.choice(sequence_pairs)
-            if index in tested_indices:
+        def _pool_exhausted():
+            return len(tested_indices) >= total
+    elif hasattr(sequence_pairs, "sample_pair"):
+        def _draw():
+            return sequence_pairs.sample_pair()
+
+        def _pool_exhausted():
+            return False
+    else:
+        raise TypeError(
+            "sequence_pairs must be either a list of (index, (seq, rc_seq)) "
+            "or an object with a sample_pair() method."
+        )
+
+    try:
+        while len(indices) < max_size and not _pool_exhausted():
+            if stop_event is not None and stop_event.is_set():
+                print(f"Stop event: returning {len(subset)} collected pairs.", flush=True)
+                return subset, indices, "stop_event", nupack_calls, _build_state()
+            if timeout_s is not None and (time.time() - start_t) >= timeout_s:
+                if not quiet_timeout:
+                    elapsed_s = time.time() - start_t
+                    print(f"Only {len(subset)} of requested {max_size} found (timeout after {elapsed_s:.2f}s).")
+                    logger.info(
+                        f"Only {len(subset)} of requested {max_size} found for given "
+                        f"parameters (timeout = {timeout_s}s)."
+                    )
+                return subset, indices, "timeout", nupack_calls, _build_state()
+
+            pair_id, (seq, rc_seq) = _draw()
+            if pair_id in tested_indices:
                 continue
 
-            tested_indices.add(index)
+            tested_indices.add(pair_id)
             attempts += 1
             if progress_every and attempts % progress_every == 0:
                 print(f"Progress: {len(subset)}/{max_size} accepted after {attempts} attempts")
@@ -375,8 +541,8 @@ def select_subset_in_energy_range(
                 _emit_progress()
                 last_progress_t = time.time()
 
-            accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
-            if stop_reason is not None:
+            accepted, candidate_stop = _evaluate_candidate(seq, rc_seq)
+            if candidate_stop is not None:
                 elapsed_s = time.time() - start_t
                 print(
                     f"Only {len(subset)} of requested {max_size} found "
@@ -387,66 +553,13 @@ def select_subset_in_energy_range(
                     f"Only {len(subset)} of requested {max_size} found for given "
                     f"parameters (fresh_pair_search_budget = {fresh_pair_search_budget})."
                 )
-                return subset, indices, True, nupack_calls
+                return subset, indices, "nupack_limit", nupack_calls, _build_state()
             if accepted:
                 subset.append((seq, rc_seq))
-                indices.append(index)
-
-        print(
-            f"Selected {len(subset)} sequence pairs with energies in range "
-            f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
-        )
-        logger.info(
-            f"Selected {len(subset)} sequence pairs with on-target energies in "
-            f"range [{energy_min}, {energy_max}] and secondary-structure energy "
-            f"above {self_energy_min}."
-        )
-        return subset, indices, False, nupack_calls
-
-    if not hasattr(sequence_pairs, "sample_pair"):
-        raise TypeError(
-            "sequence_pairs must be either a list of (index, (seq, rc_seq)) "
-            "or an object with a sample_pair() method."
-        )
-
-    while len(indices) < max_size:
-        if timeout_s is not None and (time.time() - start_t) >= timeout_s:
-            elapsed_s = time.time() - start_t
-            print(f"Only {len(subset)} of requested {max_size} found (timeout after {elapsed_s:.2f}s).")
-            logger.info(
-                f"Only {len(subset)} of requested {max_size} found for given "
-                f"parameters (timeout = {timeout_s}s)."
-            )
-            return subset, indices, True, nupack_calls
-
-        pair_id, (seq, rc_seq) = sequence_pairs.sample_pair()
-        if pair_id in tested_indices:
-            continue
-
-        tested_indices.add(pair_id)
-        attempts += 1
-        if progress_every and attempts % progress_every == 0:
-            print(f"Progress: {len(subset)}/{max_size} accepted after {attempts} attempts")
-        if progress_interval_s is not None and (time.time() - last_progress_t) >= progress_interval_s:
-            _emit_progress()
-            last_progress_t = time.time()
-
-        accepted, stop_reason = _evaluate_candidate(seq, rc_seq)
-        if stop_reason is not None:
-            elapsed_s = time.time() - start_t
-            print(
-                f"Only {len(subset)} of requested {max_size} found "
-                f"(NUPACK call limit hit after {elapsed_s:.2f}s, "
-                f"NUPACK calls: {nupack_calls})."
-            )
-            logger.info(
-                f"Only {len(subset)} of requested {max_size} found for given "
-                    f"parameters (fresh_pair_search_budget = {fresh_pair_search_budget})."
-            )
-            return subset, indices, True, nupack_calls
-        if accepted:
-            subset.append((seq, rc_seq))
-            indices.append(pair_id)
+                indices.append(pair_id)
+    except KeyboardInterrupt:
+        print(f"\nInterrupted: returning {len(subset)} collected pairs.", flush=True)
+        return subset, indices, "keyboard_interrupt", nupack_calls, _build_state()
 
     print(
         f"Selected {len(subset)} sequence pairs with energies in range "
@@ -457,7 +570,7 @@ def select_subset_in_energy_range(
         f"range [{energy_min}, {energy_max}] and secondary-structure energy "
         f"above {self_energy_min}."
     )
-    return subset, indices, False, nupack_calls
+    return subset, indices, None, nupack_calls, _build_state()
 
 
 def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, avoid_ids=None):

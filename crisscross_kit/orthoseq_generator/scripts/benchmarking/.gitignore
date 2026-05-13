@@ -1,4 +1,5 @@
 __MACOSX/
 *.zip
+*.png
 slurm-*.out
 slurm-*.err

@@ -1,6 +1,6 @@
 [run]
-lengths = [8,10,12,14,16,18,20]
-fivep_exts = ["","TTTT"]
+lengths = [10,16,20]
+fivep_exts = [""]
 threep_ext = ""
 unwanted_substrings = ["GGGG", "CCCC"]
 apply_unwanted_to = "full"
@@ -13,7 +13,7 @@ sodium = 0.05
 magnesium = 0.025
 
 [prep]
-name = "long_batch_v"
+name = "test_init_pairs"
 sample_size = 1000
 range_sigma = 1.0
 
@@ -23,7 +23,7 @@ offtarget_target_bound_fractions = [ 0.01,0.05]
 self_target_unpaired_fraction = 0.2
 
 [budget]
-total_nupack_budget = 5000000
+total_nupack_budgets = [5_000_000]
 
 [naive]
 progress_every = 250
@@ -31,12 +31,8 @@ duplicate_streak_limit = 1000000
 min_progress_interval_s = 1.0
 
 [hybrid]
-initial_fresh_pair_count = 450
-generations = 25000
-allowed_violations = 0
-fresh_pair_search_budget = 20000
+initial_fresh_pair_counts = [225,450,900]
 prune_fraction = 0.2
-fresh_pair_scale = 1.0
 vc_max_iterations = 1000
 
 [server]
@@ -50,9 +46,9 @@ mp_start = "spawn"
 [server_naive]
 cpus = 3
 memory = "18G"
-time = "140:00:00"
+time = "100:00:00"
 
 [server_hybrid]
 cpus = 6
 memory = "18G"
-time = "140:00:00"
+time = "100:00:00"

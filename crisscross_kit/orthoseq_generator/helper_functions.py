@@ -9,6 +9,24 @@ NUPACK_PARAMS = {
     "MAGNESIUM": 0.025
 }
 
+
+def set_energy_type(energy_type="total"):
+    """
+    Updates the global energy mode used for all NUPACK energy computations.
+
+    :param energy_type: Energy mode passed through to `compute_nupack_energy`.
+                        Supported values are "minimum", "total", and "totalu".
+    :type energy_type: str
+
+    :returns: None
+    :rtype: None
+    """
+    if energy_type not in {"minimum", "total", "totalu"}:
+        raise ValueError('energy_type must be one of "minimum", "total", or "totalu".')
+    global ENERGY_TYPE
+    ENERGY_TYPE = energy_type
+
+
 def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
     """
     Updates global NUPACK parameters used for all energy computations.

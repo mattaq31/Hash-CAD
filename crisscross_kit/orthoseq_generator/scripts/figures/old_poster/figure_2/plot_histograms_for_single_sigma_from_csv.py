@@ -82,7 +82,7 @@ def _run_for_length(meta):
 
     max_size = MAX_SIZE
 
-    subset_pairs, subset_ids, _, _ = sc.select_subset_in_energy_range(
+    subset_pairs, subset_ids, _, _, _ = sc.select_subset_in_energy_range(
         sequence_pairs,
         energy_min=min_on,
         energy_max=max_on,

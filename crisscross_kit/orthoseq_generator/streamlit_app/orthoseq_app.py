@@ -113,6 +113,7 @@ if __name__ == "__main__":
             sodium=sodium,
             magnesium=magnesium
         )
+        hf.set_energy_type("total")
 
     nupack_params = {
         'random_seed': random_seed,

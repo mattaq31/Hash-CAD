@@ -4,7 +4,7 @@ This folder contains the live long-sequence benchmark workflow.
 
 ## Files
 
-- `configs/templates/prep_config.example.toml`
+- `configs/templates/prep_config.v.toml`
   Batch input for the preparation step.
 - `scripts/prepare_conditions.py`
   Generates calibrated benchmark conditions and matching `sbatch` scripts.
@@ -19,7 +19,7 @@ Run locally from the repo root:
 
 ```bash
 python3 crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/scripts/prepare_conditions.py \
-  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/prep_config.example.toml
+  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/prep_config.v.toml
 ```
 
 This writes a generated batch folder under:
@@ -30,7 +30,7 @@ crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/generate
 
 Each family folder contains:
 
-- `condition_fb*.toml`
+- `condition_fb*_budget*_init*.toml`
 - matching `naive_*.sh` / `hybrid_*.sh`
 
 The batch root also contains:
@@ -57,7 +57,7 @@ From the repo root:
 
 ```bash
 python3 crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/scripts/prepare_conditions.py \
-  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/prep_config.example.toml
+  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/prep_config.v.toml
 ```
 
 This writes a batch folder under:
@@ -144,8 +144,7 @@ off-target matrix computation can hang during worker startup on O2.
   - naive resources in `[server_naive]`
   - hybrid resources in `[server_hybrid]`
   - `partition = "medium"`
-  - `total_nupack_budget = 5000000`
-  - `fresh_pair_search_budget = 20000`
+  - `total_nupack_budgets = [5_000_000]` (swept as list)
 
 - The example prep config is the canonical place to change these defaults.
 - Do not `git pull` into a checkout that active jobs are using.
@@ -174,25 +173,30 @@ The workflow has two stages:
 
 The main files are:
 
-- `configs/templates/prep_config.example.toml`
+- `configs/templates/prep_config.v.toml`
 - `scripts/prepare_conditions.py`
 - `scripts/run_long_seq_naive_search.py`
 - `scripts/run_long_seq_hybrid_search.py`
 
 ## Shared Benchmark Inputs
 
-The batch config in `configs/templates/prep_config.example.toml` defines:
+The batch config in `configs/templates/prep_config.v.toml` defines:
 
 - sequence families to benchmark
 - NUPACK chemistry settings
 - calibration settings for the on-target window
 - physically interpreted off-target and self-structure targets
-- total compute budget
-- algorithm-specific runtime parameters
+- total compute budgets (list, swept combinatorially)
+- algorithm-specific runtime parameters (including `initial_fresh_pair_counts` as a swept list)
 - O2 submission settings
 - optional algorithm-specific server resource overrides
 
 The exact values in that file are examples and may change over time.
+
+The preparation script generates conditions as a full combinatorial sweep over
+`offtarget_target_bound_fractions`, `total_nupack_budgets`, and
+`initial_fresh_pair_counts`. Each combination produces its own condition TOML
+and matching server scripts.
 
 One detail that matters for interpretation is that
 `offtarget_target_bound_fractions` is expressed as a fraction, not a percent.
@@ -328,12 +332,32 @@ The benchmark compares two search strategies under the same generated
 condition:
 
 - `naive`: a greedy baseline that accepts valid sequence pairs incrementally
-- `hybrid`: a more global search strategy that evaluates candidate pools and
-  prunes conflicts before carrying the best set forward
+- `hybrid`: a two-pass strategy. Pass 1 collects a seed pool filtered by
+  on-target and self-energy, then runs vertex cover to resolve conflicts.
+  Pass 2 collects additional candidates cross-referenced against the seed
+  survivors (zero allowed violations guarantees compatibility), then runs
+  vertex cover on fresh candidates only and unions survivors into the
+  retained set.
 
 The important benchmark property is that both runners consume the same
 generated condition TOML, so they are compared under matched thresholds,
 chemistry, and compute budget.
+
+### Hybrid Runtime Controls
+
+The hybrid runner reads these fields from the `[hybrid]` block:
+
+- `initial_fresh_pair_counts` (list, swept)
+  Number of candidate pairs collected in pass 1 before the first vertex-cover
+  run. Each value in the list produces a separate condition.
+- `prune_fraction`
+  Fraction of vertices perturbed per vertex-cover refinement iteration.
+- `vc_max_iterations`
+  Maximum iterations for each vertex-cover refinement run.
+- `progress_report_interval_min` (optional)
+  When set, pass 2 collection is chunked into timed intervals. At each
+  boundary a peek vertex cover estimates the current total without committing.
+  Integer minutes, minimum 30 s enforced. Omit to disable.
 
 ## Reporting
 
@@ -342,6 +366,20 @@ After either runner finishes, it:
 - writes an XLSX report
 - writes the standard plots
 - writes the outputs under `data/`
+
+The XLSX report contains a `search_progress` sheet with per-pass statistics:
+
+| Column | Meaning |
+|--------|---------|
+| `pass` | `"seed"` or `"collection"` |
+| `pairs_collected` | Candidates that passed all filters |
+| `pairs_after_vc` | Survivors after vertex cover |
+| `total_retained` | Cumulative orthogonal set size |
+| `nupack_calls_executed` | NUPACK calls for this pass only (collection + VC) |
+| `stopped_early` | Whether a stop condition fired before natural completion |
+| `attempts` | Total candidates evaluated (including rejected) |
+| `passed_ontarget_and_self` | Candidates that passed energy + self-energy filters |
+| `accepted` | Candidates that also passed cross-referencing (= `pairs_collected`) |
 
 ## What the Benchmark Is Measuring
 

@@ -47,7 +47,7 @@ if __name__ == "__main__":
     max_ontarget = -23
     min_ontarget = -25
     hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
-    subset, indices, _, _ = sc.select_subset_in_energy_range(
+    subset, indices, _, _, _ = sc.select_subset_in_energy_range(
         sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,

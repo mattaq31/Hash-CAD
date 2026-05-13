@@ -42,11 +42,6 @@ RUN_METADATA_KEY_ORDER = [
     "search.prune_fraction",
     "search.vc_max_iterations",
     "search.initial_fresh_pair_count",
-    "search.generations",
-    "search.allowed_violations_initial",
-    "search.fresh_pair_search_budget",
-    "search.fresh_pair_scale",
-    "search.num_vertices_to_remove_effective",
     "search.search_duration_s",
     "nupack.material",
     "nupack.celsius",
@@ -251,6 +246,8 @@ def write_hybrid_search_result_xlsx(
     generation_data: list[dict],
     validation_data: list[dict],
     dataset_info: dict | None = None,
+    seed_sequence_data: list[dict] | None = None,
+    seed_verified: dict | None = None,
     extra_sheets: dict[str, list[dict]] | None = None,
     extra_metadata: dict | None = None,
 ) -> Path:
@@ -351,16 +348,11 @@ def write_hybrid_search_result_xlsx(
         "search.min_ontarget": search_params.get("min_ontarget"),
         "search.self_energy_limit": search_params.get("self_energy_limit"),
         "search.initial_fresh_pair_count": search_params.get("initial_fresh_pair_count"),
-        "search.generations": search_params.get("generations"),
-        "search.allowed_violations_initial": search_params.get("allowed_violations_initial"),
-        "search.fresh_pair_search_budget": search_params.get("fresh_pair_search_budget"),
         "search.prune_fraction": search_params.get("prune_fraction"),
-        "search.fresh_pair_scale": search_params.get("fresh_pair_scale"),
         "search.vc_max_iterations": search_params.get("vc_max_iterations"),
         "search.random_seed": search_params.get("random_seed"),
         "search.total_nupack_budget": search_params.get("total_nupack_budget"),
         "search.total_nupack_calls": search_params.get("total_nupack_calls"),
-        "search.num_vertices_to_remove_effective": search_params.get("num_vertices_to_remove_effective"),
         "search.search_duration_s": search_params.get("search_duration_s"),
         "nupack.material": nupack_params.get("material"),
         "nupack.celsius": nupack_params.get("celsius"),
@@ -415,6 +407,33 @@ def write_hybrid_search_result_xlsx(
         ).to_excel(writer, sheet_name="selected_ahah")
         pd.DataFrame(generation_data).to_excel(writer, sheet_name="search_progress", index=False)
         pd.DataFrame(validation_data).to_excel(writer, sheet_name="validation", index=False)
+
+        if seed_sequence_data is not None and seed_verified is not None:
+            seed_sheet = [dict(entry) for entry in seed_sequence_data]
+            for idx, entry in enumerate(seed_sheet):
+                entry["on_target_energy_verified"] = seed_verified["on_target_energies"][idx]
+                entry["self_energy_seq_verified"] = seed_verified["self_energy_seqs"][idx]
+                entry["self_energy_rc_seq_verified"] = seed_verified["self_energy_rc_seqs"][idx]
+            seed_h_labels = []
+            seed_a_labels = []
+            for idx, entry in enumerate(seed_sheet):
+                pair_label = entry.get("global_pair_id", entry.get("pair_idx", idx))
+                seed_h_labels.append(f"{pair_label}:H:{entry['seq']}")
+                seed_a_labels.append(f"{pair_label}:A:{entry['rc_seq']}")
+            pd.DataFrame(seed_sheet).to_excel(writer, sheet_name="seed_pass_pairs", index=False)
+            pd.DataFrame(
+                seed_verified["off_target"]["handle_handle_energies"],
+                index=seed_h_labels, columns=seed_h_labels
+            ).to_excel(writer, sheet_name="seed_hh")
+            pd.DataFrame(
+                seed_verified["off_target"]["antihandle_handle_energies"],
+                index=seed_h_labels, columns=seed_a_labels
+            ).to_excel(writer, sheet_name="seed_hah")
+            pd.DataFrame(
+                seed_verified["off_target"]["antihandle_antihandle_energies"],
+                index=seed_a_labels, columns=seed_a_labels
+            ).to_excel(writer, sheet_name="seed_ahah")
+
         if extra_sheets:
             for sheet_name, rows in extra_sheets.items():
                 pd.DataFrame(rows).to_excel(writer, sheet_name=sheet_name, index=False)

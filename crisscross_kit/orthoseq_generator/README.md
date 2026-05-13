@@ -11,8 +11,8 @@ Orthogonality here means:
 Unlike other orthogonal sequence generators that use **De Bruijn graphs** or focus on **Hamming distance** for barcode generation, this tool uses **NUPACK** to compute actual hybridization energies. The sequence selection is based **solely on thermodynamic interactions**.
 
 To maximize the number of orthogonal sequences found under given constraints, we employ:  
-- **Advanced graph-theoretic algorithms** (vertex cover)  
-- **Evolutionary optimization** strategies  
+- **Advanced graph-theoretic algorithms** (iterative vertex-cover heuristic)  
+- A **two-pass hybrid search** strategy that separates exploration from exploitation  
 
 The algorithm works best for sequences up to **13 or 14 nucleotides** long (plus optional fixed 5' and 3' extensions, defined by the user).
 
@@ -47,13 +47,21 @@ There are four scripts that are typically executed in sequence:
 ---
 
 ### 3. `run_sequence_search.py`  
+- **Main entry point** for running the orthogonal sequence search from code.
 - Runs the **actual sequence search** based on the parameters you determined using Scripts 1 and 2.  
-- Creates the full list of sequence pairs and uses the evolutionary vertex cover algorithm to select an orthogonal set.  
-- Logs progress to the console and saves:  
-  - The selected sequences (`.txt` files) in the **results** folder.  
-  - Energy distribution plots.  
-- This is the main script that gives you your usable orthogonal sequences.
-- You can press **Ctrl+C** at any time to trigger a keyboard interrupt; the best sequences found so far will still be saved, and the rest of the script will complete its cleanup steps.  
+- Uses the two-pass hybrid search algorithm to select an orthogonal set:
+  - **Pass 1 (Seed):** Collects candidate pairs filtered by on-target energy and self-energy, then runs vertex cover to resolve conflicts.
+  - **Pass 2 (Collection):** Collects additional candidates cross-referenced against the seed survivors, then runs vertex cover on fresh candidates only.
+- Saves a verified XLSX report with the found pairs, energy matrices, and search metadata.
+- Also saves energy distribution plots.  
+- You can press **Ctrl+C** at any time to trigger a keyboard interrupt; the best sequences found so far will still be saved.  
+
+### 3b. `run_naive_search.py`  
+- Implements a **naive greedy baseline** for comparison with the hybrid algorithm.
+- Samples candidate pairs on the fly and greedily accepts each pair only if it passes on-target, self-energy, and cross-reference checks against all previously accepted pairs.
+- Does not use vertex cover or graph-based optimization — acceptance is purely sequential.
+- Produces the same XLSX report format as the hybrid search, so results are directly comparable.
+- Useful for benchmarking: under the same NUPACK budget and constraints, how many pairs does the greedy approach find vs. the hybrid?
 ---
 
 ### 4. `analyze_saved_sequences.py` *(optional)*  
@@ -72,68 +80,36 @@ There are four scripts that are typically executed in sequence:
 ## Typical File Structure
 
 Executing the scripts will make some folders and files appear in the folder you execute the scripts from.  
-A **results** folder will appear automatically with the found orthogonal sequence pairs saved as `.txt` files.  
-A **pre_compute_energies** folder will also appear automatically (if it does not exist yet) and will contain `.pkl` files with precomputed energy values.  
+A **results** folder will appear automatically with the found orthogonal sequence pairs saved as `.xlsx` reports.  
 
 The file structure will look like this:
 
 ```text
 scripts/
     results/
-        mysequences101.txt
-    pre_compute_energies/
-        energy_library.pkl
+        ortho_sequences.xlsx
     the_scripts.py
     some_plots.pdf
 ```
 
-## Energy Computations and Precompute Library
+## Energy Computations
 
 To compute binding energies, we use **NUPACK 4.0** thermodynamic calculations.  
 This is computationally expensive, especially when computing all cross-interactions between sequence pairs.
 
-To speed up the computations, we use two strategies:  
-1. **Multiprocessing** to parallelize energy calculations across multiple CPU cores.  
-2. A **precompute library** to avoid computing the same interaction energy more than once.
-
-The precompute library is loaded by each instance of the multiprocessing.  
-Importantly, updating the precompute library is done **outside** of the multiprocessing processes to avoid file corruption.
-
-There is a global variable:
-
-    USE_LIBRARY = True
-
-which specifies whether to use the precompute library or not.
-
-You can specify the name of the precompute library with:
-
-    hf.choose_precompute_library("my_new_cache.pkl")
-
-If the specified library file does not exist, running any script will automatically create it inside the `pre_computed_energies` folder.
-
-Whether using the precompute library speeds up your run depends on your use case:  
-- For **small sequence sets** or **short sequences**, it usually helps.  
-- For **longer sequences** (>=7 bases), the library can grow very large, and loading the `.pkl` file may slow things down.
+To speed up the computations, we use **multiprocessing** to parallelize energy calculations across multiple CPU cores. The number of workers is determined automatically from available CPUs (or SLURM allocation on clusters).
 
 ---
 
-### Fixed NUPACK Conditions
+### NUPACK Conditions
 
-The input conditions for NUPACK are currently **hardcoded**:  
-- Temperature: 37 °C  
-- Sodium concentration: 0.05 M  
-- Magnesium concentration: 0.025 M  
+The NUPACK thermodynamic parameters are set via `hf.set_nupack_params()`:  
+- Material (e.g. `'dna'`)  
+- Temperature in Celsius  
+- Sodium concentration in M  
+- Magnesium concentration in M  
 
-If you need different parameters, you must manually adjust the code.
-
----
-
-### Note on Precompute Library Performance
-
-- The current implementation of saving/loading the precompute library is **not fully optimized**.  
-- When the `.pkl` file grows too large, overall runtime can increase due to file I/O.  
-- To avoid excessively large libraries, define a **new precompute library** for each on-target energy range you explore.
-
+These are configured in each script and in the Streamlit app before the search runs.
 
 ## Algorithm Basic Idea
 
@@ -148,77 +124,69 @@ The core of the algorithm is a heuristic that attempts to find a minimum vertex 
    Removing as few vertices as possible (to leave as large a pool of orthogonal sequences as possible) is exactly the **minimum vertex cover** problem.
 
 3. **Why a heuristic?**  
-   Since minimum vertex cover is NP-hard, we use greedy and evolutionary strategies to find a small cover (and thus a large independent set) in reasonable time.
+   Since minimum vertex cover is NP-hard, we use a greedy heuristic with iterative perturbation to find a small cover (and thus a large independent set) in reasonable time.
+
+### Two-Pass Hybrid Search
+
+The main search algorithm (`hybrid_search` in `search_algorithm.py`) works in two passes:
+
+**Pass 1 (Seed):**
+- Collect `initial_fresh_pair_count` candidate pairs filtered by on-target energy and self-energy.
+- Compute the full pairwise off-target energy matrix (O(n^2) NUPACK calls).
+- Build the conflict graph and run the iterative vertex-cover heuristic.
+- Survivors become the retained set.
+
+**Pass 2 (Collection):**
+- Collect additional candidate pairs, each cross-referenced against the retained set (zero violations required).
+- Because every accepted candidate is already compatible with all retained pairs, the final vertex cover only resolves conflicts among fresh candidates (O(fresh^2) instead of O((fresh+retained)^2)).
+- Union survivors into the retained set.
+
+The search terminates when the NUPACK call budget is exhausted, the user interrupts (Ctrl+C or stop button), or the candidate pool is empty.
+
+**Optional progress reporting:** When `progress_report_interval_min` is set, pass 2 collection is chunked into timed intervals. At each boundary a peek vertex cover estimates the current total without committing results.
 
 ### Core Functions
 
-- **`heuristic_vertex_cover_optimized2(E)`**  
-  Repeatedly removes the vertex with the highest degree (most edges).  
-  When there’s a tie, it picks among them the vertex whose neighbors have the least overlap with the other top-degree vertices—avoiding redundant removals.
+- **`iterative_vertex_cover_refinement(V, E, …)`**  
+  The vertex-cover heuristic. Repeatedly removes the highest-degree vertex to greedily cover edges. Wraps this in an iterative perturbation loop: each iteration removes a fraction of vertices (`prune_fraction`) from the current cover, re-covers uncovered edges, and checks if the independent set improved.
 
-- **`iterative_vertex_cover_multi(V, E, …)`**  
-  Wraps the greedy heuristic in two nested loops:  
-  1. **Multistart outer loop**: re-runs the heuristic from different random seeds to escape poor starting conditions.  
-  2. **Inner loop**: strategically perturbs the current cover (removes some vertices, re-covers uncovered edges) and re-applies the greedy heuristic to refine the solution.
+- **`hybrid_search(sequence_pairs, …)`**  
+  The main search entry point. Orchestrates the two-pass strategy described above. Called by the CLI script, Streamlit app, and benchmark runners.
 
-- **`evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, …)`**  
-  The main driver that implements an evolutionary selection process. Iterates for a fixed number of generations:  
-  - Samples random subsets within a specified on-target energy range from the candidate list of sequence pairs. Previously preserved sequences that worked well are added to each subset.  
-  - Computes off-target interaction energies and builds the corresponding graph.  
-  - Uses `iterative_vertex_cover_multi` as the “selection” step to find orthogonal sequences in the subset.  
-  - If a larger independent set than in previous generations is found, it replaces the record and clears the preserved sequences.  
-  - If the new independent set is at least 95% the size of the previous best, its members are added (without duplicates) to the preserved sequences.
+- **`select_subset_in_energy_range(sequence_pairs, …)`**  
+  The candidate collection workhorse. Draws random pairs, evaluates energy filters, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"keyboard_interrupt"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware — it reserves `2 * N^2` calls for the downstream vertex cover.
 
-Each of these functions is documented in detail in their respective docstrings.
+- **`crossreference_sequences(new_pair, pool, …)`**  
+  Checks whether a single candidate pair is compatible with all pairs in a pool by evaluating all four strand combinations. Short-circuits on first violation.
 
-### Print statements
+### Console Output
 
-There are a couple of print statements that report on the current process of the `evolutionary_vertex_cover` function. They’re useful for understanding exactly what the algorithm is doing at each step:
-
----
+The algorithm prints structured status messages during execution:
 
 ```text
-Selected 250 sequence pairs with energies in range [-10.4, -9.6]
-```
-➔ Subset selection based on the on-target energy window defined by the user; 250 pairs chosen for this generation as set as input parameter.
-
----
-
-```text
-Computing off-target energies for handle-handle interactions
-```
-➔ Now computing cross-interaction energies between “handle” sequences and other antihandle sequences 
-```text
+=== Pass 1: Initial sampling ===
+Sampling 450 candidate pairs (energy + self-energy filter)...
+Selected 450 candidate pairs [853 NUPACK calls]
+Running vertex cover on 450 pairs...
+Computing off-target energies for plus-plus interactions
 Calculating with 12 cores...
+100%|████████████████████████| 101475/101475 [00:06<00:00, 4822.91it/s]
+Independent set: 120 pairs retained | NUPACK calls: 405853 | elapsed=45.2s
+=== Pass 2: Cross-referenced collection ===
+Collecting candidate pairs cross-referenced against 120 retained (NUPACK budget: 4594147)...
+Collected 340 candidate pairs [1200000 NUPACK calls]
+Running vertex cover on 340 candidate pairs...
+Independent set: 95 additional pairs found | Total retained: 215 | NUPACK calls: 1836421 | elapsed=320.5s
 ```
-➔ Started parallel processing using 12 worker processes  
-```text
-100%|████████████████████████████████████████████████████████████████████| 31375/31375 [00:06<00:00, 4822.91it/s]
-```
-➔ There is a life update on the progress of the computation
 
-➔ There will be print statements for the other two configurations as well: anti-handles with other anti-handles and handles with other anti-handles
-
----
-
-```text
-Iteration 1 of 30 | current bestest independent set size: 40
-…
-Iteration 30 of 30 | current bestest independent set size: 44
-```
-➔ Progress updates of the multistart iterations of iterative_vertex_cover_multi when called: shows progression and best size updates
-
-___
-
+When progress reporting is enabled:
 
 ```text
-Generation 1 | Current: 40 | Best: 40 | History size: 40
-Generation 2 | Current: 46 | Best: 46 | History size: 46
+--- Progress report triggered (20 min interval reached) ---
+Running peek vertex cover on 94 collected candidate pairs...
+Candidate pairs collected so far: 94 | Retained from seed: 120 | New from collection (after peek VC): 29 | Estimated total: 149 | NUPACK calls: 7482 | elapsed=1200.5s
+--- Continuing collection ---
 ```
-➔ Generation summaries of the evolutionary algorithm:  
-- **Current** = size of independent set found in this generation  
-- **Best**    = best-ever size so far  
-- **History** = number of sequences preserved for sampling  
 
 
 ## Legacy Scripts Basic Use

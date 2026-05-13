@@ -113,19 +113,12 @@ def init_session_state():
         st.session_state.search_error = None
     if "subset_size_search" not in st.session_state:
         st.session_state.subset_size_search = 450
-    if "generations" not in st.session_state:
-        st.session_state.generations = 50
     if "search_vc_max_iterations" not in st.session_state:
         st.session_state.search_vc_max_iterations = 5000
     if "search_prune_fraction" not in st.session_state:
         st.session_state.search_prune_fraction = 0.2
-    if "search_fresh_pair_search_budget" not in st.session_state:
-        if "search_max_nupack_calls" in st.session_state:
-            st.session_state.search_fresh_pair_search_budget = st.session_state.search_max_nupack_calls
-        else:
-            st.session_state.search_fresh_pair_search_budget = 50000
-    if "search_fresh_pair_scale" not in st.session_state:
-        st.session_state.search_fresh_pair_scale = 1.0
+    if "search_progress_interval_min" not in st.session_state:
+        st.session_state.search_progress_interval_min = 30
     if "pilot_size" not in st.session_state:
         st.session_state.pilot_size = 50
     if "refine_size" not in st.session_state:

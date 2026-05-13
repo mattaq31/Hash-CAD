@@ -8,7 +8,7 @@ from orthoseq_generator.streamlit_app import plotly_utils as pu
 
 def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out_q):
     try:
-        subset, indices, _, _ = sc.select_subset_in_energy_range(
+        subset, indices, _, _, _ = sc.select_subset_in_energy_range(
             registry,
             energy_min=float(min_on),
             energy_max=float(max_on),

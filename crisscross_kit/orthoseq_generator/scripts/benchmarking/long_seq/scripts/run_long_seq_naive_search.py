@@ -71,6 +71,7 @@ def main():
         sodium=float(nupack_cfg["sodium"]),
         magnesium=float(nupack_cfg["magnesium"]),
     )
+    hf.set_energy_type("total")
 
     sequence_pairs_object = sc.SequencePairRegistry(
         length=length,
@@ -94,7 +95,7 @@ def main():
     fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
     threep_label = f"3p_{threep_ext}" if threep_ext else "3p_none"
     cutoff_label = f"{offtarget_limit:.2f}".replace("-", "m").replace(".", "p")
-    stem = f"naive_len{length}_{fivep_label}_limit{cutoff_label}_seed{RANDOM_SEED}"
+    stem = f"naive_len{length}_{fivep_label}_limit{cutoff_label}_budget{total_nupack_budget}_seed{RANDOM_SEED}"
     benchmark_root = Path(__file__).resolve().parents[1]
     output_dir_cfg = config.get("output", {}).get("dir")
     if output_dir_cfg:
