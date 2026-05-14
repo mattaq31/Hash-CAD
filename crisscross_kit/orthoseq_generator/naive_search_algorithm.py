@@ -85,6 +85,8 @@ def naive_search(
     attempts = 0
     total_nupack_calls = 0
     progress_rows = []
+    passed_ontarget_and_self = 0
+    passed_homodimer = 0
     stopped_reason = None
     start_t = time.time()
     last_progress_t = start_t - min_progress_interval_s
@@ -157,7 +159,7 @@ def naive_search(
                 _status("Total NUPACK budget reached before on-target evaluation.")
                 break
             total_nupack_calls += 1
-            on_result = compute_nupack_energy(seq, rc_seq, type="total")
+            on_result = compute_nupack_energy(seq, rc_seq, type=hf.ENERGY_TYPE)
             if not isinstance(on_result, tuple):
                 continue
 
@@ -166,25 +168,27 @@ def naive_search(
                 continue
             if self_e_seq < self_energy_limit or self_e_rc < self_energy_limit:
                 continue
+            passed_ontarget_and_self += 1
 
             if total_nupack_budget is not None and total_nupack_calls >= total_nupack_budget:
                 stopped_reason = "total_nupack_budget"
                 _status("Total NUPACK budget reached before homodimer evaluation.")
                 break
             total_nupack_calls += 1
-            homo_seq = compute_nupack_energy(seq, seq, type="total")
+            homo_seq = compute_nupack_energy(seq, seq, type=hf.ENERGY_TYPE)
 
             if total_nupack_budget is not None and total_nupack_calls >= total_nupack_budget:
                 stopped_reason = "total_nupack_budget"
                 _status("Total NUPACK budget reached during homodimer evaluation.")
                 break
             total_nupack_calls += 1
-            homo_rc = compute_nupack_energy(rc_seq, rc_seq, type="total")
+            homo_rc = compute_nupack_energy(rc_seq, rc_seq, type=hf.ENERGY_TYPE)
 
             homo_seq_energy = homo_seq[0] if isinstance(homo_seq, tuple) else homo_seq
             homo_rc_energy = homo_rc[0] if isinstance(homo_rc, tuple) else homo_rc
             if homo_seq_energy < offtarget_limit or homo_rc_energy < offtarget_limit:
                 continue
+            passed_homodimer += 1
 
             passed_crossref, crossref_nupack_calls = crossreference_sequences(
                 pair,
@@ -200,10 +204,16 @@ def naive_search(
             selected_pair_ids.append(int(pair_id))
             progress_rows.append(
                 {
-                    "step": "accepted_pair",
-                    "attempt": int(attempts),
-                    "pairs_found": len(selected_pairs),
+                    "pass": "naive",
+                    "pairs_collected": len(selected_pairs),
+                    "pairs_after_vc": None,
+                    "total_retained": len(selected_pairs),
                     "nupack_calls_executed": int(total_nupack_calls),
+                    "stopped_early": False,
+                    "attempts": int(attempts),
+                    "passed_ontarget_and_self": int(passed_ontarget_and_self),
+                    "passed_homodimer": int(passed_homodimer),
+                    "accepted_into_pool": len(selected_pairs),
                     "candidate_pair_id": int(pair_id),
                     "on_target_energy": float(on_energy),
                     "notes": None,
@@ -223,10 +233,16 @@ def naive_search(
     elapsed_s = time.time() - start_t
     progress_rows.append(
         {
-            "step": "final_summary",
-            "attempt": int(attempts),
-            "pairs_found": len(selected_pairs),
+            "pass": "naive_final",
+            "pairs_collected": len(selected_pairs),
+            "pairs_after_vc": None,
+            "total_retained": len(selected_pairs),
             "nupack_calls_executed": int(total_nupack_calls),
+            "stopped_early": stopped_reason is not None,
+            "attempts": int(attempts),
+            "passed_ontarget_and_self": int(passed_ontarget_and_self),
+            "passed_homodimer": int(passed_homodimer),
+            "accepted_into_pool": len(selected_pairs),
             "candidate_pair_id": None,
             "on_target_energy": None,
             "notes": stopped_reason,

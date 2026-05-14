@@ -41,27 +41,30 @@ if __name__ == "__main__":
     # 1) Set a random seed for reproducibility
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
+    REPORT_NAME = "naive_search_16mers_test.xlsx"
+    ONOFF_PLOT_NAME = "naive_16mer_ortho_energies_test.pdf"
+    SELF_PLOT_NAME = "naive_16mer_self_energies_test.pdf"
 
     # 2) Generate candidate sequence pairs on the fly
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=10,
+        length=16,
         fivep_ext="",
         threep_ext="",
-        unwanted_substrings=[],
+        unwanted_substrings=["GGGG", "CCCC"],
         apply_unwanted_to="core",
         seed=RANDOM_SEED,
         preselected_cores=None,
     )
 
     # 3) Define energy thresholds based on prior analysis
-    hf.set_nupack_params(material="rna", celsius=37, sodium=0.050, magnesium=0.025)
+    hf.set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025)
     hf.set_energy_type("total")
-    max_ontarget = -15
-    min_ontarget = -17.5
-    offtarget_limit = -8.5
-    self_energy_limit = -0.5
+    max_ontarget = -19.2693004082526
+    min_ontarget = -21.3125901333289
+    offtarget_limit = -8.16042278445031
+    self_energy_limit = -0.991947123099227
     progress_every = 250
-    TOTAL_NUPACK_BUDGET = 200000
+    TOTAL_NUPACK_BUDGET = 10000
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
 
     # 4) Run the live naive search until the NUPACK budget is reached
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     )
     results_dir = Path(hf.get_default_results_folder())
     report_path = write_hybrid_search_result_xlsx(
-        results_dir / "naive_search_10mers.xlsx",
+        results_dir / REPORT_NAME,
         algorithm_name="naive_search",
         selected_sequence_data=selected_sequence_data,
         verified=verified,
@@ -132,11 +135,11 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         onef,
         offef,
-        output_path="naive_ortho_energies.pdf",
+        output_path=ONOFF_PLOT_NAME,
     )
 
     self_stats = sc.plot_self_energy_histogram(
         [self_e_A, self_e_B],
         bins=30,
-        output_path="naive_self_energies.pdf",
+        output_path=SELF_PLOT_NAME,
     )

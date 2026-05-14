@@ -4,8 +4,8 @@ This folder contains the live long-sequence benchmark workflow.
 
 ## Files
 
-- `configs/templates/prep_config.v.toml`
-  Batch input for the preparation step.
+- `configs/templates/`
+  Example batch inputs for the preparation step.
 - `scripts/prepare_conditions.py`
   Generates calibrated benchmark conditions and matching `sbatch` scripts.
 - `scripts/run_long_seq_naive_search.py`
@@ -19,7 +19,7 @@ Run locally from the repo root:
 
 ```bash
 python3 crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/scripts/prepare_conditions.py \
-  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/prep_config.v.toml
+  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/<prep_config>.toml
 ```
 
 This writes a generated batch folder under:
@@ -57,7 +57,7 @@ From the repo root:
 
 ```bash
 python3 crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/scripts/prepare_conditions.py \
-  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/prep_config.v.toml
+  --config crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/configs/templates/<prep_config>.toml
 ```
 
 This writes a batch folder under:
@@ -153,7 +153,22 @@ off-target matrix computation can hang during worker startup on O2.
 
 ## Outputs
 
-Outputs are written under `data/`.
+Generated condition TOMLs now embed a benchmark-specific output directory under
+`data/<batch_name>_sigma..._seed.../`. For example, a prep config with:
+
+```toml
+[prep]
+name = "long_batch_v"
+range_sigma = 1.0
+```
+
+and `random_seed = 41` will write results under:
+
+```text
+data/long_batch_v_sigma1p0_seed41/
+```
+
+with the usual `len*/5p_*` family subfolders beneath that root.
 
 ## Benchmark Objective
 
@@ -173,14 +188,14 @@ The workflow has two stages:
 
 The main files are:
 
-- `configs/templates/prep_config.v.toml`
+- `configs/templates/prep_config.t.toml`
 - `scripts/prepare_conditions.py`
 - `scripts/run_long_seq_naive_search.py`
 - `scripts/run_long_seq_hybrid_search.py`
 
 ## Shared Benchmark Inputs
 
-The batch config in `configs/templates/prep_config.v.toml` defines:
+The batch config you choose from `configs/templates/` defines:
 
 - sequence families to benchmark
 - NUPACK chemistry settings

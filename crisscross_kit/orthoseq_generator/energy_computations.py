@@ -336,6 +336,7 @@ def select_subset_in_energy_range(
     Candidate collection workhorse for both passes of `hybrid_search`. Draws
     random pairs from the source (finite list or infinite
     `SequencePairRegistry`), evaluates on-target energy and self-energy,
+    optionally rejects candidates with strong same-strand homodimer binding,
     optionally cross-references against a retained pool, and accumulates
     accepted pairs until a stop condition fires.
 
@@ -386,8 +387,9 @@ def select_subset_in_energy_range(
         candidate during cross-referencing.
     :type allowed_violations: int
 
-    :param offtarget_limit: Energy threshold for cross-reference conflicts.
-        Required when `retained_pairs` is provided.
+    :param offtarget_limit: Energy threshold for off-target conflicts. When
+        provided, it is used both for same-strand homodimer rejection and for
+        cross-reference conflicts against `retained_pairs`.
     :type offtarget_limit: float or None
 
     :param fresh_pair_search_budget: Total NUPACK call budget for this
@@ -429,6 +431,7 @@ def select_subset_in_energy_range(
         attempts = prior_state["attempts"]
         nupack_calls = prior_state["nupack_calls"]
         passed_energy_filter = prior_state["passed_ontarget_and_self"]
+        passed_homodimer = prior_state.get("passed_homodimer", 0)
     else:
         if avoid_indices is None:
             avoid_indices = set()
@@ -438,6 +441,7 @@ def select_subset_in_energy_range(
         attempts = 0
         nupack_calls = 0
         passed_energy_filter = 0
+        passed_homodimer = 0
 
     start_t = time.time()
     last_progress_t = start_t
@@ -446,7 +450,8 @@ def select_subset_in_energy_range(
         return {
             "attempts": attempts,
             "passed_ontarget_and_self": passed_energy_filter,
-            "accepted": len(subset),
+            "passed_homodimer": passed_homodimer,
+            "accepted_into_pool": len(subset),
             "tested_indices": tested_indices,
             "nupack_calls": nupack_calls,
             "subset": subset,
@@ -463,9 +468,12 @@ def select_subset_in_energy_range(
         )
 
     def _evaluate_candidate(seq, rc_seq):
-        nonlocal nupack_calls, passed_energy_filter
+        nonlocal nupack_calls, passed_energy_filter, passed_homodimer
 
-        if fresh_pair_search_budget is not None and nupack_calls + 2 * len(subset) ** 2 >= fresh_pair_search_budget:
+        if (
+            fresh_pair_search_budget is not None
+            and nupack_calls + 1 + 2 * len(subset) ** 2 >= fresh_pair_search_budget
+        ):
             return None, "nupack_limit"
 
         nupack_calls += 1
@@ -481,6 +489,28 @@ def select_subset_in_energy_range(
         passed_energy_filter += 1
 
         if offtarget_limit is not None:
+            if (
+                fresh_pair_search_budget is not None
+                and nupack_calls + 2 + 2 * len(subset) ** 2 >= fresh_pair_search_budget
+            ):
+                return None, "nupack_limit"
+
+            nupack_calls += 1
+            homo_seq_result = compute_nupack_energy(seq, seq, type=hf.ENERGY_TYPE)
+            nupack_calls += 1
+            homo_rc_result = compute_nupack_energy(rc_seq, rc_seq, type=hf.ENERGY_TYPE)
+
+            homo_seq_energy = (
+                homo_seq_result[0] if isinstance(homo_seq_result, tuple) else homo_seq_result
+            )
+            homo_rc_energy = (
+                homo_rc_result[0] if isinstance(homo_rc_result, tuple) else homo_rc_result
+            )
+            if homo_seq_energy < offtarget_limit or homo_rc_energy < offtarget_limit:
+                return False, None
+
+            passed_homodimer += 1
+
             passed_crossref, crossref_nupack_calls = crossreference_sequences(
                 (seq, rc_seq),
                 retained_pairs,

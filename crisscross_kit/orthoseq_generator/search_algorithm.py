@@ -308,6 +308,7 @@ def hybrid_search(
                 energy_min=min_ontarget,
                 energy_max=max_ontarget,
                 self_energy_min=self_energy_limit,
+                offtarget_limit=offtarget_limit,
                 max_size=initial_fresh_pair_count,
                 fresh_pair_search_budget=int(total_nupack_budget) if total_nupack_budget != np.inf else None,
                 stop_event=stop_event,
@@ -371,7 +372,8 @@ def hybrid_search(
                     "stopped_early": seed_stop_reason is not None,
                     "attempts": seed_stats["attempts"],
                     "passed_ontarget_and_self": seed_stats["passed_ontarget_and_self"],
-                    "accepted": seed_stats["accepted"],
+                    "passed_homodimer": seed_stats["passed_homodimer"],
+                    "accepted_into_pool": seed_stats["accepted_into_pool"],
                 })
 
                 # === Pass 2: Cross-referenced collection ===
@@ -396,6 +398,7 @@ def hybrid_search(
                         "attempts": 0,
                         "nupack_calls": 0,
                         "passed_ontarget_and_self": 0,
+                        "passed_homodimer": 0,
                     }
                     pass2_budget = int(remaining_budget) if remaining_budget != np.inf else None
                     collection_done = False
@@ -501,7 +504,8 @@ def hybrid_search(
                         "stopped_early": chunk_reason is not None,
                         "attempts": collection_state["attempts"],
                         "passed_ontarget_and_self": collection_state["passed_ontarget_and_self"],
-                        "accepted": collection_state["accepted"],
+                        "passed_homodimer": collection_state["passed_homodimer"],
+                        "accepted_into_pool": collection_state["accepted_into_pool"],
                     })
 
     except KeyboardInterrupt:

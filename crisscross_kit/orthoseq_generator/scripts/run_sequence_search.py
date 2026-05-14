@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # 1) Set a random seed for reproducibility 
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
-    res_name = "ortho_16mers8p16_new_sheettest6.xlsx"
+    res_name = "ortho_16mers8p16_new_sheettest7.xlsx"
 
     sequence_pairs_object = sc.SequencePairRegistry(
         length=16,

@@ -50,15 +50,15 @@ There are four scripts that are typically executed in sequence:
 - **Main entry point** for running the orthogonal sequence search from code.
 - Runs the **actual sequence search** based on the parameters you determined using Scripts 1 and 2.  
 - Uses the two-pass hybrid search algorithm to select an orthogonal set:
-  - **Pass 1 (Seed):** Collects candidate pairs filtered by on-target energy and self-energy, then runs vertex cover to resolve conflicts.
-  - **Pass 2 (Collection):** Collects additional candidates cross-referenced against the seed survivors, then runs vertex cover on fresh candidates only.
+  - **Pass 1 (Seed):** Collects candidate pairs filtered by on-target energy, self-energy, and same-strand homodimer threshold, then runs vertex cover to resolve remaining conflicts.
+  - **Pass 2 (Collection):** Collects additional candidates cross-referenced against the seed survivors, with the same on-target, self-energy, and homodimer filters applied before admission, then runs vertex cover on fresh candidates only.
 - Saves a verified XLSX report with the found pairs, energy matrices, and search metadata.
 - Also saves energy distribution plots.  
 - You can press **Ctrl+C** at any time to trigger a keyboard interrupt; the best sequences found so far will still be saved.  
 
 ### 3b. `run_naive_search.py`  
 - Implements a **naive greedy baseline** for comparison with the hybrid algorithm.
-- Samples candidate pairs on the fly and greedily accepts each pair only if it passes on-target, self-energy, and cross-reference checks against all previously accepted pairs.
+- Samples candidate pairs on the fly and greedily accepts each pair only if it passes on-target, self-energy, same-strand homodimer, and cross-reference checks against all previously accepted pairs.
 - Does not use vertex cover or graph-based optimization — acceptance is purely sequential.
 - Produces the same XLSX report format as the hybrid search, so results are directly comparable.
 - Useful for benchmarking: under the same NUPACK budget and constraints, how many pairs does the greedy approach find vs. the hybrid?
@@ -131,13 +131,13 @@ The core of the algorithm is a heuristic that attempts to find a minimum vertex 
 The main search algorithm (`hybrid_search` in `search_algorithm.py`) works in two passes:
 
 **Pass 1 (Seed):**
-- Collect `initial_fresh_pair_count` candidate pairs filtered by on-target energy and self-energy.
+- Collect `initial_fresh_pair_count` candidate pairs filtered by on-target energy, self-energy, and same-strand homodimer threshold.
 - Compute the full pairwise off-target energy matrix (O(n^2) NUPACK calls).
 - Build the conflict graph and run the iterative vertex-cover heuristic.
 - Survivors become the retained set.
 
 **Pass 2 (Collection):**
-- Collect additional candidate pairs, each cross-referenced against the retained set (zero violations required).
+- Collect additional candidate pairs, each filtered by the same on-target, self-energy, and homodimer gates and then cross-referenced against the retained set (zero violations required).
 - Because every accepted candidate is already compatible with all retained pairs, the final vertex cover only resolves conflicts among fresh candidates (O(fresh^2) instead of O((fresh+retained)^2)).
 - Union survivors into the retained set.
 
@@ -154,7 +154,7 @@ The search terminates when the NUPACK call budget is exhausted, the user interru
   The main search entry point. Orchestrates the two-pass strategy described above. Called by the CLI script, Streamlit app, and benchmark runners.
 
 - **`select_subset_in_energy_range(sequence_pairs, …)`**  
-  The candidate collection workhorse. Draws random pairs, evaluates energy filters, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"keyboard_interrupt"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware — it reserves `2 * N^2` calls for the downstream vertex cover.
+  The candidate collection workhorse. Draws random pairs, evaluates on-target/self-energy filters, rejects strong same-strand homodimers, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"keyboard_interrupt"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware — it reserves `2 * N^2` calls for the downstream vertex cover.
 
 - **`crossreference_sequences(new_pair, pool, …)`**  
   Checks whether a single candidate pair is compatible with all pairs in a pool by evaluating all four strand combinations. Short-circuits on first violation.
@@ -187,6 +187,26 @@ Running peek vertex cover on 94 collected candidate pairs...
 Candidate pairs collected so far: 94 | Retained from seed: 120 | New from collection (after peek VC): 29 | Estimated total: 149 | NUPACK calls: 7482 | elapsed=1200.5s
 --- Continuing collection ---
 ```
+
+### Search Progress Reporting
+
+The verified XLSX report contains a `search_progress` sheet. For the live
+hybrid search, the main progress columns are:
+
+- `pass`
+- `pairs_collected`
+- `pairs_after_vc`
+- `total_retained`
+- `nupack_calls_executed`
+- `stopped_early`
+- `attempts`
+- `passed_ontarget_and_self`
+- `passed_homodimer`
+- `accepted_into_pool`
+
+For the live naive search, the same vocabulary is used as far as it applies.
+Naive rows are emitted per accepted pair (plus a final summary row), so
+`pairs_after_vc` is left blank because there is no vertex-cover stage.
 
 
 ## Legacy Scripts Basic Use
