@@ -269,6 +269,9 @@ class DesignState extends ChangeNotifier
   @override
   PlateLibrary plateStack = PlateLibrary();
 
+  @override
+  String? plateCompatibilityWarning;
+
   /// Persisted echo plate layout state — populated on import, consumed by echo window on init.
   PlateLayoutState? echoPlateLayoutState;
 

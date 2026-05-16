@@ -217,6 +217,8 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
       syncCargoFromPlates(plateStack, cargoPalette);
     }
 
+    plateCompatibilityWarning = null;
+
     updateDesignHammingValue();
     currentlyLoadingDesign = false;
 

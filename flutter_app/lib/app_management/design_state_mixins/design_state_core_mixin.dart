@@ -73,6 +73,7 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
       };
     occupiedCargoPoints = {};
     selectedHandlePositions = [];
+    plateCompatibilityWarning = null;
   }
 
   @override

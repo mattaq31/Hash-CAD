@@ -224,6 +224,37 @@ void main() {
       }
     });
 
+    test('preserves input plate compatibility columns on import', () async {
+      final excel = _buildMinimalDesign();
+
+      // Add an input_source_plates sheet with a compatibility column
+      Sheet inputSheet = excel[inputPlateSheetName];
+      final titleRow = 0;
+      inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: titleRow)).value = TextCellValue('${inputPlateTitlePrefix}TestPlate$inputPlateTitleSuffix');
+      final headers = ['well', 'name', 'sequence', 'concentration', 'compatibility'];
+      for (var c = 0; c < headers.length; c++) {
+        inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: titleRow + 1)).value = TextCellValue(headers[c]);
+      }
+      final dataRow = ['A1', 'FLAT-BLANK-H2-pos_16', 'AAAA', 100, 'db'];
+      for (var c = 0; c < dataRow.length; c++) {
+        final val = dataRow[c];
+        inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: titleRow + 2)).value =
+            val is int ? IntCellValue(val) : TextCellValue(val.toString());
+      }
+
+      final bytes = Uint8List.fromList(excel.encode()!);
+      final result = await parseDesignInIsolate(bytes);
+
+      expect(result.errorCode, isEmpty);
+      expect(result.inputPlateData, isNotNull);
+      expect(result.inputPlateData!.containsKey('TestPlate'), isTrue);
+
+      // Verify the compatibility column survived import
+      final plateRows = result.inputPlateData!['TestPlate']!;
+      final headerRow = plateRows.first.map((e) => e.toString()).toList();
+      expect(headerRow.contains('compatibility'), isTrue);
+    });
+
     test('returns ERR_GENERAL for missing metadata sheet', () async {
       final excel = Excel.createExcel();
       excel['slat_layer_1'];

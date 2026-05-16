@@ -157,23 +157,43 @@ Widget _shortcutItem(String key, String description) {
 
 
 void displayPlateInfo(BuildContext context, String plateName, HashCadPlate plate) {
+  final entries = plate.displayEntries;
+
   showDialog(
     context: context,
     builder: (_) {
       return AlertDialog(
         title: Text('Detailed Plate View: $plateName'),
         content: SizedBox(
-          width: 800, // Smaller width like your warning box
-          height: 500, // Explicit height to avoid intrinsic measurement
-          child: ListView.builder(
-            itemCount: plate.uniqueIds.length,
-            itemBuilder: (context, index) {
-              final id = plate.uniqueIds[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: _buildSlatPictograph(id, plate),
-              );
-            },
+          width: 800,
+          height: 500,
+          child: Column(
+            children: [
+              Expanded(
+                child: entries.isEmpty
+                    ? Center(child: Text('No plate entries found.', style: TextStyle(color: Colors.grey.shade600)))
+                    : ListView.builder(
+                        itemCount: entries.length,
+                        itemBuilder: (context, index) {
+                          final entry = entries[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: _buildSlatPictograph(entry, plate),
+                          );
+                        },
+                      ),
+              ),
+              Divider(height: 20),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 24,
+                runSpacing: 8,
+                children: [
+                  _buildPlateLegendItem(_defaultPlateCompatibilityColor, 'Default / tube-compatible staple'),
+                  _buildPlateLegendItem(_specialPlateCompatibilityColor, 'Special compatibility staple'),
+                ],
+              ),
+            ],
           ),
         ),
         actions: [
@@ -187,7 +207,21 @@ void displayPlateInfo(BuildContext context, String plateName, HashCadPlate plate
   );
 }
 
-Widget _buildSlatPictograph(String id, HashCadPlate plate) {
+const Color _defaultPlateCompatibilityColor = Colors.green;
+const Color _specialPlateCompatibilityColor = Colors.orange;
+
+Widget _buildPlateLegendItem(Color color, String label) {
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(width: 14, height: 14, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+      SizedBox(width: 6),
+      Text(label, style: TextStyle(fontSize: 12)),
+    ],
+  );
+}
+
+Widget _buildSlatPictograph(PlateDisplayEntry entry, HashCadPlate plate) {
   const armCount = 32;
   const armWidth = 10.0;
   const armSpacing = 5.0;
@@ -195,9 +229,10 @@ Widget _buildSlatPictograph(String id, HashCadPlate plate) {
   const armHeight = 20.0;
   const rodHeight = 25.0;
   const labelWidth = 100.0;
+  final availabilityColor = entry.isDefaultCompatibility ? _defaultPlateCompatibilityColor : _specialPlateCompatibilityColor;
 
   bool isArmAvailable(int pos, {required bool isTop}) {
-    return plate.contains(plate.getCategoryFromID(id), pos + 1, isTop ? 5 : 2, id);
+    return plate.contains(entry.category, pos + 1, isTop ? 5 : 2, entry.id, compatibility: entry.compatibility);
   }
 
   Widget buildArms(bool isTop) {
@@ -206,13 +241,13 @@ Widget _buildSlatPictograph(String id, HashCadPlate plate) {
       height: armHeight,
       child: Row(
         children: [
-          SizedBox(width: armSpacing / 2), // Leading spacing
+          SizedBox(width: armSpacing / 2),
           ...List.generate(armCount, (i) {
             return Container(
               width: armWidth,
               height: armHeight,
               margin: EdgeInsets.only(right: i == armCount - 1 ? 0 : armSpacing),
-              color: isArmAvailable(i, isTop: isTop) ? Colors.green : Colors.grey[400],
+              color: isArmAvailable(i, isTop: isTop) ? availabilityColor : Colors.grey[400],
             );
           }),
         ],
@@ -223,27 +258,14 @@ Widget _buildSlatPictograph(String id, HashCadPlate plate) {
   Widget buildRod() {
     return Stack(
       children: [
-        // The rod background
-        Container(
-          width: rodWidth,
-          height: rodHeight,
-          color: Colors.black,
-        ),
-        // Number overlays
+        Container(width: rodWidth, height: rodHeight, color: Colors.black),
         Positioned.fill(
           child: Row(
             children: List.generate(armCount, (i) {
               return SizedBox(
                 width: armWidth + armSpacing,
                 child: Center(
-                  child: Text(
-                    '${i + 1}',
-                    style: TextStyle(
-                      fontSize: 8,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: Text('${i + 1}', style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               );
             }),
@@ -269,9 +291,9 @@ Widget _buildSlatPictograph(String id, HashCadPlate plate) {
               Text('H5', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               Text('Handle ID:', style: TextStyle(fontSize: 10)),
               Tooltip(
-                message: id == "BLANK" ? "FLAT" : id,
+                message: entry.id == "BLANK" ? "FLAT" : entry.id,
                 child: Text(
-                  id == "BLANK" ? "FLAT" : id,
+                  entry.id == "BLANK" ? "FLAT" : entry.id,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   softWrap: false,
                   overflow: TextOverflow.ellipsis,
@@ -305,31 +327,43 @@ Widget _buildSlatPictograph(String id, HashCadPlate plate) {
                   style: TextStyle(fontSize: 10, color: Colors.black),
                   children: [
                     TextSpan(text: 'Total Staples: '),
-                    TextSpan(
-                      text: '${plate.countID(id)}',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    TextSpan(text: '${plate.countDisplayEntryPositions(entry)}', style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
               Tooltip(
-                message: plate.getCategoryFromID(id),
+                message: entry.category,
                 child: SizedBox(
-                  width: 100, // Adjust width as needed
+                  width: 100,
                   child: Text.rich(
                     TextSpan(
                       style: TextStyle(fontSize: 10, color: Colors.black),
                       children: [
                         TextSpan(text: 'Category: '),
-                        TextSpan(
-                          text: plate.getCategoryFromID(id),
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        TextSpan(text: entry.category, style: TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     softWrap: false,
+                  ),
+                ),
+              ),
+              Tooltip(
+                message: entry.compatibilityLabel,
+                child: SizedBox(
+                  width: 100,
+                  child: Text.rich(
+                    TextSpan(
+                      style: TextStyle(fontSize: 10, color: Colors.black),
+                      children: [
+                        TextSpan(text: 'Compat: '),
+                        TextSpan(text: entry.compatibilityLabel, style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
                   ),
                 ),
               ),

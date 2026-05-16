@@ -90,6 +90,8 @@ mixin DesignStateContract on ChangeNotifier {
   Map<String, Cargo> get cargoPalette;
   set cargoPalette(Map<String, Cargo> value);
   PlateLibrary get plateStack;
+  String? get plateCompatibilityWarning;
+  set plateCompatibilityWarning(String? value);
   PlateLayoutState? get echoPlateLayoutState;
   set echoPlateLayoutState(PlateLayoutState? value);
   bool get echoPlateLayoutFromImport;

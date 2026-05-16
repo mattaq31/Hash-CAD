@@ -327,19 +327,19 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     final colWidths = <int, int>{};
 
     for (var plate in plateLibrary.plates.entries) {
+      final rawData = plate.value.exportToAllDataFormat();
+      final dataColumnCount = rawData.isNotEmpty ? rawData.first.length : 4;
+
       // Title row spanning all data columns
       final titleText = '$inputPlateTitlePrefix${plate.key}$inputPlateTitleSuffix';
       setCellValue(inputSheet, 0, currentRow, titleText, style: titleStyle);
       inputSheet.merge(
         CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
-        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
+        CellIndex.indexByColumnRow(columnIndex: dataColumnCount - 1, rowIndex: currentRow),
         customValue: TextCellValue(titleText),
       );
       inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow)).cellStyle = titleStyle;
       currentRow++;
-
-      // Plate data (header + rows)
-      final rawData = plate.value.exportToAllDataFormat();
       for (var r = 0; r < rawData.length; r++) {
         final row = rawData[r];
         for (var c = 0; c < row.length; c++) {

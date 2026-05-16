@@ -71,6 +71,7 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
       final replacedCount = plateNames.where((n) => existingPlateNames.contains(n)).length;
       appState.plateStack.readPlates(plateFiles, plateNames);
       syncCargoFromPlates(appState.plateStack, appState.cargoPalette);
+      appState.plateCompatibilityWarning = null;
       appState.notifyListeners();
       if (context.mounted) {
         final msg = replacedCount > 0
@@ -416,6 +417,15 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
           textStyle: TextStyle(fontSize: 16),
         ),
       ),
+      if (appState.plateCompatibilityWarning != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            appState.plateCompatibilityWarning!,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+        ),
       Divider(thickness: 2, color: Colors.grey.shade300),
       SizedBox(
         width: double.infinity,

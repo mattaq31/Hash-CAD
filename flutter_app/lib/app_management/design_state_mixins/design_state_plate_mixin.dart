@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/handle_plates.dart';
+import '../../crisscross_core/slat_standardized_mapping.dart';
+import '../../crisscross_core/slats.dart';
 import '../design_io/design_io.dart';
 import 'design_state_contract.dart';
 
@@ -11,6 +13,7 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
   void importPlates() async {
     await importPlatesFromFile(plateStack);
     syncCargoFromPlates(plateStack, cargoPalette);
+    plateCompatibilityWarning = null;
 
     // TODO: if plate already exists, show warning dialog
     // TODO: how to handle identical wells
@@ -21,6 +24,7 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
   void removePlate(String plateName) {
     plateStack.removePlate(plateName);
     _revertHandlesFromPlate(plateName);
+    plateCompatibilityWarning = null;
     notifyListeners();
   }
 
@@ -59,48 +63,51 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
     for (var plateName in plateNames) {
       _revertHandlesFromPlate(plateName);
     }
+    plateCompatibilityWarning = null;
     notifyListeners();
   }
 
   @override
   void plateAssignAllHandles() {
-    void assignHandleIfPresent(slat, int posn, int side, Map<int, Map<String, dynamic>> handles) {
+    int compatibilityMismatchCount = 0;
+
+    /// Records a compatibility mismatch when variants exist for a position but none match the required compatibility.
+    void recordCompatibilityMismatch(String category, int posn, int side, String lookupValue, String? requiredCompatibility) {
+      final availableCompatibilities = plateStack.availableCompatibilities(category, posn, side, lookupValue);
+      if (availableCompatibilities.isEmpty) return;
+
+      final normalizedRequired = normalizePlateCompatibility(requiredCompatibility);
+      if (!availableCompatibilities.contains(normalizedRequired)) {
+        compatibilityMismatchCount++;
+      }
+    }
+
+    void assignHandleIfPresent(Slat slat, int posn, int side, Map<int, Map<String, dynamic>> handles) {
+      final requiredCompatibility = getRequiredStapleCompatibility(slat.slatType, posn, side);
+
       if (!handles.containsKey(posn)) {
-        if (plateStack.contains('FLAT', posn, side, 'BLANK')) {
-          final data = plateStack.getOligoData('FLAT', posn, side, 'BLANK');
-          slat.setHandle(
-            posn,
-            side,
-            data['sequence'],
-            data['well'],
-            data['plateName'],
-            'BLANK',
-            'FLAT',
-            data['concentration'],
-          );
+        if (plateStack.contains('FLAT', posn, side, 'BLANK', compatibility: requiredCompatibility)) {
+          final data = plateStack.getOligoData('FLAT', posn, side, 'BLANK', compatibility: requiredCompatibility);
+          slat.setHandle(posn, side, data['sequence'], data['well'], data['plateName'], 'BLANK', 'FLAT', data['concentration']);
+        } else {
+          recordCompatibilityMismatch('FLAT', posn, side, 'BLANK', requiredCompatibility);
         }
         return;
       }
 
       final handle = handles[posn]!;
       final category = handle['category'] as String?;
-      final originalValue = handle['value'];
+      final originalValue = handle['value']?.toString() ?? '';
+      if (category == null) return;
 
       // Blocked handles (value '0') on assembly positions need a flat staple sequence.
       // Use setHandle() so the handle is properly removed from placeholderList.
       if (originalValue == '0' && (category == 'ASSEMBLY_HANDLE' || category == 'ASSEMBLY_ANTIHANDLE')) {
-        if (plateStack.contains('FLAT', posn, side, 'BLANK')) {
-          final data = plateStack.getOligoData('FLAT', posn, side, 'BLANK');
-          slat.setHandle(
-            posn,
-            side,
-            data['sequence'],
-            data['well'],
-            data['plateName'],
-            originalValue,
-            category!,
-            data['concentration'] as int,
-          );
+        if (plateStack.contains('FLAT', posn, side, 'BLANK', compatibility: requiredCompatibility)) {
+          final data = plateStack.getOligoData('FLAT', posn, side, 'BLANK', compatibility: requiredCompatibility);
+          slat.setHandle(posn, side, data['sequence'], data['well'], data['plateName'], originalValue, category, data['concentration'] as int);
+        } else {
+          recordCompatibilityMismatch('FLAT', posn, side, 'BLANK', requiredCompatibility);
         }
         return;
       }
@@ -114,18 +121,11 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
         lookupValue = originalValue;
       }
 
-      if (plateStack.contains(category!, posn, side, lookupValue)) {
-        final data = plateStack.getOligoData(category, posn, side, lookupValue);
-        slat.setHandle(
-          posn,
-          side,
-          data['sequence'],
-          data['well'],
-          data['plateName'],
-          originalValue,
-          category,
-          data['concentration'],
-        );
+      if (plateStack.contains(category, posn, side, lookupValue, compatibility: requiredCompatibility)) {
+        final data = plateStack.getOligoData(category, posn, side, lookupValue, compatibility: requiredCompatibility);
+        slat.setHandle(posn, side, data['sequence'], data['well'], data['plateName'], originalValue, category, data['concentration']);
+      } else {
+        recordCompatibilityMismatch(category, posn, side, lookupValue, requiredCompatibility);
       }
     }
 
@@ -135,6 +135,10 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
         assignHandleIfPresent(slat, posn, 5, slat.h5Handles);
       }
     }
+
+    plateCompatibilityWarning = compatibilityMismatchCount > 0
+        ? '$compatibilityMismatchCount staple(s) could not be assigned because only incompatible compatibility variants were available.'
+        : null;
     notifyListeners();
   }
 }
