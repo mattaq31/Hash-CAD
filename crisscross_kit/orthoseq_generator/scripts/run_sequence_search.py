@@ -60,7 +60,7 @@ if __name__ == "__main__":
     min_ontarget = -21.3125901333289
     offtarget_limit = -8.16042278445031
     self_energy_limit = -0.991947123099227
-    TOTAL_NUPACK_BUDGET = 50000
+    TOTAL_NUPACK_BUDGET = 3000
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
 
     search_result = hybrid_search(
@@ -69,13 +69,13 @@ if __name__ == "__main__":
         max_ontarget,
         min_ontarget,
         self_energy_limit,
-        initial_fresh_pair_count=25,
+        initial_fresh_pair_count=50,
         total_nupack_budget=TOTAL_NUPACK_BUDGET,
         prune_fraction=0.2,
-        vc_max_iterations=5000,
+        vc_max_iterations=1000,
         stop_event=None,
         return_diagnostics=True,
-        progress_report_interval_min=60
+        progress_report_interval_min=200
     )
     orthogonal_seq_pairs = search_result["final_pairs"]
     selected_sequence_data = build_selected_sequence_data(
@@ -119,7 +119,6 @@ if __name__ == "__main__":
         seed_verified=seed_verified,
         dataset_info={},
         extra_metadata={
-            "best_generation_result_size": len(selected_sequence_data),
             "stopped_reason": search_result["stopped_reason"],
         },
     )

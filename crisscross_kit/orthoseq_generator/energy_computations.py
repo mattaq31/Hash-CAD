@@ -14,6 +14,16 @@ import logging
 logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 
+def estimate_offtarget_nupack_calls(num_sequence_pairs):
+    """
+    Estimate the direct NUPACK calls required for a full pairwise off-target matrix.
+
+    This helper is shared between the hybrid search accounting layer and the
+    subset-selection budget guard. It intentionally counts only the search-time
+    matrix evaluations, not any reporting or verification recomputation.
+    """
+    return 2 * int(num_sequence_pairs) * int(num_sequence_pairs)
+
 
 def _parse_slurm_cpus(value):
     if not value:
@@ -345,18 +355,27 @@ def select_subset_in_energy_range(
     and accumulated pairs). Used by `hybrid_search` to chunk collection into
     timed intervals for progress reporting with peek vertex covers.
 
-    The budget check accounts for the downstream vertex cover cost:
-    stops when `nupack_calls + 2 * len(subset)^2 >= fresh_pair_search_budget`.
+    For live registry-backed sampling, the function also applies an internal
+    duplicate-streak exhaustion heuristic. If the sampler returns 1,000,000
+    already-tested IDs in a row, collection stops and reports effective pool
+    exhaustion.
+
+    The budget check accounts for the downstream vertex cover cost using
+    `estimate_offtarget_nupack_calls(len(subset))` as the reserved future
+    matrix-evaluation cost.
 
     Stop conditions (returned as `stop_reason` string):
     - "nupack_limit" — `fresh_pair_search_budget` reached (incl. VC reserve)
     - "timeout" — `timeout_s` wall-clock seconds elapsed
+    - "duplicate_streak_limit_reached=<N>" — sampler recycled seen IDs for
+      `N` consecutive draws
     - "stop_event" — external threading.Event set
     - "keyboard_interrupt" — KeyboardInterrupt caught
     - None — normal completion (`max_size` reached or pool exhausted)
 
-    :param sequence_pairs: Source of candidate pairs. Either a list of
-        `(index, (seq, rc_seq))` or an object with a `sample_pair()` method.
+    :param sequence_pairs: Source of candidate pairs. Accepts either a finite
+        list of `(index, (seq, rc_seq))` tuples or a live object with a
+        `sample_pair()` method.
     :type sequence_pairs: list or SequencePairRegistry
 
     :param energy_min: Lower bound for acceptable on-target energy.
@@ -412,17 +431,19 @@ def select_subset_in_energy_range(
 
     :param prior_state: State dict from a previous call to resume from.
         Contains subset, indices, tested_indices, attempts, nupack_calls,
-        and passed_ontarget_and_self.
+        passed_ontarget_and_self, and duplicate-streak bookkeeping.
     :type prior_state: dict or None
 
     :returns: (subset, indices, stop_reason, nupack_calls, state)
         stop_reason is None for normal completion, or one of:
-        "timeout", "nupack_limit", "stop_event", "keyboard_interrupt".
+        "timeout", "nupack_limit", "duplicate_streak_limit_reached=<N>",
+        "stop_event", "keyboard_interrupt".
         state is a dict suitable for passing back as `prior_state`.
     :rtype: tuple[list, list, str|None, int, dict]
     """
     if retained_pairs is None:
         retained_pairs = []
+    duplicate_streak_limit = 1_000_000
 
     if prior_state is not None:
         subset = list(prior_state["subset"])
@@ -432,6 +453,7 @@ def select_subset_in_energy_range(
         nupack_calls = prior_state["nupack_calls"]
         passed_energy_filter = prior_state["passed_ontarget_and_self"]
         passed_homodimer = prior_state.get("passed_homodimer", 0)
+        duplicate_streak = prior_state.get("duplicate_streak", 0)
     else:
         if avoid_indices is None:
             avoid_indices = set()
@@ -442,6 +464,7 @@ def select_subset_in_energy_range(
         nupack_calls = 0
         passed_energy_filter = 0
         passed_homodimer = 0
+        duplicate_streak = 0
 
     start_t = time.time()
     last_progress_t = start_t
@@ -453,6 +476,7 @@ def select_subset_in_energy_range(
             "passed_homodimer": passed_homodimer,
             "accepted_into_pool": len(subset),
             "tested_indices": tested_indices,
+            "duplicate_streak": duplicate_streak,
             "nupack_calls": nupack_calls,
             "subset": subset,
             "indices": indices,
@@ -472,7 +496,7 @@ def select_subset_in_energy_range(
 
         if (
             fresh_pair_search_budget is not None
-            and nupack_calls + 1 + 2 * len(subset) ** 2 >= fresh_pair_search_budget
+            and nupack_calls + 1 + estimate_offtarget_nupack_calls(len(subset)) >= fresh_pair_search_budget
         ):
             return None, "nupack_limit"
 
@@ -491,7 +515,7 @@ def select_subset_in_energy_range(
         if offtarget_limit is not None:
             if (
                 fresh_pair_search_budget is not None
-                and nupack_calls + 2 + 2 * len(subset) ** 2 >= fresh_pair_search_budget
+                and nupack_calls + 2 + estimate_offtarget_nupack_calls(len(subset)) >= fresh_pair_search_budget
             ):
                 return None, "nupack_limit"
 
@@ -523,7 +547,7 @@ def select_subset_in_energy_range(
 
         return True, None
 
-    # Candidate drawing: list-based (finite pool) vs registry-based (infinite)
+    # Candidate drawing: explicit finite-pool vs live-sampler handling.
     if isinstance(sequence_pairs, list):
         total = len(sequence_pairs)
 
@@ -561,9 +585,24 @@ def select_subset_in_energy_range(
 
             pair_id, (seq, rc_seq) = _draw()
             if pair_id in tested_indices:
+                duplicate_streak += 1
+                if duplicate_streak >= duplicate_streak_limit:
+                    print(
+                        "Duplicate streak limit reached during subset selection. "
+                        f"Stopping after {duplicate_streak} consecutive seen IDs.",
+                        flush=True,
+                    )
+                    return (
+                        subset,
+                        indices,
+                        f"duplicate_streak_limit_reached={duplicate_streak_limit}",
+                        nupack_calls,
+                        _build_state(),
+                    )
                 continue
 
             tested_indices.add(pair_id)
+            duplicate_streak = 0
             attempts += 1
             if progress_every and attempts % progress_every == 0:
                 print(f"Progress: {len(subset)}/{max_size} accepted after {attempts} attempts")

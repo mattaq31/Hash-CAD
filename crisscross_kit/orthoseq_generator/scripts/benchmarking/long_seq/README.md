@@ -374,6 +374,12 @@ The hybrid runner reads these fields from the `[hybrid]` block:
   boundary a peek vertex cover estimates the current total without committing.
   Integer minutes, minimum 30 s enforced. Omit to disable.
 
+Hybrid collection also has a built-in effective pool-exhaustion heuristic for
+live sampling. If the sampler returns too many already-seen `pair_id`s in a
+row, the run stops and records
+`duplicate_streak_limit_reached=1000000` as the stop reason. This threshold is
+hardcoded in the shared collector and is not a benchmark config field.
+
 ## Reporting
 
 After either runner finishes, it:
@@ -394,7 +400,7 @@ The XLSX report contains a `search_progress` sheet with per-pass statistics:
 | `stopped_early` | Whether a stop condition fired before natural completion |
 | `attempts` | Total candidates evaluated (including rejected) |
 | `passed_ontarget_and_self` | Candidates that passed energy + self-energy filters |
-| `accepted` | Candidates that also passed cross-referencing (= `pairs_collected`) |
+| `accepted_into_pool` | Candidates that passed all active filters and were admitted to the current pool (= `pairs_collected`) |
 
 ## What the Benchmark Is Measuring
 

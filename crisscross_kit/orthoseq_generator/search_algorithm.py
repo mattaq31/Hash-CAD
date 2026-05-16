@@ -70,14 +70,6 @@ def _status(message):
     logger.info(message)
 
 
-def estimate_offtarget_nupack_calls(num_sequence_pairs):
-    """
-    Estimates the deterministic number of NUPACK computations performed by
-    `compute_offtarget_energies` for `num_sequence_pairs` pairs.
-    """
-    return 2 * num_sequence_pairs * num_sequence_pairs
-
-
 def _run_vertex_cover(subset, indices, offtarget_limit, prune_fraction, vc_max_iterations):
     """
     Compute off-target matrix, build conflict graph, and run vertex cover.
@@ -104,7 +96,7 @@ def _run_vertex_cover(subset, indices, offtarget_limit, prune_fraction, vc_max_i
     :returns: (independent_set_ids, off_target_nupack_calls)
     :rtype: tuple[set[int], int]
     """
-    off_target_nupack_calls = estimate_offtarget_nupack_calls(len(subset))
+    off_target_nupack_calls = sc.estimate_offtarget_nupack_calls(len(subset))
     off_e_subset = sc.compute_offtarget_energies(subset)
     edges = build_edges(off_e_subset, indices, offtarget_limit)
     removed_vertices, _ = iterative_vertex_cover_refinement(
@@ -117,6 +109,386 @@ def _run_vertex_cover(subset, indices, offtarget_limit, prune_fraction, vc_max_i
     )
     independent_set = set(indices) - removed_vertices
     return independent_set, off_target_nupack_calls
+
+
+def _pairs_from_ids(sequence_pairs, pair_ids):
+    return [sequence_pairs.get_pair_by_id(idx) for idx in sorted(pair_ids)]
+
+
+def _build_progress_row(
+    *,
+    pass_name,
+    pairs_collected,
+    pairs_after_vc,
+    total_retained,
+    nupack_calls_executed,
+    stopped_early,
+    attempts,
+    passed_ontarget_and_self,
+    passed_homodimer,
+    accepted_into_pool,
+    notes,
+):
+    """
+    Build one standardized search-progress row for workbook/report consumers.
+
+    The reporting contract is shared across naive and hybrid workflows, so the
+    search code centralizes row construction to keep the per-pass logic focused
+    on the algorithm rather than repeated sheet-oriented dict assembly.
+    """
+    return {
+        "pass": pass_name,
+        "pairs_collected": pairs_collected,
+        "pairs_after_vc": pairs_after_vc,
+        "total_retained": total_retained,
+        "nupack_calls_executed": nupack_calls_executed,
+        "stopped_early": stopped_early,
+        "attempts": attempts,
+        "passed_ontarget_and_self": passed_ontarget_and_self,
+        "passed_homodimer": passed_homodimer,
+        "accepted_into_pool": accepted_into_pool,
+        "notes": notes,
+    }
+
+
+def _normalize_stop_reason(raw_reason):
+    if raw_reason is None:
+        return None
+    if raw_reason == "stop_event":
+        return "app_stop_event"
+    if raw_reason == "nupack_limit":
+        return "total_nupack_budget"
+    return raw_reason
+
+
+def _is_duplicate_streak_reason(raw_reason):
+    return bool(raw_reason and raw_reason.startswith("duplicate_streak_limit_reached="))
+
+
+def _run_seed_pass(
+    *,
+    sequence_pairs,
+    offtarget_limit,
+    max_ontarget,
+    min_ontarget,
+    self_energy_limit,
+    initial_fresh_pair_count,
+    total_nupack_budget,
+    prune_fraction,
+    vc_max_iterations,
+    stop_event,
+    start_t,
+):
+    """
+    Run hybrid pass 1 and return only phase-local results.
+
+    Accounting contract
+    -------------------
+    Count only search-essential NUPACK work for this phase:
+    - subset selection
+    - final seed vertex-cover matrix cost
+
+    Do not count diagnostic/reporting recomputation such as `seed_verified`.
+    """
+    if stop_event is not None and stop_event.is_set():
+        _status("Stop event detected before pass 1.")
+        return {
+            "seed_pairs": [],
+            "seed_pair_ids": [],
+            "seed_verified": None,
+            "retained_pair_ids": set(),
+            "retained_pairs": [],
+            "accounted_nupack_calls": 0,
+            "generation_row": None,
+            "stop_reason": "app_stop_event",
+            "continue_to_pass2": False,
+        }
+
+    _status(
+        f"=== Pass 1: Initial sampling ==="
+        f"\nSampling {initial_fresh_pair_count} candidate pairs (energy + self-energy filter)..."
+    )
+    subset, indices, raw_stop_reason, selection_nupack_calls, seed_stats = sc.select_subset_in_energy_range(
+        sequence_pairs,
+        energy_min=min_ontarget,
+        energy_max=max_ontarget,
+        self_energy_min=self_energy_limit,
+        offtarget_limit=offtarget_limit,
+        max_size=initial_fresh_pair_count,
+        fresh_pair_search_budget=int(total_nupack_budget) if total_nupack_budget != np.inf else None,
+        stop_event=stop_event,
+    )
+    seed_pairs = list(subset)
+    seed_pair_ids = list(indices)
+    _status(f"Selected {len(indices)} candidate pairs [{selection_nupack_calls} NUPACK calls]")
+
+    canonical_stop_reason = _normalize_stop_reason(raw_stop_reason)
+    if not indices:
+        if raw_stop_reason == "stop_event":
+            _status("Stop event detected during pass 1. Saving partial result.")
+        elif raw_stop_reason == "keyboard_interrupt":
+            _status("Keyboard interrupt detected during pass 1. Saving partial result.")
+        elif _is_duplicate_streak_reason(raw_stop_reason):
+            _status("Pool exhaustion heuristic reached during pass 1 before any candidate pairs were collected.")
+        elif canonical_stop_reason == "total_nupack_budget":
+            _status("NUPACK budget exhausted during pass 1 before any candidate pairs were collected.")
+        else:
+            _status("No sequences found.")
+        return {
+            "seed_pairs": seed_pairs,
+            "seed_pair_ids": seed_pair_ids,
+            "seed_verified": None,
+            "retained_pair_ids": set(),
+            "retained_pairs": [],
+            "accounted_nupack_calls": selection_nupack_calls,
+            "generation_row": None,
+            "stop_reason": canonical_stop_reason or "no_sequences_found",
+            "continue_to_pass2": False,
+        }
+
+    if raw_stop_reason == "stop_event":
+        _status("Stop event detected during pass 1. Saving partial result.")
+    elif raw_stop_reason == "keyboard_interrupt":
+        _status("Keyboard interrupt detected during pass 1. Saving partial result.")
+
+    seed_on_target, seed_self_seq, seed_self_rc = sc.compute_ontarget_energies(seed_pairs)
+    _status(f"Running vertex cover on {len(subset)} pairs...")
+
+    seed_off_target = sc.compute_offtarget_energies(subset)
+    seed_verified = {
+        "on_target_energies": seed_on_target,
+        "self_energy_seqs": seed_self_seq,
+        "self_energy_rc_seqs": seed_self_rc,
+        "off_target": seed_off_target,
+    }
+    seed_vc_nupack_calls = sc.estimate_offtarget_nupack_calls(len(subset))
+    edges = build_edges(seed_off_target, indices, offtarget_limit)
+    removed_vertices, _ = iterative_vertex_cover_refinement(
+        indices,
+        edges,
+        avoid_V=None,
+        max_iterations=vc_max_iterations,
+        num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
+        show_progress=False,
+    )
+    retained_pair_ids = set(indices) - removed_vertices
+    retained_pairs = _pairs_from_ids(sequence_pairs, retained_pair_ids)
+
+    phase_nupack_calls = selection_nupack_calls + seed_vc_nupack_calls
+    elapsed_s = time.time() - start_t
+    _status(
+        f"Independent set: {len(retained_pair_ids)} pairs retained | "
+        f"NUPACK calls: {phase_nupack_calls} | elapsed={elapsed_s:.1f}s"
+    )
+
+    generation_row = _build_progress_row(
+        pass_name="seed",
+        pairs_collected=len(indices),
+        pairs_after_vc=len(retained_pair_ids),
+        total_retained=len(retained_pair_ids),
+        nupack_calls_executed=phase_nupack_calls,
+        stopped_early=raw_stop_reason is not None,
+        attempts=seed_stats["attempts"],
+        passed_ontarget_and_self=seed_stats["passed_ontarget_and_self"],
+        passed_homodimer=seed_stats["passed_homodimer"],
+        accepted_into_pool=seed_stats["accepted_into_pool"],
+        notes=raw_stop_reason,
+    )
+
+    stop_reason = None
+    continue_to_pass2 = True
+    if raw_stop_reason == "stop_event":
+        stop_reason = canonical_stop_reason
+        continue_to_pass2 = False
+        _status("Stop event detected before pass 2.")
+    elif raw_stop_reason == "keyboard_interrupt":
+        stop_reason = canonical_stop_reason
+        continue_to_pass2 = False
+        _status("Keyboard interrupt detected during pass 1. Skipping pass 2.")
+    elif _is_duplicate_streak_reason(raw_stop_reason):
+        stop_reason = canonical_stop_reason
+        continue_to_pass2 = False
+        _status("Pool exhaustion heuristic reached during pass 1. Skipping pass 2.")
+    elif total_nupack_budget != np.inf and phase_nupack_calls >= total_nupack_budget:
+        stop_reason = "total_nupack_budget"
+        continue_to_pass2 = False
+        _status("NUPACK budget exhausted after pass 1.")
+
+    return {
+        "seed_pairs": seed_pairs,
+        "seed_pair_ids": seed_pair_ids,
+        "seed_verified": seed_verified,
+        "retained_pair_ids": retained_pair_ids,
+        "retained_pairs": retained_pairs,
+        "accounted_nupack_calls": phase_nupack_calls,
+        "generation_row": generation_row,
+        "stop_reason": stop_reason,
+        "continue_to_pass2": continue_to_pass2,
+    }
+
+
+def _run_collection_pass(
+    *,
+    sequence_pairs,
+    retained_pair_ids,
+    retained_pairs,
+    offtarget_limit,
+    max_ontarget,
+    min_ontarget,
+    self_energy_limit,
+    remaining_budget,
+    prune_fraction,
+    vc_max_iterations,
+    progress_report_interval_s,
+    progress_report_interval_min,
+    stop_event,
+    start_t,
+    base_nupack_calls,
+):
+    """
+    Run hybrid pass 2 and return only phase-local results.
+
+    Accounting contract
+    -------------------
+    Count only search-essential NUPACK work for this phase:
+    - live cross-referenced collection
+    - final pass-2 vertex-cover matrix cost
+
+    Exclude progress-report peek VC work. Those calls are diagnostic only and
+    intentionally stay out of the search budget/accounting.
+    """
+    if stop_event is not None and stop_event.is_set():
+        _status("Stop event detected before pass 2.")
+        return {
+            "retained_pair_ids": retained_pair_ids,
+            "retained_pairs": retained_pairs,
+            "accounted_nupack_calls": 0,
+            "generation_row": None,
+            "stop_reason": "app_stop_event",
+        }
+
+    _status(
+        f"=== Pass 2: Cross-referenced collection ==="
+        f"\nCollecting candidate pairs cross-referenced against "
+        f"{len(retained_pair_ids)} retained (NUPACK budget: {remaining_budget})..."
+    )
+
+    collection_state = {
+        "subset": [],
+        "indices": [],
+        "tested_indices": set(retained_pair_ids),
+        "attempts": 0,
+        "nupack_calls": 0,
+        "passed_ontarget_and_self": 0,
+        "passed_homodimer": 0,
+    }
+    pass2_budget = int(remaining_budget) if remaining_budget != np.inf else None
+    chunk_reason = None
+
+    while True:
+        chunk_timeout = progress_report_interval_s if progress_report_interval_s is not None else None
+        _, _, chunk_reason, _, collection_state = sc.select_subset_in_energy_range(
+            sequence_pairs,
+            energy_min=min_ontarget,
+            energy_max=max_ontarget,
+            self_energy_min=self_energy_limit,
+            retained_pairs=retained_pairs,
+            allowed_violations=0,
+            offtarget_limit=offtarget_limit,
+            fresh_pair_search_budget=pass2_budget,
+            timeout_s=chunk_timeout,
+            stop_event=stop_event,
+            quiet_timeout=(chunk_timeout is not None),
+            prior_state=collection_state,
+        )
+        accounted_total_so_far = base_nupack_calls + collection_state["nupack_calls"]
+
+        if chunk_reason != "timeout":
+            break
+
+        _status(f"--- Progress report triggered ({progress_report_interval_min} min interval reached) ---")
+        if collection_state["indices"]:
+            _status(
+                f"Running peek vertex cover on {len(collection_state['indices'])} collected candidate pairs..."
+            )
+            peek_set, _ = _run_vertex_cover(
+                collection_state["subset"],
+                collection_state["indices"],
+                offtarget_limit,
+                prune_fraction,
+                vc_max_iterations,
+            )
+            elapsed_s = time.time() - start_t
+            _status(
+                f"Candidate pairs collected so far: {len(collection_state['indices'])} | "
+                f"Retained from seed: {len(retained_pair_ids)} | "
+                f"New from collection (after peek VC): {len(peek_set)} | "
+                f"Estimated total: {len(retained_pair_ids) + len(peek_set)} | "
+                f"NUPACK calls: {accounted_total_so_far} | elapsed={elapsed_s:.1f}s"
+                f"\n--- Continuing collection ---"
+            )
+        else:
+            elapsed_s = time.time() - start_t
+            _status(
+                f"No candidate pairs collected yet | "
+                f"NUPACK calls: {accounted_total_so_far} | elapsed={elapsed_s:.1f}s"
+                f"\n--- Continuing collection ---"
+            )
+
+    subset = collection_state["subset"]
+    indices = collection_state["indices"]
+    _status(f"Collected {len(indices)} candidate pairs [{collection_state['nupack_calls']} pass 2 NUPACK calls]")
+
+    pass2_vc_nupack_calls = 0
+    canonical_stop_reason = _normalize_stop_reason(chunk_reason)
+    updated_retained_pair_ids = set(retained_pair_ids)
+    updated_retained_pairs = list(retained_pairs)
+
+    if chunk_reason in {"stop_event", "keyboard_interrupt"}:
+        _status("Stop detected during pass 2 collection. Skipping final vertex cover.")
+    elif indices:
+        _status(f"Running vertex cover on {len(indices)} candidate pairs...")
+        independent_set, pass2_vc_nupack_calls = _run_vertex_cover(
+            subset,
+            indices,
+            offtarget_limit,
+            prune_fraction,
+            vc_max_iterations,
+        )
+        updated_retained_pair_ids.update(independent_set)
+        updated_retained_pairs = _pairs_from_ids(sequence_pairs, updated_retained_pair_ids)
+
+        elapsed_s = time.time() - start_t
+        _status(
+            f"Independent set: {len(independent_set)} additional pairs found | "
+            f"Total retained: {len(updated_retained_pair_ids)} | "
+            f"NUPACK calls: {base_nupack_calls + collection_state['nupack_calls'] + pass2_vc_nupack_calls} | "
+            f"elapsed={elapsed_s:.1f}s"
+        )
+    else:
+        _status("No candidate pairs found.")
+
+    phase_nupack_calls = collection_state["nupack_calls"] + pass2_vc_nupack_calls
+    generation_row = _build_progress_row(
+        pass_name="collection",
+        pairs_collected=len(indices),
+        pairs_after_vc=len(updated_retained_pair_ids) - len(retained_pair_ids) if indices else 0,
+        total_retained=len(updated_retained_pair_ids),
+        nupack_calls_executed=phase_nupack_calls,
+        stopped_early=chunk_reason is not None,
+        attempts=collection_state["attempts"],
+        passed_ontarget_and_self=collection_state["passed_ontarget_and_self"],
+        passed_homodimer=collection_state["passed_homodimer"],
+        accepted_into_pool=collection_state["accepted_into_pool"],
+        notes=chunk_reason,
+    )
+    return {
+        "retained_pair_ids": updated_retained_pair_ids,
+        "retained_pairs": updated_retained_pairs,
+        "accounted_nupack_calls": phase_nupack_calls,
+        "generation_row": generation_row,
+        "stop_reason": canonical_stop_reason,
+    }
 
 
 def hybrid_search(
@@ -173,13 +545,15 @@ def hybrid_search(
     - ``"app_stop_event"``: external stop signal (threading.Event) was set
     - ``"keyboard_interrupt"``: user pressed Ctrl-C
     - ``"total_nupack_budget"``: NUPACK call budget exhausted
+    - ``"duplicate_streak_limit_reached=<N>"``: live sampler repeatedly
+      returned already-seen IDs and was treated as effectively exhausted
     - ``"no_sequences_found"``: no candidates passed energy filter in pass 1
     - ``"pool_exhausted"``: all candidates evaluated without budget/stop hit
 
-    :param sequence_pairs: Candidate sequence source. Either a
-        `SequencePairRegistry` (infinite random pool) or a pre-built list of
-        `(index, (seq, rc_seq))` tuples.
-    :type sequence_pairs: SequencePairRegistry or list
+    :param sequence_pairs: Candidate sequence source. Must provide
+        `sample_pair()` for live draws and `get_pair_by_id(pair_id)` for stable
+        lookup of retained IDs.
+    :type sequence_pairs: SequencePairRegistry or compatible live source
 
     :param offtarget_limit: Energy threshold below which a pairwise
         interaction counts as a conflict edge in the vertex-cover graph.
@@ -230,18 +604,17 @@ def hybrid_search(
         dict when `return_diagnostics=True`.
     :rtype: list[tuple[str, str]] or dict
     """
+    if not hasattr(sequence_pairs, "sample_pair") or not hasattr(sequence_pairs, "get_pair_by_id"):
+        raise TypeError(
+            "hybrid_search requires a live sequence source with sample_pair() "
+            "and get_pair_by_id(pair_id) methods."
+        )
+
     seq_length = getattr(sequence_pairs, "length", None)
     fivep_ext = getattr(sequence_pairs, "fivep_ext", None)
     threep_ext = getattr(sequence_pairs, "threep_ext", None)
     unwanted = getattr(sequence_pairs, "unwanted_substrings", None)
     apply_to = getattr(sequence_pairs, "apply_unwanted_to", None)
-    pair_by_id = None
-    if isinstance(sequence_pairs, list):
-        pair_by_id = {}
-        for pair_id, pair in sequence_pairs:
-            if pair_id in pair_by_id:
-                raise ValueError(f"Duplicate pair_id in sequence_pairs list: {pair_id}")
-            pair_by_id[pair_id] = pair
 
     material = hf.NUPACK_PARAMS.get("MATERIAL")
     celsius = hf.NUPACK_PARAMS.get("CELSIUS")
@@ -294,219 +667,55 @@ def hybrid_search(
     )
 
     try:
-        # === Pass 1: Initial sampling ===
-        if stop_event is not None and stop_event.is_set():
-            stopped_reason = "app_stop_event"
-            _status("Stop event detected before pass 1.")
-        else:
-            _status(
-                f"=== Pass 1: Initial sampling ==="
-                f"\nSampling {initial_fresh_pair_count} candidate pairs (energy + self-energy filter)..."
-            )
-            subset, indices, seed_stop_reason, subset_nupack_calls, seed_stats = sc.select_subset_in_energy_range(
-                sequence_pairs,
-                energy_min=min_ontarget,
-                energy_max=max_ontarget,
-                self_energy_min=self_energy_limit,
+        seed_outcome = _run_seed_pass(
+            sequence_pairs=sequence_pairs,
+            offtarget_limit=offtarget_limit,
+            max_ontarget=max_ontarget,
+            min_ontarget=min_ontarget,
+            self_energy_limit=self_energy_limit,
+            initial_fresh_pair_count=initial_fresh_pair_count,
+            total_nupack_budget=total_nupack_budget,
+            prune_fraction=prune_fraction,
+            vc_max_iterations=vc_max_iterations,
+            stop_event=stop_event,
+            start_t=start_t,
+        )
+        total_nupack_calls += seed_outcome["accounted_nupack_calls"]
+        seed_pairs = seed_outcome["seed_pairs"]
+        seed_pair_ids = seed_outcome["seed_pair_ids"]
+        seed_verified = seed_outcome["seed_verified"]
+        retained_pair_ids = seed_outcome["retained_pair_ids"]
+        retained_pairs = seed_outcome["retained_pairs"]
+        if seed_outcome["generation_row"] is not None:
+            generation_data.append(seed_outcome["generation_row"])
+        stopped_reason = seed_outcome["stop_reason"]
+
+        if seed_outcome["continue_to_pass2"]:
+            remaining_budget = total_nupack_budget - total_nupack_calls
+            collection_outcome = _run_collection_pass(
+                sequence_pairs=sequence_pairs,
+                retained_pair_ids=retained_pair_ids,
+                retained_pairs=retained_pairs,
                 offtarget_limit=offtarget_limit,
-                max_size=initial_fresh_pair_count,
-                fresh_pair_search_budget=int(total_nupack_budget) if total_nupack_budget != np.inf else None,
+                max_ontarget=max_ontarget,
+                min_ontarget=min_ontarget,
+                self_energy_limit=self_energy_limit,
+                remaining_budget=remaining_budget,
+                prune_fraction=prune_fraction,
+                vc_max_iterations=vc_max_iterations,
+                progress_report_interval_s=progress_report_interval_s,
+                progress_report_interval_min=progress_report_interval_min,
                 stop_event=stop_event,
+                start_t=start_t,
+                base_nupack_calls=total_nupack_calls,
             )
-            total_nupack_calls += subset_nupack_calls
-            seed_pairs = list(subset)
-            seed_pair_ids = list(indices)
-            _status(f"Selected {len(indices)} candidate pairs [{subset_nupack_calls} NUPACK calls]")
-
-            if seed_stop_reason == "stop_event":
-                stopped_reason = "app_stop_event"
-                _status("Stop event detected during pass 1. Saving partial result.")
-            elif seed_stop_reason == "keyboard_interrupt":
-                stopped_reason = "keyboard_interrupt"
-                _status("Keyboard interrupt detected during pass 1. Saving partial result.")
-            elif not indices:
-                stopped_reason = "no_sequences_found"
-                _status("No sequences found.")
-            else:
-                seed_on_target, seed_self_seq, seed_self_rc = sc.compute_ontarget_energies(seed_pairs)
-                _status(f"Running vertex cover on {len(subset)} pairs...")
-
-                seed_off_target = sc.compute_offtarget_energies(subset)
-                seed_verified = {
-                    "on_target_energies": seed_on_target,
-                    "self_energy_seqs": seed_self_seq,
-                    "self_energy_rc_seqs": seed_self_rc,
-                    "off_target": seed_off_target,
-                }
-                vc_nupack_calls = estimate_offtarget_nupack_calls(len(subset))
-                edges = build_edges(seed_off_target, indices, offtarget_limit)
-                removed_vertices, _ = iterative_vertex_cover_refinement(
-                    indices,
-                    edges,
-                    avoid_V=None,
-                    max_iterations=vc_max_iterations,
-                    num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
-                    show_progress=False,
-                )
-                independent_set = set(indices) - removed_vertices
-                total_nupack_calls += vc_nupack_calls
-
-                retained_pair_ids = set(independent_set)
-                if isinstance(sequence_pairs, list):
-                    retained_pairs = [pair_by_id[idx] for idx in sorted(retained_pair_ids)]
-                else:
-                    retained_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted(retained_pair_ids)]
-
-                elapsed_s = time.time() - start_t
-                _status(
-                    f"Independent set: {len(retained_pair_ids)} pairs retained | "
-                    f"NUPACK calls: {total_nupack_calls} | elapsed={elapsed_s:.1f}s"
-                )
-
-                generation_data.append({
-                    "pass": "seed",
-                    "pairs_collected": len(indices),
-                    "pairs_after_vc": len(retained_pair_ids),
-                    "total_retained": len(retained_pair_ids),
-                    "nupack_calls_executed": total_nupack_calls,
-                    "stopped_early": seed_stop_reason is not None,
-                    "attempts": seed_stats["attempts"],
-                    "passed_ontarget_and_self": seed_stats["passed_ontarget_and_self"],
-                    "passed_homodimer": seed_stats["passed_homodimer"],
-                    "accepted_into_pool": seed_stats["accepted_into_pool"],
-                })
-
-                # === Pass 2: Cross-referenced collection ===
-                if stop_event is not None and stop_event.is_set():
-                    stopped_reason = "app_stop_event"
-                    _status("Stop event detected before pass 2.")
-                elif total_nupack_calls >= total_nupack_budget:
-                    stopped_reason = "total_nupack_budget"
-                    _status("NUPACK budget exhausted after pass 1.")
-                else:
-                    remaining_budget = total_nupack_budget - total_nupack_calls
-                    _status(
-                        f"=== Pass 2: Cross-referenced collection ==="
-                        f"\nCollecting candidate pairs cross-referenced against "
-                        f"{len(retained_pair_ids)} retained (NUPACK budget: {remaining_budget})..."
-                    )
-
-                    collection_state = {
-                        "subset": [],
-                        "indices": [],
-                        "tested_indices": set(retained_pair_ids),
-                        "attempts": 0,
-                        "nupack_calls": 0,
-                        "passed_ontarget_and_self": 0,
-                        "passed_homodimer": 0,
-                    }
-                    pass2_budget = int(remaining_budget) if remaining_budget != np.inf else None
-                    collection_done = False
-
-                    while not collection_done:
-                        chunk_timeout = None
-                        if progress_report_interval_s is not None:
-                            chunk_timeout = progress_report_interval_s
-
-                        _, _, chunk_reason, _, collection_state = sc.select_subset_in_energy_range(
-                            sequence_pairs,
-                            energy_min=min_ontarget,
-                            energy_max=max_ontarget,
-                            self_energy_min=self_energy_limit,
-                            retained_pairs=retained_pairs,
-                            allowed_violations=0,
-                            offtarget_limit=offtarget_limit,
-                            fresh_pair_search_budget=pass2_budget,
-                            timeout_s=chunk_timeout,
-                            stop_event=stop_event,
-                            quiet_timeout=(chunk_timeout is not None),
-                            prior_state=collection_state,
-                        )
-                        total_nupack_calls = subset_nupack_calls + vc_nupack_calls + collection_state["nupack_calls"]
-
-                        if chunk_reason != "timeout":
-                            collection_done = True
-                        else:
-                            _status(
-                                f"--- Progress report triggered ({progress_report_interval_min} min interval reached) ---"
-                            )
-                            if collection_state["indices"]:
-                                _status(
-                                    f"Running peek vertex cover on {len(collection_state['indices'])} collected candidate pairs..."
-                                )
-                                peek_set, _ = _run_vertex_cover(
-                                    collection_state["subset"], collection_state["indices"],
-                                    offtarget_limit, prune_fraction, vc_max_iterations
-                                )
-                                elapsed_s = time.time() - start_t
-                                _status(
-                                    f"Candidate pairs collected so far: {len(collection_state['indices'])} | "
-                                    f"Retained from seed: {len(retained_pair_ids)} | "
-                                    f"New from collection (after peek VC): {len(peek_set)} | "
-                                    f"Estimated total: {len(retained_pair_ids) + len(peek_set)} | "
-                                    f"NUPACK calls: {total_nupack_calls} | elapsed={elapsed_s:.1f}s"
-                                    f"\n--- Continuing collection ---"
-                                )
-                            else:
-                                elapsed_s = time.time() - start_t
-                                _status(
-                                    f"No candidate pairs collected yet | "
-                                    f"NUPACK calls: {total_nupack_calls} | elapsed={elapsed_s:.1f}s"
-                                    f"\n--- Continuing collection ---"
-                                )
-
-                    subset = collection_state["subset"]
-                    indices = collection_state["indices"]
-
-                    _status(f"Collected {len(indices)} candidate pairs [{collection_state['nupack_calls']} pass 2 NUPACK calls]")
-
-                    stopped_during_collection = chunk_reason in {"stop_event", "keyboard_interrupt"}
-                    if stopped_during_collection:
-                        _status("Stop detected during pass 2 collection. Skipping final vertex cover.")
-                    elif indices:
-                        _status(f"Running vertex cover on {len(indices)} candidate pairs...")
-
-                        independent_set, pass2_vc_nupack_calls = _run_vertex_cover(
-                            subset, indices, offtarget_limit, prune_fraction, vc_max_iterations
-                        )
-                        total_nupack_calls += pass2_vc_nupack_calls
-
-                        retained_pair_ids.update(independent_set)
-                        if isinstance(sequence_pairs, list):
-                            retained_pairs = [pair_by_id[idx] for idx in sorted(retained_pair_ids)]
-                        else:
-                            retained_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in sorted(retained_pair_ids)]
-
-                        elapsed_s = time.time() - start_t
-                        _status(
-                            f"Independent set: {len(independent_set)} additional pairs found | "
-                            f"Total retained: {len(retained_pair_ids)} | "
-                            f"NUPACK calls: {total_nupack_calls} | elapsed={elapsed_s:.1f}s"
-                        )
-                    else:
-                        _status("No candidate pairs found.")
-
-                    if chunk_reason is not None:
-                        if chunk_reason == "stop_event":
-                            stopped_reason = "app_stop_event"
-                        elif chunk_reason == "keyboard_interrupt":
-                            stopped_reason = "keyboard_interrupt"
-                        else:
-                            stopped_reason = "total_nupack_budget"
-
-                    pass2_nupack_calls = collection_state["nupack_calls"] + (pass2_vc_nupack_calls if indices else 0)
-                    generation_data.append({
-                        "pass": "collection",
-                        "pairs_collected": len(indices),
-                        "pairs_after_vc": len(independent_set) if indices else 0,
-                        "total_retained": len(retained_pair_ids),
-                        "nupack_calls_executed": pass2_nupack_calls,
-                        "stopped_early": chunk_reason is not None,
-                        "attempts": collection_state["attempts"],
-                        "passed_ontarget_and_self": collection_state["passed_ontarget_and_self"],
-                        "passed_homodimer": collection_state["passed_homodimer"],
-                        "accepted_into_pool": collection_state["accepted_into_pool"],
-                    })
+            total_nupack_calls += collection_outcome["accounted_nupack_calls"]
+            retained_pair_ids = collection_outcome["retained_pair_ids"]
+            retained_pairs = collection_outcome["retained_pairs"]
+            if collection_outcome["generation_row"] is not None:
+                generation_data.append(collection_outcome["generation_row"])
+            if collection_outcome["stop_reason"] is not None:
+                stopped_reason = collection_outcome["stop_reason"]
 
     except KeyboardInterrupt:
         stopped_reason = "keyboard_interrupt"
@@ -515,12 +724,8 @@ def hybrid_search(
     if stopped_reason is None:
         stopped_reason = "pool_exhausted"
 
-    if isinstance(sequence_pairs, list):
-        final_pair_ids = sorted(retained_pair_ids)
-        final_pairs = [pair_by_id[idx] for idx in final_pair_ids]
-    else:
-        final_pair_ids = sorted(retained_pair_ids)
-        final_pairs = [sequence_pairs.get_pair_by_id(idx) for idx in final_pair_ids]
+    final_pair_ids = sorted(retained_pair_ids)
+    final_pairs = _pairs_from_ids(sequence_pairs, retained_pair_ids)
 
     elapsed_s = time.time() - start_t
     _status(

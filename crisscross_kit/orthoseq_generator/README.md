@@ -141,20 +141,20 @@ The main search algorithm (`hybrid_search` in `search_algorithm.py`) works in tw
 - Because every accepted candidate is already compatible with all retained pairs, the final vertex cover only resolves conflicts among fresh candidates (O(fresh^2) instead of O((fresh+retained)^2)).
 - Union survivors into the retained set.
 
-The search terminates when the NUPACK call budget is exhausted, the user interrupts (Ctrl+C or stop button), or the candidate pool is empty.
+The search terminates when the NUPACK call budget is exhausted, the user interrupts (Ctrl+C or stop button), or live sampling becomes effectively exhausted under the duplicate-streak heuristic.
 
 **Optional progress reporting:** When `progress_report_interval_min` is set, pass 2 collection is chunked into timed intervals. At each boundary a peek vertex cover estimates the current total without committing results.
 
 ### Core Functions
 
 - **`iterative_vertex_cover_refinement(V, E, …)`**  
-  The vertex-cover heuristic. Repeatedly removes the highest-degree vertex to greedily cover edges. Wraps this in an iterative perturbation loop: each iteration removes a fraction of vertices (`prune_fraction`) from the current cover, re-covers uncovered edges, and checks if the independent set improved.
+  The vertex-cover heuristic. Repeatedly removes the highest-degree vertex to greedily cover edges. Wraps this in an iterative perturbation loop: each iteration removes a fraction of vertices (`prune_fraction`) from the current cover, re-covers uncovered edges, cleans the repaired full cover against the full graph, and checks if the independent set improved.
 
 - **`hybrid_search(sequence_pairs, …)`**  
-  The main search entry point. Orchestrates the two-pass strategy described above. Called by the CLI script, Streamlit app, and benchmark runners.
+  The main search entry point. Orchestrates the two-pass strategy described above. Called by the CLI script, Streamlit app, and benchmark runners. Expects a live sequence source such as `SequencePairRegistry` that provides `sample_pair()` and `get_pair_by_id()`.
 
 - **`select_subset_in_energy_range(sequence_pairs, …)`**  
-  The candidate collection workhorse. Draws random pairs, evaluates on-target/self-energy filters, rejects strong same-strand homodimers, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"keyboard_interrupt"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware — it reserves `2 * N^2` calls for the downstream vertex cover.
+  The candidate collection workhorse. Draws random pairs, evaluates on-target/self-energy filters, rejects strong same-strand homodimers, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"keyboard_interrupt"`, `"duplicate_streak_limit_reached=<value>"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware and reserves `estimate_offtarget_nupack_calls(N) = 2 * N^2` calls for the downstream vertex cover.
 
 - **`crossreference_sequences(new_pair, pool, …)`**  
   Checks whether a single candidate pair is compatible with all pairs in a pool by evaluating all four strand combinations. Short-circuits on first violation.

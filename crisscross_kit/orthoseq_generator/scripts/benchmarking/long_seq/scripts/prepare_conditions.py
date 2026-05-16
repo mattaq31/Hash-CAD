@@ -613,6 +613,8 @@ def main():
 
     total_nupack_budgets = [int(x) for x in budget_cfg["total_nupack_budgets"]]
     initial_fresh_pair_counts = [int(x) for x in hybrid_cfg["initial_fresh_pair_counts"]]
+    if not initial_fresh_pair_counts:
+        raise ValueError("[hybrid].initial_fresh_pair_counts must contain at least one value.")
 
     benchmark_root = Path(__file__).resolve().parents[1]
     batch_dir_name = batch_tag(batch_name, range_sigma, random_seed)
@@ -687,6 +689,72 @@ def main():
 
                 for nupack_budget in total_nupack_budgets:
                     budget_label = str(nupack_budget)
+                    shared_condition_stem = f"fb{frac_label}_budget{budget_label}"
+
+                    naive_run_toml_text = build_run_toml(
+                        run_cfg=run_base_cfg,
+                        nupack_cfg=nupack_cfg,
+                        naive_cfg=naive_cfg,
+                        hybrid_cfg=hybrid_cfg,
+                        output_dir=output_rel_dir,
+                        min_ontarget=min_on,
+                        max_ontarget=max_on,
+                        offtarget_limit=offtarget_limit,
+                        self_energy_limit=self_energy_limit,
+                        total_nupack_budget=nupack_budget,
+                        initial_fresh_pair_count=initial_fresh_pair_counts[0],
+                    )
+                    naive_condition_toml_rel = (
+                        "crisscross_kit/orthoseq_generator/scripts/benchmarking/long_seq/"
+                        f"configs/generated/{batch_dir_name}/{tag}/condition_naive_{shared_condition_stem}.toml"
+                    )
+                    naive_condition_toml_path = config_dir / f"condition_naive_{shared_condition_stem}.toml"
+                    write_text(naive_condition_toml_path, naive_run_toml_text)
+
+                    fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
+                    naive_output_stem = (
+                        f"naive_len{length}_{fivep_label}_{shared_condition_stem}_seed{random_seed}"
+                    )
+                    naive_job_name = f"ls_naive_l{length}_{shared_condition_stem}"
+                    naive_script_path = config_dir / f"naive_{shared_condition_stem}.sh"
+                    write_text(
+                        naive_script_path,
+                        build_server_script(
+                            job_name=naive_job_name,
+                            runner_relpath=runner_rel_naive,
+                            config_relpath=naive_condition_toml_rel,
+                            server_cfg=server_naive_cfg,
+                            output_stem=naive_output_stem,
+                        ),
+                    )
+                    generated_job_scripts.append(f"{tag}/{naive_script_path.name}")
+                    summary_rows.append(
+                        {
+                            "algorithm": "naive",
+                            "family_tag": tag,
+                            "length": length,
+                            "fivep_ext": fivep_ext,
+                            "threep_ext": threep_ext,
+                            "target_fraction_bound": float(target_fraction),
+                            "derived_offtarget_limit": float(offtarget_limit),
+                            "total_nupack_budget": nupack_budget,
+                            "initial_fresh_pair_count": None,
+                            "min_ontarget": float(min_on),
+                            "max_ontarget": float(max_on),
+                            "self_energy_limit": float(self_energy_limit),
+                            "sampled_mean_ontarget": float(mean_on),
+                            "sampled_std_ontarget": float(std_on),
+                            "output_rel_dir": output_rel_dir,
+                            "condition_toml": str(naive_condition_toml_path),
+                            "naive_sbatch": str(naive_script_path),
+                            "hybrid_sbatch": None,
+                        }
+                    )
+                    print(
+                        f"{tag}: naive fb={target_fraction:.4f} "
+                        f"budget={nupack_budget} "
+                        f"-> offtarget_limit={offtarget_limit:.4f}"
+                    )
 
                     for initial_count in initial_fresh_pair_counts:
                         init_label = str(initial_count)
@@ -715,28 +783,12 @@ def main():
                         condition_toml_path = config_dir / f"condition_{condition_stem}.toml"
                         write_text(condition_toml_path, run_toml_text)
 
-                        fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
-                        naive_output_stem = (
-                            f"naive_len{length}_{fivep_label}_{condition_stem}_seed{random_seed}"
-                        )
                         hybrid_output_stem = (
                             f"hybrid_len{length}_{fivep_label}_{condition_stem}_seed{random_seed}"
                         )
 
-                        naive_job_name = f"ls_naive_l{length}_{condition_stem}"
                         hybrid_job_name = f"ls_hybrid_l{length}_{condition_stem}"
-                        naive_script_path = config_dir / f"naive_{condition_stem}.sh"
                         hybrid_script_path = config_dir / f"hybrid_{condition_stem}.sh"
-                        write_text(
-                            naive_script_path,
-                            build_server_script(
-                                job_name=naive_job_name,
-                                runner_relpath=runner_rel_naive,
-                                config_relpath=condition_toml_rel,
-                                server_cfg=server_naive_cfg,
-                                output_stem=naive_output_stem,
-                            ),
-                        )
                         write_text(
                             hybrid_script_path,
                             build_server_script(
@@ -749,12 +801,12 @@ def main():
                         )
                         generated_job_scripts.extend(
                             [
-                                f"{tag}/{naive_script_path.name}",
                                 f"{tag}/{hybrid_script_path.name}",
                             ]
                         )
                         summary_rows.append(
                             {
+                                "algorithm": "hybrid",
                                 "family_tag": tag,
                                 "length": length,
                                 "fivep_ext": fivep_ext,
@@ -770,12 +822,12 @@ def main():
                                 "sampled_std_ontarget": float(std_on),
                                 "output_rel_dir": output_rel_dir,
                                 "condition_toml": str(condition_toml_path),
-                                "naive_sbatch": str(naive_script_path),
+                                "naive_sbatch": None,
                                 "hybrid_sbatch": str(hybrid_script_path),
                             }
                         )
                         print(
-                            f"{tag}: fb={target_fraction:.4f} "
+                            f"{tag}: hybrid fb={target_fraction:.4f} "
                             f"budget={nupack_budget} init={initial_count} "
                             f"-> offtarget_limit={offtarget_limit:.4f}"
                         )

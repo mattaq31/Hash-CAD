@@ -168,7 +168,6 @@ def main():
         dataset_info={},
         extra_metadata={
             "benchmark_name": BENCHMARK_NAME,
-            "best_generation_result_size": len(online_sequence_data),
             "stopped_reason": online_result["stopped_reason"],
         },
     )

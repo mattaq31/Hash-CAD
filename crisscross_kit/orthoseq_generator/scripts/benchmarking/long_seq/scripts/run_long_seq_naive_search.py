@@ -164,7 +164,6 @@ def main():
         dataset_info={},
         extra_metadata={
             "benchmark_name": "long_seq",
-            "best_generation_result_size": len(selected_sequence_data),
             "search.progress_every": progress_every,
             "search.attempts": search_result["attempts"],
             "stopped_reason": search_result["stopped_reason"],

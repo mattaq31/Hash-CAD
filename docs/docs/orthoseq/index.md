@@ -134,19 +134,18 @@ You can use the **Selection Helper** tab again to interpret the off-target energ
 
 Unfortunately, the search can be slow because NUPACK calculations dominate the runtime. For longer runs, it is a good idea to prevent your computer from going to sleep. On macOS, for example, you can run `caffeinate` in a separate terminal before starting the search.
 
-In the **Orthogonal Sequence Search** tab, the parameters transferred from the previous tabs are shown again for reference. You can then choose how many generations the search should run.
-
-In practice, it often makes sense to use a fairly large number of generations, for example `1000`, and stop the search manually once you are happy with the result. Start the search with **Run Search**. While it is running, progress messages are shown in the logging window above the tabs. If you already have enough sequences, you can stop the search with **Stop Searching**.
+In the **Orthogonal Sequence Search** tab, the parameters transferred from the previous tabs are shown again for reference. Start the search with **Run Search**. While it is running, progress messages are shown in the logging window above the tabs. If you already have enough sequences, you can stop the search with **Stop Searching**.
 
 There is also an **Advanced Search Parameters** panel. In most cases, the default values are a good starting point.
 
 The search has two phases:
 
-- **Initial search**: a random pool of sequence pairs is collected under the selected on-target and secondary-structure limits. Off-target interactions are then computed for this initial pool, a conflict graph is built, and a graph-based search is performed to obtain an initial orthogonal set.
-- **Iterative refinement**: in each generation, new sequence pairs are sampled one by one under the same limits. Each new pair is compared against the currently retained orthogonal set. If it creates too many off-target conflicts with that set, it is discarded. If it passes this check, it is added to the current trial pool.
-- After enough new pairs have been collected, they are combined with the currently retained orthogonal set.
-- Off-target interactions are then computed for this combined pool, a conflict graph is built, and the graph-based search is run again on the full combined pool.
-- This allows the algorithm not only to add good new sequence pairs, but also to replace previously retained pairs if that leads to a larger orthogonal set overall.
+- **Pass 1 (seed):** a random pool of sequence pairs is collected under the selected on-target and secondary-structure limits. Same-strand homodimers are screened at collection time. Off-target interactions are then computed within this seed pool, a conflict graph is built, and a graph-based search is performed to obtain an initial orthogonal set.
+- **Pass 2 (collection):** new sequence pairs are sampled one by one under the same limits and cross-referenced against the retained seed set. Only candidates with zero conflicts against the retained set are admitted to the fresh collection pool.
+- After enough fresh candidates have been collected, off-target interactions are computed among the fresh candidates only, a conflict graph is built on that fresh pool, and the graph-based search is run there.
+- Survivors from that fresh-only graph step are then unioned into the retained set.
+
+This keeps pass 2 cheaper than recomputing a full graph on retained plus fresh pairs, because the expensive final vertex-cover step only resolves conflicts among fresh candidates.
 
 The graph-based search can be understood as follows:
 
@@ -159,12 +158,10 @@ You do not need to think in graph-theory terms to use the app, but this is the r
 
 Brief explanation of the advanced parameters:
 
-- **Initial Subset Size**: number of requested sequence pairs used to build the initial trial pool.
-- **Vertex-Cover Multistart**: number of repeated runs of the graph-based optimization step per generation.
+- **Initial Subset Size**: number of requested sequence pairs used to build the seed pool before the first vertex-cover run.
 - **Vertex-Cover Max Iterations**: number of refinement iterations used inside each graph-based optimization run.
 - **Prune Fraction**: controls how strongly the current graph-based solution is perturbed before it is refined again.
-- **Max NUPACK Calls**: limit on the number of NUPACK calls used while collecting fresh candidates in one generation. If this limit is reached, the number of allowed conflicts for newly sampled pairs is increased by 1 in later generations.
-- **History Subset Scale**: once an orthogonal set has been established, this determines how many new sequence pairs are requested in later generations relative to the size of that retained set.
+- **Progress Report Interval (min)**: when nonzero, pass 2 collection is chunked into timed intervals. At each boundary a peek vertex cover estimates the current total without committing results.
 
 
 ---
@@ -301,46 +298,71 @@ The core of the algorithm is a heuristic that attempts to find a minimum vertex 
    Removing as few vertices as possible (to leave as large a pool of orthogonal sequences as possible) is exactly the **minimum vertex cover** problem.
 
 3. **Why a heuristic?**  
-   Since minimum vertex cover is NP-hard, we use greedy and evolutionary strategies to find a small cover (and thus a large independent set) in reasonable time.
+   Since minimum vertex cover is NP-hard, we use a greedy heuristic with iterative perturbation to find a small cover (and thus a large independent set) in reasonable time.
 
 ### Core Functions
 
-- **`heuristic_vertex_cover_optimized2(E)`**  
-  Repeatedly removes the vertex with the highest degree (most edges).  
-  When there’s a tie, it picks among them the vertex whose neighbors have the least overlap with the other top-degree vertices—avoiding redundant removals.
+- **`greedy_vertex_cover_heuristic(E, …)`**  
+  Repeatedly removes the highest-degree vertex to greedily cover edges.
 
-- **`iterative_vertex_cover_multi(V, E, …)`**  
-  Wraps the greedy heuristic in two nested loops:  
-  1. **Multistart outer loop**: re-runs the heuristic from different random seeds to escape poor starting conditions.  
-  2. **Inner loop**: strategically perturbs the current cover (removes some vertices, re-covers uncovered edges) and re-applies the greedy heuristic to refine the solution.
+- **`iterative_vertex_cover_refinement(V, E, …)`**  
+  Wraps the greedy heuristic in an iterative perturbation loop. Each iteration removes a fraction of vertices from the current cover, repairs uncovered edges, cleans the repaired full cover against the full graph, and keeps the result if the independent set improved.
 
-- **`evolutionary_vertex_cover(sequence_pairs, offtarget_limit, max_ontarget, min_ontarget, …)`**  
-  The main driver that implements an evolutionary selection process. Iterates for a fixed number of generations:  
-  - Samples random subsets within a specified on-target energy range from the candidate list of sequence pairs. Previously preserved sequences that worked well are added to each subset.  
-  - Computes off-target interaction energies and builds the corresponding graph.  
-  - Uses `iterative_vertex_cover_multi` as the “selection” step to find orthogonal sequences in the subset.  
-  - If a larger independent set than in previous generations is found, it replaces the record and clears the preserved sequences.  
-  - If the new independent set is at least 95% the size of the previous best, its members are added (without duplicates) to the preserved sequences.
+- **`hybrid_search(sequence_source, …)`**  
+  The main two-pass search driver. Pass 1 collects a seed pool, computes its conflict graph, and retains an initial independent set. Pass 2 samples additional candidates, cross-references them against the retained seed set, then runs vertex cover on the fresh candidates only and unions those survivors into the retained set.
 
 Each of these functions is documented in detail in their respective docstrings.
 
 ### Print statements
 
-There are a couple of print statements that report on the current process of the `evolutionary_vertex_cover` function. They’re useful for understanding exactly what the algorithm is doing at each step:
+There are a couple of print statements that report on the current process of the hybrid search. They’re useful for understanding exactly what the algorithm is doing at each step:
 
 ---
 
 ```text
-Selected 250 sequence pairs with energies in range [-10.4, -9.6]
+=== Pass 1: Initial sampling ===
 ```
-➔ Subset selection based on the on-target energy window defined by the user; 250 pairs chosen for this generation as set as input parameter.
+➔ The search has entered the seed pass.
 
 ---
 
 ```text
-Computing off-target energies for handle-handle interactions
+Sampling 450 candidate pairs (energy + self-energy filter)...
 ```
-➔ Now computing cross-interaction energies between “handle” sequences and other antihandle sequences 
+➔ Candidate collection is running. Each sampled pair must pass the on-target, self-energy, and same-strand homodimer gates before it enters the seed pool.
+
+---
+
+```text
+Running vertex cover on 191 pairs...
+```
+➔ The seed pool is fixed. The algorithm is now building the conflict graph for that pool and pruning it down to an independent set.
+
+---
+
+```text
+=== Pass 2: Cross-referenced collection ===
+Collecting candidate pairs cross-referenced against 27 retained (NUPACK budget: 4926148)...
+```
+➔ The search has entered the collection pass. New candidates are sampled under the same thermodynamic filters and must additionally have zero conflicts against the retained seed set before entering the fresh pool.
+
+---
+
+```text
+Running vertex cover on 31 candidate pairs...
+```
+➔ The collection pass is finalized by running vertex cover on the fresh candidates only. Survivors are then unioned into the retained set.
+
+---
+
+```text
+--- Progress report triggered (20 min interval reached) ---
+Running peek vertex cover on 94 collected candidate pairs...
+```
+➔ Optional progress reporting is enabled. The search estimates the current total without committing a final result for the pass.
+
+---
+
 ```text
 Calculating with 12 cores...
 ```
@@ -348,30 +370,7 @@ Calculating with 12 cores...
 ```text
 100%|████████████████████████████████████████████████████████████████████| 31375/31375 [00:06<00:00, 4822.91it/s]
 ```
-➔ There is a life update on the progress of the computation
-
-➔ There will be print statements for the other two configurations as well: anti-handles with other anti-handles and handles with other anti-handles
-
----
-
-```text
-Iteration 1 of 30 | current bestest independent set size: 40
-…
-Iteration 30 of 30 | current bestest independent set size: 44
-```
-➔ Progress updates of the multistart iterations of iterative_vertex_cover_multi when called: shows progression and best size updates
-
-___
-
-
-```text
-Generation 1 | Current: 40 | Best: 40 | History size: 40
-Generation 2 | Current: 46 | Best: 46 | History size: 46
-```
-➔ Generation summaries of the evolutionary algorithm:  
-- **Current** = size of independent set found in this generation  
-- **Best**    = best-ever size so far  
-- **History** = number of sequences preserved for sampling  
+➔ Progress update for one of the batched NUPACK calculations.
 
 
 ## Legacy Scripts Basic Use

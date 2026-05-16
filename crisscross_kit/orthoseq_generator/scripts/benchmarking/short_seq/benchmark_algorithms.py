@@ -704,7 +704,6 @@ def run_hybrid_search_offline_to_xlsx(
             "total_nupack_calls": int(total_nupack_calls),
         },
         extra_metadata={
-            "best_generation_result_size": len(selected_sequence_data),
             "stopped_reason": stopped_reason,
         },
         extra_sheets={"search_progress": generation_data},

@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # 1) Set a random seed for reproducibility
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
-    REPORT_NAME = "naive_search_16mers_test.xlsx"
+    REPORT_NAME = "naive_search_16mers_25C.xlsx"
     ONOFF_PLOT_NAME = "naive_16mer_ortho_energies_test.pdf"
     SELF_PLOT_NAME = "naive_16mer_self_energies_test.pdf"
 
@@ -118,7 +118,6 @@ if __name__ == "__main__":
         validation_data=validation_data,
         dataset_info={},
         extra_metadata={
-            "best_generation_result_size": len(selected_sequence_data),
             "search.progress_every": progress_every,
             "search.attempts": search_result["attempts"],
             "stopped_reason": search_result["stopped_reason"],

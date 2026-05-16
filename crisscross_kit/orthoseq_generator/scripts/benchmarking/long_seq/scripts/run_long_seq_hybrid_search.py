@@ -178,7 +178,6 @@ def main():
         dataset_info={},
         extra_metadata={
             "benchmark_name": "long_seq",
-            "best_generation_result_size": len(selected_sequence_data),
             "stopped_reason": search_result["stopped_reason"],
         },
     )

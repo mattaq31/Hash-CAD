@@ -43,6 +43,7 @@ RUN_METADATA_KEY_ORDER = [
     "search.vc_max_iterations",
     "search.initial_fresh_pair_count",
     "search.search_duration_s",
+    "stopped_reason",
     "nupack.material",
     "nupack.celsius",
     "nupack.sodium",

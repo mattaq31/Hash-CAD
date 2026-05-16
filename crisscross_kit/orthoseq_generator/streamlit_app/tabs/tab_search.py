@@ -280,7 +280,6 @@ def render_search_tab(registry_factory, nupack_params):
                     seed_verified=seed_verified,
                     dataset_info={},
                     extra_metadata={
-                        "best_generation_result_size": len(selected_sequence_data),
                         "stopped_reason": search_run_data["stopped_reason"],
                     },
                 )

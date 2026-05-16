@@ -11,6 +11,43 @@ logger.addHandler(logging.NullHandler())
 
 
 
+def cleanup_vertex_cover(E, vertex_cover):
+    """
+    Remove redundant vertices from a full vertex cover.
+
+    A vertex is redundant if every edge incident to it remains covered after
+    removing that vertex from the cover. This helper operates on the full edge
+    set `E`, not on a partial uncovered-edge subproblem.
+
+    :param E: Full edge set of the graph.
+    :type E: iterable of tuple
+
+    :param vertex_cover: Candidate full vertex cover to minimize.
+    :type vertex_cover: set
+
+    :returns: Cleaned vertex cover with redundant vertices removed.
+    :rtype: set
+    """
+    if not vertex_cover:
+        return vertex_cover
+
+    for v in list(vertex_cover):
+        cover_without_v = vertex_cover - {v}
+        can_remove = True
+
+        for u, w in E:
+            if u == v or w == v:
+                other = w if u == v else u
+                if other not in cover_without_v:
+                    can_remove = False
+                    break
+
+        if can_remove:
+            vertex_cover.remove(v)
+
+    return vertex_cover
+
+
 def greedy_vertex_cover_heuristic(E, avoid_V=None, cleanup=True):
         """
         This function is the core of the sequence search algorithm. It’s a heuristic approach
@@ -128,25 +165,7 @@ def greedy_vertex_cover_heuristic(E, avoid_V=None, cleanup=True):
                     adj_list.pop(neighbor)
 
         if cleanup and vertex_cover:
-            # Try to remove redundant vertices without uncovering any edge.
-            # We iterate over a copy so we can safely mutate `vertex_cover`.
-            for v in list(vertex_cover):
-                # Hypothetical cover if we drop v.
-                cover_without_v = vertex_cover - {v}
-                can_remove = True
-
-                # If any edge incident to v would be uncovered after removing v,
-                # then v must stay in the cover.
-                for u, w in E:
-                    if u == v or w == v:
-                        # Pick the non-v endpoint of the edge (u, w).
-                        other = w if u == v else u  # inline if: if v is u, take w; otherwise take u
-                        if other not in cover_without_v:
-                            can_remove = False
-                            break
-
-                if can_remove:
-                    vertex_cover.remove(v)
+            vertex_cover = cleanup_vertex_cover(E, vertex_cover)
 
         return vertex_cover
 
@@ -299,8 +318,9 @@ def iterative_vertex_cover_refinement(V, E, avoid_V=None, num_vertices_to_remove
     2. Repeat up to `max_iterations`:
        a. Remove `num_vertices_to_remove` random vertices from the current best cover.
        b. Find uncovered edges and re-cover them via the greedy heuristic.
-       c. If the repaired cover is no larger than the best-so-far cover, keep it.
-       d. Optionally print progress.
+       c. Clean the repaired full cover against the full graph.
+       d. If the repaired cover is no larger than the best-so-far cover, keep it.
+       e. Optionally print progress.
 
     Notes
     -----
@@ -354,8 +374,9 @@ def iterative_vertex_cover_refinement(V, E, avoid_V=None, num_vertices_to_remove
         candidate_cover -= vertices_to_remove
 
         uncovered_edges = find_uncovered_edges(E, candidate_cover)
-        additional_cover = greedy_vertex_cover_heuristic(uncovered_edges, avoid_V=None)
+        additional_cover = greedy_vertex_cover_heuristic(uncovered_edges, avoid_V=None, cleanup=False)
         candidate_cover |= additional_cover
+        candidate_cover = cleanup_vertex_cover(E, candidate_cover)
 
         if len(candidate_cover) < len(best_vertex_cover):
             best_vertex_cover = candidate_cover.copy()
