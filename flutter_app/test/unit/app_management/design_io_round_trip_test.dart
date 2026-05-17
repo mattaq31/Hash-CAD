@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hash_cad/app_management/design_io/design_io_constants.dart';
 import 'package:hash_cad/app_management/design_io/design_export.dart';
 import 'package:hash_cad/app_management/design_io/design_import.dart';
-import 'package:hash_cad/app_management/design_io/excel_utilities.dart';
+import 'package:hash_cad/crisscross_core/fluorophore.dart';
+
+import '../../helpers/design_state_test_factory.dart';
 
 /// Builds a minimal valid #-CAD Excel workbook in memory.
 ///
@@ -253,6 +255,45 @@ void main() {
       final plateRows = result.inputPlateData!['TestPlate']!;
       final headerRow = plateRows.first.map((e) => e.toString()).toList();
       expect(headerRow.contains('compatibility'), isTrue);
+    });
+
+    test('round-trips fluorophore palette and phantom handle tags', () async {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      final baseSlat = state.slats.values.single;
+      state.addFluorophore(Fluorophore(name: 'Cy3', shape: FluorophoreShape.star));
+      baseSlat.setPlaceholderHandle(5, 5, '7', 'ASSEMBLY_HANDLE');
+      state.assignFluorophoreToHandle((baseSlat.id, 5, 5), 'Cy3');
+
+      final phantomCoordinates = <int, Map<int, Offset>>{
+        1: {
+          for (var entry in baseSlat.slatPositionToCoordinate.entries) entry.key: entry.value + const Offset(0, 40),
+        }
+      };
+      state.addPhantomSlats(baseSlat.layer, phantomCoordinates, {1: baseSlat});
+
+      final workbook = buildDesignWorkbook(
+        state.slats,
+        state.layerMap,
+        state.cargoPalette,
+        state.occupiedCargoPoints,
+        state.seedRoster,
+        state.assemblyLinkManager,
+        state.gridSize,
+        state.gridMode,
+        state.designName,
+        groupConfigurations: state.groupConfigurations,
+        fluorophorePalette: state.fluorophorePalette,
+      );
+
+      final bytes = Uint8List.fromList(workbook.encode()!);
+      final result = await parseDesignInIsolate(bytes);
+
+      expect(result.errorCode, isEmpty);
+      expect(result.fluorophorePalette['Cy3']?.shape, FluorophoreShape.star);
+      expect(result.slats['A-I1']!.h5Handles[5]!['fluorophore'], 'Cy3');
+
+      final importedPhantom = result.slats.values.firstWhere((slat) => slat.phantomParent == 'A-I1');
+      expect(importedPhantom.h5Handles[5]!['fluorophore'], 'Cy3');
     });
 
     test('returns ERR_GENERAL for missing metadata sheet', () async {

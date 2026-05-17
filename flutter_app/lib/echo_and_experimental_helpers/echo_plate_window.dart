@@ -388,17 +388,25 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     // Determine if all selected slats share the same manual handle config
     final mixedConfig = !_layoutState!.selectedHaveSameManualConfig(_selectedWells);
 
-    // Get current manual positions from the first selected slat
-    Set<(int, int)> currentPositions = {};
+    // Collect distinct slat IDs from the selection
+    final selectedSlatIds = <String>{};
     for (var key in _selectedWells) {
       final parts = key.split(':');
       final plate = int.parse(parts[0]);
       final well = parts[1];
       final slatId = _layoutState!.plateAssignments[plate]?[well];
-      if (slatId != null) {
-        currentPositions = _layoutState!.getManualHandles(slatId);
-        break;
-      }
+      if (slatId != null) selectedSlatIds.add(baseSlatId(slatId));
+    }
+
+    final multipleSlatsSelected = selectedSlatIds.length > 1;
+
+    // Get current manual positions and handle data from the first selected slat
+    Set<(int, int)> currentPositions = {};
+    Slat? firstSlat;
+    for (var slatId in selectedSlatIds) {
+      currentPositions = _layoutState!.getManualHandles(slatId);
+      firstSlat = appState.slats[slatId];
+      break;
     }
 
     _dialogOpen = true;
@@ -406,6 +414,10 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       context,
       currentManualPositions: currentPositions,
       mixedConfig: mixedConfig,
+      h5Handles: firstSlat?.h5Handles,
+      h2Handles: firstSlat?.h2Handles,
+      multipleSlatsSelected: multipleSlatsSelected,
+      slatName: firstSlat != null ? slatDisplayName(firstSlat, appState.layerMap) : null,
     );
     _dialogOpen = false;
 

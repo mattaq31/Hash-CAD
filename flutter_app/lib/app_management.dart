@@ -28,3 +28,4 @@ export 'app_management/design_state_mixins/design_state_seed_mixin.dart';
 export 'app_management/design_state_mixins/design_state_plate_mixin.dart';
 export 'app_management/design_state_mixins/design_state_handle_link_mixin.dart';
 export 'app_management/design_state_mixins/design_state_grouping_mixin.dart';
+export 'app_management/design_state_mixins/design_state_fluorophore_mixin.dart';

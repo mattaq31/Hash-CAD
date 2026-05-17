@@ -12,6 +12,7 @@ const Map<String, int> handleCategoryColors = {
   'SEED': 0xFF4CAF50, // green
   'CARGO': 0xFF2196F3, // blue
   'MANUAL': 0xFFFF9800, // orange
+  'FLUOROPHORE': 0xFF9C27B0, // deep purple
 };
 
 const int emptyCategoryColorHex = 0xFFE0E0E0; // grey.shade300

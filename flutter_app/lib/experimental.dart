@@ -32,3 +32,4 @@ export 'echo_and_experimental_helpers/echo_barcode_painter.dart';
 export 'echo_and_experimental_helpers/echo_well_config_dialog.dart';
 export 'echo_and_experimental_helpers/manual_handle_dialog.dart';
 export 'echo_and_experimental_helpers/mass_manual_handle_dialog.dart';
+export 'echo_and_experimental_helpers/mass_fluorophore_dialog.dart';

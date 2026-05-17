@@ -4,4 +4,5 @@
 library dialogs;
 
 export 'dialogs/alert_window.dart';
+export 'dialogs/fluorophore_library_dialog.dart';
 export 'dialogs/update_dialog.dart';

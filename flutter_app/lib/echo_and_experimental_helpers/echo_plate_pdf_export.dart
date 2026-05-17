@@ -47,7 +47,7 @@ const List<(String, int)> _legendEntries = [
   ('Seed', 0xFF4CAF50),
   ('Cargo', 0xFF2196F3),
   ('Manual', 0xFFFF9800),
-  ('Undefined', 0xFFE040FB),
+  ('Fluorophore', 0xFF9C27B0),
 ];
 
 // ---------------------------------------------------------------------------

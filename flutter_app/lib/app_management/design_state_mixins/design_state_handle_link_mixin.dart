@@ -583,6 +583,16 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
     var slat = slats[key.$1];
     if (slat == null) return;
 
+    void clearBlockedFluorophore(HandleKey blockKey) {
+      final baseId = slat!.phantomParent ?? blockKey.$1;
+      final affectedSlatIds = [baseId, ...phantomMap[baseId]?.values ?? const <String>[]];
+      for (var affectedSlatId in affectedSlatIds) {
+        final affectedSlat = slats[affectedSlatId];
+        if (affectedSlat == null) continue;
+        getHandleDict(affectedSlat, blockKey.$3)[blockKey.$2]?.remove('fluorophore');
+      }
+    }
+
     if (assemblyLinkManager.handleBlocks.contains(key)) {
       // Unblock - delete the placeholder and remove from blocks list
       slat.removeHandle(key.$2, key.$3);
@@ -591,6 +601,9 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
       // Block - register the block first, then propagate via smartSetHandle
       var handleDict = getHandleDict(slat, key.$3);
       String category = handleDict[key.$2]?['category'] ?? (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
+
+      // Clear fluorophore on block
+      clearBlockedFluorophore(key);
 
       assemblyLinkManager.addBlock(key);
       // smartSetHandle propagation will set '0' here and remove (not block) the adjacent handle

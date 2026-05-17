@@ -35,22 +35,14 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
         if (entry.value['plate'] == plateName && entry.value['placeholder'] != true) {
           final value = entry.value['value'] as String? ?? '';
           final category = entry.value['category'] as String? ?? '';
-          slat.h2Handles[entry.key] = {'value': value, 'category': category, 'placeholder': true};
-          final inputId = 'handle-${entry.key}-h2';
-          if (!slat.placeholderList.contains(inputId)) {
-            slat.placeholderList.add(inputId);
-          }
+          slat.setPlaceholderHandle(entry.key, 2, value, category);
         }
       }
       for (var entry in slat.h5Handles.entries.toList()) {
         if (entry.value['plate'] == plateName && entry.value['placeholder'] != true) {
           final value = entry.value['value'] as String? ?? '';
           final category = entry.value['category'] as String? ?? '';
-          slat.h5Handles[entry.key] = {'value': value, 'category': category, 'placeholder': true};
-          final inputId = 'handle-${entry.key}-h5';
-          if (!slat.placeholderList.contains(inputId)) {
-            slat.placeholderList.add(inputId);
-          }
+          slat.setPlaceholderHandle(entry.key, 5, value, category);
         }
       }
     }
@@ -83,7 +75,7 @@ mixin DesignStatePlateMixin on ChangeNotifier, DesignStateContract {
     }
 
     void assignHandleIfPresent(Slat slat, int posn, int side, Map<int, Map<String, dynamic>> handles) {
-      final requiredCompatibility = getRequiredStapleCompatibility(slat.slatType, posn, side);
+      final requiredCompatibility = getEffectiveCompatibility(slat.slatType, posn, side, slat.id);
 
       if (!handles.containsKey(posn)) {
         if (plateStack.contains('FLAT', posn, side, 'BLANK', compatibility: requiredCompatibility)) {
