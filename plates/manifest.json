@@ -116,6 +116,11 @@
       "category": "cargo_plates"
     },
     {
+      "name": "P3907_MAD_Double-Barrel_position16",
+      "path": "double_barrel_plates/P3907_MAD_Double-Barrel_position16.xlsx",
+      "category": "double_barrel_plates"
+    },
+    {
       "name": "sw_src002_slatcore",
       "path": "flat_staple_plates/sw_src002_slatcore.xlsx",
       "category": "flat_staple_plates"
