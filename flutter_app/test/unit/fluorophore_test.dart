@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hash_cad/app_management/shared_app_state.dart';
 import 'package:hash_cad/crisscross_core/fluorophore.dart';
 import 'package:hash_cad/echo_and_experimental_helpers/echo_barcode_painter.dart';
+import 'package:hash_cad/echo_and_experimental_helpers/echo_category_colors.dart';
 
 import '../helpers/design_state_test_factory.dart';
 
@@ -286,6 +287,12 @@ void main() {
     test('effectiveCategoryForHandle prioritizes fluorophore marker', () {
       final handle = <String, dynamic>{'value': '3', 'category': 'ASSEMBLY_HANDLE', 'fluorophore': 'Cy3'};
       expect(HandleBarcodePainter.effectiveCategoryForHandle(handle), 'FLUOROPHORE');
+    });
+
+    test('effectiveEchoHandleCategory is shared by PDF export and painter logic', () {
+      final handle = <String, dynamic>{'value': '3', 'category': 'ASSEMBLY_HANDLE', 'fluorophore': 'Cy3'};
+      expect(effectiveEchoHandleCategory(handle), 'FLUOROPHORE');
+      expect(HandleBarcodePainter.effectiveCategoryForHandle(handle), effectiveEchoHandleCategory(handle));
     });
 
     test('shouldRepaint detects fluorophore-only mutation on shared handle maps', () {

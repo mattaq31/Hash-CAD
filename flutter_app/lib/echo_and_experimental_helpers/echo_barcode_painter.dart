@@ -24,17 +24,7 @@ class HandleBarcodePainter extends CustomPainter {
 
   /// Returns the effective display category for a handle in the barcode view.
   /// Priority: fluorophore > blocked-as-flat > normal category.
-  static String? effectiveCategoryForHandle(Map<String, dynamic>? handle) {
-    if (handle == null) return null;
-    final category = handle['category'] as String?;
-    if (handle['fluorophore'] != null && category != null && category.contains('ASSEMBLY')) {
-      return 'FLUOROPHORE';
-    }
-    if (category != null && handle['value'] == '0' && (category == 'ASSEMBLY_HANDLE' || category == 'ASSEMBLY_ANTIHANDLE')) {
-      return 'FLAT';
-    }
-    return category;
-  }
+  static String? effectiveCategoryForHandle(Map<String, dynamic>? handle) => effectiveEchoHandleCategory(handle);
 
   static int _fingerprintHandleMap(Map<int, Map<String, dynamic>> handles) {
     final sortedKeys = handles.keys.toList()..sort();

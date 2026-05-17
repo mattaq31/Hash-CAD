@@ -545,7 +545,7 @@ pw.Widget _buildPdfBarcodeRow(
           height: height,
           color: (manualPositions != null && manualPositions.contains((helix, i + 1)))
               ? PdfColor.fromInt(0xFFFF9800)
-              : pdfCategoryColor(handles[i + 1]?['category'] as String?),
+              : pdfCategoryColor(effectiveEchoHandleCategory(handles[i + 1])),
         ),
     ],
   );
