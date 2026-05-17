@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/cargo.dart';
+import '../../crisscross_core/fluorophore.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/common_utilities.dart';
@@ -89,7 +90,11 @@ mixin DesignStateContract on ChangeNotifier {
   set assemblyLinkManager(HandleLinkManager value);
   Map<String, Cargo> get cargoPalette;
   set cargoPalette(Map<String, Cargo> value);
+  Map<String, Fluorophore> get fluorophorePalette;
+  set fluorophorePalette(Map<String, Fluorophore> value);
   PlateLibrary get plateStack;
+  String? get plateCompatibilityWarning;
+  set plateCompatibilityWarning(String? value);
   PlateLayoutState? get echoPlateLayoutState;
   set echoPlateLayoutState(PlateLayoutState? value);
   bool get echoPlateLayoutFromImport;
@@ -250,4 +255,27 @@ mixin DesignStateContract on ChangeNotifier {
   void cleanupDeletedSlat(String slatId);
   void resetGroupState();
   Color? resolveGroupColor(String slatId);
+
+  // === Methods from DesignStateFluorophoreMixin ===
+
+  /// Adds a new fluorophore to the per-design palette.
+  void addFluorophore(Fluorophore fluorophore);
+  /// Renames a fluorophore and cascades to all tagged handles.
+  void renameFluorophore(String oldName, String newName);
+  /// Deletes a fluorophore and clears it from all tagged handles.
+  void deleteFluorophore(String name);
+  /// Updates the visual marker shape of a fluorophore.
+  void updateFluorophoreShape(String name, FluorophoreShape shape);
+  /// Assigns a fluorophore tag to the handle at [key].
+  void assignFluorophoreToHandle(HandleKey key, String fluorophoreName);
+  /// Removes the fluorophore tag from the handle at [key].
+  void clearFluorophoreFromHandle(HandleKey key);
+  /// Assigns a fluorophore to multiple handles across matching slats.
+  void massAssignFluorophore(Map<String, Set<(int, int)>> perSlatPositions, String fluorophoreName);
+  /// Clears fluorophore tags from multiple handles across matching slats.
+  void massClearFluorophore(Map<String, Set<(int, int)>> perSlatPositions);
+  /// Removes all fluorophore tags from every handle in the design.
+  void clearAllFluorophoreAssignments();
+  /// Returns the effective compatibility token (fluorophore name or standard compatibility).
+  String? getEffectiveCompatibility(String slatType, int position, int side, String slatId);
 }

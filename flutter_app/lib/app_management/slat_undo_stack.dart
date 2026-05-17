@@ -1,6 +1,7 @@
 import '../crisscross_core/slats.dart';
 import 'package:flutter/material.dart';
 import '../crisscross_core/cargo.dart';
+import '../crisscross_core/fluorophore.dart';
 import '../crisscross_core/seed.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
 import 'design_state_mixins/design_state_grouping_mixin.dart';
@@ -11,6 +12,7 @@ class DesignSaveState {
   final Map<String, Map<String, dynamic>> layerMap;
   final Map<String, dynamic> layerMetaData;
   final Map<String, Cargo> cargoPalette;
+  final Map<String, Fluorophore> fluorophorePalette;
   final Map<String, Map<Offset, String>> occupiedCargoPoints;
   final Map<(String, String, Offset), Seed> seedRoster;
   final Map<String, Map<int, String>> phantomMap;
@@ -25,6 +27,7 @@ class DesignSaveState {
     required this.layerMap,
     required this.layerMetaData,
     required this.cargoPalette,
+    required this.fluorophorePalette,
     required this.occupiedCargoPoints,
     required this.seedRoster,
     required this.phantomMap,
@@ -49,6 +52,9 @@ class DesignSaveState {
       layerMetaData: Map.from(layerMetaData),
       cargoPalette: {
         for (var e in cargoPalette.entries) e.key: e.value // copy() if needed
+      },
+      fluorophorePalette: {
+        for (var e in fluorophorePalette.entries) e.key: e.value
       },
       occupiedCargoPoints: {
         for (var e in occupiedCargoPoints.entries) e.key: Map.from(e.value)

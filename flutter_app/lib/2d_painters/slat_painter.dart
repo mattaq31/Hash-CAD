@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../crisscross_core/fluorophore.dart';
 import '../crisscross_core/slats.dart';
 import '../echo_and_experimental_helpers/echo_plate_constants.dart' show slatDisplayName;
 import 'helper_functions.dart';
@@ -728,16 +729,71 @@ class SlatPainter extends CustomPainter {
                 ..color = fontColor
                 ..style = PaintingStyle.fill;
               canvas.drawCircle(
-                Offset(rect.left + dotRadius + 0.5, rect.top + dotRadius + 0.5),
+                Offset(rect.left + dotRadius * 1.5, rect.top + dotRadius + 0.5),
                 dotRadius,
                 paint,
               );
             }
 
+            // Helper to draw fluorophore shape marker (bottom-left corner)
+            void drawFluorophoreMarker(Rect rect, FluorophoreShape shape, Color fontColor) {
+              final size = rect.width * 0.05;
+              final center = Offset(rect.left + size * 1.5, rect.bottom - size * 2.5);
+              final paint = Paint()..color = fontColor..style = PaintingStyle.fill;
+
+              switch (shape) {
+                case FluorophoreShape.square:
+                  canvas.drawRect(Rect.fromCenter(center: center, width: size * 2, height: size * 2), paint);
+                  break;
+                case FluorophoreShape.dot:
+                  canvas.drawCircle(center, size, paint);
+                  break;
+                case FluorophoreShape.diamond:
+                  final dSize = size * 1.3;
+                  final path = Path()
+                    ..moveTo(center.dx, center.dy - dSize)
+                    ..lineTo(center.dx + dSize, center.dy)
+                    ..lineTo(center.dx, center.dy + dSize)
+                    ..lineTo(center.dx - dSize, center.dy)
+                    ..close();
+                  canvas.drawPath(path, paint);
+                  break;
+                case FluorophoreShape.star:
+                  final outerRadius = size * 1.4;
+                  final innerRadius = outerRadius * 0.45;
+                  final path = Path();
+                  for (int j = 0; j < 8; j++) {
+                    final radius = j.isEven ? outerRadius : innerRadius;
+                    final angle = (j * pi / 4) - pi / 2;
+                    final x = center.dx + radius * cos(angle);
+                    final y = center.dy + radius * sin(angle);
+                    if (j == 0) {
+                      path.moveTo(x, y);
+                    } else {
+                      path.lineTo(x, y);
+                    }
+                  }
+                  path.close();
+                  canvas.drawPath(path, paint);
+                  break;
+              }
+            }
+
+            // Check for fluorophore markers
+            final topHandle = topSide == 5 ? h5 : h2;
+            final bottomHandle = bottomSide == 5 ? h5 : h2;
+            final topFluorophore = topHandle?['fluorophore'] as String?;
+            final bottomFluorophore = bottomHandle?['fluorophore'] as String?;
+            final topMarker = topFluorophore == null ? null : appState.fluorophorePalette[topFluorophore];
+            final bottomMarker = bottomFluorophore == null ? null : appState.fluorophorePalette[bottomFluorophore];
+
             if (!topHandleHidden) {
               drawHandleMarker(rectTop, topColor, topCategory, true, topHandleSelected);
               final topFontColor = isColorDark(topColor) ? Colors.white : Colors.black;
               if (topEnforced) drawEnforcedIndicator(rectTop, topFontColor);
+              if (topMarker != null) {
+                drawFluorophoreMarker(rectTop, topMarker.shape, topFontColor);
+              }
               if (scale >= kHandleTextMinScale) {
                 drawText(topText, Offset(position.dx, position.dy - halfHeight / 2),
                     topFontColor, halfHeight * 0.8);
@@ -747,6 +803,9 @@ class SlatPainter extends CustomPainter {
               drawHandleMarker(rectBottom, bottomColor, bottomCategory, false, bottomHandleSelected);
               final bottomFontColor = isColorDark(bottomColor) ? Colors.white : Colors.black;
               if (bottomEnforced) drawEnforcedIndicator(rectBottom, bottomFontColor);
+              if (bottomMarker != null) {
+                drawFluorophoreMarker(rectBottom, bottomMarker.shape, bottomFontColor);
+              }
               if (scale >= kHandleTextMinScale) {
                 drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2),
                     bottomFontColor, halfHeight * 0.8);
@@ -783,7 +842,7 @@ class SlatPainter extends CustomPainter {
         if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
           baselineOffset = textPainter.height + 0.5;
         } else {
-          baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic) ?? 0;
+          baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic);
         }
 
         // find the center of all coords

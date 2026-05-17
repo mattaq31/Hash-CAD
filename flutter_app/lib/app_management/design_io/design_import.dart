@@ -14,6 +14,7 @@ import 'package:path/path.dart';
 
 import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/common_utilities.dart';
+import '../../crisscross_core/fluorophore.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../design_state_mixins/design_state_handle_link_mixin.dart';
@@ -110,6 +111,7 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
     Color cargoColor = Color(int.parse('0xFF${readExcelString(metadataSheet, 'C${cargoReadStart + cargoCount}').substring(1)}'));
     cargoPalette[cargoName] = Cargo(name: cargoName, shortName: cargoShortName, color: cargoColor);
   }
+
   // ── Per-slat unique colours (optional overrides) ──
   int colorReadStart = cargoReadStart + cargoCount + 2;
   int colorCount = 0;
@@ -117,15 +119,29 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
 
   for (;; colorCount++) {
     String slatID = readExcelString(metadataSheet, 'A${colorReadStart + colorCount}').trim();
-    if (slatID.isEmpty || slatID == metaSectionGroupColorInfo) break;
+    if (slatID.isEmpty || slatID == metaSectionFluorophoreInfo || slatID == metaSectionGroupColorInfo) break;
     Color slatColor = Color(int.parse('0xFF${readExcelString(metadataSheet, 'B${colorReadStart + colorCount}').substring(1)}'));
     slatColors[slatID] = slatColor;
   }
 
+  // ── Fluorophore palette (optional): name, shape per fluorophore ──
+  Map<String, Fluorophore> fluorophorePalette = {};
+  int fluorophoreReadStart = colorReadStart + colorCount;
+  String fluorophoreMarker = readExcelString(metadataSheet, 'A$fluorophoreReadStart').trim();
+  if (fluorophoreMarker == metaSectionFluorophoreInfo) {
+    int fOffset = 2; // skip header row
+    for (;; fOffset++) {
+      String fluorName = readExcelString(metadataSheet, 'A${fluorophoreReadStart + fOffset}').trim();
+      if (fluorName.isEmpty || fluorName == metaSectionGroupColorInfo) break;
+      String shapeStr = readExcelString(metadataSheet, 'B${fluorophoreReadStart + fOffset}').trim();
+      fluorophorePalette[fluorName] = Fluorophore(name: fluorName, shape: fluorophoreShapeFromString(shapeStr));
+    }
+    fluorophoreReadStart += fOffset;
+  }
+
   // ── Group colours (optional): config name + group name + colour per group ──
-  // Stored as a map of (configName, groupName) -> Color for later application
   Map<(String, String), Color> groupColorOverrides = {};
-  int groupColorReadStart = colorReadStart + colorCount;
+  int groupColorReadStart = fluorophoreReadStart;
   String groupColorMarker = readExcelString(metadataSheet, 'A$groupColorReadStart').trim();
   if (groupColorMarker == metaSectionGroupColorInfo) {
     int gOffset = 2; // skip header row
@@ -534,11 +550,52 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
     if (inputPlateData.isEmpty) inputPlateData = null;
   }
 
+  // ── Fluorophore assignments sheet (optional) ──
+  if (excel.sheets.containsKey(fluorophoreAssignmentsSheetName)) {
+    final fluorSheet = excel[fluorophoreAssignmentsSheetName];
+    for (int r = 1; r < fluorSheet.maxRows; r++) {
+      final slatId = readExcelString(fluorSheet, '${String.fromCharCode(65 + 1)}${r + 1}').trim(); // column B
+      final helix = readExcelInt(fluorSheet, '${String.fromCharCode(65 + 2)}${r + 1}'); // column C
+      final position = readExcelInt(fluorSheet, '${String.fromCharCode(65 + 3)}${r + 1}'); // column D
+      final fluorName = readExcelString(fluorSheet, '${String.fromCharCode(65 + 4)}${r + 1}').trim(); // column E
+
+      if (slatId.isEmpty || fluorName.isEmpty) continue;
+      final slat = slats[slatId];
+      if (slat == null) continue;
+
+      final handleDict = helix == 2 ? slat.h2Handles : slat.h5Handles;
+      if (handleDict.containsKey(position)) {
+        handleDict[position]!['fluorophore'] = fluorName;
+      }
+    }
+
+    // Propagate fluorophore tags to phantom copies
+    for (var slat in slats.values) {
+      if (slat.phantomParent != null) {
+        final parent = slats[slat.phantomParent];
+        if (parent == null) continue;
+        for (var entry in parent.h2Handles.entries) {
+          final fluor = entry.value['fluorophore'];
+          if (fluor != null && slat.h2Handles.containsKey(entry.key)) {
+            slat.h2Handles[entry.key]!['fluorophore'] = fluor;
+          }
+        }
+        for (var entry in parent.h5Handles.entries) {
+          final fluor = entry.value['fluorophore'];
+          if (fluor != null && slat.h5Handles.containsKey(entry.key)) {
+            slat.h5Handles[entry.key]!['fluorophore'] = fluor;
+          }
+        }
+      }
+    }
+  }
+
   return ParsedDesignResult(
     slats: slats,
     layerMap: layerMap,
     gridMode: gridMode,
     cargoPalette: cargoPalette,
+    fluorophorePalette: fluorophorePalette,
     seedRoster: seedRoster,
     phantomMap: phantomMap,
     linkManager: linkManager,

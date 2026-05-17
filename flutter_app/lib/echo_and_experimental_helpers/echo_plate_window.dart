@@ -46,12 +46,19 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   bool _isHeaderHovered = false;
   bool _animationComplete = true;
 
-  // Multi-select
+  // Multi-select (plate wells)
   Set<String> _selectedWells = {};
   Offset? _rubberBandStart;
   Offset? _rubberBandCurrent;
   bool _isRubberBanding = false;
   bool _modifierHeld = false;
+
+  // Multi-select (sidebar slats)
+  Set<String> _selectedSidebarSlats = {};
+  int? _lastTappedSidebarIndex;
+
+  // Sidebar multi-drag hover preview
+  ({int plate, String well, int count})? _sidebarDragHover;
 
   // Auto-assign options
   bool _columnsThreeToTenOnly = false;
@@ -208,11 +215,91 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     }
   }
 
-  void _handleSidebarToWell(String slatId, int toPlate, String toWell) {
+  void _handleSidebarToWell(String slatId, int toPlate, String toWell, {List<String>? slatIds}) {
     setState(() {
-      _layoutState!.moveSlatFromSidebarToWell(slatId, toPlate, toWell);
+      if (slatIds != null && slatIds.length > 1) {
+        _placeSidebarSlatsSequentially(slatIds, toPlate, toWell);
+      } else {
+        _layoutState!.moveSlatFromSidebarToWell(slatId, toPlate, toWell);
+      }
+      _selectedSidebarSlats.clear();
+      _sidebarDragHover = null;
     });
     _saveUndoState();
+  }
+
+  /// Places multiple slats starting at the given well, filling column-first.
+  void _placeSidebarSlatsSequentially(List<String> slatIds, int startPlate, String startWell) {
+    int row = wellRow(startWell);
+    int col = wellCol(startWell);
+    int plate = startPlate;
+
+    for (var id in slatIds) {
+      if (row >= plateRows.length) {
+        // Move to next column
+        row = 0;
+        col++;
+      }
+      if (col >= plateCols.length) break;
+      final well = wellName(row, col);
+      _layoutState!.moveSlatFromSidebarToWell(id, plate, well);
+      row++;
+    }
+  }
+
+  void _handleSidebarSlatTapped(String slatId, int index) {
+    final isShiftHeld = HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftLeft) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftRight);
+    final isCmdHeld = HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.metaLeft) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.metaRight) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.controlLeft) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.controlRight);
+
+    setState(() {
+      _selectedWells.clear();
+      if (isShiftHeld && _lastTappedSidebarIndex != null) {
+        // Range select from last tapped to current
+        final start = _lastTappedSidebarIndex!.clamp(0, _layoutState!.unassignedSlats.length - 1);
+        final end = index;
+        final lo = start < end ? start : end;
+        final hi = start < end ? end : start;
+        for (var i = lo; i <= hi; i++) {
+          _selectedSidebarSlats.add(_layoutState!.unassignedSlats[i]);
+        }
+      } else if (isCmdHeld) {
+        // Toggle individual selection
+        if (_selectedSidebarSlats.contains(slatId)) {
+          _selectedSidebarSlats.remove(slatId);
+        } else {
+          _selectedSidebarSlats.add(slatId);
+        }
+      } else {
+        // Single select
+        if (_selectedSidebarSlats.contains(slatId) && _selectedSidebarSlats.length == 1) {
+          _selectedSidebarSlats.clear();
+        } else {
+          _selectedSidebarSlats = {slatId};
+        }
+      }
+      _lastTappedSidebarIndex = index;
+    });
+  }
+
+  void _handleSidebarDragHover(int plate, String well, int count) {
+    if (count <= 1) {
+      if (_sidebarDragHover != null) setState(() => _sidebarDragHover = null);
+      return;
+    }
+    final newHover = (plate: plate, well: well, count: count);
+    if (_sidebarDragHover != newHover) {
+      setState(() => _sidebarDragHover = newHover);
+    }
+  }
+
+  void _handleSidebarDragLeave() {
+    if (_sidebarDragHover != null) {
+      setState(() => _sidebarDragHover = null);
+    }
   }
 
   void _handleWellToSidebar(int fromPlate, String fromWell) {
@@ -241,6 +328,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
           splitSlatLayers: _splitSlatLayers,
           splitSlatGroups: _splitSlatGroups,
           activeGroupConfig: appState.activeGroupConfig);
+      _selectedSidebarSlats.clear();
     });
     _saveUndoState();
   }
@@ -300,17 +388,25 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     // Determine if all selected slats share the same manual handle config
     final mixedConfig = !_layoutState!.selectedHaveSameManualConfig(_selectedWells);
 
-    // Get current manual positions from the first selected slat
-    Set<(int, int)> currentPositions = {};
+    // Collect distinct slat IDs from the selection
+    final selectedSlatIds = <String>{};
     for (var key in _selectedWells) {
       final parts = key.split(':');
       final plate = int.parse(parts[0]);
       final well = parts[1];
       final slatId = _layoutState!.plateAssignments[plate]?[well];
-      if (slatId != null) {
-        currentPositions = _layoutState!.getManualHandles(slatId);
-        break;
-      }
+      if (slatId != null) selectedSlatIds.add(baseSlatId(slatId));
+    }
+
+    final multipleSlatsSelected = selectedSlatIds.length > 1;
+
+    // Get current manual positions and handle data from the first selected slat
+    Set<(int, int)> currentPositions = {};
+    Slat? firstSlat;
+    for (var slatId in selectedSlatIds) {
+      currentPositions = _layoutState!.getManualHandles(slatId);
+      firstSlat = appState.slats[slatId];
+      break;
     }
 
     _dialogOpen = true;
@@ -318,6 +414,10 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       context,
       currentManualPositions: currentPositions,
       mixedConfig: mixedConfig,
+      h5Handles: firstSlat?.h5Handles,
+      h2Handles: firstSlat?.h2Handles,
+      multipleSlatsSelected: multipleSlatsSelected,
+      slatName: firstSlat != null ? slatDisplayName(firstSlat, appState.layerMap) : null,
     );
     _dialogOpen = false;
 
@@ -600,6 +700,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftRight);
 
     setState(() {
+      _selectedSidebarSlats.clear();
       if (isShiftHeld) {
         if (isOccupied) {
           if (_selectedWells.contains(key)) {
@@ -721,6 +822,31 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   ({bool isValid, String? ghostSlatId})? _ghostStateFor(int plate, String well) {
+    // Sidebar multi-drag hover preview
+    if (_sidebarDragHover != null) {
+      if (plate != _sidebarDragHover!.plate) return null;
+      final startRow = wellRow(_sidebarDragHover!.well);
+      final startCol = wellCol(_sidebarDragHover!.well);
+      final wellRow_ = wellRow(well);
+      final wellCol_ = wellCol(well);
+
+      int row = startRow;
+      int col = startCol;
+      for (var i = 0; i < _sidebarDragHover!.count; i++) {
+        if (row == wellRow_ && col == wellCol_) {
+          return (isValid: true, ghostSlatId: null);
+        }
+        row++;
+        if (row >= plateRows.length) {
+          row = 0;
+          col++;
+        }
+        if (col >= plateCols.length) break;
+      }
+      return null;
+    }
+
+    // Group drag ghost preview
     if (_groupDragAnchor == null || _groupDragOffsets == null || _groupDragHoverWell == null) return null;
     if (plate != _groupDragHoverWell!.plate) return null;
 
@@ -957,6 +1083,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         }),
                         echoColorMode: _echoColorMode,
                         resolveGroupColor: appState.resolveGroupColor,
+                        selectedSlatIds: _selectedSidebarSlats,
+                        onSlatTapped: _handleSidebarSlatTapped,
+                        onClearSelection: () => setState(() => _selectedSidebarSlats.clear()),
                       ),
                       const VerticalDivider(width: 1, thickness: 1),
                       Expanded(
@@ -1305,6 +1434,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         onGroupDragHover: _updateGroupDragHover,
                         ghostStateFor: _ghostStateFor,
                         isSourceWellDuringGroupDrag: _isSourceWellDuringGroupDrag,
+                        onSidebarDragHover: _handleSidebarDragHover,
+                        onSidebarDragLeave: _handleSidebarDragLeave,
                         layoutState: _layoutState!,
                         plateName: _layoutState!.plateName(plateIndex),
                         plateDisplayNumber: i + 1,

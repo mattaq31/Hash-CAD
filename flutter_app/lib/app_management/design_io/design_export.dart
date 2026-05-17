@@ -12,6 +12,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:hash_cad/crisscross_core/handle_plates.dart';
 
 import '../../crisscross_core/cargo.dart';
+import '../../crisscross_core/fluorophore.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
@@ -44,7 +45,7 @@ String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
   return result;
 }
 
-/// Exports the full design state to a .xlsx workbook and prompts the user to save.
+/// Builds an in-memory .xlsx workbook for the full design state.
 ///
 /// Writes the following sheets (see [design_io_constants.dart] for naming conventions):
 ///  - `slat_layer_N` — slat placement grids with phantom slats
@@ -57,18 +58,12 @@ String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
 ///  - `output_echo_plates` — consolidated echo plate layouts and well configs (optional, from [echoPlateLayoutState])
 ///  - `input_source_plates` — all input plates in one sheet (optional, from [plateLibrary])
 ///  - `lab_metadata` — export flags and master mix config (optional)
-///
-/// Optional parameters:
-///  - [echoPlateLayoutState] — echo plate grid data for lab export
-///  - [plateLibrary] — input source plate definitions
-///  - [groupConfigurations] — slat grouping configurations with colours and membership
-///
-/// On web, triggers a browser download. On desktop, opens a native save dialog.
-void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette,
+Excel buildDesignWorkbook(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette,
     Map<String, Map<Offset, String>> occupiedCargoPoints, Map<(String, String, Offset), Seed> seedRoster, HandleLinkManager linkManager,
     double gridSize, String gridMode, String suggestedDesignName,
     {PlateLayoutState? echoPlateLayoutState, PlateLibrary? plateLibrary,
-    Map<String, GroupConfiguration>? groupConfigurations}) async {
+    Map<String, GroupConfiguration>? groupConfigurations,
+    Map<String, Fluorophore>? fluorophorePalette}) {
   Offset minPos;
   Offset maxPos;
   (minPos, maxPos) = extractGridBoundary(slats);
@@ -327,19 +322,19 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     final colWidths = <int, int>{};
 
     for (var plate in plateLibrary.plates.entries) {
+      final rawData = plate.value.exportToAllDataFormat();
+      final dataColumnCount = rawData.isNotEmpty ? rawData.first.length : 4;
+
       // Title row spanning all data columns
       final titleText = '$inputPlateTitlePrefix${plate.key}$inputPlateTitleSuffix';
       setCellValue(inputSheet, 0, currentRow, titleText, style: titleStyle);
       inputSheet.merge(
         CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
-        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
+        CellIndex.indexByColumnRow(columnIndex: dataColumnCount - 1, rowIndex: currentRow),
         customValue: TextCellValue(titleText),
       );
       inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow)).cellStyle = titleStyle;
       currentRow++;
-
-      // Plate data (header + rows)
-      final rawData = plate.value.exportToAllDataFormat();
       for (var r = 0; r < rawData.length; r++) {
         final row = rawData[r];
         for (var c = 0; c < row.length; c++) {
@@ -373,7 +368,7 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
   metadataSheet.cell(CellIndex.indexByString(metaCellMinX)).value = DoubleCellValue(minPos.dx);
   metadataSheet.cell(CellIndex.indexByString(metaCellMinY)).value = DoubleCellValue(minPos.dy);
   metadataSheet.cell(CellIndex.indexByString(metaCellMaxX)).value = DoubleCellValue(maxPos.dx);
-  metadataSheet.cell(CellIndex.indexByString(metaCellMaxY)).value = DoubleCellValue(maxPos.dx);
+  metadataSheet.cell(CellIndex.indexByString(metaCellMaxY)).value = DoubleCellValue(maxPos.dy);
 
   metadataSheet.cell(CellIndex.indexByString(metaCellLayerInterface)).value = TextCellValue(generateLayerString(layerMap));
 
@@ -439,8 +434,27 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     colorIndex += 1;
   }
 
+  // ── Metadata: fluorophore library section ──
+  int fluorophoreStartPoint = colorStartPoint + colorIndex;
+  if (fluorophorePalette != null && fluorophorePalette.isNotEmpty) {
+    metadataSheet.merge(
+        CellIndex.indexByString('A$fluorophoreStartPoint'), CellIndex.indexByString('G$fluorophoreStartPoint'), customValue: TextCellValue(metaSectionFluorophoreInfo));
+    metadataSheet.cell(CellIndex.indexByString('A$fluorophoreStartPoint')).cellStyle = CellStyle(
+      horizontalAlign: HorizontalAlign.Center,
+    );
+    metadataSheet.cell(CellIndex.indexByString('A${fluorophoreStartPoint + 1}')).value = TextCellValue('Name');
+    metadataSheet.cell(CellIndex.indexByString('B${fluorophoreStartPoint + 1}')).value = TextCellValue('Shape');
+    int fIndex = 2;
+    for (var f in fluorophorePalette.values) {
+      metadataSheet.cell(CellIndex.indexByString('A${fluorophoreStartPoint + fIndex}')).value = TextCellValue(f.name);
+      metadataSheet.cell(CellIndex.indexByString('B${fluorophoreStartPoint + fIndex}')).value = TextCellValue(fluorophoreShapeToString(f.shape));
+      fIndex += 1;
+    }
+    fluorophoreStartPoint += fIndex;
+  }
+
   // ── Metadata: group colour info section (config name + group name + colour per group) ──
-  int groupColorStartPoint = colorStartPoint + colorIndex;
+  int groupColorStartPoint = fluorophoreStartPoint;
   if (groupConfigurations != null && groupConfigurations.isNotEmpty) {
     metadataSheet.merge(CellIndex.indexByString('A$groupColorStartPoint'), CellIndex.indexByString('G$groupColorStartPoint'),
         customValue: TextCellValue(metaSectionGroupColorInfo));
@@ -478,12 +492,72 @@ void exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> lay
     labSheet.setColumnWidth(1, 16.0);
   }
 
+  // ── Fluorophore assignments sheet ──
+  final fluorophoreRows = <List<CellValue>>[];
+  for (var slat in slats.values) {
+    if (slat.phantomParent != null) continue;
+    final layerOrder = layerMap[slat.layer]!['order'] + 1;
+    for (var entry in slat.h2Handles.entries) {
+      final fluor = entry.value['fluorophore'] as String?;
+      if (fluor != null) {
+        fluorophoreRows.add([IntCellValue(layerOrder), TextCellValue(slat.id), IntCellValue(2), IntCellValue(entry.key), TextCellValue(fluor)]);
+      }
+    }
+    for (var entry in slat.h5Handles.entries) {
+      final fluor = entry.value['fluorophore'] as String?;
+      if (fluor != null) {
+        fluorophoreRows.add([IntCellValue(layerOrder), TextCellValue(slat.id), IntCellValue(5), IntCellValue(entry.key), TextCellValue(fluor)]);
+      }
+    }
+  }
+  if (fluorophoreRows.isNotEmpty) {
+    Sheet fluorSheet = excel[fluorophoreAssignmentsSheetName];
+    fluorSheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('Layer');
+    fluorSheet.cell(CellIndex.indexByString('B1')).value = TextCellValue('Slat ID');
+    fluorSheet.cell(CellIndex.indexByString('C1')).value = TextCellValue('Helix');
+    fluorSheet.cell(CellIndex.indexByString('D1')).value = TextCellValue('Position');
+    fluorSheet.cell(CellIndex.indexByString('E1')).value = TextCellValue('Fluorophore');
+    for (int r = 0; r < fluorophoreRows.length; r++) {
+      for (int c = 0; c < fluorophoreRows[r].length; c++) {
+        fluorSheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r + 1)).value = fluorophoreRows[r][c];
+      }
+    }
+  }
+
   // ── Clean up default Sheet1 and save ──
   final firstRealSheet = excel.sheets.keys.firstWhere((k) => k != 'Sheet1', orElse: () => 'Sheet1');
   if (firstRealSheet != 'Sheet1') {
     excel.setDefaultSheet(firstRealSheet);
     excel.delete('Sheet1');
   }
+
+  return excel;
+}
+
+/// Exports the full design state to a .xlsx workbook and prompts the user to save.
+///
+/// On web, triggers a browser download. On desktop, opens a native save dialog.
+Future<void> exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette,
+    Map<String, Map<Offset, String>> occupiedCargoPoints, Map<(String, String, Offset), Seed> seedRoster, HandleLinkManager linkManager,
+    double gridSize, String gridMode, String suggestedDesignName,
+    {PlateLayoutState? echoPlateLayoutState, PlateLibrary? plateLibrary,
+    Map<String, GroupConfiguration>? groupConfigurations,
+    Map<String, Fluorophore>? fluorophorePalette}) async {
+  final excel = buildDesignWorkbook(
+    slats,
+    layerMap,
+    cargoPalette,
+    occupiedCargoPoints,
+    seedRoster,
+    linkManager,
+    gridSize,
+    gridMode,
+    suggestedDesignName,
+    echoPlateLayoutState: echoPlateLayoutState,
+    plateLibrary: plateLibrary,
+    groupConfigurations: groupConfigurations,
+    fluorophorePalette: fluorophorePalette,
+  );
 
   if (kIsWeb) {
     excel.save(fileName: '$suggestedDesignName.xlsx');

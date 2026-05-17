@@ -6,6 +6,7 @@ library crisscross_core;
 
 export 'crisscross_core/slats.dart';
 export 'crisscross_core/cargo.dart';
+export 'crisscross_core/fluorophore.dart';
 export 'crisscross_core/seed.dart';
 export 'crisscross_core/handle_plates.dart';
 export 'crisscross_core/common_utilities.dart';

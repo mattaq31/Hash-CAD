@@ -28,7 +28,8 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
       return;
     }
     exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, assemblyLinkManager, gridSize, gridMode, designName,
-        echoPlateLayoutState: echoPlateLayoutState, plateLibrary: plateStack, groupConfigurations: groupConfigurations);
+        echoPlateLayoutState: echoPlateLayoutState, plateLibrary: plateStack, groupConfigurations: groupConfigurations,
+        fluorophorePalette: fluorophorePalette);
   }
 
   @override
@@ -101,6 +102,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     layerMap = newLayerMap;
     slats = newSlats;
     cargoPalette = newCargoPalette;
+    fluorophorePalette = result.fluorophorePalette;
     designName = newDesignName;
     phantomMap = newPhantomMap;
     assemblyLinkManager = newLinkManager;
@@ -216,6 +218,8 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
       plateStack.readPlatesFromRawData(result.inputPlateData!);
       syncCargoFromPlates(plateStack, cargoPalette);
     }
+
+    plateCompatibilityWarning = null;
 
     updateDesignHammingValue();
     currentlyLoadingDesign = false;

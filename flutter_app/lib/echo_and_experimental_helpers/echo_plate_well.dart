@@ -19,12 +19,14 @@ class WellWidget extends StatefulWidget {
   final ({bool isValid, String? ghostSlatId})? ghostState;
   final bool isDimmedSource;
   final void Function(int fromPlate, String fromWell, int toPlate, String toWell) onWellToWell;
-  final void Function(String slatId, int toPlate, String toWell) onSidebarToWell;
+  final void Function(String slatId, int toPlate, String toWell, {List<String>? slatIds}) onSidebarToWell;
   final VoidCallback onWellClick;
   final VoidCallback onRightClick;
   final bool isGroupDragging;
   final VoidCallback onGroupDragStart;
   final VoidCallback onGroupDragHover;
+  final void Function(int plate, String well, int count)? onSidebarDragHover;
+  final VoidCallback? onSidebarDragLeave;
   final bool isInDuplicateGroup;
   final bool showMetricView;
   final WellConfig? wellConfig;
@@ -54,6 +56,8 @@ class WellWidget extends StatefulWidget {
     required this.isGroupDragging,
     required this.onGroupDragStart,
     required this.onGroupDragHover,
+    this.onSidebarDragHover,
+    this.onSidebarDragLeave,
   });
 
   @override
@@ -261,17 +265,24 @@ class WellWidgetState extends State<WellWidget> with SingleTickerProviderStateMi
         child: DragTarget<Map<String, dynamic>>(
           onWillAcceptWithDetails: (details) {
             setState(() => _isHovered = true);
+            final data = details.data;
+            if (data['source'] == 'sidebar' && widget.onSidebarDragHover != null) {
+              final slatIds = data['slatIds'] as List<String>?;
+              widget.onSidebarDragHover!(widget.plateIndex, widget.wellName, slatIds?.length ?? 1);
+            }
             return true;
           },
           onLeave: (_) {
             setState(() => _isHovered = false);
+            widget.onSidebarDragLeave?.call();
           },
           onAcceptWithDetails: (details) {
             setState(() => _isHovered = false);
             triggerFlash();
             final data = details.data;
             if (data['source'] == 'sidebar') {
-              widget.onSidebarToWell(data['slatId'] as String, widget.plateIndex, widget.wellName);
+              final slatIds = data['slatIds'] as List<String>?;
+              widget.onSidebarToWell(data['slatId'] as String, widget.plateIndex, widget.wellName, slatIds: slatIds);
             } else {
               widget.onWellToWell(
                 data['plateIndex'] as int,

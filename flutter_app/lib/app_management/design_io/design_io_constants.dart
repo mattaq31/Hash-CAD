@@ -21,6 +21,7 @@ const String inputPlateSheetName = 'input_source_plates';
 const String inputPlateTitlePrefix = '=== PLATE: ';
 const String inputPlateTitleSuffix = ' ===';
 const String labMetadataSheetName = 'lab_metadata';
+const String fluorophoreAssignmentsSheetName = 'assembly_handle_fluorophores';
 
 // --- Sheet name builders ---
 String slatLayerSheetName(int layerOrder) => '$slatLayerPrefix${layerOrder + 1}';
@@ -46,6 +47,7 @@ const int metaLayerStartRow = 8;
 // --- Metadata section markers ---
 const String metaSectionLayerInfo = 'LAYER INFO';
 const String metaSectionCargoInfo = 'CARGO INFO';
+const String metaSectionFluorophoreInfo = 'FLUOROPHORE INFO';
 const String metaSectionSlatColorInfo = 'UNIQUE SLAT COLOUR INFO';
 const String metaSectionGroupColorInfo = 'GROUP COLOUR INFO';
 

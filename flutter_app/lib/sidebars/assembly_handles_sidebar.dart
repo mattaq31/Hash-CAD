@@ -12,6 +12,8 @@ import '../crisscross_core/common_utilities.dart';
 import '../graphics/honeycomb_pictogram.dart';
 import 'layer_manager.dart';
 import '../dialogs/alert_window.dart';
+import '../dialogs/fluorophore_library_dialog.dart';
+import '../echo_and_experimental_helpers/mass_fluorophore_dialog.dart';
 
 
 Color getValencyColor(int valency) {
@@ -29,7 +31,7 @@ class AssemblyHandleDesignTools extends StatefulWidget {
   State<AssemblyHandleDesignTools> createState() => _AssemblyHandleDesignTools();
 }
 
-class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with WidgetsBindingObserver {
+class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
   TextEditingController handleAddTextController = TextEditingController();
   FocusNode handleChangeFocusNode = FocusNode();
   FocusNode defaultHandleFocusNode = FocusNode();
@@ -37,8 +39,8 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
   // State for new UI mockup segmented controls
   bool preventSelfComplementarySlats = false;
   String _updateScope = 'all'; // 'all' or 'interfaces'
-  String _handleAttachment = 'top'; // 'top' or 'bottom'
   final TextEditingController _defaultHandleController = TextEditingController();
+  final ScrollController _fluorophoreScrollController = ScrollController();
 
   @override
   void initState() {
@@ -59,6 +61,16 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         }
       });      
     });
+  }
+
+  @override
+  void dispose() {
+    handleAddTextController.dispose();
+    handleChangeFocusNode.dispose();
+    defaultHandleFocusNode.dispose();
+    _defaultHandleController.dispose();
+    _fluorophoreScrollController.dispose();
+    super.dispose();
   }
 
   void _updateHandleCount(ServerState serverState) {
@@ -287,9 +299,36 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       SizedBox(height: 10),
       Divider(thickness: 1, color: Colors.grey.shade200),
 
-      // Section 2: Manual Editing
-      Text("Manual Editing", style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+      // Section 2: Manual Editing (with fluorophore toggle)
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text("Manual Editing", style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+          IconButton(
+            tooltip: actionState.fluorophoreEditMode ? 'Return to manual handles' : 'Fluorophore editing',
+            onPressed: () => actionState.setFluorophoreEditMode(!actionState.fluorophoreEditMode),
+            icon: Icon(Icons.highlight, size: 20),
+            style: IconButton.styleFrom(
+              backgroundColor: actionState.fluorophoreEditMode
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor: actionState.fluorophoreEditMode
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : null,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.all(6),
+              minimumSize: const Size(32, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ],
+      ),
       SizedBox(height: 10),
+
+      // Fluorophore editing panel (shown when toggle is active)
+      if (actionState.fluorophoreEditMode) ...[
+        _buildFluorophoreEditPanel(context, appState, actionState),
+      ] else ...[
 
 
       // Row 1: Add/Delete/Move | Slat Linker | Link/Unlink/Block
@@ -570,7 +609,6 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               IconButton(
                 tooltip: 'Attach to top of slat',
                 onPressed: () {
-                  setState(() => _handleAttachment = 'top');
                   actionState.updateAssemblyAttachMode('top');
                 },
                 icon: Icon(Icons.arrow_upward, size: 16),
@@ -591,7 +629,6 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
               IconButton(
                 tooltip: 'Attach to bottom of slat',
                 onPressed: () {
-                  setState(() => _handleAttachment = 'bottom');
                   actionState.updateAssemblyAttachMode('bottom');
                 },
                 icon: Icon(Icons.arrow_downward, size: 16),
@@ -692,6 +729,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
         ],
       ),
       SizedBox(height: 5),
+      ], // end of else (normal manual editing)
       Divider(thickness: 2, color: Colors.grey.shade300),
       Text("Parasitic Interactions", textAlign: TextAlign.center,
           style: TextStyle(
@@ -794,5 +832,316 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> with W
       SizedBox(height: 10),
       Divider(thickness: 2, color: Colors.grey.shade300),
     ]);
+  }
+
+  /// Builds the fluorophore editing panel shown when fluorophoreEditMode is active.
+  Widget _buildFluorophoreEditPanel(BuildContext context, DesignState appState, ActionState actionState) {
+    final palette = appState.fluorophorePalette;
+    final selected = actionState.selectedFluorophore;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Edit Library + Mass Edit buttons (above library)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.icon(
+              onPressed: () async {
+                final result = await showFluorophoreLibraryDialog(context, palette);
+                if (result != null) {
+                  _applyLibraryChanges(appState, actionState, result);
+                }
+              },
+              icon: const Icon(Icons.edit, size: 16),
+              label: const Text('Edit Library', style: TextStyle(fontSize: 14)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 36),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: () async {
+                final result = await showMassFluorophoreDialog(
+                  context,
+                  slats: appState.slats,
+                  fluorophorePalette: palette,
+                  activeFluorophore: selected,
+                );
+                if (result != null) _applyMassResult(appState, result);
+              },
+              icon: const Icon(Icons.format_paint, size: 16),
+              label: const Text('Mass Edit', style: TextStyle(fontSize: 14)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 36),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Fluorophore list + helix side selector side by side (centered)
+        SizedBox(
+          height: 120,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Fluorophore vertical list
+                SizedBox(
+                  width: 160,
+                  child: palette.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text('No fluorophores defined.\nUse "Edit Library" to add some.',
+                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                        )
+                      : Scrollbar(
+                          controller: _fluorophoreScrollController,
+                          thumbVisibility: palette.length > 4,
+                          child: ListView(
+                            controller: _fluorophoreScrollController,
+                            shrinkWrap: true,
+                            children: palette.values.map((f) => InkWell(
+                              onTap: () => actionState.setSelectedFluorophore(
+                                  selected == f.name ? null : f.name),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: selected == f.name
+                                      ? Theme.of(context).colorScheme.primaryContainer
+                                      : null,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    fluorophoreShapeIcon(f.shape, size: 14),
+                                    const SizedBox(width: 6),
+                                    Text(f.name, style: const TextStyle(fontSize: 14)),
+                                  ],
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 12),
+                // Helix side selector
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    HoneycombCustomPainterWidget(
+                      color: Colors.grey.shade400,
+                      size: 8,
+                      highlightColor: Theme.of(context).colorScheme.primary,
+                      highlightTop: actionState.assemblyAttachMode == 'top',
+                      highlightBottom: actionState.assemblyAttachMode == 'bottom',
+                    ),
+                    const SizedBox(width: 4),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Attach to top of slat',
+                          onPressed: () {
+                            actionState.updateAssemblyAttachMode('top');
+                          },
+                          icon: const Icon(Icons.arrow_upward, size: 16),
+                          style: IconButton.styleFrom(
+                            backgroundColor: actionState.assemblyAttachMode == 'top'
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.primaryContainer,
+                            foregroundColor: actionState.assemblyAttachMode == 'top'
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : null,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            padding: const EdgeInsets.all(4),
+                            minimumSize: const Size(28, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        IconButton(
+                          tooltip: 'Attach to bottom of slat',
+                          onPressed: () {
+                            actionState.updateAssemblyAttachMode('bottom');
+                          },
+                          icon: const Icon(Icons.arrow_downward, size: 16),
+                          style: IconButton.styleFrom(
+                            backgroundColor: actionState.assemblyAttachMode == 'bottom'
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.primaryContainer,
+                            foregroundColor: actionState.assemblyAttachMode == 'bottom'
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : null,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            padding: const EdgeInsets.all(4),
+                            minimumSize: const Size(28, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Action buttons
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.icon(
+              onPressed: (selected != null && appState.selectedAssemblyPositions.isNotEmpty) ? () {
+                _applyFluorophoreToSelection(appState, actionState);
+              } : null,
+              icon: const Icon(Icons.check, size: 16),
+              label: const Text('Assign', style: TextStyle(fontSize: 14)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 36),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: appState.selectedAssemblyPositions.isNotEmpty ? () {
+                _clearFluorophoreFromSelection(appState, actionState);
+              } : null,
+              icon: const Icon(Icons.clear, size: 16),
+              label: const Text('Clear', style: TextStyle(fontSize: 14)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 36),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // Clear All button
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.icon(
+              onPressed: palette.isNotEmpty ? () {
+                appState.clearAllFluorophoreAssignments();
+              } : null,
+              icon: const Icon(Icons.delete_sweep, size: 16),
+              label: const Text('Clear All', style: TextStyle(fontSize: 14)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 36),
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  int _selectedAssemblySide(DesignState appState, ActionState actionState) {
+    final helixKey = actionState.assemblyAttachMode == 'top' ? 'top_helix' : 'bottom_helix';
+    return appState.layerMap[appState.selectedLayerKey]![helixKey] == 'H5' ? 5 : 2;
+  }
+
+  Iterable<HandleKey> _selectedAssemblyHandleKeys(DesignState appState, ActionState actionState) sync* {
+    final side = _selectedAssemblySide(appState, actionState);
+    final occupiedPoints = appState.occupiedGridPoints[appState.selectedLayerKey];
+    if (occupiedPoints == null) return;
+
+    for (var coord in appState.selectedAssemblyPositions) {
+      final slatId = occupiedPoints[coord];
+      if (slatId == null || slatId == 'SEED') continue;
+
+      final slat = appState.slats[slatId];
+      final position = slat?.slatCoordinateToPosition[coord];
+      if (slat == null || position == null) continue;
+
+      yield (slat.id, position, side);
+    }
+  }
+
+  /// Applies the selected fluorophore to all currently selected assembly handle positions.
+  void _applyFluorophoreToSelection(DesignState appState, ActionState actionState) {
+    final fluorName = actionState.selectedFluorophore;
+    if (fluorName == null) return;
+
+    for (var key in _selectedAssemblyHandleKeys(appState, actionState)) {
+      appState.assignFluorophoreToHandle(key, fluorName);
+    }
+  }
+
+  /// Clears fluorophore from all currently selected assembly handle positions.
+  void _clearFluorophoreFromSelection(DesignState appState, ActionState actionState) {
+    for (var key in _selectedAssemblyHandleKeys(appState, actionState)) {
+      appState.clearFluorophoreFromHandle(key);
+    }
+  }
+
+  /// Applies library changes from the dialog, including rename cascades.
+  void _applyLibraryChanges(DesignState appState, ActionState actionState, FluorophoreLibraryEditResult result) {
+    final selectedName = actionState.selectedFluorophore;
+
+    final pendingRenames = result.renamedNames.entries.where((entry) {
+      return appState.fluorophorePalette.containsKey(entry.key) && entry.key != entry.value;
+    }).toList();
+
+    final tempRenameTargets = <String, String>{};
+    int tempIndex = 0;
+    for (var entry in pendingRenames) {
+      String tempName = '__fluorophore_tmp_${tempIndex++}__';
+      while (appState.fluorophorePalette.containsKey(tempName) || result.palette.containsKey(tempName)) {
+        tempName = '__fluorophore_tmp_${tempIndex++}__';
+      }
+      appState.renameFluorophore(entry.key, tempName);
+      tempRenameTargets[tempName] = entry.value;
+    }
+
+    for (var entry in tempRenameTargets.entries) {
+      appState.renameFluorophore(entry.key, entry.value);
+    }
+
+    for (var currentName in appState.fluorophorePalette.keys.toList()) {
+      if (!result.palette.containsKey(currentName)) {
+        appState.deleteFluorophore(currentName);
+      }
+    }
+
+    for (var entry in result.palette.entries) {
+      if (!appState.fluorophorePalette.containsKey(entry.key)) {
+        appState.addFluorophore(entry.value);
+      } else if (appState.fluorophorePalette[entry.key]!.shape != entry.value.shape) {
+        appState.updateFluorophoreShape(entry.key, entry.value.shape);
+      }
+    }
+
+    if (selectedName == null) return;
+
+    final updatedSelectedName = result.renamedNames[selectedName] ?? selectedName;
+    actionState.setSelectedFluorophore(
+      result.palette.containsKey(updatedSelectedName) ? updatedSelectedName : null,
+    );
+  }
+
+  /// Applies a mass fluorophore edit result.
+  void _applyMassResult(DesignState appState, MassFluorophoreEditResult result) {
+    if (result.clearAll) {
+      appState.clearAllFluorophoreAssignments();
+    } else if (result.fluorophoreName != null) {
+      appState.massAssignFluorophore(result.perSlatPositions, result.fluorophoreName!);
+    } else {
+      appState.massClearFluorophore(result.perSlatPositions);
+    }
   }
 }

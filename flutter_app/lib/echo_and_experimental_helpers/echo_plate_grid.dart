@@ -15,7 +15,7 @@ class PlateGrid extends StatelessWidget {
   final Map<String, Slat> slats;
   final Map<String, Map<String, dynamic>> layerMap;
   final void Function(int fromPlate, String fromWell, int toPlate, String toWell) onWellToWell;
-  final void Function(String slatId, int toPlate, String toWell) onSidebarToWell;
+  final void Function(String slatId, int toPlate, String toWell, {List<String>? slatIds}) onSidebarToWell;
   final GlobalKey<WellWidgetState> Function(int plate, String well) wellKeyFor;
   final Set<String> selectedWells;
   final void Function(int plate, String well) onWellClick;
@@ -25,6 +25,8 @@ class PlateGrid extends StatelessWidget {
   final void Function(int plate, String well) onGroupDragHover;
   final ({bool isValid, String? ghostSlatId})? Function(int plate, String well) ghostStateFor;
   final bool Function(int plate, String well) isSourceWellDuringGroupDrag;
+  final void Function(int plate, String well, int count)? onSidebarDragHover;
+  final VoidCallback? onSidebarDragLeave;
   final PlateLayoutState layoutState;
   final VoidCallback? onRemovePlate;
   final String plateName;
@@ -54,6 +56,8 @@ class PlateGrid extends StatelessWidget {
     required this.onGroupDragHover,
     required this.ghostStateFor,
     required this.isSourceWellDuringGroupDrag,
+    this.onSidebarDragHover,
+    this.onSidebarDragLeave,
     required this.layoutState,
     required this.plateName,
     required this.plateDisplayNumber,
@@ -204,6 +208,8 @@ class PlateGrid extends StatelessWidget {
       isGroupDragging: isGroupDragging,
       onGroupDragStart: () => onGroupDragStart(plateIndex, well),
       onGroupDragHover: () => onGroupDragHover(plateIndex, well),
+      onSidebarDragHover: onSidebarDragHover,
+      onSidebarDragLeave: onSidebarDragLeave,
     );
   }
 }

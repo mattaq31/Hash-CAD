@@ -12,9 +12,27 @@ const Map<String, int> handleCategoryColors = {
   'SEED': 0xFF4CAF50, // green
   'CARGO': 0xFF2196F3, // blue
   'MANUAL': 0xFFFF9800, // orange
+  'FLUOROPHORE': 0xFF9C27B0, // deep purple
 };
 
 const int emptyCategoryColorHex = 0xFFE0E0E0; // grey.shade300
+
+/// Returns the display category used by Echo barcode views and exports.
+/// Priority: fluorophore > blocked-as-flat > normal category.
+String? effectiveEchoHandleCategory(Map<String, dynamic>? handle) {
+  if (handle == null) return null;
+  final category = handle['category'] as String?;
+  final normalizedCategory = category?.toUpperCase();
+  if (handle['fluorophore'] != null && normalizedCategory != null && normalizedCategory.contains('ASSEMBLY')) {
+    return 'FLUOROPHORE';
+  }
+  if (normalizedCategory != null &&
+      handle['value'] == '0' &&
+      (normalizedCategory == 'ASSEMBLY_HANDLE' || normalizedCategory == 'ASSEMBLY_ANTIHANDLE')) {
+    return 'FLAT';
+  }
+  return category;
+}
 
 /// Returns a color for direct use
 Color categoryColor(String? category) {

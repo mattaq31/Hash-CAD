@@ -100,6 +100,20 @@ Future<bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats,
     return true;
   }
 
+  // Backup fluorophore assignments before clearing handles
+  final fluorophoreBackup = <String, Map<int, Map<int, String>>>{};
+  for (var slat in slats.values) {
+    for (var side in [2, 5]) {
+      final handleDict = side == 2 ? slat.h2Handles : slat.h5Handles;
+      for (var entry in handleDict.entries) {
+        final fluor = entry.value['fluorophore'] as String?;
+        if (fluor != null) {
+          fluorophoreBackup.putIfAbsent(slat.id, () => {}).putIfAbsent(side, () => {})[entry.key] = fluor;
+        }
+      }
+    }
+  }
+
   for (var slat in slats.values) {
     slat.clearAssemblyHandles();
   }
@@ -111,5 +125,21 @@ Future<bool> importAssemblyHandlesFromFileIntoSlatArray(Map<String, Slat> slats,
   (minPos, maxPos) = extractGridBoundary(slats);
   List<List<List<int>>> slatArray = convertSparseSlatBundletoArray(slats, layerMap, minPos, maxPos, gridSize);
 
-  return extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minPos.dx, minPos.dy, true);
+  final importSuccess = extractAssemblyHandlesFromExcel(excel, slatArray, slats, layerMap, minPos.dx, minPos.dy, true);
+
+  // Restore fluorophore assignments to handles that still exist
+  for (var entry in fluorophoreBackup.entries) {
+    final slat = slats[entry.key];
+    if (slat == null) continue;
+    for (var sideEntry in entry.value.entries) {
+      final handleDict = sideEntry.key == 2 ? slat.h2Handles : slat.h5Handles;
+      for (var posEntry in sideEntry.value.entries) {
+        if (handleDict.containsKey(posEntry.key)) {
+          handleDict[posEntry.key]!['fluorophore'] = posEntry.value;
+        }
+      }
+    }
+  }
+
+  return importSuccess;
 }

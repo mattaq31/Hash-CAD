@@ -71,6 +71,7 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
       final replacedCount = plateNames.where((n) => existingPlateNames.contains(n)).length;
       appState.plateStack.readPlates(plateFiles, plateNames);
       syncCargoFromPlates(appState.plateStack, appState.cargoPalette);
+      appState.plateCompatibilityWarning = null;
       appState.notifyListeners();
       if (context.mounted) {
         final msg = replacedCount > 0
@@ -416,6 +417,15 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
           textStyle: TextStyle(fontSize: 16),
         ),
       ),
+      if (appState.plateCompatibilityWarning != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            appState.plateCompatibilityWarning!,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+        ),
       Divider(thickness: 2, color: Colors.grey.shade300),
       SizedBox(
         width: double.infinity,
@@ -562,6 +572,15 @@ class _PlateSyncSelectionDialogState extends State<_PlateSyncSelectionDialog> {
     );
   }
 
+  /// Priority ordering for plate groups in the sync dialog.
+  static const _categoryPriority = [
+    'latest_assembly_plates',
+    'flat_staple_plates',
+    'seed_plates',
+    'cargo_plates',
+    'double_barrel_plates',
+  ];
+
   Widget _buildPlateList() {
     final categories = <String, List<int>>{};
     for (var i = 0; i < _plateList!.length; i++) {
@@ -569,17 +588,49 @@ class _PlateSyncSelectionDialogState extends State<_PlateSyncSelectionDialog> {
       categories.putIfAbsent(cat, () => []).add(i);
     }
 
+    // Sort: priority groups first in defined order, then remaining alphabetically
+    final sortedKeys = categories.keys.toList()..sort((a, b) {
+      final aIdx = _categoryPriority.indexOf(a);
+      final bIdx = _categoryPriority.indexOf(b);
+      if (aIdx != -1 && bIdx != -1) return aIdx.compareTo(bIdx);
+      if (aIdx != -1) return -1;
+      if (bIdx != -1) return 1;
+      return a.compareTo(b);
+    });
+
     return ListView(
       children: [
-        for (var catEntry in categories.entries) ...[
+        for (var catKey in sortedKeys) ...[
           Padding(
             padding: const EdgeInsets.only(top: 8, bottom: 4),
-            child: Text(
-              catEntry.key.replaceAll('_', ' '),
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey[700]),
+            child: Row(
+              children: [
+                Text(
+                  catKey.replaceAll('_', ' '),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey[700]),
+                ),
+                SizedBox(width: 4),
+                IconButton(
+                  icon: Icon(Icons.select_all, size: 18),
+                  tooltip: 'Select all in group',
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                  onPressed: () {
+                    setState(() {
+                      final indices = categories[catKey]!;
+                      final allSelected = indices.every((i) => _selectedIndices.contains(i));
+                      if (allSelected) {
+                        _selectedIndices.removeAll(indices);
+                      } else {
+                        _selectedIndices.addAll(indices);
+                      }
+                    });
+                  },
+                ),
+              ],
             ),
           ),
-          for (var idx in catEntry.value)
+          for (var idx in categories[catKey]!)
             CheckboxListTile(
               dense: true,
               title: Row(

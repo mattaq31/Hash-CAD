@@ -71,8 +71,10 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
     cargoPalette = {
         'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0)),
       };
+    fluorophorePalette = {};
     occupiedCargoPoints = {};
     selectedHandlePositions = [];
+    plateCompatibilityWarning = null;
   }
 
   @override
@@ -106,6 +108,7 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
           'nextColorIndex': nextColorIndex,
         },
         cargoPalette: cargoPalette,
+        fluorophorePalette: fluorophorePalette,
         occupiedCargoPoints: occupiedCargoPoints,
         seedRoster: seedRoster,
         phantomMap: phantomMap,
@@ -132,6 +135,7 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
       occupiedGridPoints = newState.occupiedGridPoints;
       occupiedCargoPoints = newState.occupiedCargoPoints;
       cargoPalette = newState.cargoPalette;
+      fluorophorePalette = newState.fluorophorePalette;
       layerMap = newState.layerMap;
       selectedLayerKey = newState.layerMetaData['selectedLayerKey'];
       nextLayerKey = newState.layerMetaData['nextLayerKey'];

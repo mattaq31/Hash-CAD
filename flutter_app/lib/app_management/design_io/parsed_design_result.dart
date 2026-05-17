@@ -1,7 +1,8 @@
-/// Immutable result of parsing a #-CAD design Excel file.
+// Immutable result of parsing a #-CAD design Excel file.
 import 'package:flutter/material.dart';
 
 import '../../crisscross_core/cargo.dart';
+import '../../crisscross_core/fluorophore.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../design_state_mixins/design_state_handle_link_mixin.dart';
@@ -24,6 +25,7 @@ class ParsedDesignResult {
   final Map<String, List<List<dynamic>>>? inputPlateData;
   final Map<String, String>? labMetadata;
   final Map<String, GroupConfiguration> groupConfigurations;
+  final Map<String, Fluorophore> fluorophorePalette;
 
   const ParsedDesignResult({
     required this.slats,
@@ -38,5 +40,6 @@ class ParsedDesignResult {
     this.inputPlateData,
     this.labMetadata,
     this.groupConfigurations = const {},
+    this.fluorophorePalette = const {},
   });
 }

@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hash_cad/app_management/design_io/design_io_constants.dart';
 import 'package:hash_cad/app_management/design_io/design_export.dart';
 import 'package:hash_cad/app_management/design_io/design_import.dart';
-import 'package:hash_cad/app_management/design_io/excel_utilities.dart';
+import 'package:hash_cad/crisscross_core/fluorophore.dart';
+
+import '../../helpers/design_state_test_factory.dart';
 
 /// Builds a minimal valid #-CAD Excel workbook in memory.
 ///
@@ -222,6 +224,76 @@ void main() {
       for (var slat in result.slats.values) {
         expect(slat.slatType, equals('tube'));
       }
+    });
+
+    test('preserves input plate compatibility columns on import', () async {
+      final excel = _buildMinimalDesign();
+
+      // Add an input_source_plates sheet with a compatibility column
+      Sheet inputSheet = excel[inputPlateSheetName];
+      final titleRow = 0;
+      inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: titleRow)).value = TextCellValue('${inputPlateTitlePrefix}TestPlate$inputPlateTitleSuffix');
+      final headers = ['well', 'name', 'sequence', 'concentration', 'compatibility'];
+      for (var c = 0; c < headers.length; c++) {
+        inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: titleRow + 1)).value = TextCellValue(headers[c]);
+      }
+      final dataRow = ['A1', 'FLAT-BLANK-H2-pos_16', 'AAAA', 100, 'db'];
+      for (var c = 0; c < dataRow.length; c++) {
+        final val = dataRow[c];
+        inputSheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: titleRow + 2)).value =
+            val is int ? IntCellValue(val) : TextCellValue(val.toString());
+      }
+
+      final bytes = Uint8List.fromList(excel.encode()!);
+      final result = await parseDesignInIsolate(bytes);
+
+      expect(result.errorCode, isEmpty);
+      expect(result.inputPlateData, isNotNull);
+      expect(result.inputPlateData!.containsKey('TestPlate'), isTrue);
+
+      // Verify the compatibility column survived import
+      final plateRows = result.inputPlateData!['TestPlate']!;
+      final headerRow = plateRows.first.map((e) => e.toString()).toList();
+      expect(headerRow.contains('compatibility'), isTrue);
+    });
+
+    test('round-trips fluorophore palette and phantom handle tags', () async {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      final baseSlat = state.slats.values.single;
+      state.addFluorophore(Fluorophore(name: 'Cy3', shape: FluorophoreShape.star));
+      baseSlat.setPlaceholderHandle(5, 5, '7', 'ASSEMBLY_HANDLE');
+      state.assignFluorophoreToHandle((baseSlat.id, 5, 5), 'Cy3');
+
+      final phantomCoordinates = <int, Map<int, Offset>>{
+        1: {
+          for (var entry in baseSlat.slatPositionToCoordinate.entries) entry.key: entry.value + const Offset(0, 40),
+        }
+      };
+      state.addPhantomSlats(baseSlat.layer, phantomCoordinates, {1: baseSlat});
+
+      final workbook = buildDesignWorkbook(
+        state.slats,
+        state.layerMap,
+        state.cargoPalette,
+        state.occupiedCargoPoints,
+        state.seedRoster,
+        state.assemblyLinkManager,
+        state.gridSize,
+        state.gridMode,
+        state.designName,
+        groupConfigurations: state.groupConfigurations,
+        fluorophorePalette: state.fluorophorePalette,
+      );
+
+      final bytes = Uint8List.fromList(workbook.encode()!);
+      final result = await parseDesignInIsolate(bytes);
+
+      expect(result.errorCode, isEmpty);
+      expect(result.fluorophorePalette['Cy3']?.shape, FluorophoreShape.star);
+      expect(result.slats['A-I1']!.h5Handles[5]!['fluorophore'], 'Cy3');
+
+      final importedPhantom = result.slats.values.firstWhere((slat) => slat.phantomParent == 'A-I1');
+      expect(importedPhantom.h5Handles[5]!['fluorophore'], 'Cy3');
     });
 
     test('returns ERR_GENERAL for missing metadata sheet', () async {

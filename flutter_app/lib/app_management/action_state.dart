@@ -36,6 +36,8 @@ class ActionState extends ChangeNotifier {
   bool assemblyRandomMode; // When true, each click places random handle value
   bool assemblyEnforceMode; // When true, placed handles are marked as enforced
   bool assemblyBlockMode; // When true, clicking places/removes blocks instead of handles
+  bool fluorophoreEditMode; // When true, sidebar shows fluorophore editing UI
+  String? selectedFluorophore; // Currently active fluorophore for assignment
   SlatColorMode slatColorMode;
 
   Map<int, String> panelMap = {
@@ -79,6 +81,8 @@ class ActionState extends ChangeNotifier {
     this.assemblyRandomMode = false,
     this.assemblyEnforceMode = false,
     this.assemblyBlockMode = false,
+    this.fluorophoreEditMode = false,
+    this.selectedFluorophore,
     this.slatColorMode = SlatColorMode.natural,
   });
 
@@ -253,6 +257,18 @@ class ActionState extends ChangeNotifier {
 
   void setSlatColorMode(SlatColorMode mode) {
     slatColorMode = mode;
+    notifyListeners();
+  }
+
+  /// Toggles the sidebar between normal manual handle editing and fluorophore mode.
+  void setFluorophoreEditMode(bool value) {
+    fluorophoreEditMode = value;
+    notifyListeners();
+  }
+
+  /// Sets the currently active fluorophore for assignment operations.
+  void setSelectedFluorophore(String? name) {
+    selectedFluorophore = name;
     notifyListeners();
   }
 }

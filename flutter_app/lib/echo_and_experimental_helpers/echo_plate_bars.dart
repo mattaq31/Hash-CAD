@@ -141,9 +141,9 @@ class PlateActionBar extends StatelessWidget {
           // Manual handle buttons on the left
           TextButton.icon(
             onPressed: hasSelection ? onMarkManualHandles : null,
-            icon: Icon(Icons.back_hand_outlined, size: 18,
+            icon: Icon(Icons.zoom_in, size: 18,
                 color: hasSelection ? Colors.deepPurple.shade700 : Colors.grey),
-            label: Text('Mark Manual Pipetting Handles',
+            label: Text('Zoom In on Handles',
                 style: TextStyle(fontSize: 12,
                     color: hasSelection ? Colors.deepPurple.shade700 : Colors.grey)),
             style: TextButton.styleFrom(
@@ -252,7 +252,7 @@ class PlateColorKeyBar extends StatelessWidget {
     ('Seed', handleCategoryColors['SEED']!),
     ('Cargo', handleCategoryColors['CARGO']!),
     ('Manual', handleCategoryColors['MANUAL']!),
-    ('Undefined', defaultCategoryColorHex),
+    ('Fluorophore', handleCategoryColors['FLUOROPHORE']!),
   ];
 
   final bool showMetricView;

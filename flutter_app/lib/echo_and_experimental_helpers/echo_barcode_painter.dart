@@ -8,22 +8,42 @@ class HandleBarcodePainter extends CustomPainter {
   final Map<int, Map<String, dynamic>> h5Handles;
   final int maxLength;
   final Set<(int, int)> manualPositions;
+  final int _paintFingerprint;
 
   HandleBarcodePainter({
     required this.h2Handles,
     required this.h5Handles,
     this.maxLength = 32,
     this.manualPositions = const {},
-  });
+  }) : _paintFingerprint = Object.hash(
+          maxLength,
+          _fingerprintHandleMap(h2Handles),
+          _fingerprintHandleMap(h5Handles),
+          _fingerprintManualPositions(manualPositions),
+        );
 
-  /// Blocked handles (value '0') should display as FLAT staples.
-  static String? _effectiveCategory(Map<String, dynamic>? handle) {
-    if (handle == null) return null;
-    final category = handle['category'] as String?;
-    if (category != null && handle['value'] == '0' && (category == 'ASSEMBLY_HANDLE' || category == 'ASSEMBLY_ANTIHANDLE')) {
-      return 'FLAT';
-    }
-    return category;
+  /// Returns the effective display category for a handle in the barcode view.
+  /// Priority: fluorophore > blocked-as-flat > normal category.
+  static String? effectiveCategoryForHandle(Map<String, dynamic>? handle) => effectiveEchoHandleCategory(handle);
+
+  static int _fingerprintHandleMap(Map<int, Map<String, dynamic>> handles) {
+    final sortedKeys = handles.keys.toList()..sort();
+    return Object.hashAll(sortedKeys.map((position) {
+      final handle = handles[position]!;
+      return Object.hash(
+        position,
+        effectiveCategoryForHandle(handle),
+        handle['value'],
+        handle['category'],
+        handle['fluorophore'],
+      );
+    }));
+  }
+
+  static int _fingerprintManualPositions(Set<(int, int)> positions) {
+    final sortedPositions = positions.toList()
+      ..sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+    return Object.hashAll(sortedPositions.map((position) => Object.hash(position.$1, position.$2)));
   }
 
   @override
@@ -40,7 +60,7 @@ class HandleBarcodePainter extends CustomPainter {
       final pos = i + 1;
       final handle = h5Handles[pos];
       final isManual = manualPositions.contains((5, pos));
-      final color = isManual ? categoryColor('MANUAL') : categoryColor(_effectiveCategory(handle));
+      final color = isManual ? categoryColor('MANUAL') : categoryColor(effectiveCategoryForHandle(handle));
       final rect = Rect.fromLTWH(i * rectWidth, 0, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);
       canvas.drawRect(rect, linePaint);
@@ -51,7 +71,7 @@ class HandleBarcodePainter extends CustomPainter {
       final pos = i + 1;
       final handle = h2Handles[pos];
       final isManual = manualPositions.contains((2, pos));
-      final color = isManual ? categoryColor('MANUAL') : categoryColor(_effectiveCategory(handle));
+      final color = isManual ? categoryColor('MANUAL') : categoryColor(effectiveCategoryForHandle(handle));
       final rect = Rect.fromLTWH(i * rectWidth, rowHeight, rectWidth, rowHeight);
       canvas.drawRect(rect, Paint()..color = color);
       canvas.drawRect(rect, linePaint);
@@ -59,11 +79,5 @@ class HandleBarcodePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(HandleBarcodePainter oldDelegate) {
-    return h2Handles.length != oldDelegate.h2Handles.length ||
-        h5Handles.length != oldDelegate.h5Handles.length ||
-        maxLength != oldDelegate.maxLength ||
-        manualPositions.length != oldDelegate.manualPositions.length ||
-        !manualPositions.containsAll(oldDelegate.manualPositions);
-  }
+  bool shouldRepaint(HandleBarcodePainter oldDelegate) => _paintFingerprint != oldDelegate._paintFingerprint;
 }

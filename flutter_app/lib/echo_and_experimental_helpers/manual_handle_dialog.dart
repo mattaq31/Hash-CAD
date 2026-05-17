@@ -2,17 +2,28 @@
 //
 // Displays a simplified tube-style slat view with H5 and H2 rows (32 positions each).
 // Users toggle positions to mark them as manual. Applied to all currently selected slats.
+// When a single slat is selected, buttons are colored by handle category.
 import 'package:flutter/material.dart';
+import 'echo_barcode_painter.dart';
+import 'echo_category_colors.dart';
 
 /// Shows the manual handle marking dialog and returns the selected positions.
 ///
 /// Returns null if the user cancels, otherwise the set of (helix, position) tuples
 /// representing manual handles.
+///
+/// When [h5Handles] and [h2Handles] are provided (single-slat mode), buttons are
+/// colored by their handle category. When [multipleSlatsSelected] is true, coloring
+/// is disabled and a warning is shown.
 Future<Set<(int, int)>?> showManualHandleDialog(
   BuildContext context, {
   required Set<(int, int)> currentManualPositions,
   required bool mixedConfig,
   int maxLength = 32,
+  Map<int, Map<String, dynamic>>? h5Handles,
+  Map<int, Map<String, dynamic>>? h2Handles,
+  bool multipleSlatsSelected = false,
+  String? slatName,
 }) {
   return showDialog<Set<(int, int)>>(
     context: context,
@@ -20,6 +31,10 @@ Future<Set<(int, int)>?> showManualHandleDialog(
       currentManualPositions: currentManualPositions,
       mixedConfig: mixedConfig,
       maxLength: maxLength,
+      h5Handles: h5Handles,
+      h2Handles: h2Handles,
+      multipleSlatsSelected: multipleSlatsSelected,
+      slatName: slatName,
     ),
   );
 }
@@ -28,11 +43,19 @@ class _ManualHandleDialog extends StatefulWidget {
   final Set<(int, int)> currentManualPositions;
   final bool mixedConfig;
   final int maxLength;
+  final Map<int, Map<String, dynamic>>? h5Handles;
+  final Map<int, Map<String, dynamic>>? h2Handles;
+  final bool multipleSlatsSelected;
+  final String? slatName;
 
   const _ManualHandleDialog({
     required this.currentManualPositions,
     required this.mixedConfig,
     required this.maxLength,
+    this.h5Handles,
+    this.h2Handles,
+    this.multipleSlatsSelected = false,
+    this.slatName,
   });
 
   @override
@@ -86,6 +109,12 @@ class _ManualHandleDialogState extends State<_ManualHandleDialog> {
     });
   }
 
+  /// Whether category coloring is available (single slat with handle data).
+  bool get _hasCategoryColoring =>
+      !widget.multipleSlatsSelected &&
+      widget.h5Handles != null &&
+      widget.h2Handles != null;
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -95,13 +124,17 @@ class _ManualHandleDialogState extends State<_ManualHandleDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
+            // Header — shows slat name or 'Multiple Slats'
             Row(
               children: [
-                const Icon(Icons.back_hand_outlined, size: 22, color: Colors.deepPurple),
+                const Icon(Icons.zoom_in, size: 22, color: Colors.deepPurple),
                 const SizedBox(width: 8),
-                const Text('Mark Manual Handles',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  widget.multipleSlatsSelected
+                      ? 'Multiple Slats'
+                      : (widget.slatName ?? 'Handle View'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
 
@@ -131,12 +164,42 @@ class _ManualHandleDialogState extends State<_ManualHandleDialog> {
               ),
             ],
 
+            // Warning for multiple slats selected (category coloring disabled)
+            if (widget.multipleSlatsSelected) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.blue.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.blue.shade800),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Multiple slats selected — handle category coloring is disabled',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 16),
 
-            // Convenience buttons
+            // Convenience buttons with descriptor
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Text('Manual handle assignment:',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700)),
+                const SizedBox(width: 12),
                 _ConvenienceButton(label: 'Select All', onTap: _selectAll),
                 const SizedBox(width: 8),
                 _ConvenienceButton(label: 'Select All H5', onTap: () => _selectAllHelix(5)),
@@ -160,6 +223,7 @@ class _ManualHandleDialogState extends State<_ManualHandleDialog> {
               maxLength: widget.maxLength,
               manualPositions: _manualPositions,
               onToggle: _togglePosition,
+              handles: _hasCategoryColoring ? widget.h5Handles : null,
             ),
 
             const SizedBox(height: 8),
@@ -171,6 +235,7 @@ class _ManualHandleDialogState extends State<_ManualHandleDialog> {
               maxLength: widget.maxLength,
               manualPositions: _manualPositions,
               onToggle: _togglePosition,
+              handles: _hasCategoryColoring ? widget.h2Handles : null,
             ),
 
             const SizedBox(height: 20),
@@ -204,6 +269,7 @@ class _HandleRow extends StatelessWidget {
   final int maxLength;
   final Set<(int, int)> manualPositions;
   final void Function(int helix, int position) onToggle;
+  final Map<int, Map<String, dynamic>>? handles;
 
   const _HandleRow({
     required this.label,
@@ -211,6 +277,7 @@ class _HandleRow extends StatelessWidget {
     required this.maxLength,
     required this.manualPositions,
     required this.onToggle,
+    this.handles,
   });
 
   @override
@@ -227,22 +294,37 @@ class _HandleRow extends StatelessWidget {
             position: pos,
             isManual: manualPositions.contains((helix, pos)),
             onTap: () => onToggle(helix, pos),
+            categoryColor: _resolveCategoryColor(pos),
           ),
         ],
       ],
     );
   }
+
+  /// Resolves the background color for a position based on handle category.
+  Color? _resolveCategoryColor(int position) {
+    if (handles == null) return null;
+    final handle = handles![position];
+    if (handle == null) return null;
+    final category = HandleBarcodePainter.effectiveCategoryForHandle(handle);
+    if (category == null) return null;
+    return categoryColor(category);
+  }
+
+  /// Determines effective display category (same logic as barcode painter).
 }
 
 class _HandlePositionButton extends StatefulWidget {
   final int position;
   final bool isManual;
   final VoidCallback onTap;
+  final Color? categoryColor;
 
   const _HandlePositionButton({
     required this.position,
     required this.isManual,
     required this.onTap,
+    this.categoryColor,
   });
 
   @override
@@ -254,10 +336,23 @@ class _HandlePositionButtonState extends State<_HandlePositionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = widget.isManual ? Colors.orange.shade300 : Colors.grey.shade200;
+    // Manual override always uses orange
+    final Color bgColor;
+    final Color textColor;
+    if (widget.isManual) {
+      bgColor = Colors.orange.shade300;
+      textColor = Colors.orange.shade900;
+    } else if (widget.categoryColor != null) {
+      bgColor = widget.categoryColor!.withValues(alpha: 0.4);
+      textColor = HSLColor.fromColor(widget.categoryColor!).withLightness(0.3).toColor();
+    } else {
+      bgColor = Colors.grey.shade200;
+      textColor = Colors.grey.shade600;
+    }
+
     final borderColor = _hovering
         ? Colors.deepPurple
-        : (widget.isManual ? Colors.orange.shade700 : Colors.grey.shade400);
+        : (widget.isManual ? Colors.orange.shade700 : (widget.categoryColor ?? Colors.grey.shade400));
 
     return Padding(
       padding: const EdgeInsets.all(1),
@@ -280,7 +375,7 @@ class _HandlePositionButtonState extends State<_HandlePositionButton> {
                 '${widget.position}',
                 style: TextStyle(
                   fontSize: 9,
-                  color: widget.isManual ? Colors.orange.shade900 : Colors.grey.shade600,
+                  color: textColor,
                   fontWeight: widget.isManual ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
