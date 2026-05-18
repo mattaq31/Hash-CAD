@@ -1,6 +1,6 @@
 [run]
-lengths = [8,10,12,14,16,18,20]
-fivep_exts = ["","TTTT"]
+lengths = [8,9,10,12,14,16,18,20,25]
+fivep_exts = [""]
 threep_ext = ""
 unwanted_substrings = ["GGGG", "CCCC"]
 apply_unwanted_to = "full"
@@ -13,17 +13,17 @@ sodium = 0.05
 magnesium = 0.025
 
 [prep]
-name = "long_batch_v"
-sample_size = 1000
+name = "batch_x_____"
+sample_size = 2000
 range_sigma = 1.0
 
 [physics]
 strand_concentration_nM = 1000.0
-offtarget_target_bound_fractions = [ 0.01,0.05]
+offtarget_target_bound_fractions = [0.01]
 self_target_unpaired_fraction = 0.2
 
 [budget]
-total_nupack_budgets = [5_000_000]
+total_nupack_budgets = [10_000_000]
 
 [naive]
 progress_every = 250
@@ -31,7 +31,7 @@ duplicate_streak_limit = 1000000
 min_progress_interval_s = 1.0
 
 [hybrid]
-initial_fresh_pair_counts = [450]
+initial_fresh_pair_counts = [250,450,900]
 prune_fraction = 0.2
 vc_max_iterations = 1000
 
@@ -44,11 +44,11 @@ email = ""
 mp_start = "spawn"
 
 [server_naive]
-cpus = 3
-memory = "18G"
-time = "100:00:00"
+cpus = 2
+memory = "16G"
+time = "5-00:00:00"
 
 [server_hybrid]
-cpus = 6
-memory = "18G"
-time = "100:00:00"
+cpus = 3
+memory = "16G"
+time = "5-00:00:00"

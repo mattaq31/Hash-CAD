@@ -30,11 +30,11 @@ from benchmark_algorithms import (
     run_vertex_cover_search_to_xlsx,
 )
 from benchmark_analysis import find_offtarget_limits_for_target_densities
-from benchmark_dataset_tools import estimate_dataset_nupack_budget, load_dataset
+from benchmark_dataset_tools import load_dataset
 
 
 DATASET_PARENT_NAME = "len4_7_tttt5p"
-BENCHMARK_NAME = "benchmark_3"
+BENCHMARK_NAME = "benchmark_3_new"
 TARGET_CONFLICT_DENSITIES = [0.1,0.2,0.3]
 SEEDS = [1,2,3,4,5]
 SELF_ENERGY_LIMIT = -2.0
@@ -44,17 +44,9 @@ VC_CORE_PARAMS = {
     "vc_max_iterations": 1000,
 }
 
-HYBRID_ONLY_PARAMS = {
-    "initial_fresh_pair_count": 450,
-    "generations": 5000,
-    "allowed_violations": 0,
-    "fresh_pair_search_budget": 20000,
-    "fresh_pair_scale": 1.0,
-}
-
 HYBRID_PARAMS = {
+    "initial_fresh_pair_count": 450,
     **VC_CORE_PARAMS,
-    **HYBRID_ONLY_PARAMS,
 }
 
 VERTEX_COVER_PARAMS = {
@@ -141,13 +133,11 @@ if __name__ == "__main__":
     for dataset_dir in dataset_dirs:
         dataset = load_dataset(dataset_dir)
         inputs = dataset["metadata"]["inputs"]
-        total_nupack_budget = estimate_dataset_nupack_budget(dataset)
         cutoff_summaries = find_offtarget_limits_for_target_densities(dataset, TARGET_CONFLICT_DENSITIES)
         results_dir = dataset_dir / "results" / benchmark_name
         results_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"processing dataset: {dataset_dir.name}")
-        print(f"  total_nupack_budget: {total_nupack_budget}")
         for cutoff_summary in cutoff_summaries:
             target_density = float(cutoff_summary["target_conflict_density"])
             offtarget_limit = float(cutoff_summary["selected_offtarget_limit"])
@@ -216,7 +206,6 @@ if __name__ == "__main__":
                     output_path=hybrid_path,
                     offtarget_limit=offtarget_limit,
                     self_energy_limit=SELF_ENERGY_LIMIT,
-                    total_nupack_budget=total_nupack_budget,
                     random_seed=seed,
                     **HYBRID_PARAMS,
                 )

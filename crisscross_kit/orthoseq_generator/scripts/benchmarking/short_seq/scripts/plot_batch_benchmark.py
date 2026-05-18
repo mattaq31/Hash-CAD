@@ -30,7 +30,7 @@ if str(MODULE_DIR) not in sys.path:
 
 
 DATASET_PARENT_NAME = "len4_7_tttt5p"
-BENCHMARK_NAME = "benchmark_2"
+BENCHMARK_NAME = "benchmark_3_new"
 ALGORITHM_ORDER = ["naive", "vertex_cover", "hybrid_offline"]
 ALGORITHM_COLORS = {
     "naive": "#808080",
@@ -74,7 +74,7 @@ def dataset_sort_key(dataset_dir: Path):
     return (has_tttt5p, length, name)
 
 
-def find_latest_benchmark_dirs(parent_dir: Path) -> list[Path]:
+def find_benchmark_dirs(parent_dir: Path) -> list[Path]:
     """Find the per-dataset result directories for the configured benchmark run."""
     benchmark_name = BENCHMARK_NAME
     benchmark_dirs = []
@@ -127,7 +127,7 @@ def read_metadata_value_with_fallback(metadata_df: pd.DataFrame, primary_key: st
 def collect_runs(parent_dir: Path) -> pd.DataFrame:
     """Collect plotted benchmark rows from all datasets in the parent."""
     rows = []
-    for benchmark_dir in find_latest_benchmark_dirs(parent_dir):
+    for benchmark_dir in find_benchmark_dirs(parent_dir):
         dataset_dir = benchmark_dir.parent.parent
         for report_path in sorted(benchmark_dir.glob("*.xlsx")):
             parsed = parse_run_filename(report_path)

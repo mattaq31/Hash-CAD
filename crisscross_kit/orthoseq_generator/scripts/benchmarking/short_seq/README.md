@@ -23,6 +23,8 @@ The supported top-level workflow is:
 
 - `benchmark_algorithms.py`
   - run the benchmarked search variants against a saved dataset
+  - offline `hybrid_offline` mirrors the current live two-pass hybrid search
+    and runs until the finite saved candidate pool is exhausted
   - write XLSX benchmark reports through the shared writer in
     `orthoseq_generator/search_reporting.py`
 

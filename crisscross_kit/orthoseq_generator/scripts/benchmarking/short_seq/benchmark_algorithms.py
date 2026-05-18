@@ -25,7 +25,7 @@ from orthoseq_generator.search_reporting import (
     verify_selected_pairs,
     write_hybrid_search_result_xlsx,
 )
-from orthoseq_generator.search_algorithm import _num_vertices_to_remove
+from orthoseq_generator.search_algorithm import _build_progress_row, _num_vertices_to_remove
 from orthoseq_generator.vertex_cover_algorithms import build_edges, iterative_vertex_cover_refinement
 
 
@@ -47,6 +47,8 @@ def _write_benchmark_result_xlsx(
     selected_sequence_data: list[dict],
     verified: dict,
     search_params: dict,
+    seed_sequence_data: list[dict] | None = None,
+    seed_verified: dict | None = None,
     extra_metadata: dict | None = None,
     extra_sheets: dict[str, list[dict]] | None = None,
 ) -> Path:
@@ -135,6 +137,8 @@ def _write_benchmark_result_xlsx(
         generation_data=extra_sheets.get("search_progress", []) if extra_sheets else [],
         validation_data=validation_data,
         dataset_info=dataset_info,
+        seed_sequence_data=seed_sequence_data,
+        seed_verified=seed_verified,
         extra_sheets={k: v for k, v in (extra_sheets or {}).items() if k != "search_progress"},
         extra_metadata=merged_extra_metadata,
     )
@@ -369,7 +373,14 @@ def run_vertex_cover_search_to_xlsx(
     )
 
 
-def _crossreference_sequences_offline(candidate_global_id: int, retained_pair_ids, dataset: dict, offtarget_limit: float, max_pair_violations: int = 0):
+def _crossreference_sequences_offline(
+    candidate_global_id: int,
+    retained_pair_ids,
+    dataset: dict,
+    offtarget_limit: float,
+    max_pair_violations: int = 0,
+    matrix_idx_by_global: dict[int, int] | None = None,
+):
     """
     Check whether one candidate is compatible with the retained offline
     history set.
@@ -384,7 +395,8 @@ def _crossreference_sequences_offline(candidate_global_id: int, retained_pair_id
     """
     if not retained_pair_ids:
         return True, 0
-    matrix_idx_by_global = build_global_to_matrix_idx(dataset["matrix_global_pair_ids"])
+    if matrix_idx_by_global is None:
+        matrix_idx_by_global = build_global_to_matrix_idx(dataset["matrix_global_pair_ids"])
     candidate_idx = matrix_idx_by_global[int(candidate_global_id)]
     hh = dataset["handle_handle_energies"]
     hah = dataset["handle_antihandle_energies"]
@@ -412,6 +424,73 @@ def _crossreference_sequences_offline(candidate_global_id: int, retained_pair_id
     return True, virtual_nupack_calls
 
 
+def _passes_homodimer_filter_offline(
+    candidate_global_id: int,
+    dataset: dict,
+    offtarget_limit: float,
+    matrix_idx_by_global: dict[int, int] | None = None,
+) -> tuple[bool, int]:
+    """
+    Mirror the live same-strand homodimer screen using cached dataset matrices.
+
+    The live selector spends two NUPACK calls here: `seq/seq` and `rc/rc`.
+    The offline benchmark treats the corresponding cached diagonal lookups as
+    two virtual calls so accounting stays comparable.
+    """
+    if matrix_idx_by_global is None:
+        matrix_idx_by_global = build_global_to_matrix_idx(dataset["matrix_global_pair_ids"])
+    candidate_idx = matrix_idx_by_global.get(int(candidate_global_id))
+    if candidate_idx is None:
+        return False, 0
+    homo_seq = float(dataset["handle_handle_energies"][candidate_idx, candidate_idx])
+    homo_rc = float(dataset["antihandle_antihandle_energies"][candidate_idx, candidate_idx])
+    return homo_seq >= float(offtarget_limit) and homo_rc >= float(offtarget_limit), 2
+
+
+def _build_verified_from_dataset(dataset: dict, selected_global_ids) -> dict:
+    """Assemble a report-style verified payload from cached dataset arrays."""
+    global_ids = [int(global_id) for global_id in selected_global_ids]
+    all_idx_by_global = build_all_global_to_all_idx(dataset["all_global_pair_ids"])
+    return {
+        "on_target_energies": np.array(
+            [float(dataset["all_on_target_energies"][all_idx_by_global[global_id]]) for global_id in global_ids],
+            dtype=float,
+        ),
+        "self_energy_seqs": np.array(
+            [float(dataset["all_self_energy_seqs"][all_idx_by_global[global_id]]) for global_id in global_ids],
+            dtype=float,
+        ),
+        "self_energy_rc_seqs": np.array(
+            [float(dataset["all_self_energy_rc_seqs"][all_idx_by_global[global_id]]) for global_id in global_ids],
+            dtype=float,
+        ),
+        "off_target": build_sub_offtarget_dict(dataset, global_ids),
+    }
+
+
+def _run_vertex_cover_offline(
+    selected_global_ids,
+    dataset: dict,
+    offtarget_limit: float,
+    prune_fraction: float,
+    vc_max_iterations: int,
+):
+    """Run the cached off-target graph step used by offline hybrid pass 1/2."""
+    indices = [int(global_id) for global_id in selected_global_ids]
+    off_target_nupack_calls = _estimate_offtarget_nupack_calls(len(indices))
+    off_e_subset = build_sub_offtarget_dict(dataset, indices)
+    edges = build_edges(off_e_subset, indices, offtarget_limit)
+    removed_vertices, _ = iterative_vertex_cover_refinement(
+        indices,
+        edges,
+        avoid_V=None,
+        max_iterations=vc_max_iterations,
+        num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
+        show_progress=False,
+    )
+    return set(indices) - removed_vertices, off_target_nupack_calls
+
+
 def _select_subset_in_energy_range_offline(
     dataset: dict,
     *,
@@ -421,9 +500,7 @@ def _select_subset_in_energy_range_offline(
     max_size: int,
     avoid_indices=None,
     retained_pair_ids=None,
-    allowed_violations: int = 0,
     offtarget_limit: float | None = None,
-    fresh_pair_search_budget: int | None = None,
 ):
     """
     Sample a fresh offline working subset from the saved dataset.
@@ -433,27 +510,32 @@ def _select_subset_in_energy_range_offline(
     This helper is the dataset-backed analogue of the live subset-selection
     step inside the hybrid search. It repeatedly samples unseen global IDs from
     the full saved pool, filters them by cached on-target and self-energy
-    values, optionally cross-references them against the retained history set,
-    and stops when the target subset size or the per-generation search budget
-    is reached.
+    values, mirrors the live same-strand homodimer filter using cached
+    diagonal matrix values, optionally cross-references them against the
+    retained history set, and stops when the target subset size is reached or
+    the finite candidate list is exhausted.
     """
     if avoid_indices is None:
         avoid_indices = set()
     if retained_pair_ids is None:
         retained_pair_ids = []
     eligible_global_ids = [int(global_id) for global_id in dataset["all_global_pair_ids"]]
+    random.shuffle(eligible_global_ids)
     all_idx_by_global = build_all_global_to_all_idx(dataset["all_global_pair_ids"])
-    subset, indices = [], []
-    tested_indices = set(int(global_id) for global_id in avoid_indices)
+    matrix_idx_by_global = build_global_to_matrix_idx(dataset["matrix_global_pair_ids"])
+    subset = []
+    indices = []
     nupack_calls = 0
+    attempts = 0
+    passed_ontarget_and_self = 0
+    passed_homodimer = 0
 
-    while len(indices) < max_size and len(tested_indices) < len(eligible_global_ids):
-        global_id = random.choice(eligible_global_ids)
-        if global_id in tested_indices:
+    for global_id in eligible_global_ids:
+        if len(indices) >= max_size:
+            break
+        if int(global_id) in avoid_indices:
             continue
-        tested_indices.add(global_id)
-        if fresh_pair_search_budget is not None and nupack_calls >= fresh_pair_search_budget:
-            return subset, indices, True, nupack_calls
+        attempts += 1
         all_idx = all_idx_by_global[int(global_id)]
         nupack_calls += 1
         on_energy = float(dataset["all_on_target_energies"][all_idx])
@@ -461,18 +543,35 @@ def _select_subset_in_energy_range_offline(
         self_e_rc = float(dataset["all_self_energy_rc_seqs"][all_idx])
         if not (energy_min <= on_energy <= energy_max and self_e_seq >= self_energy_min and self_e_rc >= self_energy_min):
             continue
+        passed_ontarget_and_self += 1
         if offtarget_limit is not None:
+            passed_homo, homodimer_calls = _passes_homodimer_filter_offline(
+                int(global_id), dataset, float(offtarget_limit), matrix_idx_by_global=matrix_idx_by_global
+            )
+            nupack_calls += homodimer_calls
+            if not passed_homo:
+                continue
+            passed_homodimer += 1
             passed_crossref, crossref_calls = _crossreference_sequences_offline(
-                int(global_id), retained_pair_ids, dataset, float(offtarget_limit), max_pair_violations=allowed_violations
+                int(global_id),
+                retained_pair_ids,
+                dataset,
+                float(offtarget_limit),
+                max_pair_violations=0,
+                matrix_idx_by_global=matrix_idx_by_global,
             )
             nupack_calls += crossref_calls
             if not passed_crossref:
                 continue
-        if fresh_pair_search_budget is not None and nupack_calls >= fresh_pair_search_budget:
-            return subset, indices, True, nupack_calls
         subset.append(get_pair_by_global_id(dataset, global_id))
         indices.append(global_id)
-    return subset, indices, False, nupack_calls
+    stop_reason = None if len(indices) >= max_size else "pool_exhausted"
+    return subset, indices, stop_reason, nupack_calls, {
+        "attempts": int(attempts),
+        "passed_ontarget_and_self": int(passed_ontarget_and_self),
+        "passed_homodimer": int(passed_homodimer),
+        "accepted_into_pool": len(indices),
+    }
 
 
 def run_hybrid_search_offline_to_xlsx(
@@ -482,12 +581,7 @@ def run_hybrid_search_offline_to_xlsx(
     offtarget_limit: float,
     self_energy_limit: float,
     initial_fresh_pair_count: int = 200,
-    generations: int = 100,
-    allowed_violations: int = 0,
-    fresh_pair_search_budget: int = 50000,
-    total_nupack_budget: int | None = None,
     prune_fraction: float = 0.2,
-    fresh_pair_scale: float = 1.0,
     vc_max_iterations: int = 5000,
     random_seed: int = 42,
 ) -> Path:
@@ -497,10 +591,18 @@ def run_hybrid_search_offline_to_xlsx(
 
     Purpose
     -------
-    This is the dataset-backed mirror of the live hybrid search workflow. It
-    reuses cached on-target and off-target energies to approximate the same
-    subset-selection and graph-refinement behavior while preserving comparable
-    progress and reporting output for benchmarking.
+    This is the dataset-backed mirror of the current live hybrid workflow. It
+    follows the same two-pass structure:
+    1. collect one seed subset with on-target, self-energy, and homodimer
+       filtering, then run vertex cover on that subset;
+    2. if pass 1 filled its requested seed size without exhausting the finite
+       candidate list, collect additional candidates cross-referenced against
+       the retained seed set, then run vertex cover on those fresh candidates
+       only and union the survivors into the final retained set.
+
+    Unlike the live registry-backed search, the offline benchmark has an exact
+    finite candidate list, so termination uses true pool exhaustion rather than
+    the duplicate-streak heuristic.
 
     :param dataset_dir: Directory containing the saved benchmark dataset.
     :type dataset_dir: str or pathlib.Path
@@ -518,33 +620,13 @@ def run_hybrid_search_offline_to_xlsx(
                               strands in a candidate pair.
     :type self_energy_limit: float
 
-    :param initial_fresh_pair_count: Initial target number of fresh candidates
-                                     sampled before retained pairs are re-added.
+    :param initial_fresh_pair_count: Number of pass-1 seed candidates to
+                                     collect before the first vertex-cover run.
     :type initial_fresh_pair_count: int
-
-    :param generations: Maximum number of offline hybrid generations.
-    :type generations: int
-
-    :param allowed_violations: Initial number of retained-history conflicts a
-                               fresh candidate may tolerate during screening.
-    :type allowed_violations: int
-
-    :param fresh_pair_search_budget: Per-generation virtual NUPACK budget for
-                                     fresh-candidate discovery and
-                                     cross-reference checks.
-    :type fresh_pair_search_budget: int
-
-    :param total_nupack_budget: Total virtual NUPACK budget for the offline
-                                run, including full cached graph evaluations.
-    :type total_nupack_budget: int or None
 
     :param prune_fraction: Fraction of the current cover removed before each
                            repair iteration.
     :type prune_fraction: float
-
-    :param fresh_pair_scale: Multiplier used to derive the next fresh-pair
-                             target from the retained best set size.
-    :type fresh_pair_scale: float
 
     :param vc_max_iterations: Maximum number of refinement iterations inside
                               the vertex-cover step.
@@ -566,120 +648,143 @@ def run_hybrid_search_offline_to_xlsx(
         cutoff_label = str(offtarget_limit).replace(".", "p")
         output_path = dataset_path / "results" / f"hybrid_offline_limit{cutoff_label}_seed{random_seed}.xlsx"
     random.seed(random_seed)
-    if fresh_pair_search_budget is None or int(fresh_pair_search_budget) < 1:
-        raise ValueError("fresh_pair_search_budget must be a positive integer.")
-    fresh_pair_search_budget = int(fresh_pair_search_budget)
-    if total_nupack_budget is None:
-        total_nupack_budget = estimate_dataset_nupack_budget(dataset)
-    else:
-        total_nupack_budget = int(total_nupack_budget)
-        if total_nupack_budget < 1:
-            raise ValueError("total_nupack_budget must be a positive integer or None.")
+    if not 0 <= prune_fraction <= 1:
+        raise ValueError("prune_fraction must be between 0 and 1.")
+    if vc_max_iterations < 1:
+        raise ValueError("vc_max_iterations must be at least 1.")
 
     _status(
         "Offline hybrid start: "
-        f"dataset budget={total_nupack_budget}, "
-        f"per-generation fresh-pair search budget={fresh_pair_search_budget}, "
-        f"generations={generations}, "
-        f"initial fresh pairs={initial_fresh_pair_count}"
+        f"initial fresh pairs={initial_fresh_pair_count}, "
+        "termination=exact_pool_exhaustion"
     )
     retained_pair_ids = set()
-    non_cover_vertices = set()
-    current_allowed_violations = allowed_violations
+    retained_pairs = []
     total_nupack_calls = 0
-    target_fresh_pair_count = int(initial_fresh_pair_count)
     generation_data = []
     stopped_reason = None
-    for generation_idx in range(generations):
-        if total_nupack_calls >= total_nupack_budget:
-            stopped_reason = "total_nupack_budget"
-            _status("Offline hybrid: total NUPACK budget reached.")
-            break
 
-        remaining_budget = total_nupack_budget - total_nupack_calls
-        generation_nupack_cap = min(fresh_pair_search_budget, remaining_budget)
+    _status(
+        f"=== Pass 1: Initial sampling ===\n"
+        f"Sampling {initial_fresh_pair_count} candidate pairs "
+        "(energy + self-energy + homodimer filter)..."
+    )
+    _, seed_pair_ids, seed_stop_reason, seed_selection_calls, seed_stats = _select_subset_in_energy_range_offline(
+        dataset,
+        energy_min=min_ontarget,
+        energy_max=max_ontarget,
+        self_energy_min=self_energy_limit,
+        max_size=int(initial_fresh_pair_count),
+        avoid_indices=set(),
+        retained_pair_ids=[],
+        offtarget_limit=offtarget_limit,
+    )
+    total_nupack_calls += seed_selection_calls
+    _status(f"Selected {len(seed_pair_ids)} candidate pairs [{seed_selection_calls} virtual NUPACK calls]")
+
+    if not seed_pair_ids:
+        raise ValueError("Offline hybrid found no sequences during pass 1; no report can be written.")
+
+    seed_verified = _build_verified_from_dataset(dataset, seed_pair_ids)
+    _status(f"Running vertex cover on {len(seed_pair_ids)} pairs...")
+    retained_pair_ids, seed_vc_calls = _run_vertex_cover_offline(
+        seed_pair_ids,
+        dataset,
+        offtarget_limit,
+        prune_fraction,
+        vc_max_iterations,
+    )
+    total_nupack_calls += seed_vc_calls
+    retained_pairs = [get_pair_by_global_id(dataset, global_id) for global_id in sorted(retained_pair_ids)]
+    _status(
+        f"Independent set: {len(retained_pair_ids)} pairs retained | "
+        f"NUPACK calls: {total_nupack_calls}"
+    )
+    generation_data.append(
+        _build_progress_row(
+            pass_name="seed",
+            pairs_collected=len(seed_pair_ids),
+            pairs_after_vc=len(retained_pair_ids),
+            total_retained=len(retained_pair_ids),
+            nupack_calls_executed=seed_selection_calls + seed_vc_calls,
+            stopped_early=seed_stop_reason is not None,
+            attempts=seed_stats["attempts"],
+            passed_ontarget_and_self=seed_stats["passed_ontarget_and_self"],
+            passed_homodimer=seed_stats["passed_homodimer"],
+            accepted_into_pool=seed_stats["accepted_into_pool"],
+            notes=seed_stop_reason,
+        )
+    )
+
+    if seed_stop_reason == "pool_exhausted":
+        stopped_reason = "pool_exhausted"
+        _status("Offline hybrid exhausted the finite pool during pass 1. Skipping pass 2.")
+    else:
         _status(
-            f"Offline generation {generation_idx + 1}: selecting fresh pairs "
-            f"(target={target_fresh_pair_count}, remaining budget={remaining_budget})..."
+            f"=== Pass 2: Cross-referenced collection ===\n"
+            f"Collecting candidate pairs cross-referenced against {len(retained_pair_ids)} retained..."
         )
-        subset, indices, stopped_early, subset_nupack_calls = _select_subset_in_energy_range_offline(
-            dataset,
-            energy_min=min_ontarget,
-            energy_max=max_ontarget,
-            self_energy_min=self_energy_limit,
-            max_size=target_fresh_pair_count,
-            avoid_indices=retained_pair_ids,
-            retained_pair_ids=sorted(retained_pair_ids),
-            allowed_violations=current_allowed_violations,
-            offtarget_limit=offtarget_limit,
-            fresh_pair_search_budget=generation_nupack_cap,
+        _, collection_pair_ids, collection_stop_reason, collection_calls, collection_stats = (
+            _select_subset_in_energy_range_offline(
+                dataset,
+                energy_min=min_ontarget,
+                energy_max=max_ontarget,
+                self_energy_min=self_energy_limit,
+                max_size=np.inf,
+                avoid_indices=set(retained_pair_ids),
+                retained_pair_ids=sorted(retained_pair_ids),
+                offtarget_limit=offtarget_limit,
+            )
         )
-        fresh_pairs_sampled = len(indices)
-        total_nupack_calls += subset_nupack_calls
-        if stopped_early:
-            current_allowed_violations += 1
+        total_nupack_calls += collection_calls
+        _status(
+            f"Collected {len(collection_pair_ids)} candidate pairs "
+            f"[{collection_calls} pass 2 virtual NUPACK calls]"
+        )
+
+        added_pairs_after_vc = 0
+        if collection_pair_ids:
+            _status(f"Running vertex cover on {len(collection_pair_ids)} candidate pairs...")
+            independent_set, collection_vc_calls = _run_vertex_cover_offline(
+                collection_pair_ids,
+                dataset,
+                offtarget_limit,
+                prune_fraction,
+                vc_max_iterations,
+            )
+            total_nupack_calls += collection_vc_calls
+            retained_pair_ids.update(independent_set)
+            retained_pairs = [get_pair_by_global_id(dataset, global_id) for global_id in sorted(retained_pair_ids)]
+            added_pairs_after_vc = len(independent_set)
             _status(
-                "Offline subset selection hit its cap; "
-                f"allowed violations now {current_allowed_violations}."
+                f"Independent set: {added_pairs_after_vc} additional pairs found | "
+                f"Total retained: {len(retained_pair_ids)} | "
+                f"NUPACK calls: {total_nupack_calls}"
             )
         else:
-            _status(
-                f"Offline generation {generation_idx + 1}: sampled {fresh_pairs_sampled} fresh pairs "
-                f"using {subset_nupack_calls} virtual NUPACK calls."
-            )
-        indices += sorted(retained_pair_ids)
-        if not indices:
-            stopped_reason = "no_sequences_found"
-            _status("Offline hybrid: no sequences found before graph step.")
-            break
-        off_target_nupack_calls = _estimate_offtarget_nupack_calls(len(indices))
-        if total_nupack_calls + off_target_nupack_calls > total_nupack_budget:
-            stopped_reason = "total_nupack_budget"
-            _status(
-                "Offline hybrid stopping before full matrix; "
-                f"needed {off_target_nupack_calls} calls but only "
-                f"{total_nupack_budget - total_nupack_calls} remain."
-            )
-            break
+            collection_vc_calls = 0
+            _status("No candidate pairs found in pass 2.")
 
-        _status(
-            f"Offline generation {generation_idx + 1}: building cached graph for "
-            f"{len(indices)} pairs ({off_target_nupack_calls} virtual calls)."
-        )
-        off_e_subset = build_sub_offtarget_dict(dataset, indices)
-        total_nupack_calls += off_target_nupack_calls
-        edges = build_edges(off_e_subset, indices, offtarget_limit)
-        removed_vertices, trajectories = iterative_vertex_cover_refinement(
-            indices,
-            edges,
-            avoid_V=retained_pair_ids,
-            max_iterations=vc_max_iterations,
-            num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
-            show_progress=False,
-        )
-        vertices = set(indices)
-        new_non_cover_vertices = vertices - removed_vertices
-        if len(new_non_cover_vertices) >= len(non_cover_vertices):
-            non_cover_vertices = new_non_cover_vertices
-            retained_pair_ids = set(non_cover_vertices)
-        target_fresh_pair_count = int(len(retained_pair_ids) * fresh_pair_scale) if retained_pair_ids else target_fresh_pair_count
-        _status(
-            f"Offline generation {generation_idx + 1}: current={len(new_non_cover_vertices)}, "
-            f"best={len(non_cover_vertices)}, total virtual calls={total_nupack_calls}"
-        )
         generation_data.append(
-            {
-                "generation": generation_idx + 1,
-                "fresh_pairs_sampled": fresh_pairs_sampled,
-                "pairs_in_graph_search": len(indices),
-                "pairs_found": len(new_non_cover_vertices),
-                "nupack_calls_executed": total_nupack_calls,
-                "stopped_early": bool(stopped_early),
-                "notes": None,
-            }
+            _build_progress_row(
+                pass_name="collection",
+                pairs_collected=len(collection_pair_ids),
+                pairs_after_vc=added_pairs_after_vc,
+                total_retained=len(retained_pair_ids),
+                nupack_calls_executed=collection_calls + collection_vc_calls,
+                stopped_early=collection_stop_reason is not None,
+                attempts=collection_stats["attempts"],
+                passed_ontarget_and_self=collection_stats["passed_ontarget_and_self"],
+                passed_homodimer=collection_stats["passed_homodimer"],
+                accepted_into_pool=collection_stats["accepted_into_pool"],
+                notes=collection_stop_reason,
+            )
         )
+        stopped_reason = collection_stop_reason or "pool_exhausted"
+
     _status(f"Offline hybrid total virtual NUPACK calls: {total_nupack_calls}")
-    selected_sequence_data = get_selected_rows(dataset, sorted(non_cover_vertices))
+    selected_sequence_data = get_selected_rows(dataset, sorted(retained_pair_ids))
+    seed_sequence_data = get_selected_rows(dataset, seed_pair_ids)
     verified = verify_selected_pairs(selected_sequence_data, nupack_params=dataset["metadata"]["nupack"])
     return _write_benchmark_result_xlsx(
         output_path,
@@ -693,16 +798,13 @@ def run_hybrid_search_offline_to_xlsx(
             "min_ontarget": float(min_ontarget),
             "self_energy_limit": float(self_energy_limit),
             "initial_fresh_pair_count": int(initial_fresh_pair_count),
-            "generations": int(generations),
-            "allowed_violations_initial": int(allowed_violations),
-            "fresh_pair_search_budget": int(fresh_pair_search_budget),
-            "total_nupack_budget": int(total_nupack_budget),
             "prune_fraction": float(prune_fraction),
-            "fresh_pair_scale": float(fresh_pair_scale),
             "vc_max_iterations": int(vc_max_iterations),
             "random_seed": int(random_seed),
             "total_nupack_calls": int(total_nupack_calls),
         },
+        seed_sequence_data=seed_sequence_data,
+        seed_verified=seed_verified,
         extra_metadata={
             "stopped_reason": stopped_reason,
         },

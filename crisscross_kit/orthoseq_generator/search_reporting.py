@@ -61,8 +61,15 @@ RUN_METADATA_KEY_ORDER = [
 
 
 def _metadata_display_value(value):
-    """Convert missing metadata values into a stable workbook sentinel."""
-    return NA_VALUE if value is None else value
+    """
+    Convert run-metadata values into a stable workbook representation.
+
+    The `run_metadata` sheet is consumed through generic dataframe readers, so
+    the `value` column should avoid mixed Excel cell types. Writing everything
+    as strings prevents numeric values like `1.0` from round-tripping as
+    booleans when pandas re-reads the sheet.
+    """
+    return NA_VALUE if value is None else str(value)
 
 
 def verify_selected_pairs(selected_sequence_data: list[dict], nupack_params: dict | None = None) -> dict:

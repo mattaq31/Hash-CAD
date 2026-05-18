@@ -8,6 +8,10 @@ Purpose
 This validation script writes one offline-hybrid workbook and one live
 online-hybrid workbook into the same benchmark-named results folder so their
 metadata and progress sheets can be inspected side by side.
+
+The offline side now mirrors the current two-pass hybrid structure and runs to
+exact finite-pool exhaustion. The live side still samples from the registry and
+therefore runs until its own sampler-exhaustion behavior triggers.
 """
 
 from pathlib import Path
@@ -23,7 +27,7 @@ for path in (MODULE_DIR, PACKAGE_DIR):
         sys.path.insert(0, str(path))
 
 from benchmark_algorithms import run_hybrid_search_offline_to_xlsx
-from benchmark_dataset_tools import estimate_dataset_nupack_budget, load_dataset, resolve_dataset_input_params
+from benchmark_dataset_tools import load_dataset, resolve_dataset_input_params
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator.search_reporting import (
     build_selected_sequence_data,
@@ -53,16 +57,11 @@ def main():
     inputs = dataset["metadata"]["inputs"]
     derived = dataset["metadata"]["derived"]
     nupack_params = dataset["metadata"]["nupack"]
-    total_nupack_budget = estimate_dataset_nupack_budget(dataset)
 
     offtarget_limit = -6.5
     self_energy_limit = -2.0
     initial_fresh_pair_count = 40
-    generations = 2
-    allowed_violations = 0
-    fresh_pair_search_budget = 500
     prune_fraction = 0.2
-    fresh_pair_scale = 1.0
     vc_max_iterations = 200
     random_seed = 44
 
@@ -79,7 +78,6 @@ def main():
     print("threep_ext:", repr(inputs["threep_ext"]))
     print("min_ontarget:", derived["min_ontarget_energy"])
     print("max_ontarget:", derived["max_ontarget_energy"])
-    print("total_nupack_budget:", total_nupack_budget)
 
     print("starting offline...")
     results_dir = dataset_dir / "results" / BENCHMARK_NAME
@@ -91,11 +89,7 @@ def main():
         offtarget_limit=offtarget_limit,
         self_energy_limit=self_energy_limit,
         initial_fresh_pair_count=initial_fresh_pair_count,
-        generations=generations,
-        allowed_violations=allowed_violations,
-        fresh_pair_search_budget=fresh_pair_search_budget,
         prune_fraction=prune_fraction,
-        fresh_pair_scale=fresh_pair_scale,
         vc_max_iterations=vc_max_iterations,
         random_seed=random_seed,
     )
@@ -123,12 +117,7 @@ def main():
         float(derived["min_ontarget_energy"]),
         self_energy_limit,
         initial_fresh_pair_count=initial_fresh_pair_count,
-        generations=generations,
-        allowed_violations=allowed_violations,
-        fresh_pair_search_budget=fresh_pair_search_budget,
-        total_nupack_budget=total_nupack_budget,
         prune_fraction=prune_fraction,
-        fresh_pair_scale=fresh_pair_scale,
         vc_max_iterations=vc_max_iterations,
         return_diagnostics=True,
     )
