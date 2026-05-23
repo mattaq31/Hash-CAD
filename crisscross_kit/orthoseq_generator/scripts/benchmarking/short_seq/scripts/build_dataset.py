@@ -30,12 +30,13 @@ from benchmark_dataset_tools import build_short_seq_dataset
 
 if __name__ == "__main__":
     script_dir = Path(__file__).resolve().parent
-    batch_dir = script_dir.parent / "data" / "len4_7_tttt5p"
+    batch_dir = script_dir.parent / "data" / "len4_7_tttt5p_noGGGG"
     batch_dir.mkdir(parents=True, exist_ok=True)
 
     range_sigma = 1.0
-    avoid_gggg = False
     threep_ext = ""
+    unwanted_substrings = ["GGGG","CCCC"]
+    apply_unwanted_to = "full"
     random_seed = 42
     material = "dna"
     celsius = 37
@@ -45,8 +46,9 @@ if __name__ == "__main__":
     fivep_ext_variants = ["", "TTTT"]
 
     params_text = f"""range_sigma = {range_sigma}
-avoid_gggg = {"true" if avoid_gggg else "false"}
 threep_ext = "{threep_ext}"
+unwanted_substrings = [{", ".join(f'"{substring}"' for substring in unwanted_substrings)}]
+apply_unwanted_to = "{apply_unwanted_to}"
 random_seed = {random_seed}
 material = "{material}"
 celsius = {celsius}
@@ -71,9 +73,10 @@ fivep_ext_variants = [{", ".join(f'"{fivep_ext}"' for fivep_ext in fivep_ext_var
                 dataset_dir,
                 length=length,
                 range_sigma=range_sigma,
-                avoid_gggg=avoid_gggg,
                 fivep_ext=fivep_ext,
                 threep_ext=threep_ext,
+                unwanted_substrings=unwanted_substrings,
+                apply_unwanted_to=apply_unwanted_to,
                 random_seed=random_seed,
                 material=material,
                 celsius=celsius,

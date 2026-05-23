@@ -34,13 +34,14 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 matplotlib.rcParams["font.family"] = "Arial"
+matplotlib.rcParams["svg.fonttype"] = "none"
 
-MODULE_DIR = Path(__file__).resolve().parents[1]
+MODULE_DIR = Path(__file__).resolve().parents[2]
 if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
 
-DATA_ROOT = MODULE_DIR / "data" / "test_init_pairs_sigma1p0_seed41"
+DATA_ROOT = MODULE_DIR / "data" / "non_canonical" / "test_init_pairs_sigma1p0_seed41"
 SUMMARY_PATH = (
     MODULE_DIR
     / "configs"

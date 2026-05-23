@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
-Purpose:
-    Run one live hybrid long-sequence benchmark condition from a generated
-    condition TOML.
+Run one generated long-seq hybrid benchmark condition.
+
+This is the execution counterpart to `prepare_conditions.py`: it loads one
+generated condition TOML, rebuilds the live `SequencePairRegistry`, runs the
+hybrid search, verifies the final result set, and writes the workbook plus the
+standard PDF diagnostics into the configured batch data folder.
 """
 
 import argparse
@@ -30,14 +33,8 @@ def main():
     """
     Run one generated long-seq condition with the live hybrid algorithm.
 
-    This runner consumes one condition TOML produced by
-    `prepare_conditions.py`, rebuilds the live `SequencePairRegistry`, runs
-    `hybrid_search(...)`, verifies the final set with direct NUPACK
-    recomputation, and writes the XLSX report plus the standard plots into the
-    configured output folder.
-
-    :returns: None
-    :rtype: None
+    The workbook and the per-run PDF diagnostics are written next to the batch
+    data selected by the condition TOML's `output.dir`.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(

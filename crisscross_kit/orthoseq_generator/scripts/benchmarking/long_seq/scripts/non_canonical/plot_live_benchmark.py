@@ -22,13 +22,18 @@ from matplotlib.patches import Patch
 import pandas as pd
 
 matplotlib.rcParams["font.family"] = "Arial"
+matplotlib.rcParams["svg.fonttype"] = "none"
 
-MODULE_DIR = Path(__file__).resolve().parents[1]
+MODULE_DIR = Path(__file__).resolve().parents[2]
+PACKAGE_DIR = Path(__file__).resolve().parents[6]
+if str(PACKAGE_DIR) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_DIR))
 if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
+from orthoseq_generator.search_report_reader import load_metadata
 
-DATA_ROOT = MODULE_DIR / "data"
+DATA_ROOT = MODULE_DIR / "data" / "non_canonical"
 GENERATED_CONFIG_ROOT = MODULE_DIR / "configs" / "generated"
 ALGORITHM_ORDER = ["naive", "hybrid"]
 ALGORITHM_COLORS = {
@@ -75,14 +80,6 @@ def slugify_title_suffix(title_suffix: str) -> str:
     slug = slug.replace("5'", "5prime")
     slug = re.sub(r"[^a-z0-9]+", "_", slug)
     return slug.strip("_")
-
-
-def read_metadata_value(metadata_df: pd.DataFrame, key: str):
-    """Return one value from the workbook metadata sheet by key."""
-    rows = metadata_df.loc[metadata_df["key"] == key, "value"]
-    if rows.empty:
-        return None
-    return rows.iloc[0]
 
 
 def parse_run_filename(report_path: Path) -> dict | None:
@@ -145,12 +142,12 @@ def collect_runs(data_root: Path, limit_label_to_fraction: dict[str, float]) -> 
         parsed = parse_run_filename(report_path)
         if parsed is None:
             continue
-        metadata_df = pd.read_excel(report_path, sheet_name="run_metadata")
-        metadata_algorithm = normalize_algorithm_name(read_metadata_value(metadata_df, "algorithm_name"))
-        length = read_metadata_value(metadata_df, "input.length")
-        fivep_ext = read_metadata_value(metadata_df, "input.fivep_ext")
-        found_pair_count = read_metadata_value(metadata_df, "found_pair_count")
-        offtarget_limit = read_metadata_value(metadata_df, "search.offtarget_limit")
+        metadata = load_metadata(report_path)
+        metadata_algorithm = normalize_algorithm_name(metadata.get("algorithm_name"))
+        length = metadata.get("input.length")
+        fivep_ext = metadata.get("input.fivep_ext")
+        found_pair_count = metadata.get("found_pair_count")
+        offtarget_limit = metadata.get("search.offtarget_limit")
 
         if metadata_algorithm is not None and metadata_algorithm != parsed["algorithm"]:
             raise ValueError(

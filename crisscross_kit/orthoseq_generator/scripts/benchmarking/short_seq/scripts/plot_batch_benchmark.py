@@ -23,20 +23,33 @@ import numpy as np
 import pandas as pd
 
 matplotlib.rcParams["font.family"] = "Arial"
+matplotlib.rcParams["svg.fonttype"] = "none"
 
 MODULE_DIR = Path(__file__).resolve().parents[1]
+PACKAGE_DIR = Path(__file__).resolve().parents[5]
+if str(PACKAGE_DIR) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_DIR))
 if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
+from orthoseq_generator.search_report_reader import load_metadata
 
-DATASET_PARENT_NAME = "len4_7_tttt5p"
-BENCHMARK_NAME = "benchmark_3_new"
+
+DATASET_PARENT_NAME = "len4_7_tttt5p_noGGGG"
+BENCHMARK_NAME = "benchmark_3_new_init_sweep"
 ALGORITHM_ORDER = ["naive", "vertex_cover", "hybrid_offline"]
 ALGORITHM_COLORS = {
     "naive": "#808080",
     "vertex_cover": "#3B6FB6",
     "hybrid_offline": "#2A9D8F",
 }
+HYBRID_VARIANT_COLORS = [
+    "#2A9D8F",
+    "#63B7AF",
+    "#9FD4CF",
+    "#BFE3DE",
+    "#D7EFEB",
+]
 ALGORITHM_LABELS = {
     "naive": "Naive",
     "vertex_cover": "Vertex cover",
@@ -97,7 +110,7 @@ def find_benchmark_dirs(parent_dir: Path) -> list[Path]:
 def parse_run_filename(report_path: Path) -> dict | None:
     """Parse one benchmark workbook filename into its run parameters."""
     match = re.match(
-        r"density(?P<density>[0-9p]+)_(?P<algorithm>naive|vertex_cover|hybrid_offline)_limit(?P<cutoff>[-0-9p]+)_seed(?P<seed>\d+)\.xlsx$",
+        r"density(?P<density>[0-9p]+)_(?P<algorithm>naive|vertex_cover|hybrid_offline)_limit(?P<cutoff>[-0-9p]+)(?:_(?P<variant>.+?))?_seed(?P<seed>\d+)\.xlsx$",
         report_path.name,
     )
     if not match:
@@ -106,22 +119,71 @@ def parse_run_filename(report_path: Path) -> dict | None:
         "target_conflict_density": float(match.group("density").replace("p", ".")),
         "algorithm": match.group("algorithm"),
         "selected_offtarget_limit_label": match.group("cutoff"),
+        "variant_label": match.group("variant"),
         "seed": int(match.group("seed")),
     }
 
 
-def read_metadata_value(metadata_df: pd.DataFrame, key: str):
-    """Return one value from the workbook metadata sheet by key."""
-    rows = metadata_df.loc[metadata_df["key"] == key, "value"]
-    if rows.empty:
-        return None
-    return rows.iloc[0]
+def build_plot_series_specs(runs_df: pd.DataFrame) -> list[dict]:
+    """Build the ordered bar series shown in each density subgroup."""
+    series_specs = [
+        {
+            "key": "naive",
+            "algorithm": "naive",
+            "initial_fresh_pair_count": None,
+            "label": ALGORITHM_LABELS["naive"],
+            "color": ALGORITHM_COLORS["naive"],
+        },
+        {
+            "key": "vertex_cover",
+            "algorithm": "vertex_cover",
+            "initial_fresh_pair_count": None,
+            "label": ALGORITHM_LABELS["vertex_cover"],
+            "color": ALGORITHM_COLORS["vertex_cover"],
+        },
+    ]
+
+    hybrid_df = runs_df[runs_df["algorithm"] == "hybrid_offline"]
+    if hybrid_df.empty:
+        return series_specs
+
+    hybrid_inits = sorted(
+        {
+            int(value)
+            for value in hybrid_df["initial_fresh_pair_count"].dropna().unique().tolist()
+        },
+        reverse=True,
+    )
+    if hybrid_inits:
+        for idx, init_count in enumerate(hybrid_inits):
+            series_specs.append(
+                {
+                    "key": f"hybrid_offline_init{init_count}",
+                    "algorithm": "hybrid_offline",
+                    "initial_fresh_pair_count": int(init_count),
+                    "label": f"Hybrid {int(init_count)}",
+                    "color": HYBRID_VARIANT_COLORS[idx % len(HYBRID_VARIANT_COLORS)],
+                }
+            )
+        return series_specs
+
+    series_specs.append(
+        {
+            "key": "hybrid_offline",
+            "algorithm": "hybrid_offline",
+            "initial_fresh_pair_count": None,
+            "label": ALGORITHM_LABELS["hybrid_offline"],
+            "color": ALGORITHM_COLORS["hybrid_offline"],
+        }
+    )
+    return series_specs
 
 
-def read_metadata_value_with_fallback(metadata_df: pd.DataFrame, primary_key: str, fallback_key: str):
-    """Read one metadata value, falling back to a legacy key when needed."""
-    primary_value = read_metadata_value(metadata_df, primary_key)
-    return primary_value if primary_value is not None else read_metadata_value(metadata_df, fallback_key)
+def build_plot_series_key(algorithm: str, initial_fresh_pair_count: int | None) -> str:
+    """Build the grouping key used for plot aggregation."""
+    if algorithm != "hybrid_offline" or initial_fresh_pair_count is None:
+        return algorithm
+    return f"hybrid_offline_init{int(initial_fresh_pair_count)}"
 
 
 def collect_runs(parent_dir: Path) -> pd.DataFrame:
@@ -133,9 +195,14 @@ def collect_runs(parent_dir: Path) -> pd.DataFrame:
             parsed = parse_run_filename(report_path)
             if parsed is None:
                 continue
-            metadata_df = pd.read_excel(report_path, sheet_name="run_metadata")
-            length = read_metadata_value_with_fallback(metadata_df, "input.length", "dataset.length")
-            fivep_ext = read_metadata_value_with_fallback(metadata_df, "input.fivep_ext", "dataset.fivep_ext")
+            metadata = load_metadata(report_path)
+            length = metadata.get("input.length")
+            if length is None:
+                length = metadata.get("dataset.length")
+            fivep_ext = metadata.get("input.fivep_ext")
+            if fivep_ext is None:
+                fivep_ext = metadata.get("dataset.fivep_ext")
+            initial_fresh_pair_count = metadata.get("search.initial_fresh_pair_count")
             rows.append(
                 {
                     "dataset_name": dataset_dir.name,
@@ -143,9 +210,15 @@ def collect_runs(parent_dir: Path) -> pd.DataFrame:
                     "fivep_ext": str(fivep_ext or ""),
                     "has_tttt5p": str(fivep_ext or "") == "TTTT",
                     "algorithm": parsed["algorithm"],
+                    "variant_label": parsed["variant_label"],
+                    "initial_fresh_pair_count": initial_fresh_pair_count,
+                    "plot_series_key": build_plot_series_key(
+                        parsed["algorithm"],
+                        initial_fresh_pair_count,
+                    ),
                     "seed": parsed["seed"],
                     "target_conflict_density": parsed["target_conflict_density"],
-                    "found_pair_count": int(read_metadata_value(metadata_df, "found_pair_count")),
+                    "found_pair_count": int(metadata["found_pair_count"]),
                     "report_path": str(report_path),
                 }
             )
@@ -155,7 +228,7 @@ def collect_runs(parent_dir: Path) -> pd.DataFrame:
 def compute_shared_y_max(runs_df: pd.DataFrame) -> float:
     """Compute a shared y-axis maximum across all grouped benchmark bars."""
     grouped = (
-        runs_df.groupby(["has_tttt5p", "length", "target_conflict_density", "algorithm"])["found_pair_count"]
+        runs_df.groupby(["has_tttt5p", "length", "target_conflict_density", "plot_series_key"])["found_pair_count"]
         .agg(["mean", "std", "count"])
         .reset_index()
     )
@@ -176,7 +249,13 @@ def slugify_title_suffix(title_suffix: str) -> str:
     return slug.strip("_")
 
 
-def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float) -> tuple[plt.Figure, str] | None:
+def plot_group(
+    group_df: pd.DataFrame,
+    *,
+    has_tttt5p: bool,
+    shared_y_max: float,
+    series_specs: list[dict],
+) -> tuple[plt.Figure, str] | None:
     """Plot one extension-condition subset of the benchmark runs."""
     if group_df.empty:
         return None
@@ -184,29 +263,31 @@ def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float)
     lengths = sorted(group_df["length"].unique())
     densities = sorted(group_df["target_conflict_density"].unique())
 
-    bars_per_length = len(densities) * len(ALGORITHM_ORDER)
-    bar_width = 0.34
+    bars_per_length = len(densities) * len(series_specs)
+    bar_width = 0.45
     length_gap = 0.9
-    subgroup_gap = 0.12
+    subgroup_gap = 0.3
 
     fig, ax = plt.subplots(figsize=FIGURE_SIZE_INCHES)
-    density_xticks = []
-    density_xticklabels = []
-    group_annotations = []
+    length_xticks = []
+    length_xticklabels = []
+    subgroup_annotations = []
 
     for length_idx, length in enumerate(lengths):
         length_start = length_idx * (bars_per_length * bar_width + len(densities) * subgroup_gap + length_gap)
         length_center = length_start + 0.5 * ((bars_per_length - 1) * bar_width + (len(densities) - 1) * subgroup_gap)
-        length_group_max = 0.0
+        length_xticks.append(length_center)
+        length_xticklabels.append(str(length))
 
         for density_idx, density in enumerate(densities):
-            subgroup_start = length_start + density_idx * (len(ALGORITHM_ORDER) * bar_width + subgroup_gap)
-            for algorithm_idx, algorithm in enumerate(ALGORITHM_ORDER):
-                x = subgroup_start + algorithm_idx * bar_width
+            subgroup_start = length_start + density_idx * (len(series_specs) * bar_width + subgroup_gap)
+            subgroup_max = 0.0
+            for series_idx, series_spec in enumerate(series_specs):
+                x = subgroup_start + series_idx * bar_width
                 values = group_df.loc[
                     (group_df["length"] == length)
                     & (group_df["target_conflict_density"] == density)
-                    & (group_df["algorithm"] == algorithm),
+                    & (group_df["plot_series_key"] == series_spec["key"]),
                     "found_pair_count",
                 ].to_numpy(dtype=float)
                 if len(values) == 0:
@@ -215,7 +296,7 @@ def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float)
                 mean_value = float(np.mean(values))
                 std_value = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
                 sem_value = std_value / np.sqrt(len(values)) if len(values) > 1 else 0.0
-                length_group_max = max(length_group_max, mean_value + sem_value)
+                subgroup_max = max(subgroup_max, mean_value + sem_value)
 
                 ax.bar(
                     x,
@@ -223,39 +304,34 @@ def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float)
                     width=bar_width,
                     yerr=sem_value,
                     capsize=1,
-                    color=ALGORITHM_COLORS[algorithm],
+                    color=series_spec["color"],
                     edgecolor="black",
                     linewidth=BAR_EDGE_LINEWIDTH,
                     error_kw={"elinewidth": ERRORBAR_LINEWIDTH, "capthick": ERRORBAR_LINEWIDTH},
                     alpha=1.0,
-                    label=algorithm if (length_idx == 0 and density_idx == 0) else None,
+                    label=series_spec["label"] if (length_idx == 0 and density_idx == 0) else None,
                 )
 
-            subgroup_center = subgroup_start + bar_width
-            density_xticks.append(subgroup_center)
-            density_xticklabels.append(f"{density:.1f}")
-
-        group_annotations.append((length_center, length, length_group_max))
+            subgroup_center = subgroup_start + 0.5 * ((len(series_specs) - 1) * bar_width)
+            subgroup_annotations.append((subgroup_center, density, subgroup_max))
 
     title_suffix = GROUP_TITLES[has_tttt5p]
     ax.set_title(title_suffix, fontsize=TITLE_FONT_SIZE, pad=6)
-    ax.set_xlabel("Conflict probability", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.set_xlabel("Sequence length", fontsize=AXIS_LABEL_FONT_SIZE)
     ax.set_ylabel("Number of pairs found", fontsize=AXIS_LABEL_FONT_SIZE)
-    ax.set_xticks(density_xticks)
-    ax.set_xticklabels(density_xticklabels, fontsize=TICK_LABEL_FONT_SIZE)
+    ax.set_xticks(length_xticks)
+    ax.set_xticklabels(length_xticklabels, fontsize=TICK_LABEL_FONT_SIZE)
     ax.set_ylim(0, shared_y_max)
-    ax.tick_params(axis="y", labelsize=TICK_LABEL_FONT_SIZE, width=AXIS_LINEWIDTH, length=0)
+    ax.tick_params(axis="y", labelsize=TICK_LABEL_FONT_SIZE, width=AXIS_LINEWIDTH, length=2)
     ax.tick_params(axis="x", width=AXIS_LINEWIDTH, length=0, pad=2)
 
     for spine in ax.spines.values():
         spine.set_linewidth(AXIS_LINEWIDTH)
 
-    ax.grid(axis="y", color="#B5B5B5", linewidth=GRID_LINEWIDTH, alpha=0.8)
-    ax.set_axisbelow(True)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(
         handles,
-        [ALGORITHM_LABELS.get(label, label) for label in labels],
+        labels,
         loc="upper left",
         frameon=True,
         facecolor="white",
@@ -266,12 +342,12 @@ def plot_group(group_df: pd.DataFrame, *, has_tttt5p: bool, shared_y_max: float)
         borderaxespad=0.2,
     )
 
-    for x_pos, length, group_max in group_annotations:
-        label_y = min(shared_y_max * 0.97, group_max + shared_y_max * 0.08)
+    for x_pos, density, subgroup_max in subgroup_annotations:
+        label_y = min(shared_y_max * 0.98, subgroup_max + shared_y_max * 0.10 if subgroup_max > 0 else shared_y_max * 0.94)
         ax.text(
             x_pos,
             label_y,
-            f"Length = {length}",
+            f"{density:.1f}",
             ha="center",
             va="top",
             fontsize=TICK_LABEL_FONT_SIZE,
@@ -293,10 +369,12 @@ def save_plot(fig: plt.Figure, output_dir: Path, title_suffix: str) -> Path:
 if __name__ == "__main__":
     parent_dir = MODULE_DIR / "data" / DATASET_PARENT_NAME
     runs_df = collect_runs(parent_dir)
+    series_specs = build_plot_series_specs(runs_df)
     shared_y_max = compute_shared_y_max(runs_df)
 
     print(f"dataset parent: {parent_dir}")
     print(f"loaded runs: {len(runs_df)}")
+    print(f"plot series: {[spec['label'] for spec in series_specs]}")
     print(f"shared y max: {shared_y_max:.2f}")
 
     for has_tttt5p in (False, True):
@@ -304,6 +382,7 @@ if __name__ == "__main__":
             runs_df[runs_df["has_tttt5p"] == has_tttt5p],
             has_tttt5p=has_tttt5p,
             shared_y_max=shared_y_max,
+            series_specs=series_specs,
         )
         if plot_result is None:
             continue

@@ -28,9 +28,9 @@ import pandas as pd
 
 
 MODULE_DIR = Path(__file__).resolve().parents[2]
-DEFAULT_NAIVE_REPORT = MODULE_DIR / "data" / "exploratory" / "naive_len16_5p_none_limitm8p16_seed41.xlsx"
-DEFAULT_HYBRID_REPORT = MODULE_DIR / "data" / "exploratory" / "ortho_16mers8p16_new_sheettest7.xlsx"
-DEFAULT_OUTPUT_DIR = MODULE_DIR / "data" / "exploratory"
+DEFAULT_NAIVE_REPORT = MODULE_DIR / "data" / "non_canonical" / "naive_len16_5p_none_limitm8p16_seed41.xlsx"
+DEFAULT_HYBRID_REPORT = MODULE_DIR / "data" / "non_canonical" / "ortho_16mers8p16_new_sheettest7.xlsx"
+DEFAULT_OUTPUT_DIR = MODULE_DIR / "data" / "non_canonical"
 
 
 def parse_args() -> argparse.Namespace:

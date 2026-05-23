@@ -361,7 +361,7 @@ def iterative_vertex_cover_refinement(V, E, avoid_V=None, num_vertices_to_remove
         return len(cover & avoid_V)
 
     best_vertex_cover = greedy_vertex_cover_heuristic(E, avoid_V=avoid_V)
-    size_trajectory = []
+    size_trajectory = [len(V) - len(best_vertex_cover)]
 
     for iteration in range(1, max_iterations + 1):
         if len(V) - len(best_vertex_cover) >= limit:

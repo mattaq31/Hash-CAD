@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Purpose:
-    Prepare one batch of long-sequence benchmark conditions from a TOML config.
+Prepare one long-seq benchmark batch from a template TOML.
 
-    The script loops over the requested sequence lengths and 5' extensions,
-    samples live sequence pairs, estimates the on-target energy window from
-    the sigma strategy, derives off-target and self-energy limits from
-    physically interpreted fraction targets, and then writes:
+For each requested `(length, 5' extension, 3' extension)` family, this script
+samples live sequence pairs, estimates the on-target window from the sigma
+rule, converts the user-facing physical targets into energy thresholds, and
+writes a generated batch under `configs/generated/`.
 
-    - one batch summary TOML
-    - one condition TOML per off-target target
-    - one Slurm script per generated run TOML
-    - one submit-all shell script
+Each generated batch contains:
+
+- `batch_summary.toml`
+- one condition TOML per benchmark run
+- one Slurm wrapper per generated run
+- one `submit_all.sh`
+
+The generated condition TOMLs also embed the benchmark output root under
+`data/<batch_name>_sigma..._seed.../`, so the execution scripts know where to
+write the resulting workbooks.
 """
 
 from __future__ import annotations

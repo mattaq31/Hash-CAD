@@ -26,33 +26,10 @@ from benchmark_algorithms import (
     run_vertex_cover_search_to_xlsx,
 )
 from benchmark_analysis import find_offtarget_limits_for_target_densities
-from benchmark_dataset_tools import load_dataset
-
-
-DATASET_PARENT_NAME = "len4_7_tttt5p"
-DATASET_NAME = "len7"
-BENCHMARK_NAME = "benchmark_test3_new_point"
-TARGET_CONFLICT_DENSITIES = [0.2]
-SEEDS = [41]
-SELF_ENERGY_LIMIT = -2.0
-RUN_NAIVE = False
-RUN_VERTEX_COVER = False
-RUN_HYBRID = True
-
-VC_CORE_PARAMS = {
-    "prune_fraction": 0.2,
-    "vc_max_iterations": 1000,
-}
-
-HYBRID_PARAMS = {
-    "initial_fresh_pair_count": 2000,
-    **VC_CORE_PARAMS,
-}
-
-VERTEX_COVER_PARAMS = {
-    **VC_CORE_PARAMS,
-}
-
+from benchmark_dataset_tools import (
+    load_dataset,
+    self_energy_limit_from_unpaired_fraction,
+)
 
 def read_found_pair_count(report_path: Path) -> int:
     """Read the found-pair count from a benchmark workbook."""
@@ -60,12 +37,20 @@ def read_found_pair_count(report_path: Path) -> int:
     return int(len(selected_pairs))
 
 
-def make_plot(summary_df: pd.DataFrame) -> None:
+def make_plot(
+    summary_df: pd.DataFrame,
+    *,
+    dataset_name: str,
+    target_conflict_densities: list[float],
+    run_naive: bool,
+    run_vertex_cover: bool,
+    run_hybrid: bool,
+) -> None:
     """Plot the single-dataset benchmark summary currently held in memory."""
     algorithm_flags = {
-        "naive": RUN_NAIVE,
-        "vertex_cover": RUN_VERTEX_COVER,
-        "hybrid_offline": RUN_HYBRID,
+        "naive": run_naive,
+        "vertex_cover": run_vertex_cover,
+        "hybrid_offline": run_hybrid,
     }
     algorithms = [algorithm for algorithm, enabled in algorithm_flags.items() if enabled]
     colors = {
@@ -74,8 +59,8 @@ def make_plot(summary_df: pd.DataFrame) -> None:
         "hybrid_offline": "#54A24B",
     }
 
-    density_labels = [f"{density:.1f}" for density in TARGET_CONFLICT_DENSITIES]
-    x = np.arange(len(TARGET_CONFLICT_DENSITIES))
+    density_labels = [f"{density:.1f}" for density in target_conflict_densities]
+    x = np.arange(len(target_conflict_densities))
     width = 0.22
     offsets = {
         "naive": -width,
@@ -91,7 +76,7 @@ def make_plot(summary_df: pd.DataFrame) -> None:
             continue
         means = []
         stds = []
-        for density in TARGET_CONFLICT_DENSITIES:
+        for density in target_conflict_densities:
             values = algo_df.loc[algo_df["target_conflict_density"] == density, "found_pair_count"].to_numpy(dtype=float)
             if len(values) == 0:
                 means.append(np.nan)
@@ -112,7 +97,7 @@ def make_plot(summary_df: pd.DataFrame) -> None:
             label=algorithm,
         )
 
-        for density_idx, density in enumerate(TARGET_CONFLICT_DENSITIES):
+        for density_idx, density in enumerate(target_conflict_densities):
             values = algo_df.loc[algo_df["target_conflict_density"] == density, "found_pair_count"].to_numpy(dtype=float)
             if len(values) == 0:
                 continue
@@ -121,7 +106,7 @@ def make_plot(summary_df: pd.DataFrame) -> None:
                 dot_x += np.linspace(-0.04, 0.04, len(values))
             ax.scatter(dot_x, values, color="black", s=18, zorder=3)
 
-    ax.set_title(f"Benchmark Results for {DATASET_NAME}")
+    ax.set_title(f"Benchmark Results for {dataset_name}")
     ax.set_xlabel("Target Conflict Density")
     ax.set_ylabel("Number of pairs found")
     ax.set_xticks(x)
@@ -133,16 +118,41 @@ def make_plot(summary_df: pd.DataFrame) -> None:
 
 
 if __name__ == "__main__":
-    dataset_dir = MODULE_DIR / "data" / DATASET_PARENT_NAME / DATASET_NAME
+    dataset_parent_name = "len4_7_tttt5p_noGGGG"
+    dataset_name = "len7"
+    benchmark_name = "benchmark_test3_new_point"
+    target_conflict_densities = [0.2]
+    seeds = [41]
+    target_unpaired_fraction = 0.2
+    run_naive = False
+    run_vertex_cover = False
+    run_hybrid = True
+    vc_core_params = {
+        "prune_fraction": 0.2,
+        "vc_max_iterations": 1000,
+    }
+    hybrid_params = {
+        "initial_fresh_pair_count": 2000,
+        **vc_core_params,
+    }
+    vertex_cover_params = {
+        **vc_core_params,
+    }
+
+    dataset_dir = MODULE_DIR / "data" / dataset_parent_name / dataset_name
     dataset = load_dataset(dataset_dir)
-    cutoff_summaries = find_offtarget_limits_for_target_densities(dataset, TARGET_CONFLICT_DENSITIES)
-    benchmark_name = BENCHMARK_NAME
+    cutoff_summaries = find_offtarget_limits_for_target_densities(dataset, target_conflict_densities)
     results_dir = dataset_dir / "results" / benchmark_name
     results_dir.mkdir(parents=True, exist_ok=True)
+    self_energy_limit = self_energy_limit_from_unpaired_fraction(
+        target_unpaired_fraction,
+        float(dataset["metadata"]["nupack"]["celsius"]),
+    )
 
     print(f"dataset: {dataset_dir}")
     print(f"benchmark name: {benchmark_name}")
-    print(f"self_energy_limit: {SELF_ENERGY_LIMIT}")
+    print(f"self_target_unpaired_fraction: {target_unpaired_fraction}")
+    print(f"self_energy_limit: {self_energy_limit}")
     print("cutoff summaries:")
     for summary in cutoff_summaries:
         print(summary)
@@ -156,75 +166,75 @@ if __name__ == "__main__":
         density_label = str(target_density).replace(".", "p")
         cutoff_label = str(offtarget_limit).replace(".", "p")
 
-        for seed in SEEDS:
-            if RUN_NAIVE:
+        for seed in seeds:
+            if run_naive:
                 print(f"running naive | target_density={target_density} | cutoff={offtarget_limit} | seed={seed}")
                 naive_path = results_dir / f"density{density_label}_naive_limit{cutoff_label}_seed{seed}.xlsx"
                 run_naive_search_to_xlsx(
                     dataset_dir,
                     output_path=naive_path,
                     offtarget_limit=offtarget_limit,
-                    self_energy_limit=SELF_ENERGY_LIMIT,
+                    self_energy_limit=self_energy_limit,
                     random_seed=seed,
                 )
                 summary_rows.append(
                     {
-                        "dataset": DATASET_NAME,
+                        "dataset": dataset_name,
                         "algorithm": "naive",
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
-                        "self_energy_limit": SELF_ENERGY_LIMIT,
+                        "self_energy_limit": self_energy_limit,
                         "seed": seed,
                         "found_pair_count": read_found_pair_count(naive_path),
                         "report_path": str(naive_path),
                     }
                 )
 
-            if RUN_VERTEX_COVER:
+            if run_vertex_cover:
                 print(f"running vertex_cover | target_density={target_density} | cutoff={offtarget_limit} | seed={seed}")
                 vc_path = results_dir / f"density{density_label}_vertex_cover_limit{cutoff_label}_seed{seed}.xlsx"
                 run_vertex_cover_search_to_xlsx(
                     dataset_dir,
                     output_path=vc_path,
                     offtarget_limit=offtarget_limit,
-                    self_energy_limit=SELF_ENERGY_LIMIT,
+                    self_energy_limit=self_energy_limit,
                     random_seed=seed,
-                    **VERTEX_COVER_PARAMS,
+                    **vertex_cover_params,
                 )
                 summary_rows.append(
                     {
-                        "dataset": DATASET_NAME,
+                        "dataset": dataset_name,
                         "algorithm": "vertex_cover",
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
-                        "self_energy_limit": SELF_ENERGY_LIMIT,
+                        "self_energy_limit": self_energy_limit,
                         "seed": seed,
                         "found_pair_count": read_found_pair_count(vc_path),
                         "report_path": str(vc_path),
                     }
                 )
 
-            if RUN_HYBRID:
+            if run_hybrid:
                 print(f"running hybrid_offline | target_density={target_density} | cutoff={offtarget_limit} | seed={seed}")
                 hybrid_path = results_dir / f"density{density_label}_hybrid_offline_limit{cutoff_label}_seed{seed}.xlsx"
                 run_hybrid_search_offline_to_xlsx(
                     dataset_dir,
                     output_path=hybrid_path,
                     offtarget_limit=offtarget_limit,
-                    self_energy_limit=SELF_ENERGY_LIMIT,
+                    self_energy_limit=self_energy_limit,
                     random_seed=seed,
-                    **HYBRID_PARAMS,
+                    **hybrid_params,
                 )
                 summary_rows.append(
                     {
-                        "dataset": DATASET_NAME,
+                        "dataset": dataset_name,
                         "algorithm": "hybrid_offline",
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
-                        "self_energy_limit": SELF_ENERGY_LIMIT,
+                        "self_energy_limit": self_energy_limit,
                         "seed": seed,
                         "found_pair_count": read_found_pair_count(hybrid_path),
                         "report_path": str(hybrid_path),
@@ -232,4 +242,11 @@ if __name__ == "__main__":
                 )
 
     summary_df = pd.DataFrame(summary_rows)
-    make_plot(summary_df)
+    make_plot(
+        summary_df,
+        dataset_name=dataset_name,
+        target_conflict_densities=target_conflict_densities,
+        run_naive=run_naive,
+        run_vertex_cover=run_vertex_cover,
+        run_hybrid=run_hybrid,
+    )

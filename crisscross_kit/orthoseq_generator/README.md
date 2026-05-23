@@ -208,6 +208,33 @@ For the live naive search, the same vocabulary is used as far as it applies.
 Naive rows are emitted per accepted pair (plus a final summary row), so
 `pairs_after_vc` is left blank because there is no vertex-cover stage.
 
+### Shared Report Readers
+
+The shared writer in `search_reporting.py` now has a matching light-weight
+reader module: `orthoseq_generator.search_report_reader`.
+
+Use it from plotting or analysis scripts when you want stable access to the
+standard workbook contents without rewriting local pandas boilerplate.
+
+Main helpers:
+
+- `load_metadata(report_path)` -> `dict`
+- `load_found_pairs(report_path)` -> `DataFrame`
+- `load_seed_pairs(report_path)` -> `DataFrame | None`
+- `load_search_progress(report_path)` -> `DataFrame | None`
+- `load_offtarget_matrices(report_path, family="selected" | "seed")` -> `dict[str, DataFrame]`
+
+Design rules:
+
+- metadata is lightly parsed (`N.A.` -> `None`, booleans and numerics restored)
+- sheets and matrices stay as ordinary pandas `DataFrame`s
+- off-target matrices remain 2D with their original axis labels
+- matrix-axis labels can be parsed separately with `parse_pair_label(...)` or
+  `parse_axis_labels(...)` when needed
+
+`search_progress` is intentionally returned raw because its column set varies
+by algorithm.
+
 
 ## Legacy Scripts Basic Use
 

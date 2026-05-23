@@ -26,14 +26,6 @@ def revcom(sequence):
     return "".join(dna_complement[n] for n in reversed(sequence))
 
 
-def has_four_consecutive_bases(seq):
-    """
-    Returns True if the sequence contains four identical consecutive bases
-    (e.g., "GGGG", "CCCC", "AAAA", "TTTT").
-    """
-    return "GGGG" in seq or "CCCC" in seq or "AAAA" in seq or "TTTT" in seq
-
-
 def sorted_key(seq1, seq2):
     """
     Returns a tuple with the two input sequences sorted alphabetically.
@@ -173,10 +165,37 @@ class SequencePairRegistry:
         return len(self._id_to_pair)
 
 
-def create_sequence_pairs_pool(length=7, fivep_ext="", threep_ext="", avoid_gggg=True):
+def create_sequence_pairs_pool(
+    length=7,
+    fivep_ext="",
+    threep_ext="",
+    unwanted_substrings=None,
+    apply_unwanted_to="core",
+):
     """
     Generates a list of unique DNA sequence pairs with optional flanking sequences.
     """
+    unwanted_substrings = list(unwanted_substrings) if unwanted_substrings else []
+    if apply_unwanted_to not in ("core", "full"):
+        raise ValueError('apply_unwanted_to must be "core" or "full"')
+
+    def contains_any_substring(seq):
+        for substring in unwanted_substrings:
+            if substring in seq:
+                return True
+        return False
+
+    def is_valid_core(core_seq):
+        core_rc = revcom(core_seq)
+        if apply_unwanted_to == "core":
+            return not (
+                contains_any_substring(core_seq) or contains_any_substring(core_rc)
+            )
+
+        seq = f"{fivep_ext}{core_seq}{threep_ext}"
+        rc_seq = f"{fivep_ext}{core_rc}{threep_ext}"
+        return not (contains_any_substring(seq) or contains_any_substring(rc_seq))
+
     bases = ["A", "T", "G", "C"]
     n_mers = ["".join(mer) for mer in itertools.product(bases, repeat=length)]
 
@@ -188,9 +207,7 @@ def create_sequence_pairs_pool(length=7, fivep_ext="", threep_ext="", avoid_gggg
         pair = sorted_key(mer, rc_mer)
 
         if pair not in unique_pairs_set:
-            if avoid_gggg and (
-                has_four_consecutive_bases(mer) or has_four_consecutive_bases(rc_mer)
-            ):
+            if not is_valid_core(mer):
                 continue
             unique_pairs_set.add(pair)
             unique_n_mers.append(pair)

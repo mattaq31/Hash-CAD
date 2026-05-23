@@ -35,6 +35,7 @@ from matplotlib.lines import Line2D
 import numpy as np
 
 matplotlib.rcParams["font.family"] = "Arial"
+matplotlib.rcParams["svg.fonttype"] = "none"
 
 MODULE_DIR = Path(__file__).resolve().parents[2]
 if str(MODULE_DIR) not in sys.path:

@@ -38,6 +38,7 @@ LEGEND_FONT_SIZE = 6
 AXIS_LINEWIDTH = 0.5
 HIST_EDGE_LINEWIDTH = 0.35
 REFERENCE_LINEWIDTH = 1.1
+REFERENCE_ZORDER = 4
 
 ON_COLOR = "#3B6FB6"
 OFF_COLOR = "#B55A5A"
@@ -143,7 +144,7 @@ def plot_energy_distributions(
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="On-target range",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
     ax.axvline(
         MAX_ONTARGET,
@@ -151,7 +152,7 @@ def plot_energy_distributions(
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="_nolegend_",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
     ax.axvline(
         OFFTARGET_LIMIT_FB001,
@@ -159,7 +160,7 @@ def plot_energy_distributions(
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="Off-target limit",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
 
     ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{assoc}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)
@@ -191,7 +192,7 @@ def plot_energy_distributions(
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="Secondary structure limit",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
 
     ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{sec}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)

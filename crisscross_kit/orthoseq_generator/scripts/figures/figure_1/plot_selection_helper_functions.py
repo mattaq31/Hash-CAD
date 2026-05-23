@@ -34,6 +34,8 @@ TICK_LABEL_FONT_SIZE = 6
 AXIS_LINEWIDTH = 0.5
 CURVE_LINEWIDTH = 1.3
 REFERENCE_LINEWIDTH = 1.1
+CURVE_ZORDER = 2
+REFERENCE_ZORDER = 3
 
 BINDING_COLOR = "#3B6FB6"
 SECONDARY_COLOR = "#8C6BB1"
@@ -87,6 +89,7 @@ if __name__ == "__main__":
         color=BINDING_COLOR,
         linewidth=CURVE_LINEWIDTH,
         label="Fraction bound",
+        zorder=CURVE_ZORDER,
     )
     ax.axvline(
         min_ontarget,
@@ -94,7 +97,7 @@ if __name__ == "__main__":
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="On-target range",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
     ax.axvline(
         max_ontarget,
@@ -102,7 +105,7 @@ if __name__ == "__main__":
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="_nolegend_",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
     ax.axvline(
         offtarget_limit,
@@ -110,7 +113,7 @@ if __name__ == "__main__":
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="Off-target limit",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
     ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{assoc}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)
     ax.set_ylabel("Fraction bound", fontsize=AXIS_LABEL_FONT_SIZE)
@@ -145,6 +148,7 @@ if __name__ == "__main__":
         color=SECONDARY_COLOR,
         linewidth=CURVE_LINEWIDTH,
         label="Fraction unpaired",
+        zorder=CURVE_ZORDER,
     )
     ax.axvline(
         self_energy_limit,
@@ -152,7 +156,7 @@ if __name__ == "__main__":
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
         label="Secondary structure limit",
-        zorder=1,
+        zorder=REFERENCE_ZORDER,
     )
     ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{sec}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)
     ax.set_ylabel("Fraction unpaired", fontsize=AXIS_LABEL_FONT_SIZE)

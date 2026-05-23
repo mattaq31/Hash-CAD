@@ -258,10 +258,20 @@ def collect_condition_data(
         if parsed["algorithm"] == "naive":
             progress = read_rows(xlsx_path, "search_progress")
             for row in progress:
-                if row.get("step") != "accepted_pair":
-                    continue
                 nupack_calls = parse_number(row.get("nupack_calls_executed"))
-                pairs_found = parse_number(row.get("pairs_found"))
+                pairs_found = None
+
+                # Support the legacy naive progress schema.
+                if row.get("step") == "accepted_pair":
+                    pairs_found = parse_number(row.get("pairs_found"))
+
+                # Support the current naive progress schema written by
+                # naive_search_algorithm.py.
+                elif row.get("pass") == "naive":
+                    pairs_found = parse_number(row.get("pairs_collected"))
+                    if pairs_found is None:
+                        pairs_found = parse_number(row.get("total_retained"))
+
                 if nupack_calls is None or pairs_found is None:
                     continue
                 naive_points[key].append((float(nupack_calls), float(pairs_found)))

@@ -5,6 +5,7 @@ Dataset construction and lookup helpers for short-sequence benchmarks.
 from __future__ import annotations
 
 from datetime import datetime
+import math
 from pathlib import Path
 import tomllib
 
@@ -20,6 +21,8 @@ from orthoseq_generator.sequence_generation import (
     create_sequence_pairs_pool,
 )
 
+R_KCAL = 1.98720425864083e-3
+
 
 def _toml_string(value: str) -> str:
     """Return a TOML-safe quoted string literal."""
@@ -27,9 +30,14 @@ def _toml_string(value: str) -> str:
     return f'"{escaped}"'
 
 
-def _toml_bool(value: bool) -> str:
-    """Return the TOML literal for a Python boolean."""
-    return "true" if value else "false"
+def self_energy_limit_from_unpaired_fraction(target_unpaired_fraction: float, temp_c: float) -> float:
+    """
+    Convert a target unpaired fraction into a self-energy threshold.
+    """
+    if not 0.0 < target_unpaired_fraction <= 1.0:
+        raise ValueError("target_unpaired_fraction must be in (0, 1].")
+    rt = R_KCAL * (273.15 + temp_c)
+    return rt * math.log(target_unpaired_fraction)
 
 
 def resolve_dataset_input_params(raw_inputs: dict) -> dict:
@@ -50,7 +58,7 @@ def resolve_dataset_input_params(raw_inputs: dict) -> dict:
         "fivep_ext": raw_inputs.get("fivep_ext"),
         "threep_ext": raw_inputs.get("threep_ext"),
         "unwanted_substrings": unwanted_substrings,
-        "apply_unwanted_to": raw_inputs.get("apply_unwanted_to", "core"),
+        "apply_unwanted_to": raw_inputs.get("apply_unwanted_to", "full"),
     }
 
 
@@ -83,9 +91,10 @@ def _write_dataset_toml(metadata_path: Path, metadata: dict) -> None:
         "[inputs]",
         f"length = {metadata['length']}",
         f"range_sigma = {metadata['range_sigma']}",
-        f"avoid_gggg = {_toml_bool(metadata['avoid_gggg'])}",
         f"fivep_ext = {_toml_string(metadata['fivep_ext'])}",
         f"threep_ext = {_toml_string(metadata['threep_ext'])}",
+        f"unwanted_substrings = {metadata['unwanted_substrings_toml']}",
+        f"apply_unwanted_to = {_toml_string(metadata['apply_unwanted_to'])}",
         f"random_seed = {metadata['random_seed']}",
         "",
         "[nupack]",
@@ -135,9 +144,10 @@ def build_short_seq_dataset(
     *,
     length: int,
     range_sigma: float = 1.0,
-    avoid_gggg: bool = True,
     fivep_ext: str = "",
     threep_ext: str = "",
+    unwanted_substrings: list[str] | None = None,
+    apply_unwanted_to: str = "full",
     random_seed: int = 42,
     material: str = "dna",
     celsius: float = 37,
@@ -173,15 +183,19 @@ def build_short_seq_dataset(
                         standard deviations below the mean on-target energy.
     :type range_sigma: float
 
-    :param avoid_gggg: Whether to exclude candidates containing four identical
-                       bases in a row in the core sequence.
-    :type avoid_gggg: bool
-
     :param fivep_ext: Fixed 5' extension prepended to each generated sequence.
     :type fivep_ext: str
 
     :param threep_ext: Fixed 3' extension appended to each generated sequence.
     :type threep_ext: str
+
+    :param unwanted_substrings: Substrings that should be excluded from
+                                candidates.
+    :type unwanted_substrings: list[str] or None
+
+    :param apply_unwanted_to: Whether substring rejection applies to the core
+                              sequence only or the full flanked sequence.
+    :type apply_unwanted_to: str
 
     :param random_seed: Seed recorded in the dataset metadata for provenance.
                         The underlying full-pool generation is deterministic
@@ -214,11 +228,14 @@ def build_short_seq_dataset(
         magnesium=magnesium,
     )
 
+    unwanted_substrings = list(unwanted_substrings) if unwanted_substrings else []
+
     sequence_pairs_list = create_sequence_pairs_pool(
         length=length,
         fivep_ext=fivep_ext,
         threep_ext=threep_ext,
-        avoid_gggg=avoid_gggg,
+        unwanted_substrings=unwanted_substrings,
+        apply_unwanted_to=apply_unwanted_to,
     )
     global_pair_ids = [pair_id for pair_id, _ in sequence_pairs_list]
     all_pairs = [pair for _, pair in sequence_pairs_list]
@@ -262,9 +279,10 @@ def build_short_seq_dataset(
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "length": int(length),
         "range_sigma": float(range_sigma),
-        "avoid_gggg": bool(avoid_gggg),
         "fivep_ext": str(fivep_ext),
         "threep_ext": str(threep_ext),
+        "unwanted_substrings_toml": "[" + ", ".join(_toml_string(value) for value in unwanted_substrings) + "]",
+        "apply_unwanted_to": str(apply_unwanted_to),
         "random_seed": int(random_seed),
         "material": material,
         "celsius": float(celsius),

@@ -40,12 +40,12 @@ from fit_naive_proxy_rate import (
 
 MODULE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_REPORT_PATH = (
-    MODULE_DIR / "data" / "exploratory" / "ortho_16mers8p16_new_sheettest7.xlsx"
+    MODULE_DIR / "data" / "non_canonical" / "ortho_16mers8p16_new_sheettest7.xlsx"
 )
 DEFAULT_NAIVE_REPORT_PATH = (
-    MODULE_DIR / "data" / "exploratory" / "naive_len16_5p_none_limitm8p16_seed41.xlsx"
+    MODULE_DIR / "data" / "non_canonical" / "naive_len16_5p_none_limitm8p16_seed41.xlsx"
 )
-DEFAULT_OUTPUT_DIR = MODULE_DIR / "data" / "exploratory"
+DEFAULT_OUTPUT_DIR = MODULE_DIR / "data" / "non_canonical"
 MATRIX_FAMILY_CONFIG = {
     "selected": {
         "pair_sheet": "found_pairs",

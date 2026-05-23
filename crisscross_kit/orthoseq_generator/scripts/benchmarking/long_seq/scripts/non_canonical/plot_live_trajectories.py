@@ -27,12 +27,17 @@ import pandas as pd
 
 matplotlib.rcParams["font.family"] = "Arial"
 
-MODULE_DIR = Path(__file__).resolve().parents[1]
+MODULE_DIR = Path(__file__).resolve().parents[2]
+PACKAGE_DIR = Path(__file__).resolve().parents[6]
+if str(PACKAGE_DIR) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_DIR))
 if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
+from orthoseq_generator.search_report_reader import load_metadata, load_search_progress
 
-DATA_ROOT = MODULE_DIR / "data"
+
+DATA_ROOT = MODULE_DIR / "data" / "non_canonical"
 GENERATED_CONFIG_ROOT = MODULE_DIR / "configs" / "generated"
 ALGORITHM_LABELS = {
     "naive": "Naive",
@@ -66,14 +71,6 @@ def format_limit_label(value: float) -> str:
 def parse_limit_label(limit_label: str) -> float:
     """Decode a filename token such as `m8p16` back into a float."""
     return float(limit_label.replace("m", "-").replace("p", "."))
-
-
-def read_metadata_value(metadata_df: pd.DataFrame, key: str):
-    """Return one value from the workbook metadata sheet by key."""
-    rows = metadata_df.loc[metadata_df["key"] == key, "value"]
-    if rows.empty:
-        return None
-    return rows.iloc[0]
 
 
 def normalize_algorithm_name(value: str | None) -> str | None:
@@ -153,21 +150,23 @@ def collect_trajectories(data_root: Path, limit_label_to_fraction: dict[str, flo
         if parsed is None:
             continue
 
-        metadata_df = pd.read_excel(report_path, sheet_name="run_metadata")
-        progress_df = pd.read_excel(report_path, sheet_name="search_progress")
+        metadata = load_metadata(report_path)
+        progress_df = load_search_progress(report_path)
+        if progress_df is None:
+            raise ValueError(f"Workbook is missing search_progress: {report_path}")
 
-        metadata_algorithm = normalize_algorithm_name(read_metadata_value(metadata_df, "algorithm_name"))
+        metadata_algorithm = normalize_algorithm_name(metadata.get("algorithm_name"))
         if metadata_algorithm is not None and metadata_algorithm != parsed["algorithm"]:
             raise ValueError(
                 f"Algorithm mismatch in {report_path}: filename says {parsed['algorithm']}, "
                 f"run_metadata says {metadata_algorithm}."
             )
 
-        length = read_metadata_value(metadata_df, "input.length")
-        fivep_ext = read_metadata_value(metadata_df, "input.fivep_ext")
+        length = metadata.get("input.length")
+        fivep_ext = metadata.get("input.fivep_ext")
         limit_label = parsed["selected_offtarget_limit_label"]
         target_fraction = limit_label_to_fraction.get(limit_label)
-        offtarget_limit = read_metadata_value(metadata_df, "search.offtarget_limit")
+        offtarget_limit = metadata.get("search.offtarget_limit")
         limit_value = float(offtarget_limit) if offtarget_limit is not None else parse_limit_label(limit_label)
         condition_label = f"fb={target_fraction:.2f}" if target_fraction is not None else f"limit={limit_value:.2f}"
 

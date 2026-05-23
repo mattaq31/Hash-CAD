@@ -33,10 +33,10 @@ The supported top-level workflow is:
 The public script surface in `scripts/` is intentionally small:
 
 - `build_dataset.py`
-  - builds the canonical datasets under `data/len4_7_tttt5p/`
+  - builds the canonical datasets under `data/len4_7_tttt5p_noGGGG/`
 
 - `run_batch_benchmark.py`
-  - discovers complete datasets under `data/len4_7_tttt5p/`
+  - discovers complete datasets under `data/len4_7_tttt5p_noGGGG/`
   - runs `naive`, `vertex_cover`, and `hybrid_offline`
   - writes per-dataset XLSX reports under each dataset's `results/<benchmark_name>/`
   - writes one batch summary TOML at the dataset-parent level
@@ -80,7 +80,7 @@ special-purpose than the main batch flow.
 
 The current canonical dataset parent is:
 
-- `data/len4_7_tttt5p/`
+- `data/len4_7_tttt5p_noGGGG/`
 
 Each complete dataset directory contains:
 
@@ -93,6 +93,10 @@ Batch-level artifacts written at the dataset-parent level include:
 - `batch_params.toml`
 - `benchmark_summary_<benchmark_name>.toml`
 - `batch_benchmark_found_pair_count_*.svg`
+
+At the moment, `data/len4_7_tttt5p_noGGGG/` is the canonical dataset parent.
+If batch benchmark outputs have not been generated there yet, run
+`run_batch_benchmark.py` before treating it as the canonical reporting output.
 
 ## O2 Workflow
 
@@ -131,7 +135,7 @@ unzip data.zip
 The canonical dataset parent should then exist at:
 
 ```text
-data/len4_7_tttt5p/
+data/len4_7_tttt5p_noGGGG/
 ```
 
 ### 3. Submit the batch job
