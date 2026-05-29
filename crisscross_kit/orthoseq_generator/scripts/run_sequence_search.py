@@ -75,7 +75,6 @@ if __name__ == "__main__":
         vc_max_iterations=1000,
         stop_event=None,
         return_diagnostics=True,
-        progress_report_interval_min=200
     )
     orthogonal_seq_pairs = search_result["final_pairs"]
     selected_sequence_data = build_selected_sequence_data(

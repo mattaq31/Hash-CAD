@@ -153,7 +153,7 @@ if __name__ == "__main__":
     dataset_parent_name = "len4_7_tttt5p_noGGGG"
     benchmark_name = "benchmark_x"
     target_conflict_densities = [0.1, 0.2, 0.3]
-    seeds = [1,2,3,4,5]
+    seeds = [1]
     target_unpaired_fraction = 0.2
     vc_core_params = {
         "prune_fraction": 0.2,

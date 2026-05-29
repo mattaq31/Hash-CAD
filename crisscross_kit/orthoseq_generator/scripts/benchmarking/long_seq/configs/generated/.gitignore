@@ -1,4 +1,0 @@
-*.toml
-*.sh
-*.png
-!.gitignore

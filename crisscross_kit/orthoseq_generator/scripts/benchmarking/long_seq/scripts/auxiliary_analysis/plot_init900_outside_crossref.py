@@ -107,7 +107,6 @@ def draw_distribution(
     title: str,
     xlabel: str,
 ) -> None:
-    weights = np.ones(len(values), dtype=float) / max(len(values), 1)
     mean_value = mean_conflict_probability(values)
     std_value = std_conflict_probability(values)
     mean_color = "#6A1B9A"
@@ -123,7 +122,7 @@ def draw_distribution(
     ax.hist(
         values,
         bins=bins,
-        weights=weights,
+        density=True,
         color=color,
         edgecolor="black",
         linewidth=0.5,
@@ -137,7 +136,7 @@ def draw_distribution(
         zorder=4,
     )
     ax.set_xlabel(xlabel, fontsize=6)
-    ax.set_ylabel("Frequency", fontsize=6)
+    ax.set_ylabel("Density", fontsize=6)
     ax.set_title(title, fontsize=8, pad=6)
     ax.set_xlim(0.0, xmax)
     ax.tick_params(axis="both", labelsize=6, width=0.5, length=2)

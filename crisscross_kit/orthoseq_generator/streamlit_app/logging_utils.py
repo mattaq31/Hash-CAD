@@ -27,7 +27,7 @@ def setup_logger(log_queue):
     if existing is None:
         ui_handler = QueueLogHandler(log_queue)
         ui_handler.name = UI_HANDLER_NAME
-        ui_handler.setFormatter(logging.Formatter("%(levelname)s | %(message)s"))
+        ui_handler.setFormatter(logging.Formatter("%(message)s"))
         logger.addHandler(ui_handler)
     else:
         if getattr(existing, "q", None) is not log_queue:

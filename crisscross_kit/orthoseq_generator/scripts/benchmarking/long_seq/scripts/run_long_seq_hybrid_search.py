@@ -88,9 +88,6 @@ def main():
     initial_fresh_pair_count = int(hybrid_cfg["initial_fresh_pair_count"])
     prune_fraction = float(hybrid_cfg["prune_fraction"])
     vc_max_iterations = int(hybrid_cfg["vc_max_iterations"])
-    progress_report_interval_min = hybrid_cfg.get("progress_report_interval_min")
-    if progress_report_interval_min is not None:
-        progress_report_interval_min = int(progress_report_interval_min)
 
     fivep_label = f"5p_{fivep_ext}" if fivep_ext else "5p_none"
     threep_label = f"3p_{threep_ext}" if threep_ext else "3p_none"
@@ -127,7 +124,6 @@ def main():
         vc_max_iterations=vc_max_iterations,
         stop_event=None,
         return_diagnostics=True,
-        progress_report_interval_min=progress_report_interval_min,
     )
     orthogonal_seq_pairs = search_result["final_pairs"]
 

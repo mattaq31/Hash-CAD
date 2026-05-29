@@ -114,7 +114,6 @@ def _run_vertex_cover(subset, indices, offtarget_limit, prune_fraction, vc_max_i
 def _pairs_from_ids(sequence_pairs, pair_ids):
     return [sequence_pairs.get_pair_by_id(idx) for idx in sorted(pair_ids)]
 
-
 def _build_progress_row(
     *,
     pass_name,
@@ -339,9 +338,9 @@ def _run_collection_pass(
     remaining_budget,
     prune_fraction,
     vc_max_iterations,
-    progress_report_interval_s,
-    progress_report_interval_min,
     stop_event,
+    checkpoint_event,
+    checkpoint_callback,
     start_t,
     base_nupack_calls,
 ):
@@ -354,8 +353,8 @@ def _run_collection_pass(
     - live cross-referenced collection
     - final pass-2 vertex-cover matrix cost
 
-    Exclude progress-report peek VC work. Those calls are diagnostic only and
-    intentionally stay out of the search budget/accounting.
+    Exclude manual checkpoint peek VC work. Those calls are diagnostic only
+    and intentionally stay out of the search budget/accounting.
     """
     if stop_event is not None and stop_event.is_set():
         _status("Stop event detected before pass 2.")
@@ -386,7 +385,6 @@ def _run_collection_pass(
     chunk_reason = None
 
     while True:
-        chunk_timeout = progress_report_interval_s if progress_report_interval_s is not None else None
         _, _, chunk_reason, _, collection_state = sc.select_subset_in_energy_range(
             sequence_pairs,
             energy_min=min_ontarget,
@@ -396,17 +394,19 @@ def _run_collection_pass(
             allowed_violations=0,
             offtarget_limit=offtarget_limit,
             fresh_pair_search_budget=pass2_budget,
-            timeout_s=chunk_timeout,
             stop_event=stop_event,
-            quiet_timeout=(chunk_timeout is not None),
+            checkpoint_event=checkpoint_event,
             prior_state=collection_state,
         )
         accounted_total_so_far = base_nupack_calls + collection_state["nupack_calls"]
 
-        if chunk_reason != "timeout":
+        if chunk_reason != "checkpoint_request":
             break
 
-        _status(f"--- Progress report triggered ({progress_report_interval_min} min interval reached) ---")
+        if checkpoint_event is not None:
+            checkpoint_event.clear()
+
+        _status("--- Manual checkpoint triggered ---")
         if collection_state["indices"]:
             _status(
                 f"Running peek vertex cover on {len(collection_state['indices'])} collected candidate pairs..."
@@ -419,21 +419,37 @@ def _run_collection_pass(
                 vc_max_iterations,
             )
             elapsed_s = time.time() - start_t
+            estimated_total = len(retained_pair_ids) + len(peek_set)
+            if checkpoint_callback is not None:
+                checkpoint_callback(
+                    {
+                        "estimated_total": int(estimated_total),
+                        "fresh_candidates_collected": int(len(collection_state["indices"])),
+                    }
+                )
             _status(
                 f"Candidate pairs collected so far: {len(collection_state['indices'])} | "
                 f"Retained from seed: {len(retained_pair_ids)} | "
                 f"New from collection (after peek VC): {len(peek_set)} | "
-                f"Estimated total: {len(retained_pair_ids) + len(peek_set)} | "
+                f"Estimated total: {estimated_total} | "
                 f"NUPACK calls: {accounted_total_so_far} | elapsed={elapsed_s:.1f}s"
-                f"\n--- Continuing collection ---"
             )
+            _status(f"Estimated total after checkpoint: {estimated_total}")
+            _status("--- Resuming collection ---")
         else:
             elapsed_s = time.time() - start_t
+            if checkpoint_callback is not None:
+                checkpoint_callback(
+                    {
+                        "estimated_total": int(len(retained_pair_ids)),
+                        "fresh_candidates_collected": 0,
+                    }
+                )
             _status(
                 f"No candidate pairs collected yet | "
                 f"NUPACK calls: {accounted_total_so_far} | elapsed={elapsed_s:.1f}s"
-                f"\n--- Continuing collection ---"
             )
+            _status("--- Resuming collection ---")
 
     subset = collection_state["subset"]
     indices = collection_state["indices"]
@@ -444,9 +460,9 @@ def _run_collection_pass(
     updated_retained_pair_ids = set(retained_pair_ids)
     updated_retained_pairs = list(retained_pairs)
 
-    if chunk_reason in {"stop_event", "keyboard_interrupt"}:
-        _status("Stop detected during pass 2 collection. Skipping final vertex cover.")
-    elif indices:
+    if indices:
+        if chunk_reason in {"stop_event", "keyboard_interrupt"}:
+            _status("Stop detected during pass 2 collection. Finalizing current candidate pool.")
         _status(f"Running vertex cover on {len(indices)} candidate pairs...")
         independent_set, pass2_vc_nupack_calls = _run_vertex_cover(
             subset,
@@ -502,8 +518,9 @@ def hybrid_search(
     prune_fraction=0.2,
     vc_max_iterations=5000,
     stop_event=None,
+    checkpoint_event=None,
+    checkpoint_callback=None,
     return_diagnostics=False,
-    progress_report_interval_min=None,
 ):
     """
     Search for a large orthogonal DNA sequence set using a two-pass strategy.
@@ -532,10 +549,9 @@ def hybrid_search(
         Collect candidate pairs cross-referenced against the retained set
         (zero allowed violations) until `total_nupack_budget` is exhausted or
         the pool is empty. Run vertex cover on fresh candidates only. Union
-        survivors into the retained set. When `progress_report_interval_min`
-        is set, collection is chunked into timed intervals; at each boundary
-        a peek vertex cover is run on all accumulated candidates to report an
-        estimated total without committing anything.
+        survivors into the retained set. When `checkpoint_event` is set during
+        collection, the current fresh pool is peeked with a diagnostic vertex
+        cover estimate and then collection resumes from the same state.
 
     Termination
     -----------
@@ -586,19 +602,25 @@ def hybrid_search(
     :type vc_max_iterations: int
 
     :param stop_event: Optional external stop signal (threading.Event). When
-        set, the search terminates gracefully and returns partial results.
-        Used by the Streamlit app's "Stop Searching" button.
+        set, the search stops further collection and returns the best finalized
+        result available from the work collected so far.
     :type stop_event: threading.Event or None
+
+    :param checkpoint_event: Optional external checkpoint signal
+        (threading.Event). When set during pass 2 collection, the search runs
+        a diagnostic peek vertex cover on the currently collected fresh pool,
+        reports the estimate, clears the event, and continues collecting.
+    :type checkpoint_event: threading.Event or None
+
+    :param checkpoint_callback: Optional callable invoked after a manual pass-2
+        checkpoint estimate is computed. Receives a dict with the latest
+        estimated total and related counters.
+    :type checkpoint_callback: callable or None
 
     :param return_diagnostics: When True, return a structured diagnostics dict
         instead of just the final pairs. The dict contains seed data, verified
         energies, generation progress, search parameters, and stop reason.
     :type return_diagnostics: bool
-
-    :param progress_report_interval_min: If set, report estimated pair count
-        during pass 2 at this interval (integer minutes, 30 s floor enforced).
-        None disables progress reporting.
-    :type progress_report_interval_min: int or None
 
     :returns: Final sequence pairs as (seq, rc_seq) tuples, or a diagnostics
         dict when `return_diagnostics=True`.
@@ -629,11 +651,6 @@ def hybrid_search(
         total_nupack_budget = int(total_nupack_budget)
         if total_nupack_budget < 1:
             raise ValueError("total_nupack_budget must be a positive integer or inf.")
-
-    if progress_report_interval_min is not None:
-        progress_report_interval_s = max(30, int(progress_report_interval_min) * 60)
-    else:
-        progress_report_interval_s = None
 
     total_nupack_calls = 0
     retained_pair_ids = set()
@@ -703,9 +720,9 @@ def hybrid_search(
                 remaining_budget=remaining_budget,
                 prune_fraction=prune_fraction,
                 vc_max_iterations=vc_max_iterations,
-                progress_report_interval_s=progress_report_interval_s,
-                progress_report_interval_min=progress_report_interval_min,
                 stop_event=stop_event,
+                checkpoint_event=checkpoint_event,
+                checkpoint_callback=checkpoint_callback,
                 start_t=start_t,
                 base_nupack_calls=total_nupack_calls,
             )

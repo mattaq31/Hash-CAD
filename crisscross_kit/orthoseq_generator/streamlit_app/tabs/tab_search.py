@@ -23,11 +23,14 @@ def _search_worker(
     vc_max_iterations,
     prune_fraction,
     stop_event,
+    checkpoint_event,
     out_q,
-    progress_report_interval_min=None,
 ):
     start_time = time.time()
     try:
+        def _checkpoint_callback(payload):
+            out_q.put(("checkpoint", payload, None, None))
+
         res = hybrid_search(
             registry,
             offtarget_limit,
@@ -38,8 +41,9 @@ def _search_worker(
             vc_max_iterations=vc_max_iterations,
             prune_fraction=prune_fraction,
             stop_event=stop_event,
+            checkpoint_event=checkpoint_event,
+            checkpoint_callback=_checkpoint_callback,
             return_diagnostics=True,
-            progress_report_interval_min=progress_report_interval_min,
         )
         if not res["final_pairs"]:
             out_q.put(("done", None, time.time() - start_time, "No sequences found before termination."))
@@ -88,16 +92,11 @@ def render_search_tab(registry_factory, nupack_params):
             disabled=st.session_state.search_running,
             help="Controls how strongly the current graph-based solution is perturbed before it is refined again."
         )
-        st.number_input(
-            "Progress Report Interval (min)",
-            min_value=0,
-            value=st.session_state.search_progress_interval_min,
-            key="search_progress_interval_min",
-            disabled=st.session_state.search_running,
-            help="During collection, report estimated pair count at this interval. 0 = disabled."
-        )
 
-    col1, col2 = st.columns(2)
+    if st.session_state.checkpoint_requested and not st.session_state.checkpoint_event.is_set():
+        st.session_state.checkpoint_requested = False
+
+    col1, col2, col3 = st.columns(3)
     final_analysis_pending = (
         st.session_state.search_completed
         and st.session_state.orthogonal_seq_pairs is not None
@@ -121,8 +120,20 @@ def render_search_tab(registry_factory, nupack_params):
             st.session_state.busy = True
             st.rerun()
 
-    # Stop: only set flags (NO warning here; warning is rendered from state below)
     with col2:
+        if st.button("Checkpoint Now", key="btn_checkpoint_search", disabled=not st.session_state.search_running):
+            st.session_state.checkpoint_event.set()
+            st.session_state.checkpoint_requested = True
+            st.rerun()
+        if st.session_state.latest_checkpoint_estimate is not None:
+            st.caption(f"Latest checkpoint estimate: {st.session_state.latest_checkpoint_estimate} pairs")
+            if st.session_state.latest_checkpoint_fresh_candidates is not None:
+                st.caption(
+                    f"Fresh candidates collected: {st.session_state.latest_checkpoint_fresh_candidates}"
+                )
+
+    # Stop: only set flags (NO warning here; warning is rendered from state below)
+    with col3:
         if st.button("Stop Searching", key="btn_stop_search", disabled=not st.session_state.search_running):
             st.session_state.stop_event.set()
             st.session_state.stop_requested = True
@@ -142,7 +153,11 @@ def render_search_tab(registry_factory, nupack_params):
 
         # Reset run-related state
         st.session_state.stop_requested = False
+        st.session_state.checkpoint_requested = False
         st.session_state.stop_event.clear()
+        st.session_state.checkpoint_event.clear()
+        st.session_state.latest_checkpoint_estimate = None
+        st.session_state.latest_checkpoint_fresh_candidates = None
         st.session_state.search_completed = False
         st.session_state.orthogonal_seq_pairs = None
         st.session_state.search_run_data = None
@@ -162,9 +177,8 @@ def render_search_tab(registry_factory, nupack_params):
         initial_fresh_pair_count = int(st.session_state.subset_size_search)
         vc_max_iterations = int(st.session_state.search_vc_max_iterations)
         prune_fraction = float(st.session_state.search_prune_fraction)
-        progress_interval_raw = int(st.session_state.search_progress_interval_min)
-        progress_report_interval_min = progress_interval_raw if progress_interval_raw > 0 else None
         stop_event = st.session_state.stop_event
+        checkpoint_event = st.session_state.checkpoint_event
         out_q = st.session_state.search_queue
         st.session_state.search_running = True
 
@@ -180,8 +194,8 @@ def render_search_tab(registry_factory, nupack_params):
                 vc_max_iterations,
                 prune_fraction,
                 stop_event,
+                checkpoint_event,
                 out_q,
-                progress_report_interval_min,
             ),
             daemon=True
         )
@@ -194,32 +208,45 @@ def render_search_tab(registry_factory, nupack_params):
     # Poll queue ONCE per rerun (autorefresh provides reruns)
     # ------------------------------------------------------------
     if st.session_state.search_running and (not st.session_state.search_queue.empty()):
-        msg, res, dur, err = st.session_state.search_queue.get()
+        received_update = False
+        while not st.session_state.search_queue.empty():
+            msg, res, dur, err = st.session_state.search_queue.get()
+            received_update = True
 
-        st.session_state.search_running = False
-        st.session_state.stop_requested = False
-        st.session_state.busy = False
+            if msg == "checkpoint":
+                st.session_state.latest_checkpoint_estimate = res["estimated_total"]
+                st.session_state.latest_checkpoint_fresh_candidates = res["fresh_candidates_collected"]
+                st.session_state.checkpoint_requested = False
+                continue
 
-        if err is not None:
-            st.session_state.search_completed = False
-            st.session_state.orthogonal_seq_pairs = None
-            st.session_state.search_run_data = None
-            st.session_state.search_error = err
-        else:
-            st.session_state.search_completed = True
-            st.session_state.search_run_data = res
-            st.session_state.orthogonal_seq_pairs = res["final_pairs"]
-            st.session_state.search_duration = float(dur)
-            st.session_state.search_error = None
+            st.session_state.search_running = False
+            st.session_state.stop_requested = False
+            st.session_state.checkpoint_requested = False
+            st.session_state.busy = False
 
-        st.rerun()
+            if err is not None:
+                st.session_state.search_completed = False
+                st.session_state.orthogonal_seq_pairs = None
+                st.session_state.search_run_data = None
+                st.session_state.search_error = err
+            else:
+                st.session_state.search_completed = True
+                st.session_state.search_run_data = res
+                st.session_state.orthogonal_seq_pairs = res["final_pairs"]
+                st.session_state.search_duration = float(dur)
+                st.session_state.search_error = None
+
+        if received_update:
+            st.rerun()
 
     # ------------------------------------------------------------
     # SINGLE status banner (exactly one place)
     # ------------------------------------------------------------
     if st.session_state.search_running:
         if st.session_state.stop_requested:
-            st.warning("Stop requested. Waiting for the algorithm to stop…")
+            st.warning("Stop requested. Finalizing current search...")
+        elif st.session_state.checkpoint_requested:
+            st.info("Checkpoint requested. Computing estimate...")
         else:
             st.info("Search running…")
     elif final_analysis_pending:

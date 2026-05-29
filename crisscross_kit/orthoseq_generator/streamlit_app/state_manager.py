@@ -20,6 +20,8 @@ def init_session_state():
         st.session_state.busy = False
     if "stop_event" not in st.session_state:
         st.session_state.stop_event = threading.Event()
+    if "checkpoint_event" not in st.session_state:
+        st.session_state.checkpoint_event = threading.Event()
     if "input_invalid" not in st.session_state:
         st.session_state.input_invalid = False
     
@@ -81,6 +83,12 @@ def init_session_state():
         st.session_state.search_thread = None
     if "stop_requested" not in st.session_state:
         st.session_state.stop_requested = False
+    if "checkpoint_requested" not in st.session_state:
+        st.session_state.checkpoint_requested = False
+    if "latest_checkpoint_estimate" not in st.session_state:
+        st.session_state.latest_checkpoint_estimate = None
+    if "latest_checkpoint_fresh_candidates" not in st.session_state:
+        st.session_state.latest_checkpoint_fresh_candidates = None
         
     if "log_queue" not in st.session_state:
         st.session_state.log_queue = queue.Queue()
@@ -117,8 +125,6 @@ def init_session_state():
         st.session_state.search_vc_max_iterations = 5000
     if "search_prune_fraction" not in st.session_state:
         st.session_state.search_prune_fraction = 0.2
-    if "search_progress_interval_min" not in st.session_state:
-        st.session_state.search_progress_interval_min = 30
     if "pilot_size" not in st.session_state:
         st.session_state.pilot_size = 50
     if "refine_size" not in st.session_state:

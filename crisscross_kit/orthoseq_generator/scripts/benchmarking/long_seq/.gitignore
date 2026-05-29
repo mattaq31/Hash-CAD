@@ -1,1 +1,4 @@
+configs/generated/
 data/**/*.xlsx
+plots/*.xlsx
+plots/*.xls

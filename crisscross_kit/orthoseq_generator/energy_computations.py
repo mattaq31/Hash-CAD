@@ -335,6 +335,7 @@ def select_subset_in_energy_range(
     progress_every=None,
     progress_interval_s=120.0,
     stop_event=None,
+    checkpoint_event=None,
     quiet_timeout=False,
     prior_state=None,
 ):
@@ -352,8 +353,8 @@ def select_subset_in_energy_range(
 
     Supports hot-start via `prior_state`: pass the state dict from a previous
     call to resume collection where it left off (same tested set, counters,
-    and accumulated pairs). Used by `hybrid_search` to chunk collection into
-    timed intervals for progress reporting with peek vertex covers.
+    and accumulated pairs). Used by `hybrid_search` to support manual
+    checkpoint peeks during pass 2 without losing collection state.
 
     For live registry-backed sampling, the function also applies an internal
     duplicate-streak exhaustion heuristic. If the sampler returns 1,000,000
@@ -370,6 +371,7 @@ def select_subset_in_energy_range(
     - "duplicate_streak_limit_reached=<N>" — sampler recycled seen IDs for
       `N` consecutive draws
     - "stop_event" — external threading.Event set
+    - "checkpoint_request" — external checkpoint threading.Event set
     - "keyboard_interrupt" — KeyboardInterrupt caught
     - None — normal completion (`max_size` reached or pool exhausted)
 
@@ -425,8 +427,12 @@ def select_subset_in_energy_range(
     :param stop_event: External stop signal (threading.Event).
     :type stop_event: threading.Event or None
 
-    :param quiet_timeout: Suppress verbose timeout message. Used when timeout
-        serves as a chunking mechanism for progress reporting.
+    :param checkpoint_event: External checkpoint signal (threading.Event).
+        When set, collection returns its current state so the caller can run a
+        diagnostic peek and then resume from the returned `prior_state`.
+    :type checkpoint_event: threading.Event or None
+
+    :param quiet_timeout: Suppress verbose timeout message.
     :type quiet_timeout: bool
 
     :param prior_state: State dict from a previous call to resume from.
@@ -437,7 +443,7 @@ def select_subset_in_energy_range(
     :returns: (subset, indices, stop_reason, nupack_calls, state)
         stop_reason is None for normal completion, or one of:
         "timeout", "nupack_limit", "duplicate_streak_limit_reached=<N>",
-        "stop_event", "keyboard_interrupt".
+        "stop_event", "checkpoint_request", "keyboard_interrupt".
         state is a dict suitable for passing back as `prior_state`.
     :rtype: tuple[list, list, str|None, int, dict]
     """
@@ -573,6 +579,9 @@ def select_subset_in_energy_range(
             if stop_event is not None and stop_event.is_set():
                 print(f"Stop event: returning {len(subset)} collected pairs.", flush=True)
                 return subset, indices, "stop_event", nupack_calls, _build_state()
+            if checkpoint_event is not None and checkpoint_event.is_set():
+                print(f"Checkpoint request: returning {len(subset)} collected pairs.", flush=True)
+                return subset, indices, "checkpoint_request", nupack_calls, _build_state()
             if timeout_s is not None and (time.time() - start_t) >= timeout_s:
                 if not quiet_timeout:
                     elapsed_s = time.time() - start_t

@@ -36,7 +36,7 @@ from orthoseq_generator.search_report_reader import load_metadata
 
 
 DATASET_PARENT_NAME = "len4_7_tttt5p_noGGGG"
-BENCHMARK_NAME = "benchmark_3_new_init_sweep"
+BENCHMARK_NAME = "benchmark_x"
 ALGORITHM_ORDER = ["naive", "vertex_cover", "hybrid_offline"]
 ALGORITHM_COLORS = {
     "naive": "#808080",
@@ -56,16 +56,17 @@ ALGORITHM_LABELS = {
     "hybrid_offline": "Hybrid",
 }
 OUTPUT_FILENAME_STEM = "batch_benchmark_found_pair_count"
+SUMMARY_FILENAME_STEM = "batch_benchmark_found_pair_count_summary"
 MM_PER_INCH = 25.4
-FIGURE_WIDTH_MM = 177.8 * 0.48
+FIGURE_WIDTH_MM = 177.8 * 0.48 * 1.10
 FIGURE_HEIGHT_MM = 58.0
 FIGURE_SIZE_INCHES = (FIGURE_WIDTH_MM / MM_PER_INCH, FIGURE_HEIGHT_MM / MM_PER_INCH)
 
-TITLE_FONT_SIZE = 5
-AXIS_LABEL_FONT_SIZE = 5
-TICK_LABEL_FONT_SIZE = 5
-LEGEND_FONT_SIZE = 5
-DENSITY_LABEL_FONT_SIZE = 5
+TITLE_FONT_SIZE = 8
+AXIS_LABEL_FONT_SIZE = 8
+TICK_LABEL_FONT_SIZE = 6
+LEGEND_FONT_SIZE = 6
+DENSITY_LABEL_FONT_SIZE = 6
 
 AXIS_LINEWIDTH = 0.5
 GRID_LINEWIDTH = 0.5
@@ -225,19 +226,106 @@ def collect_runs(parent_dir: Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def compute_shared_y_max(runs_df: pd.DataFrame) -> float:
-    """Compute a shared y-axis maximum across all grouped benchmark bars."""
+def format_count(value: float) -> str:
+    """Format one plotted count for compact labels and summary output."""
+    rounded = round(float(value))
+    if abs(float(value) - rounded) < 1e-9:
+        return str(int(rounded))
+    return f"{float(value):.1f}".rstrip("0").rstrip(".")
+
+
+def build_summary_table(runs_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate plotted values and compute improvements versus naive."""
     grouped = (
-        runs_df.groupby(["has_tttt5p", "length", "target_conflict_density", "plot_series_key"])["found_pair_count"]
+        runs_df.groupby(
+            ["has_tttt5p", "length", "target_conflict_density", "plot_series_key", "algorithm"],
+            dropna=False,
+        )["found_pair_count"]
         .agg(["mean", "std", "count"])
         .reset_index()
+        .rename(
+            columns={
+                "mean": "mean_found_pair_count",
+                "std": "std_found_pair_count",
+                "count": "run_count",
+            }
+        )
     )
     if grouped.empty:
+        return grouped
+
+    grouped["std_found_pair_count"] = grouped["std_found_pair_count"].fillna(0.0)
+    grouped["sem_found_pair_count"] = grouped["std_found_pair_count"] / np.sqrt(grouped["run_count"].clip(lower=1))
+
+    naive_means = grouped.loc[
+        grouped["plot_series_key"] == "naive",
+        ["has_tttt5p", "length", "target_conflict_density", "mean_found_pair_count"],
+    ].rename(columns={"mean_found_pair_count": "naive_mean_found_pair_count"})
+    grouped = grouped.merge(
+        naive_means,
+        on=["has_tttt5p", "length", "target_conflict_density"],
+        how="left",
+    )
+    grouped["absolute_improvement_vs_naive"] = (
+        grouped["mean_found_pair_count"] - grouped["naive_mean_found_pair_count"]
+    )
+    grouped["percent_improvement_vs_naive"] = np.where(
+        grouped["naive_mean_found_pair_count"] > 0,
+        100.0 * grouped["absolute_improvement_vs_naive"] / grouped["naive_mean_found_pair_count"],
+        np.nan,
+    )
+    grouped.loc[grouped["plot_series_key"] == "naive", "absolute_improvement_vs_naive"] = 0.0
+    grouped.loc[grouped["plot_series_key"] == "naive", "percent_improvement_vs_naive"] = 0.0
+    return grouped
+
+
+def build_export_table(summary_df: pd.DataFrame, series_specs: list[dict]) -> pd.DataFrame:
+    """Build a human-readable Excel table for the plotted summary values."""
+    if summary_df.empty:
+        return summary_df
+
+    series_order = {spec["key"]: idx for idx, spec in enumerate(series_specs)}
+    series_labels = {spec["key"]: spec["label"] for spec in series_specs}
+    export_df = summary_df.copy()
+    export_df["series_label"] = export_df["plot_series_key"].map(series_labels).fillna(export_df["plot_series_key"])
+    export_df["extension_condition"] = export_df["has_tttt5p"].map(GROUP_TITLES)
+    export_df["series_order"] = export_df["plot_series_key"].map(series_order).fillna(len(series_specs))
+    export_df = export_df.sort_values(
+        ["has_tttt5p", "length", "target_conflict_density", "series_order"],
+        ignore_index=True,
+    )
+    export_df["mean_found_pair_count"] = export_df["mean_found_pair_count"].map(format_count)
+    export_df["std_found_pair_count"] = export_df["std_found_pair_count"].map(format_count)
+    export_df["sem_found_pair_count"] = export_df["sem_found_pair_count"].map(format_count)
+    export_df["naive_mean_found_pair_count"] = export_df["naive_mean_found_pair_count"].map(format_count)
+    export_df["absolute_improvement_vs_naive"] = export_df["absolute_improvement_vs_naive"].map(format_count)
+    export_df["percent_improvement_vs_naive"] = export_df["percent_improvement_vs_naive"].map(
+        lambda value: "" if pd.isna(value) else f"{float(value):+.1f}%"
+    )
+    return export_df[
+        [
+            "extension_condition",
+            "length",
+            "target_conflict_density",
+            "series_label",
+            "algorithm",
+            "run_count",
+            "mean_found_pair_count",
+            "sem_found_pair_count",
+            "std_found_pair_count",
+            "naive_mean_found_pair_count",
+            "absolute_improvement_vs_naive",
+            "percent_improvement_vs_naive",
+        ]
+    ]
+
+
+def compute_plot_y_max(summary_df: pd.DataFrame) -> float:
+    """Compute the y-axis maximum for one plotted benchmark subset."""
+    if summary_df.empty:
         return 1.0
 
-    grouped["std"] = grouped["std"].fillna(0.0)
-    grouped["sem"] = grouped["std"] / np.sqrt(grouped["count"].clip(lower=1))
-    y_max = float((grouped["mean"] + grouped["sem"]).max())
+    y_max = float((summary_df["mean_found_pair_count"] + summary_df["sem_found_pair_count"]).max())
     return max(1.0, y_max * 1.08 + 2.0)
 
 
@@ -250,18 +338,18 @@ def slugify_title_suffix(title_suffix: str) -> str:
 
 
 def plot_group(
-    group_df: pd.DataFrame,
+    group_summary_df: pd.DataFrame,
     *,
     has_tttt5p: bool,
     shared_y_max: float,
     series_specs: list[dict],
 ) -> tuple[plt.Figure, str] | None:
     """Plot one extension-condition subset of the benchmark runs."""
-    if group_df.empty:
+    if group_summary_df.empty:
         return None
 
-    lengths = sorted(group_df["length"].unique())
-    densities = sorted(group_df["target_conflict_density"].unique())
+    lengths = sorted(group_summary_df["length"].unique())
+    densities = sorted(group_summary_df["target_conflict_density"].unique())
 
     bars_per_length = len(densities) * len(series_specs)
     bar_width = 0.45
@@ -284,18 +372,17 @@ def plot_group(
             subgroup_max = 0.0
             for series_idx, series_spec in enumerate(series_specs):
                 x = subgroup_start + series_idx * bar_width
-                values = group_df.loc[
-                    (group_df["length"] == length)
-                    & (group_df["target_conflict_density"] == density)
-                    & (group_df["plot_series_key"] == series_spec["key"]),
-                    "found_pair_count",
-                ].to_numpy(dtype=float)
-                if len(values) == 0:
+                summary_row = group_summary_df.loc[
+                    (group_summary_df["length"] == length)
+                    & (group_summary_df["target_conflict_density"] == density)
+                    & (group_summary_df["plot_series_key"] == series_spec["key"])
+                ]
+                if summary_row.empty:
                     continue
+                summary = summary_row.iloc[0]
 
-                mean_value = float(np.mean(values))
-                std_value = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
-                sem_value = std_value / np.sqrt(len(values)) if len(values) > 1 else 0.0
+                mean_value = float(summary["mean_found_pair_count"])
+                sem_value = float(summary["sem_found_pair_count"])
                 subgroup_max = max(subgroup_max, mean_value + sem_value)
 
                 ax.bar(
@@ -350,7 +437,7 @@ def plot_group(
             f"{density:.1f}",
             ha="center",
             va="top",
-            fontsize=TICK_LABEL_FONT_SIZE,
+            fontsize=DENSITY_LABEL_FONT_SIZE,
             bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.4},
         )
 
@@ -362,7 +449,16 @@ def save_plot(fig: plt.Figure, output_dir: Path, title_suffix: str) -> Path:
     """Write one benchmark plot SVG and return its output path."""
     benchmark_slug = slugify_title_suffix(BENCHMARK_NAME)
     output_path = output_dir / f"{OUTPUT_FILENAME_STEM}_{benchmark_slug}_{slugify_title_suffix(title_suffix)}.svg"
-    fig.savefig(output_path, format="svg", bbox_inches="tight")
+    fig.savefig(output_path, format="svg")
+    return output_path
+
+
+def save_summary_workbook(summary_df: pd.DataFrame, output_dir: Path, series_specs: list[dict]) -> Path:
+    """Write the plot summary values and naive-relative improvements as XLSX."""
+    benchmark_slug = slugify_title_suffix(BENCHMARK_NAME)
+    output_path = output_dir / f"{SUMMARY_FILENAME_STEM}_{benchmark_slug}.xlsx"
+    export_df = build_export_table(summary_df, series_specs)
+    export_df.to_excel(output_path, index=False, sheet_name="summary")
     return output_path
 
 
@@ -370,16 +466,19 @@ if __name__ == "__main__":
     parent_dir = MODULE_DIR / "data" / DATASET_PARENT_NAME
     runs_df = collect_runs(parent_dir)
     series_specs = build_plot_series_specs(runs_df)
-    shared_y_max = compute_shared_y_max(runs_df)
+    summary_df = build_summary_table(runs_df)
+    shared_y_max = compute_plot_y_max(summary_df)
 
     print(f"dataset parent: {parent_dir}")
     print(f"loaded runs: {len(runs_df)}")
     print(f"plot series: {[spec['label'] for spec in series_specs]}")
     print(f"shared y max: {shared_y_max:.2f}")
+    summary_path = save_summary_workbook(summary_df, parent_dir, series_specs)
+    print(f"wrote summary workbook: {summary_path}")
 
     for has_tttt5p in (False, True):
         plot_result = plot_group(
-            runs_df[runs_df["has_tttt5p"] == has_tttt5p],
+            summary_df[summary_df["has_tttt5p"] == has_tttt5p],
             has_tttt5p=has_tttt5p,
             shared_y_max=shared_y_max,
             series_specs=series_specs,

@@ -13,14 +13,23 @@ the random sampled dataset can be compared visually to the search regime.
 """
 
 from pathlib import Path
+import sys
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
+PACKAGE_DIR = Path(__file__).resolve().parents[4]
+if str(PACKAGE_DIR) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_DIR))
+
+from orthoseq_generator.search_report_reader import (
+    load_found_pairs,
+    load_metadata,
+    load_offtarget_matrices,
+)
 
 matplotlib.rcParams["font.family"] = "Arial"
 matplotlib.rcParams["svg.fonttype"] = "none"
@@ -53,19 +62,9 @@ SECONDARY_X_MAX = 0.0
 BINS_ONOFF = 80
 BINS_SELF = 60
 
-# These thresholds come from the long-sequence benchmark setup and are shown
-# only as visual reference lines on the distributions.
-MIN_ONTARGET = -16.6520552839256
-MAX_ONTARGET = -14.917680807592106
-OFFTARGET_LIMIT_FB001 = -8.160422784450315
-SELF_ENERGY_LIMIT = -0.9919471230992267
-
-
 def load_energy_distributions(data_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    found_pairs = pd.read_excel(data_path, sheet_name="found_pairs")
-    hh = pd.read_excel(data_path, sheet_name="selected_hh", index_col=0)
-    hah = pd.read_excel(data_path, sheet_name="selected_hah", index_col=0)
-    ahah = pd.read_excel(data_path, sheet_name="selected_ahah", index_col=0)
+    found_pairs = load_found_pairs(data_path)
+    off_target_matrices = load_offtarget_matrices(data_path, family="selected")
 
     on_target = found_pairs["on_target_energy_verified"].to_numpy(dtype=float)
     self_seq = found_pairs["self_energy_seq_verified"].to_numpy(dtype=float)
@@ -74,13 +73,23 @@ def load_energy_distributions(data_path: Path) -> tuple[np.ndarray, np.ndarray, 
 
     off_target = np.concatenate(
         [
-            hh.to_numpy(dtype=float).ravel(),
-            hah.to_numpy(dtype=float).ravel(),
-            ahah.to_numpy(dtype=float).ravel(),
+            off_target_matrices["handle_handle_energies"].to_numpy(dtype=float).ravel(),
+            off_target_matrices["antihandle_handle_energies"].to_numpy(dtype=float).ravel(),
+            off_target_matrices["antihandle_antihandle_energies"].to_numpy(dtype=float).ravel(),
         ]
     )
     off_target = off_target[off_target != 0.0]
     return on_target, off_target, self_all
+
+
+def load_reference_thresholds(report_path: Path) -> dict[str, float]:
+    metadata = load_metadata(report_path)
+    return {
+        "min_ontarget": float(metadata["search.min_ontarget"]),
+        "max_ontarget": float(metadata["search.max_ontarget"]),
+        "offtarget_limit": float(metadata["search.offtarget_limit"]),
+        "self_energy_limit": float(metadata["search.self_energy_limit"]),
+    }
 
 
 def style_axes(ax: plt.Axes) -> None:
@@ -100,6 +109,7 @@ def style_axes(ax: plt.Axes) -> None:
 
 def plot_energy_distributions(
     data_path: Path,
+    reference_thresholds: dict[str, float],
     out_dir: Path,
     output_prefix: str,
     onoff_title: str = "On and off-target energies",
@@ -139,7 +149,7 @@ def plot_energy_distributions(
     )
 
     ax.axvline(
-        MIN_ONTARGET,
+        reference_thresholds["min_ontarget"],
         color=RANGE_COLOR,
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
@@ -147,7 +157,7 @@ def plot_energy_distributions(
         zorder=REFERENCE_ZORDER,
     )
     ax.axvline(
-        MAX_ONTARGET,
+        reference_thresholds["max_ontarget"],
         color=RANGE_COLOR,
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
@@ -155,7 +165,7 @@ def plot_energy_distributions(
         zorder=REFERENCE_ZORDER,
     )
     ax.axvline(
-        OFFTARGET_LIMIT_FB001,
+        reference_thresholds["offtarget_limit"],
         color=LIMIT_COLOR,
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
@@ -187,7 +197,7 @@ def plot_energy_distributions(
         zorder=2,
     )
     ax.axvline(
-        SELF_ENERGY_LIMIT,
+        reference_thresholds["self_energy_limit"],
         color=LIMIT_COLOR,
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
@@ -221,15 +231,18 @@ if __name__ == "__main__":
         / "benchmarking"
         / "long_seq"
         / "data"
+        / "batch_x______sigma1p0_seed41"
         / "len12"
         / "5p_none"
-        / "hybrid_len12_5p_none_limitm8p16_seed41.xlsx"
+        / "hybrid_len12_5p_none_limitm8p16_budget10000000_init900_seed41.xlsx"
     )
 
     out_dir = figure_dir / "data" / "plots"
+    reference_thresholds = load_reference_thresholds(hybrid_data_path)
 
     onoff_path, self_path = plot_energy_distributions(
         data_path=figure1_data_path,
+        reference_thresholds=reference_thresholds,
         out_dir=out_dir,
         output_prefix="figure1",
     )
@@ -238,6 +251,7 @@ if __name__ == "__main__":
 
     onoff_path, self_path = plot_energy_distributions(
         data_path=hybrid_data_path,
+        reference_thresholds=reference_thresholds,
         out_dir=out_dir,
         output_prefix="hybrid_len12_5p_none",
     )

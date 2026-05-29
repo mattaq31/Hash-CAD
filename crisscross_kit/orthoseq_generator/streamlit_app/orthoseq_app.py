@@ -1,6 +1,8 @@
 if __name__ == "__main__":
+    import html
     from pathlib import Path
     import streamlit as st
+    import streamlit.components.v1 as components
     from orthoseq_generator import helper_functions as hf
     from orthoseq_generator import sequence_computations as sc
     from orthoseq_generator.streamlit_app.state_manager import init_session_state
@@ -28,10 +30,34 @@ if __name__ == "__main__":
         st_autorefresh(interval=500, key="global_poll")
 
     st.subheader("Logs")
-    st.text_area(
-        "Computations:",
-        value="\n".join(st.session_state.log_buffer[-500:]),
-        height=150
+    log_text = html.escape("\n".join(st.session_state.log_buffer[-500:]))
+    components.html(
+        f"""
+        <div
+          id="log-console"
+          style="
+            height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+            font-size: 0.8rem;
+            line-height: 1.35;
+            border: 1px solid rgba(49, 51, 63, 0.2);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            background: white;
+            color: rgb(49, 51, 63);
+            box-sizing: border-box;
+          "
+        >{log_text}</div>
+        <script>
+        const logConsole = document.getElementById("log-console");
+        if (logConsole) {{
+          logConsole.scrollTop = logConsole.scrollHeight;
+        }}
+        </script>
+        """,
+        height=190,
     )
 
     # 3. Sidebar: Global Settings

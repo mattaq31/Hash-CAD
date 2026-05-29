@@ -139,11 +139,12 @@ The main search algorithm (`hybrid_search` in `search_algorithm.py`) works in tw
 **Pass 2 (Collection):**
 - Collect additional candidate pairs, each filtered by the same on-target, self-energy, and homodimer gates and then cross-referenced against the retained set (zero violations required).
 - Because every accepted candidate is already compatible with all retained pairs, the final vertex cover only resolves conflicts among fresh candidates (O(fresh^2) instead of O((fresh+retained)^2)).
-- Union survivors into the retained set.
+- A manual checkpoint request can run a diagnostic peek vertex cover on the currently collected fresh pool and then continue collection from the same state.
+- When collection stops for any normal termination reason, user stop request, or Ctrl+C, the already-collected fresh pool still goes through the same final vertex-cover step before survivors are unioned into the retained set.
 
 The search terminates when the NUPACK call budget is exhausted, the user interrupts (Ctrl+C or stop button), or live sampling becomes effectively exhausted under the duplicate-streak heuristic.
 
-**Optional progress reporting:** When `progress_report_interval_min` is set, pass 2 collection is chunked into timed intervals. At each boundary a peek vertex cover estimates the current total without committing results.
+**Manual checkpointing:** During pass 2, the app can explicitly request a checkpoint. That triggers the same expensive peek estimate that used to be timer-driven, but only when asked for.
 
 ### Core Functions
 
@@ -151,10 +152,10 @@ The search terminates when the NUPACK call budget is exhausted, the user interru
   The vertex-cover heuristic. Repeatedly removes the highest-degree vertex to greedily cover edges. Wraps this in an iterative perturbation loop: each iteration removes a fraction of vertices (`prune_fraction`) from the current cover, re-covers uncovered edges, cleans the repaired full cover against the full graph, and checks if the independent set improved.
 
 - **`hybrid_search(sequence_pairs, …)`**  
-  The main search entry point. Orchestrates the two-pass strategy described above. Called by the CLI script, Streamlit app, and benchmark runners. Expects a live sequence source such as `SequencePairRegistry` that provides `sample_pair()` and `get_pair_by_id()`.
+  The main search entry point. Orchestrates the two-pass strategy described above. Called by the CLI script, Streamlit app, and benchmark runners. Expects a live sequence source such as `SequencePairRegistry` that provides `sample_pair()` and `get_pair_by_id()`. If pass 2 receives a manual checkpoint request, it runs a diagnostic peek vertex cover and then resumes collection from the same state. If pass 2 stops early because of a user stop request or Ctrl+C, the collected pass-2 pool is still finalized through the standard vertex-cover path before results are returned.
 
 - **`select_subset_in_energy_range(sequence_pairs, …)`**  
-  The candidate collection workhorse. Draws random pairs, evaluates on-target/self-energy filters, rejects strong same-strand homodimers, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"keyboard_interrupt"`, `"duplicate_streak_limit_reached=<value>"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware and reserves `estimate_offtarget_nupack_calls(N) = 2 * N^2` calls for the downstream vertex cover.
+  The candidate collection workhorse. Draws random pairs, evaluates on-target/self-energy filters, rejects strong same-strand homodimers, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"checkpoint_request"`, `"keyboard_interrupt"`, `"duplicate_streak_limit_reached=<value>"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware and reserves `estimate_offtarget_nupack_calls(N) = 2 * N^2` calls for the downstream vertex cover.
 
 - **`crossreference_sequences(new_pair, pool, …)`**  
   Checks whether a single candidate pair is compatible with all pairs in a pool by evaluating all four strand combinations. Short-circuits on first violation.
@@ -179,13 +180,21 @@ Running vertex cover on 340 candidate pairs...
 Independent set: 95 additional pairs found | Total retained: 215 | NUPACK calls: 1836421 | elapsed=320.5s
 ```
 
-When progress reporting is enabled:
+When a manual checkpoint is requested during pass 2:
 
 ```text
---- Progress report triggered (20 min interval reached) ---
+--- Manual checkpoint triggered ---
 Running peek vertex cover on 94 collected candidate pairs...
 Candidate pairs collected so far: 94 | Retained from seed: 120 | New from collection (after peek VC): 29 | Estimated total: 149 | NUPACK calls: 7482 | elapsed=1200.5s
---- Continuing collection ---
+--- Resuming collection ---
+```
+
+When the search is stopped interactively or interrupted during pass 2:
+
+```text
+Stop detected during pass 2 collection. Finalizing current candidate pool.
+Running vertex cover on 94 candidate pairs...
+Independent set: 29 additional pairs found | Total retained: 149 | NUPACK calls: 7482 | elapsed=1200.5s
 ```
 
 ### Search Progress Reporting
