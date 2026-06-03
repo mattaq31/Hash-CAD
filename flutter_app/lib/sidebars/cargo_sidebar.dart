@@ -157,11 +157,14 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
         return StatefulBuilder(
           builder: (context, setState) {
             final name = nameController.text.trim();
-            // Disable save if name is empty, is a restricted name, or conflicts with an existing different cargo
+            // Disable save if name is empty, is a restricted name (unless already restricted and unchanged), or conflicts with an existing different cargo
             bool nameConflicts = editMode
                 ? (name != originalName && appState.cargoPalette.containsKey(name))
                 : appState.cargoPalette.containsKey(name);
-            bool saveDisabled = name.isEmpty || restrictedCargo.contains(name) || nameConflicts;
+            bool restrictedConflict = editMode
+                ? (name != originalName && restrictedCargo.contains(name))
+                : restrictedCargo.contains(name);
+            bool saveDisabled = name.isEmpty || restrictedConflict || nameConflicts;
 
             return AlertDialog(
               title: Text(editMode ? 'Edit Cargo' : 'Add Cargo'),

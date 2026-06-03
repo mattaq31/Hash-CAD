@@ -825,7 +825,7 @@ class SlatPainter extends CustomPainter {
       if (actionState.displaySlatIDs && slat.layer == selectedLayer){
         final textPainter = TextPainter(
           text: TextSpan(
-            text: slatDisplayName(slat, layerMap) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : ''),
+            text: slatDisplayName(slat, layerMap, slats: appState.slats) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : ''),
             style: TextStyle(
               color: Colors.white,
               fontFamily: 'Roboto',

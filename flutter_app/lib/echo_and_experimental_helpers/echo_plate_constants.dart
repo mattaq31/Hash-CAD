@@ -58,8 +58,15 @@ Color? echoDesignColorFor(
 ///
 /// The layer number is 1-indexed (derived from the layer's `order` field in [layerMap]).
 /// For example, a slat with `numericID` 9 on the second layer (order 1) becomes `L2-9`.
-String slatDisplayName(Slat slat, Map<String, Map<String, dynamic>> layerMap) {
+String slatDisplayName(Slat slat, Map<String, Map<String, dynamic>> layerMap, {Map<String, Slat>? slats}) {
   final layerOrder = (layerMap[slat.layer]?['order'] as int? ?? 0) + 1;
+  if (slat.phantomParent != null && slats != null) {
+    final parent = slats[slat.phantomParent];
+    if (parent != null) {
+      final parentLayerOrder = (layerMap[parent.layer]?['order'] as int? ?? 0) + 1;
+      return 'P${slat.numericID}|L$parentLayerOrder-${parent.numericID}';
+    }
+  }
   return 'L$layerOrder-${slat.numericID}';
 }
 

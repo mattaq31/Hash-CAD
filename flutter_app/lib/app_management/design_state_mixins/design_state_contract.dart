@@ -232,7 +232,7 @@ mixin DesignStateContract on ChangeNotifier {
   void unlinkHandle(HandleKey key);
   void toggleHandleBlock(HandleKey key);
   void setHandleEnforcedValue(HandleKey key, int value, {bool requestStateUpdate = true});
-  void linkHandlesAndPropagate(List<HandleKey> keys);
+  void linkHandlesAndPropagate(List<HandleKey> keys, {bool requestStateUpdate = true});
   void toggleHandleBlockAndApply(HandleKey key);
   void setHandleEnforcedValueAndApply(HandleKey key, int value);
 

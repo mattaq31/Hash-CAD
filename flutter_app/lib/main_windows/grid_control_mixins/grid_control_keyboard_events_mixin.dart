@@ -26,11 +26,13 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
           setHoverCoordinates(appState);
         }
       },
-      // flip shortcut for 60deg layers
+      // flip shortcut (F key flips the seed multi-slat generator)
       SingleActivator(LogicalKeyboardKey.keyF): () {
-        appState.flipMultiSlatGenerator();
-        if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
-          setHoverCoordinates(appState);
+        if (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED') {
+          appState.flipMultiSlatGenerator();
+          if (hoverPosition != null) {
+            setHoverCoordinates(appState);
+          }
         }
       },
       // flip shortcut (T key works in move mode for slats, and in cargo-add mode for seed transpose)

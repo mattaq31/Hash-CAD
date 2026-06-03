@@ -182,7 +182,7 @@ class PlateGrid extends StatelessWidget {
     final isSource = isSourceWellDuringGroupDrag(plateIndex, well);
     final color = echoDesignColorFor(slat, layerMap, echoColorMode, resolveGroupColor);
     final isInDupGroup = slatId != null && layoutState.duplicateGroups.containsKey(baseSlatId(slatId));
-    final displayName = slat != null ? slatDisplayName(slat, layerMap) : null;
+    final displayName = slat != null ? slatDisplayName(slat, layerMap, slats: slats) : null;
     final manualPos = lookupId != null ? layoutState.getManualHandles(lookupId) : const <(int, int)>{};
 
     return WellWidget(

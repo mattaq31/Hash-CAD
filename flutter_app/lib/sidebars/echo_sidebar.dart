@@ -105,11 +105,11 @@ class _EchoTools extends State<EchoTools> with WidgetsBindingObserver {
             }
             if (category != null && handle['sequence'] == null) {
               missing.putIfAbsent(category, () => []);
-              missing[category]!.add((slatId: slatDisplayName(slat, appState.layerMap), position: pos, side: side));
+              missing[category]!.add((slatId: slatDisplayName(slat, appState.layerMap, slats: appState.slats), position: pos, side: side));
             }
           } else {
             // No handle at this position — needs a FLAT staple
-            missing['FLAT']!.add((slatId: slatDisplayName(slat, appState.layerMap), position: pos, side: side));
+            missing['FLAT']!.add((slatId: slatDisplayName(slat, appState.layerMap, slats: appState.slats), position: pos, side: side));
           }
         }
       }

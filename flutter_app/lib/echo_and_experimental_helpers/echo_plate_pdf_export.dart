@@ -279,7 +279,7 @@ pw.Widget _buildPdfWellCell(
   // Display name: L{layer}-{number}, with ~N suffix for duplicates
   String displayId = '';
   if (slat != null && layerMap != null) {
-    displayId = slatDisplayName(slat, layerMap);
+    displayId = slatDisplayName(slat, layerMap, slats: slats);
     if (isDuplicate) {
       final tildeIndex = slatId.indexOf('~');
       if (tildeIndex >= 0) displayId += slatId.substring(tildeIndex);
