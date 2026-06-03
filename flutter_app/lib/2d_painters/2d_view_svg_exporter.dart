@@ -276,7 +276,7 @@ Future<void> exportSlatsToSvg({
 
       // 4. Add slat ID if enabled (only for selected layer)
       if (exportOptions['slatIDs'] == true && slat.layer == selectedLayer) {
-        _addSlatID(slatGroupBuilder, slat, coords, gridSize, layerMap);
+        _addSlatID(slatGroupBuilder, slat, coords, gridSize, layerMap, appState.slats);
       }
     });
 
@@ -561,7 +561,7 @@ void _addHandleMarkers(
 }
 
 /// Adds slat ID label at the center of the slat.
-void _addSlatID(XmlBuilder builder, Slat slat, List<Offset> coords, double gridSize, Map<String, Map<String, dynamic>> layerMap) {
+void _addSlatID(XmlBuilder builder, Slat slat, List<Offset> coords, double gridSize, Map<String, Map<String, dynamic>> layerMap, Map<String, Slat> slats) {
   // Find center of all coords
   double sumX = 0, sumY = 0;
   for (final c in coords) {
@@ -580,7 +580,7 @@ void _addSlatID(XmlBuilder builder, Slat slat, List<Offset> coords, double gridS
   }
 
   // Slat ID text
-  String slatIdText = slatDisplayName(slat, layerMap) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : '');
+  String slatIdText = slatDisplayName(slat, layerMap, slats: slats) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : '');
   double rectWidth = slat.slatType == 'tube' ? gridSize * 3 : gridSize * 6;
   double rectHeight = gridSize * 0.85;
   double fontSize = gridSize * 0.6;

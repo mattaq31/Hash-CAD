@@ -417,7 +417,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       h5Handles: firstSlat?.h5Handles,
       h2Handles: firstSlat?.h2Handles,
       multipleSlatsSelected: multipleSlatsSelected,
-      slatName: firstSlat != null ? slatDisplayName(firstSlat, appState.layerMap) : null,
+      slatName: firstSlat != null ? slatDisplayName(firstSlat, appState.layerMap, slats: appState.slats) : null,
     );
     _dialogOpen = false;
 
@@ -566,6 +566,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
           maxLength: 40,
           autofocus: true,
           decoration: const InputDecoration(labelText: 'Experiment name'),
+          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[/\\]'))],
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) Navigator.pop(ctx, value.trim());
           },

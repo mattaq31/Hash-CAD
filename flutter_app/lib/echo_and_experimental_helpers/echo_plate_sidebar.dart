@@ -222,7 +222,7 @@ class SlatSidebar extends StatelessWidget {
                       return SidebarSlatTile(
                         slatId: slatId,
                         slat: slat,
-                        displayName: slatDisplayName(slat, layerMap),
+                        displayName: slatDisplayName(slat, layerMap, slats: slats),
                         designColor: echoDesignColorFor(slat, layerMap, echoColorMode, resolveGroupColor),
                         isSelected: isSelected,
                         selectedSlatIds: selectedSlatIds,

@@ -499,7 +499,7 @@ PegPurificationResult generatePegPurificationExcel({
     for (var slatId in slatIds) {
       final base = baseSlatId(slatId);
       final slat = slats[base];
-      final displayName = slat != null ? slatDisplayName(slat, layerMap) : slatId;
+      final displayName = slat != null ? slatDisplayName(slat, layerMap, slats: slats) : slatId;
       final lookup = slatWellLookup[base];
       final well = lookup != null ? lookup.$2 : '—';
       final plate = lookup != null ? (plateNames[lookup.$1] ?? 'P${lookup.$1 + 1}') : '—';

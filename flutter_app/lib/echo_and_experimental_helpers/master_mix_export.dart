@@ -164,6 +164,7 @@ MasterMixResult generateMasterMixExcel({
       bufferCount: mixConfig.bufferSlats,
       layerMap: layerMap,
       plateNames: plateNames,
+      slats: slats,
       manualHandles: manualHandles,
     );
   }
@@ -184,6 +185,7 @@ MasterMixResult generateMasterMixExcel({
       bufferCount: mixConfig.dbBufferSlats,
       layerMap: layerMap,
       plateNames: plateNames,
+      slats: slats,
       manualHandles: manualHandles,
     );
   }
@@ -221,7 +223,7 @@ MasterMixResult generateMasterMixExcel({
   // Check for slats exceeding the max well volume threshold.
   final overflowSlats = entries.where((e) => e.totalHandleVolumeNl > maxWellVolumeNl).toList();
   if (overflowSlats.isNotEmpty) {
-    final shown = overflowSlats.take(5).map((e) => slatDisplayName(e.slat, layerMap)).join(', ');
+    final shown = overflowSlats.take(5).map((e) => slatDisplayName(e.slat, layerMap, slats: slats)).join(', ');
     final extra = overflowSlats.length > 5 ? ' and ${overflowSlats.length - 5} more' : '';
     final thresholdUl = (maxWellVolumeNl / 1000).toStringAsFixed(1);
     warnings.add('${overflowSlats.length} slat(s) exceed the $thresholdUl µL well volume threshold: $shown$extra');
@@ -250,6 +252,7 @@ void _buildTypeSheet({
   required int bufferCount,
   required Map<String, Map<String, dynamic>> layerMap,
   required Map<int, String> plateNames,
+  required Map<String, Slat> slats,
   Map<String, Set<(int, int)>>? manualHandles,
 }) {
   final sheet = excel[sheetName];
@@ -530,7 +533,7 @@ void _buildTypeSheet({
     row++;
 
     for (var e in groupEntries) {
-      _setCell(sheet, colBase, row, slatDisplayName(e.slat, layerMap), style: _sNormal);
+      _setCell(sheet, colBase, row, slatDisplayName(e.slat, layerMap, slats: slats), style: _sNormal);
       _setCell(sheet, colBase + 1, row, e.well, style: _sNormal);
       _setCell(sheet, colBase + 2, row, plateNames[e.plateIndex] ?? 'Plate', style: _sNormal);
       row++;
