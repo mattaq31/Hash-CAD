@@ -6,6 +6,7 @@ import '../app_management/action_state.dart';
 import '../app_management/design_state_mixins/design_state_handle_link_mixin.dart';
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/common_utilities.dart';
+import '../echo_and_experimental_helpers/echo_plate_constants.dart' show slatDisplayName;
 
 /// Natural sort comparison for slat IDs like "A-I1", "A-I2", "A-I10"
 int _naturalCompare(String a, String b) {
@@ -90,11 +91,11 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
     final slatList = uniqueSlatIDs.toList();
     if (slatList.isNotEmpty) {
       selectedSlat1ID = slatList[0];
-      _slat1Controller.text = slatList[0].replaceFirst('-I', '-');
+      _slat1Controller.text = slatDisplayName(appState.slats[slatList[0]]!, appState.layerMap, slats: appState.slats);
     }
     if (slatList.length > 1) {
       selectedSlat2ID = slatList[1];
-      _slat2Controller.text = slatList[1].replaceFirst('-I', '-');
+      _slat2Controller.text = slatDisplayName(appState.slats[slatList[1]]!, appState.layerMap, slats: appState.slats);
     }
 
     _hasAutoPopulated = true;
@@ -173,23 +174,29 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
     required List<String> availableSlats,
     required TextEditingController controller,
     required void Function(String) onSelected,
+    required DesignState appState,
   }) {
+    String displayName(String slatId) {
+      final slat = appState.slats[slatId];
+      if (slat == null) return slatId;
+      return slatDisplayName(slat, appState.layerMap, slats: appState.slats);
+    }
+
     return SizedBox(
       width: 160,
       child: Autocomplete<String>(
-        displayStringForOption: (option) => option.replaceFirst('-I', '-'),
+        displayStringForOption: (option) => displayName(option),
         optionsBuilder: (textEditingValue) {
           if (textEditingValue.text.isEmpty) {
             return availableSlats;
           }
           final query = textEditingValue.text.toLowerCase();
           return availableSlats.where((s) {
-            final displayName = s.replaceFirst('-I', '-').toLowerCase();
-            return displayName.contains(query);
+            return displayName(s).toLowerCase().contains(query);
           }).toList();
         },
         onSelected: (val) {
-          controller.text = val.replaceFirst('-I', '-');
+          controller.text = displayName(val);
           onSelected(val);
         },
         fieldViewBuilder: (ctx, ctrl, focus, onSubmit) {
@@ -199,14 +206,13 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
             decoration: InputDecoration(labelText: label, isDense: true, border: const OutlineInputBorder()),
             style: const TextStyle(fontSize: 14),
             onSubmitted: (value) {
-              final searchValue = value.replaceFirst('-', '-I');
               final match = availableSlats.firstWhere(
-                (s) => s == searchValue || s.replaceFirst('-I', '-').toLowerCase() == value.toLowerCase(),
+                (s) => displayName(s).toLowerCase() == value.toLowerCase() || s == value,
                 orElse: () => '',
               );
               if (match.isNotEmpty) {
-                ctrl.text = match.replaceFirst('-I', '-');
-                controller.text = match.replaceFirst('-I', '-');
+                ctrl.text = displayName(match);
+                controller.text = displayName(match);
                 onSelected(match);
                 focus.unfocus();
               }
@@ -411,14 +417,16 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
       if (linkH5) {
         final key1 = (slat1.id, pos, 5);
         final key2 = (slat2.id, pos, 5);
-        appState.linkHandlesAndPropagate([key1, key2]);
+        appState.linkHandlesAndPropagate([key1, key2], requestStateUpdate: false);
       }
       if (linkH2) {
         final key1 = (slat1.id, pos, 2);
         final key2 = (slat2.id, pos, 2);
-        appState.linkHandlesAndPropagate([key1, key2]);
+        appState.linkHandlesAndPropagate([key1, key2], requestStateUpdate: false);
       }
     }
+    appState.saveUndoState();
+    appState.notifyListeners();
   }
 
   @override
@@ -519,6 +527,7 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
                       availableSlats: availableSlats.where((s) => s != selectedSlat2ID).toList(),
                       controller: _slat1Controller,
                       onSelected: (val) => setState(() => selectedSlat1ID = val),
+                      appState: appState,
                     ),
                     const SizedBox(width: 16),
                     _buildSlatSelector(
@@ -526,6 +535,7 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
                       availableSlats: availableSlats.where((s) => s != selectedSlat1ID).toList(),
                       controller: _slat2Controller,
                       onSelected: (val) => setState(() => selectedSlat2ID = val),
+                      appState: appState,
                     ),
                     const Spacer(),
                     // Action buttons
@@ -594,7 +604,7 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
                                         linkManager: appState.assemblyLinkManager,
                                         selectedHandles: selectedHandles,
                                         onHandleTap: _toggleHandleSelection,
-                                        label: selectedSlat1ID!,
+                                        label: slatDisplayName(appState.slats[selectedSlat1ID]!, appState.layerMap, slats: appState.slats),
                                         onSelectAllH5: () => _toggleAllHandles(selectedSlat1ID!, 5, appState),
                                         onSelectAllH2: () => _toggleAllHandles(selectedSlat1ID!, 2, appState),
                                         getHandleKey: _getOrCreateHandleKey,
@@ -616,7 +626,7 @@ class _SlatLinkerWindowState extends State<SlatLinkerWindow> {
                                         linkManager: appState.assemblyLinkManager,
                                         selectedHandles: selectedHandles,
                                         onHandleTap: _toggleHandleSelection,
-                                        label: selectedSlat2ID!,
+                                        label: slatDisplayName(appState.slats[selectedSlat2ID]!, appState.layerMap, slats: appState.slats),
                                         onSelectAllH5: () => _toggleAllHandles(selectedSlat2ID!, 5, appState),
                                         onSelectAllH2: () => _toggleAllHandles(selectedSlat2ID!, 2, appState),
                                         getHandleKey: _getOrCreateHandleKey,
@@ -719,7 +729,7 @@ class _SlatHandleDisplay extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  label.replaceFirst('-I', '-'),
+                  label,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),

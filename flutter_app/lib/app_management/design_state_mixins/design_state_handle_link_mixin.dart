@@ -540,7 +540,7 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
   /// Links multiple handles and propagates handle values to all linked handles.
   /// If any of the handles has an existing assembly value, that value is propagated to all.
   @override
-  void linkHandlesAndPropagate(List<HandleKey> keys) {
+  void linkHandlesAndPropagate(List<HandleKey> keys, {bool requestStateUpdate = true}) {
     if (keys.length < 2) return;
 
     // First, find if any of the handles has an existing assembly value
@@ -570,8 +570,10 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
     }
 
     hammingValueValid = false;
-    saveUndoState();
-    notifyListeners();
+    if (requestStateUpdate) {
+      saveUndoState();
+      notifyListeners();
+    }
   }
 
   /// Toggles block status on a handle and applies the change.

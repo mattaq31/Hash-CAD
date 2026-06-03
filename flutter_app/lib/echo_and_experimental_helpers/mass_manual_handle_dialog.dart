@@ -42,7 +42,7 @@ class _MassManualHandleDialog extends StatefulWidget {
   State<_MassManualHandleDialog> createState() => _MassManualHandleDialogState();
 }
 
-enum _MassEditMode { byPosition, byAssemblyHandleValue, byCargoValue }
+enum _MassEditMode { byPosition, byAssemblyHandleValue, byCargoValue, byFluorophore }
 
 class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
   _MassEditMode _mode = _MassEditMode.byPosition;
@@ -62,9 +62,13 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
   // Mode 3: By cargo value
   String? _selectedCargoValue;
 
+  // Mode 4: By fluorophore
+  String? _selectedFluorophore;
+
   late List<String> _availableSlatTypes;
   late List<String> _availableHandleValues;
   late List<String> _availableCargoValues;
+  late List<String> _availableFluorophores;
 
   @override
   void initState() {
@@ -72,11 +76,15 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
     _availableSlatTypes = _computeAvailableSlatTypes();
     _availableHandleValues = _computeAvailableHandleValues();
     _availableCargoValues = _computeAvailableCargoValues();
+    _availableFluorophores = _computeAvailableFluorophores();
     if (_availableHandleValues.isNotEmpty) {
       _selectedHandleValue = _availableHandleValues.first;
     }
     if (_availableCargoValues.isNotEmpty) {
       _selectedCargoValue = _availableCargoValues.first;
+    }
+    if (_availableFluorophores.isNotEmpty) {
+      _selectedFluorophore = _availableFluorophores.first;
     }
   }
 
@@ -120,6 +128,21 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
   List<String> _computeAvailableHandleValues() => _collectHandleValues(_isAssemblyHandle, numericSort: true);
 
   List<String> _computeAvailableCargoValues() => _collectHandleValues(_isCargoHandle);
+
+  List<String> _computeAvailableFluorophores() {
+    final values = <String>{};
+    for (var slat in _allAssignedSlats()) {
+      for (var handle in slat.h2Handles.values) {
+        final f = handle['fluorophore'] as String?;
+        if (f != null && f.isNotEmpty) values.add(f);
+      }
+      for (var handle in slat.h5Handles.values) {
+        final f = handle['fluorophore'] as String?;
+        if (f != null && f.isNotEmpty) values.add(f);
+      }
+    }
+    return values.toList()..sort();
+  }
 
   bool _isAssemblyHandle(Map<String, dynamic> handle) {
     final cat = handle['category'] as String?;
@@ -213,6 +236,31 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
     return MassManualEditResult(perSlatPositions: perSlat);
   }
 
+  /// Computes the result for Mode 4: by fluorophore (all positions on all sides).
+  MassManualEditResult? _computeByFluorophoreResult() {
+    if (_selectedFluorophore == null) return null;
+
+    final perSlat = <String, Set<(int, int)>>{};
+
+    for (var (base, slat) in _uniqueAssignedSlats()) {
+      final slatPositions = <(int, int)>{};
+      for (var entry in slat.h2Handles.entries) {
+        if ((entry.value['fluorophore'] as String?) == _selectedFluorophore) {
+          slatPositions.add((2, entry.key));
+        }
+      }
+      for (var entry in slat.h5Handles.entries) {
+        if ((entry.value['fluorophore'] as String?) == _selectedFluorophore) {
+          slatPositions.add((5, entry.key));
+        }
+      }
+      if (slatPositions.isNotEmpty) perSlat[base] = slatPositions;
+    }
+
+    if (perSlat.isEmpty) return null;
+    return MassManualEditResult(perSlatPositions: perSlat);
+  }
+
   int _countAffected() {
     switch (_mode) {
       case _MassEditMode.byPosition:
@@ -221,6 +269,8 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
         return _computeByHandleValueResult()?.perSlatPositions.length ?? 0;
       case _MassEditMode.byCargoValue:
         return _computeByCargoValueResult()?.perSlatPositions.length ?? 0;
+      case _MassEditMode.byFluorophore:
+        return _computeByFluorophoreResult()?.perSlatPositions.length ?? 0;
     }
   }
 
@@ -230,7 +280,7 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
 
     return Dialog(
       child: Container(
-        width: 520,
+        width: 640,
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -277,6 +327,12 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
                   selected: _mode == _MassEditMode.byCargoValue,
                   onTap: () => setState(() => _mode = _MassEditMode.byCargoValue),
                 ),
+                const SizedBox(width: 8),
+                _ModeChip(
+                  label: 'By Fluorophore',
+                  selected: _mode == _MassEditMode.byFluorophore,
+                  onTap: () => setState(() => _mode = _MassEditMode.byFluorophore),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -285,6 +341,7 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
               if (_mode == _MassEditMode.byPosition) _buildPositionMode(),
               if (_mode == _MassEditMode.byAssemblyHandleValue) _buildHandleValueMode(),
               if (_mode == _MassEditMode.byCargoValue) _buildCargoValueMode(),
+              if (_mode == _MassEditMode.byFluorophore) _buildFluorophoreMode(),
 
               const SizedBox(height: 16),
               Container(
@@ -351,6 +408,8 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
                           result = _computeByHandleValueResult();
                         case _MassEditMode.byCargoValue:
                           result = _computeByCargoValueResult();
+                        case _MassEditMode.byFluorophore:
+                          result = _computeByFluorophoreResult();
                       }
                       Navigator.of(context).pop(result);
                     }
@@ -466,6 +525,46 @@ class _MassManualHandleDialogState extends State<_MassManualHandleDialog> {
                         DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 12))),
                     ],
                     onChanged: (v) => setState(() => _selectedCargoValue = v),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFluorophoreMode() {
+    if (_availableFluorophores.isEmpty) {
+      return Text('No fluorophore-tagged handles found in assigned slats.',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Mark all positions tagged with a specific fluorophore as manual (all sides).',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            SizedBox(
+              width: 200,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Fluorophore', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                  const SizedBox(height: 4),
+                  DropdownButton<String>(
+                    value: _selectedFluorophore,
+                    isExpanded: true,
+                    isDense: true,
+                    items: [
+                      for (var v in _availableFluorophores)
+                        DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 12))),
+                    ],
+                    onChanged: (v) => setState(() => _selectedFluorophore = v),
                   ),
                 ],
               ),
