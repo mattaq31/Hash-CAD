@@ -10,6 +10,7 @@ if __name__ == "__main__":
     from orthoseq_generator.streamlit_app.logging_utils import setup_logger, drain_log_queue
     from orthoseq_generator.streamlit_app.tabs import (
         render_exploratory_tab,
+        render_load_results_tab,
         render_refinement_tab,
         render_search_tab,
         render_selection_helper_tab,
@@ -30,13 +31,38 @@ if __name__ == "__main__":
         st_autorefresh(interval=500, key="global_poll")
 
     st.subheader("Logs")
-    log_text = html.escape("\n".join(st.session_state.log_buffer[-500:]))
+    log_settings_col, _ = st.columns([2, 6])
+    with log_settings_col:
+        with st.expander("Log View Settings", expanded=False):
+            log_control_col1, log_control_col2 = st.columns([1, 1])
+            with log_control_col1:
+                st.number_input(
+                    "Height",
+                    min_value=120,
+                    max_value=1200,
+                    step=20,
+                    key="log_console_height_px",
+                    help="Visible height of the log console.",
+                )
+            with log_control_col2:
+                st.number_input(
+                    "Lines",
+                    min_value=100,
+                    max_value=20000,
+                    step=100,
+                    key="log_visible_line_count",
+                    help="How many of the most recent log lines to render in the console.",
+                )
+
+    log_height_px = int(st.session_state.log_console_height_px)
+    visible_line_count = int(st.session_state.log_visible_line_count)
+    log_text = html.escape("\n".join(st.session_state.log_buffer[-visible_line_count:]))
     components.html(
         f"""
         <div
           id="log-console"
           style="
-            height: 150px;
+            height: {log_height_px}px;
             overflow-y: auto;
             white-space: pre-wrap;
             font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
@@ -57,7 +83,7 @@ if __name__ == "__main__":
         }}
         </script>
         """,
-        height=190,
+        height=log_height_px + 40,
     )
 
     # 3. Sidebar: Global Settings
@@ -119,7 +145,12 @@ if __name__ == "__main__":
     magnesium = st.sidebar.number_input("Magnesium (M)", min_value=0.0, max_value=0.2, value=0.025, format="%.4f", disabled=st.session_state.busy)
 
     st.sidebar.subheader("Random Seed")
-    random_seed = st.sidebar.number_input(" ", value=42, disabled=st.session_state.busy)
+    random_seed = st.sidebar.number_input(
+        "Random Seed",
+        value=42,
+        disabled=st.session_state.busy,
+        label_visibility="collapsed",
+    )
 
     # Registry Factory helper
     def get_registry():
@@ -158,7 +189,7 @@ if __name__ == "__main__":
     # 4. Navigation
     nav = st.radio(
         "Workflow Steps",
-        ["1. Selection Helper", "2. Pilot Analysis", "3. Off-Target Limit", "4. Sequence Search"],
+        ["1. Selection Helper", "2. Pilot Analysis", "3. Off-Target Limit", "4. Sequence Search", "5. Load Results"],
         key="active_step",
         horizontal=True,
         disabled=st.session_state.busy
@@ -170,5 +201,7 @@ if __name__ == "__main__":
         render_exploratory_tab(get_registry, nupack_params)
     elif nav == "3. Off-Target Limit":
         render_refinement_tab(get_registry, nupack_params)
-    else:
+    elif nav == "4. Sequence Search":
         render_search_tab(get_registry, nupack_params)
+    else:
+        render_load_results_tab()

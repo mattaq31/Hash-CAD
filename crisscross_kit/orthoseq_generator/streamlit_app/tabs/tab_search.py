@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator.search_algorithm import hybrid_search
@@ -53,44 +54,44 @@ def _search_worker(
         out_q.put(("done", None, time.time() - start_time, repr(e)))
 
 def render_search_tab(registry_factory, nupack_params):
-    st.header("Step 3: Orthogonal Sequence Search")
-    st.write("All parameters are committed. Run the algorithm.")
+    st.header("Step 3: Orthogonal Sequence-Pair Search")
+    st.write("Transferred parameter values are shown below.")
     if st.session_state.search_error:
         st.error(f"Search failed: {st.session_state.search_error}")
 
     st.info(
-        f"Committed on-target energy range: [{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
-        f"Committed off-target energy limit: {st.session_state.offtarget_limit:.2f} kcal/mol\n\n"
-        f"Committed secondary-structure energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
+        f"On-target energy range: [{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
+        f"Off-target energy limit: {st.session_state.offtarget_limit:.2f} kcal/mol\n\n"
+        f"Secondary-structure energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
     # Inputs (locked while running)
-    with st.expander("Advanced Search Parameters", expanded=False):
+    with st.expander("Search Parameters", expanded=False):
         st.number_input(
-            "Initial Subset Size",
+            "Initial Graph Search Subset Size",
             min_value=1,
             value=st.session_state.subset_size_search,
             key="subset_size_search",
             disabled=st.session_state.search_running,
-            help="Number of sequence pairs collected in the seed pass before the first vertex-cover run."
+            help="Number of sequence pairs selected for the initial graph-search subset in pass 1."
         )
         st.number_input(
-            "Vertex-Cover Max Iterations",
+            "Graph Search Iterations",
             min_value=1,
             value=st.session_state.search_vc_max_iterations,
             key="search_vc_max_iterations",
             disabled=st.session_state.search_running,
-            help="Number of refinement iterations used inside each graph-based optimization run."
+            help="Maximum number of refinement iterations used in each graph-search stage."
         )
         st.number_input(
-            "Prune Fraction",
+            "Perturbation Fraction",
             min_value=0.0,
             max_value=1.0,
             value=st.session_state.search_prune_fraction,
             step=0.05,
             key="search_prune_fraction",
             disabled=st.session_state.search_running,
-            help="Controls how strongly the current graph-based solution is perturbed before it is refined again."
+            help="Controls how strongly the current graph-search solution is perturbed before refinement."
         )
 
     if st.session_state.checkpoint_requested and not st.session_state.checkpoint_event.is_set():
@@ -126,11 +127,20 @@ def render_search_tab(registry_factory, nupack_params):
             st.session_state.checkpoint_requested = True
             st.rerun()
         if st.session_state.latest_checkpoint_estimate is not None:
-            st.caption(f"Latest checkpoint estimate: {st.session_state.latest_checkpoint_estimate} pairs")
-            if st.session_state.latest_checkpoint_fresh_candidates is not None:
-                st.caption(
-                    f"Fresh candidates collected: {st.session_state.latest_checkpoint_fresh_candidates}"
+            st.caption(
+                "  \n".join(
+                    [
+                        f"Initial orthogonal sequence pairs: "
+                        f"{st.session_state.latest_checkpoint_initial_orthogonal}",
+                        f"Collected candidate sequence pairs: "
+                        f"{st.session_state.latest_checkpoint_candidate_count}",
+                        f"Orthogonal sequence pairs found in candidate pool: "
+                        f"{st.session_state.latest_checkpoint_candidate_orthogonal}",
+                        f"Estimated total orthogonal sequence pairs: "
+                        f"{st.session_state.latest_checkpoint_estimate}",
+                    ]
                 )
+            )
 
     # Stop: only set flags (NO warning here; warning is rendered from state below)
     with col3:
@@ -156,8 +166,10 @@ def render_search_tab(registry_factory, nupack_params):
         st.session_state.checkpoint_requested = False
         st.session_state.stop_event.clear()
         st.session_state.checkpoint_event.clear()
+        st.session_state.latest_checkpoint_initial_orthogonal = None
+        st.session_state.latest_checkpoint_candidate_count = None
+        st.session_state.latest_checkpoint_candidate_orthogonal = None
         st.session_state.latest_checkpoint_estimate = None
-        st.session_state.latest_checkpoint_fresh_candidates = None
         st.session_state.search_completed = False
         st.session_state.orthogonal_seq_pairs = None
         st.session_state.search_run_data = None
@@ -214,8 +226,10 @@ def render_search_tab(registry_factory, nupack_params):
             received_update = True
 
             if msg == "checkpoint":
+                st.session_state.latest_checkpoint_initial_orthogonal = res["initial_orthogonal"]
+                st.session_state.latest_checkpoint_candidate_count = res["candidate_count"]
+                st.session_state.latest_checkpoint_candidate_orthogonal = res["candidate_orthogonal"]
                 st.session_state.latest_checkpoint_estimate = res["estimated_total"]
-                st.session_state.latest_checkpoint_fresh_candidates = res["fresh_candidates_collected"]
                 st.session_state.checkpoint_requested = False
                 continue
 
@@ -248,9 +262,9 @@ def render_search_tab(registry_factory, nupack_params):
         elif st.session_state.checkpoint_requested:
             st.info("Checkpoint requested. Computing estimate...")
         else:
-            st.info("Search running…")
+            st.info("Search running...")
     elif final_analysis_pending:
-        st.info("Final analysis running…")
+        st.info("Final analysis running...")
 
     # ------------------------------------------------------------
     # Results
@@ -258,8 +272,7 @@ def render_search_tab(registry_factory, nupack_params):
     if st.session_state.search_completed and st.session_state.orthogonal_seq_pairs is not None:
         orthogonal_seq_pairs = st.session_state.orthogonal_seq_pairs
 
-        st.success(f"Search completed in {st.session_state.search_duration:.2f} seconds.")
-        st.write(f"Found {len(orthogonal_seq_pairs)} orthogonal sequence pairs.")
+        st.write(f"Identified {len(orthogonal_seq_pairs)} orthogonal sequence pairs.")
 
         if not st.session_state.final_cache_ready:
             st.session_state.busy = True
@@ -287,8 +300,9 @@ def render_search_tab(registry_factory, nupack_params):
                 )
                 seed_verified = search_run_data["seed_verified"]
                 results_dir = Path(hf.get_default_results_folder())
+                report_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                 report_path = write_hybrid_search_result_xlsx(
-                    results_dir / "ortho_sequences_ui.xlsx",
+                    results_dir / f"ortho_sequences_ui_{report_timestamp}.xlsx",
                     algorithm_name="hybrid_search",
                     selected_sequence_data=selected_sequence_data,
                     verified=verified,

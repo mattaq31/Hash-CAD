@@ -157,8 +157,8 @@ def compute_ontarget_energies(sequence_list):
     self_energies_seq = np.zeros(len(sequence_list))
     self_energies_rc_seq = np.zeros(len(sequence_list))
 
-    print(f"Computing on-target energies for {len(sequence_list)} sequences...")
-    logger.info(f"Computing on-target energies for {len(sequence_list)} sequences.")
+    print(f"Computing on-target energies for {len(sequence_list)} sequence pairs...")
+    logger.info(f"Computing on-target energies for {len(sequence_list)} sequence pairs.")
 
     max_workers = _max_workers()
     print(f"Calculating with {max_workers} cores...")
@@ -233,14 +233,16 @@ def compute_offtarget_energies(sequence_pairs):
                     i, j, energy = future.result()
                     energy_matrix[i, j] = energy
 
-    print("Computing off-target energies for plus-plus interactions")
+    print("Computing off-target energies for handle-handle interactions...")
     computations = int(len(handles) * (len(handles) + 1) / 2)
-    logger.info(f"Computing off-target energies for {computations} plus-plus interactions")
+    logger.info(f"Computing off-target energies for {computations} handle-handle interactions.")
     parallel_energy_computation(handles, handles, handle_handle_energies, lambda i, j: j <= i)
 
-    print("Computing off-target energies for minus-minus interactions")
+    print("Computing off-target energies for antihandle-antihandle interactions...")
     computations = int(len(antihandles) * (len(antihandles) + 1) / 2)
-    logger.info(f"Computing off-target energies for {computations} minus-minus interactions")
+    logger.info(
+        f"Computing off-target energies for {computations} antihandle-antihandle interactions."
+    )
     parallel_energy_computation(
         antihandles,
         antihandles,
@@ -248,9 +250,9 @@ def compute_offtarget_energies(sequence_pairs):
         lambda i, j: j <= i,
     )
 
-    print("Computing off-target energies for plus-minus interactions")
+    print("Computing off-target energies for handle-antihandle interactions...")
     computations = len(handles) * len(antihandles) - len(handles)
-    logger.info(f"Computing off-target energies for {computations} plus-minus interactions")
+    logger.info(f"Computing off-target energies for {computations} handle-antihandle interactions.")
     parallel_energy_computation(handles, antihandles, handle_antihandle_energies, lambda i, j: j != i)
 
     return {
@@ -488,14 +490,25 @@ def select_subset_in_energy_range(
             "indices": indices,
         }
 
+    def _selection_count_phrase():
+        if np.isfinite(max_size):
+            return f"{len(subset)}/{int(max_size)} sequence pairs"
+        return f"{len(subset)} sequence pairs"
+
+    def _selection_result_phrase():
+        if np.isfinite(max_size):
+            return f"Selected {len(subset)} of requested {int(max_size)} sequence pairs"
+        return f"Selected {len(subset)} sequence pairs"
+
     def _emit_progress():
         elapsed_s = time.time() - start_t
-        print(
-            f"Subset selection progress: accepted {len(subset)}/{max_size} fresh pairs "
+        message = (
+            f"Candidate sequence-pair collection progress: accepted {_selection_count_phrase()} "
             f"after {attempts} attempts and {nupack_calls} direct NUPACK calls "
-            f"({elapsed_s / 60.0:.1f} min elapsed).",
-            flush=True,
+            f"({elapsed_s / 60.0:.1f} min elapsed)."
         )
+        print(message, flush=True)
+        logger.info(message)
 
     def _evaluate_candidate(seq, rc_seq):
         nonlocal nupack_calls, passed_energy_filter, passed_homodimer
@@ -577,18 +590,22 @@ def select_subset_in_energy_range(
     try:
         while len(indices) < max_size and not _pool_exhausted():
             if stop_event is not None and stop_event.is_set():
-                print(f"Stop event: returning {len(subset)} collected pairs.", flush=True)
+                print(f"Stop requested: returning {len(subset)} collected sequence pairs.", flush=True)
                 return subset, indices, "stop_event", nupack_calls, _build_state()
             if checkpoint_event is not None and checkpoint_event.is_set():
-                print(f"Checkpoint request: returning {len(subset)} collected pairs.", flush=True)
+                print(
+                    f"Manual checkpoint requested: returning {len(subset)} collected sequence pairs.",
+                    flush=True,
+                )
                 return subset, indices, "checkpoint_request", nupack_calls, _build_state()
             if timeout_s is not None and (time.time() - start_t) >= timeout_s:
                 if not quiet_timeout:
                     elapsed_s = time.time() - start_t
-                    print(f"Only {len(subset)} of requested {max_size} found (timeout after {elapsed_s:.2f}s).")
+                    print(
+                        f"{_selection_result_phrase()} before timeout after {elapsed_s:.2f}s."
+                    )
                     logger.info(
-                        f"Only {len(subset)} of requested {max_size} found for given "
-                        f"parameters (timeout = {timeout_s}s)."
+                        f"{_selection_result_phrase()} before timeout (timeout = {timeout_s}s)."
                     )
                 return subset, indices, "timeout", nupack_calls, _build_state()
 
@@ -597,7 +614,7 @@ def select_subset_in_energy_range(
                 duplicate_streak += 1
                 if duplicate_streak >= duplicate_streak_limit:
                     print(
-                        "Duplicate streak limit reached during subset selection. "
+                        "Duplicate-streak limit reached during sequence-pair selection. "
                         f"Stopping after {duplicate_streak} consecutive seen IDs.",
                         flush=True,
                     )
@@ -623,36 +640,33 @@ def select_subset_in_energy_range(
             if candidate_stop is not None:
                 elapsed_s = time.time() - start_t
                 print(
-                    f"Only {len(subset)} of requested {max_size} found "
-                    f"(NUPACK call limit hit after {elapsed_s:.2f}s, "
-                    f"NUPACK calls: {nupack_calls})."
+                    f"{_selection_result_phrase()} before the NUPACK call budget was reached "
+                    f"after {elapsed_s:.2f}s "
+                    f"(NUPACK calls: {nupack_calls})."
                 )
                 logger.info(
-                    f"Only {len(subset)} of requested {max_size} found for given "
-                    f"parameters (fresh_pair_search_budget = {fresh_pair_search_budget})."
+                    f"{_selection_result_phrase()} before the NUPACK call budget was reached "
+                    f"(fresh_pair_search_budget = {fresh_pair_search_budget})."
                 )
                 return subset, indices, "nupack_limit", nupack_calls, _build_state()
             if accepted:
                 subset.append((seq, rc_seq))
                 indices.append(pair_id)
     except KeyboardInterrupt:
-        print(f"\nInterrupted: returning {len(subset)} collected pairs.", flush=True)
+        print(f"\nInterrupted: returning {len(subset)} collected sequence pairs.", flush=True)
         return subset, indices, "keyboard_interrupt", nupack_calls, _build_state()
 
-    print(
-        f"Selected {len(subset)} sequence pairs with energies in range "
-        f"[{energy_min}, {energy_max}] and self energy above {self_energy_min}"
+    message = (
+        f"Selected {len(subset)} sequence pairs within the on-target energy range "
+        f"[{energy_min}, {energy_max}] and with secondary-structure energy >= {self_energy_min}."
     )
-    logger.info(
-        f"Selected {len(subset)} sequence pairs with on-target energies in "
-        f"range [{energy_min}, {energy_max}] and secondary-structure energy "
-        f"above {self_energy_min}."
-    )
+    print(message)
+    logger.info(message)
     return subset, indices, None, nupack_calls, _build_state()
 
 
 def select_all_in_energy_range(sequence_pairs, energy_min=-np.inf, energy_max=np.inf, avoid_ids=None):
-    print("Selecting sequences...")
+    print("Selecting sequence pairs...")
 
     if avoid_ids is None:
         avoid_ids = set()

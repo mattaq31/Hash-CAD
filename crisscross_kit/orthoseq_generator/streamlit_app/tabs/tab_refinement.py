@@ -131,7 +131,7 @@ def render_refinement_tab(registry_factory, nupack_params):
         with col_y:
             if st.button("Use This Value", key="btn_commit_offtarget", disabled=st.session_state.busy):
                 st.session_state.offtarget_limit = float(st.session_state.draft_offtarget_limit)
-                st.success("Committed. Tab 3 now uses this off-target limit.")
+                st.success("Value Transferred")
 
         conflict_probability = vca.compute_pair_conflict_probability(
             st.session_state.off_e_range,

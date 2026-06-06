@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
-    seqwalk_cores = design.max_size(10, 5, alphabet="ACGT",RCfree=True)
+    #seqwalk_cores = design.max_size(10, 5, alphabet="ACGT",RCfree=True)
     sequence_pairs_object = sc.SequencePairRegistry(
         length=10,
         fivep_ext="",
@@ -44,7 +44,7 @@ if __name__ == "__main__":
         unwanted_substrings=[],
         apply_unwanted_to="core",
         seed=RANDOM_SEED,
-        preselected_cores=seqwalk_cores,
+        preselected_cores=None,
     )
 
     # 3) Configure the NUPACK model parameters.

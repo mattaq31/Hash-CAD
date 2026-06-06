@@ -55,6 +55,7 @@ class SequencePairRegistry:
         self.fivep_ext = str(fivep_ext)
         self.threep_ext = str(threep_ext)
         self.unwanted_substrings = list(unwanted_substrings) if unwanted_substrings else []
+        self.seed = seed
 
         if apply_unwanted_to not in ("core", "full"):
             raise ValueError('apply_unwanted_to must be "core" or "full"')
@@ -313,8 +314,11 @@ def select_subset(sequence_pairs, max_size=200, timeout_s=20):
 
     while len(subset) < max_size:
         if timeout_s is not None and (time.time() - start_t) >= timeout_s:
-            print(f"Only {len(subset)} of requested {max_size} found (timeout).")
-            logger.info(f"Only {len(subset)} of requested {max_size} found (timeout = {timeout_s}s).")
+            print(f"Selected {len(subset)} of requested {max_size} sequence pairs before timeout.")
+            logger.info(
+                f"Selected {len(subset)} of requested {max_size} sequence pairs "
+                f"before timeout (timeout = {timeout_s}s)."
+            )
             return subset
 
         pair_id, pair = sequence_pairs.sample_pair()
@@ -324,6 +328,6 @@ def select_subset(sequence_pairs, max_size=200, timeout_s=20):
         seen_ids.add(pair_id)
         subset.append(pair)
 
-    print(f"Generated {max_size} unique pairs from registry input.")
-    logger.info(f"Selected requested {max_size} sequence pairs.")
+    print(f"Selected {max_size} sequence pairs from registry input.")
+    logger.info(f"Selected {max_size} sequence pairs from registry input.")
     return subset

@@ -37,3 +37,6 @@ def setup_logger(log_queue):
 def drain_log_queue():
     while not st.session_state.log_queue.empty():
         st.session_state.log_buffer.append(st.session_state.log_queue.get())
+    max_lines = int(st.session_state.get("log_buffer_max_lines", 50000))
+    if max_lines > 0 and len(st.session_state.log_buffer) > max_lines:
+        st.session_state.log_buffer = st.session_state.log_buffer[-max_lines:]

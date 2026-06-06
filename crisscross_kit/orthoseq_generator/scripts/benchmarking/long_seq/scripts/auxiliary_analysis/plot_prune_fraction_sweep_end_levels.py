@@ -123,7 +123,7 @@ def make_plot(results_df, baseline_df, output_path: Path):
                 markersize=3.0,
                 elinewidth=0.8,
                 capsize=1.8,
-                label=f"Init {init_count}",
+                label=f"Subset size = {init_count}",
             )
             if not baseline_subset.empty:
                 baseline_mean = float(baseline_subset["independent_set_size_mean"].iloc[0])

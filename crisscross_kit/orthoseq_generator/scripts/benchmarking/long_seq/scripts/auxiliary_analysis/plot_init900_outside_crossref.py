@@ -155,7 +155,7 @@ def draw_distribution(
             facecolor=mean_color,
             edgecolor="none",
             alpha=0.12,
-            label=rf"SD band = {format_decimal_math(std_value)}",
+            label=rf"$\pm 1$ SD = $\pm {format_decimal_math(std_value)}$",
         ),
     ]
     ax.legend(
@@ -246,7 +246,7 @@ def draw_progress_overlay(
         hybrid_seed_pairs_after_vc,
         color="#2A9D8F",
         marker="o",
-        label="Graph seed",
+        label="Graph initial",
         **point_style,
     )
     ax.scatter(

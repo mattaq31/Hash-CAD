@@ -1,4 +1,5 @@
 from .tab_exploratory import render_exploratory_tab
+from .tab_load_results import render_load_results_tab
 from .tab_refinement import render_refinement_tab
 from .tab_search import render_search_tab
 from .tab_selection_helper import render_selection_helper_tab

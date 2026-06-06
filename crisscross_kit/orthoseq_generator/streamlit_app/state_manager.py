@@ -85,15 +85,25 @@ def init_session_state():
         st.session_state.stop_requested = False
     if "checkpoint_requested" not in st.session_state:
         st.session_state.checkpoint_requested = False
+    if "latest_checkpoint_initial_orthogonal" not in st.session_state:
+        st.session_state.latest_checkpoint_initial_orthogonal = None
+    if "latest_checkpoint_candidate_count" not in st.session_state:
+        st.session_state.latest_checkpoint_candidate_count = None
+    if "latest_checkpoint_candidate_orthogonal" not in st.session_state:
+        st.session_state.latest_checkpoint_candidate_orthogonal = None
     if "latest_checkpoint_estimate" not in st.session_state:
         st.session_state.latest_checkpoint_estimate = None
-    if "latest_checkpoint_fresh_candidates" not in st.session_state:
-        st.session_state.latest_checkpoint_fresh_candidates = None
         
     if "log_queue" not in st.session_state:
         st.session_state.log_queue = queue.Queue()
     if "log_buffer" not in st.session_state:
         st.session_state.log_buffer = []
+    if "log_console_height_px" not in st.session_state:
+        st.session_state.log_console_height_px = 180
+    if "log_visible_line_count" not in st.session_state:
+        st.session_state.log_visible_line_count = 3000
+    if "log_buffer_max_lines" not in st.session_state:
+        st.session_state.log_buffer_max_lines = 50000
 
     if "pilot_queue" not in st.session_state:
         st.session_state.pilot_queue = queue.Queue()
@@ -135,3 +145,19 @@ def init_session_state():
         st.session_state.selection_helper_assoc_fig = None
     if "selection_helper_secondary_fig" not in st.session_state:
         st.session_state.selection_helper_secondary_fig = None
+    if "loaded_report_metadata" not in st.session_state:
+        st.session_state.loaded_report_metadata = None
+    if "loaded_report_name" not in st.session_state:
+        st.session_state.loaded_report_name = None
+    if "loaded_report_pair_count" not in st.session_state:
+        st.session_state.loaded_report_pair_count = None
+    if "loaded_report_fig" not in st.session_state:
+        st.session_state.loaded_report_fig = None
+    if "loaded_report_self_fig" not in st.session_state:
+        st.session_state.loaded_report_self_fig = None
+    if "loaded_report_on_off_pdf_path" not in st.session_state:
+        st.session_state.loaded_report_on_off_pdf_path = None
+    if "loaded_report_self_pdf_path" not in st.session_state:
+        st.session_state.loaded_report_self_pdf_path = None
+    if "loaded_report_error" not in st.session_state:
+        st.session_state.loaded_report_error = None

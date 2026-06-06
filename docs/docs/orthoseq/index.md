@@ -1,17 +1,15 @@
 # Orthogonal Sequence Generator (OrthoSeq)
 ## Problem It Solves
-OrthoSeq is a tool to build sets of **orthogonally binding nucleic-acid sequence pairs** for applications where binding thermodynamics matter more than simple sequence dissimilarity.
-OrthoSeq uses NUPACK for thermodynamic calculations.  
-In this context, sequence pairs are selected such that:
-- each sequence binds strongly to its intended partner within a user-defined **on-target binding** energy range
-- each sequence avoids binding strongly to unintended partners according to a user-defined **off-target binding** limit
-- each individual strand avoids forming overly stable secondary structure according to a user-defined secondary-structure energy limit
+OrthoSeq is a tool for identifying sets of **orthogonally binding nucleic-acid sequence pairs**. In this context, a sequence pair consists of a strand and its intended binding partner. The goal is to construct large sets of such pairs that bind strongly on target while avoiding appreciable off-target binding.
 
-The sequence layout can also be defined, including the length of the binding region and optional 5' and 3' flanks.
-NUPACK-related thermodynamic parameters can be set, including temperature, sodium concentration, magnesium concentration, and nucleic acid type (DNA or RNA).
+OrthoSeq uses **NUPACK** to evaluate thermodynamic interaction energies. Sequence pairs are selected such that:
+- each sequence pair has an **on-target** interaction within a user-defined energy range
+- off-target interactions with all other sequence pairs remain below a user-defined **off-target** limit
+- each individual strand has sufficiently weak secondary-structure formation according to a user-defined **secondary-structure** energy limit
 
-The sequence search is integrated into a Streamlit-based graphical user interface. The user interface allows you to define the sequence layout and select thermodynamic parameters such as the on-target energy range and off-target binding limit.
-The search can be launched directly from the graphical user interface.
+The sequence layout can be defined by choosing the core binding-domain length together with optional 5' and 3' extensions. Thermodynamic model parameters can also be set, including nucleic acid type, temperature, sodium concentration, and magnesium concentration.
+
+The sequence search is integrated into a Streamlit-based graphical user interface. The app supports parameter selection, exploratory analysis, off-target limit selection, and direct sequence search from the same interface.
 
 
 ---
@@ -62,10 +60,20 @@ pip install "crisscross-kit[streamlit]"
 This installs the package together with the Streamlit web app dependencies.
 
 6. Start the app:
-To start the app run the following in your conda environment:
+To start the app while preventing system sleep during long searches, run one of the following in your conda environment:
+
+macOS:
 ```bash
-orthoseq_app
+caffeinate -i orthoseq_app
 ```
+
+Ubuntu or other systemd-based Linux systems:
+```bash
+systemd-inhibit --what=idle:sleep orthoseq_app
+```
+
+These commands prevent automatic system sleep during long runs.
+
 This opens the Streamlit interface in your browser.
 
 ---
@@ -93,7 +101,17 @@ Further down in the panel, you can set the thermodynamic parameters:
 
 If you select RNA, the sodium and magnesium concentrations are ignored because the NUPACK RNA model is defined only for 1 M sodium.
 
-### 2. Run a pilot analysis to choose the on-target range
+### Selection Helper
+
+The **Selection Helper** tab is optional, but useful for interpreting thermodynamic values experimentally.
+
+It provides reference plots for:
+- fraction bound of two strands vs. binding energy
+- fraction of strands that remain fully unpaired vs. secondary-structure energy
+
+You can set the strand concentration for the first plot. The plots depend on the temperature selected in the left panel.
+
+### 2. Run a pilot analysis to choose the on-target range and secondary-structure limit
 
 Start by getting an overview of the binding energies for the selected sequence layout.
 
@@ -108,16 +126,6 @@ The first plot shows on-target and off-target energy histograms. You can enter m
 
 The second plot shows the secondary-structure energy distribution. You can enter a minimum secondary-structure energy limit, which is also shown as a vertical line. If you are happy with the value, transfer it using **Use This Value**.
 
-### Selection Helper
-
-The **Selection Helper** tab helps interpret what these thermodynamic values mean experimentally.
-
-Because the selection algorithm is based on pairwise sequence comparisons, this tab provides reference plots:
-- fraction bound of two strands vs. binding energy
-- fraction of strands that remain fully unpaired vs. secondary-structure energy
-
-You can set the strand concentration for the first plot. The plots depend on the temperature selected in the left panel. The relevant equations are shown above the plots together with additional thermodynamic information.
-
 ### 3. Choose the off-target binding limit
 
 In the **Off-Target Limit** tab, the on-target range and secondary-structure limit transferred from the pilot analysis are shown again. You can choose a sample size and click **Run Off-Target Analysis**.
@@ -130,247 +138,326 @@ The off-target limit is chosen in a separate step because the selected on-target
 
 You can use the **Selection Helper** tab again to interpret the off-target energies. Once you are happy with the off-target limit, transfer it to the next tab using **Use This Value**.
 
-### 4. Run the sequence search
+### 4. Run the orthogonal sequence-pair search
 
-Unfortunately, the search can be slow because NUPACK calculations dominate the runtime. For longer runs, it is a good idea to prevent your computer from going to sleep. On macOS, for example, you can run `caffeinate` in a separate terminal before starting the search.
+In the **Orthogonal Sequence-Pair Search** tab, the transferred parameter values are shown again for reference. Start the search with **Run Search**.
 
-In the **Orthogonal Sequence Search** tab, the parameters transferred from the previous tabs are shown again for reference. Start the search with **Run Search**. While it is running, progress messages are shown in the logging window above the tabs. If you already have enough sequences, you can stop the search with **Stop Searching**.
+While the search is running, progress messages are shown in the logging window above the workflow tabs.
 
-There is also an **Advanced Search Parameters** panel. In most cases, the default values are a good starting point.
+The **Search Parameters** panel contains the main search controls:
+- **Initial Graph Search Subset Size**
+- **Graph Search Iterations**
+- **Perturbation Fraction**
 
-The search has two phases:
+In most cases, the default values are a good starting point.
 
-- **Pass 1 (seed):** a random pool of sequence pairs is collected under the selected on-target and secondary-structure limits. Same-strand homodimers are screened at collection time. Off-target interactions are then computed within this seed pool, a conflict graph is built, and a graph-based search is performed to obtain an initial orthogonal set.
-- **Pass 2 (collection):** new sequence pairs are sampled one by one under the same limits and cross-referenced against the retained seed set. Only candidates with zero conflicts against the retained set are admitted to the fresh collection pool.
-- After enough fresh candidates have been collected, off-target interactions are computed among the fresh candidates only, a conflict graph is built on that fresh pool, and the graph-based search is run there.
-- Survivors from that fresh-only graph step are then unioned into the retained set.
+Two interactive controls are available while the search is running:
+- **Checkpoint Now** computes an intermediate estimate from the currently collected sequence-pair pool and then continues the search.
+- **Stop Searching** stops further sequence-pair collection and finalizes the current sequence-pair pool before returning the best orthogonal sequence pairs found so far.
 
-This keeps pass 2 cheaper than recomputing a full graph on retained plus fresh pairs, because the expensive final vertex-cover step only resolves conflicts among fresh candidates.
+After the search finishes, the app verifies the final sequence pairs directly with NUPACK, displays the final plots, and writes a timestamped XLSX report into the local `results/` folder. The same report can also be downloaded from the app as `ortho_sequences.xlsx`.
 
-The graph-based search can be understood as follows:
+Internally, the search first builds an initial orthogonal set from a moderate-size pool of sequence pairs. It then collects additional sequence pairs that are already compatible with that initial orthogonal set and performs a final graph search on the collected sequence-pair pool. This hybrid strategy is more efficient than recomputing a full conflict graph over the entire growing set at each step.
 
-- each sequence pair in the current pool is treated as a node in a graph
-- two nodes are connected if the corresponding sequence pairs violate the chosen off-target limit
-- the goal is then to keep as many nodes as possible while removing enough conflicting nodes that no connections remain
-- the vertex-cover routine is the heuristic used to decide which sequence pairs to remove so that the remaining set is as large as possible
+### 5. Load an existing search report
 
-You do not need to think in graph-theory terms to use the app, but this is the reason the advanced parameters mainly control repeated graph-search attempts and refinement steps.
+The **Load Results** tab lets you upload a previously saved XLSX search report and recreate the plots without rerunning the full search.
 
-Brief explanation of the advanced parameters:
+The tab reads the sequence pairs and recorded metadata from the workbook, including:
+- NUPACK material, temperature, sodium concentration, and magnesium concentration
+- on-target energy range
+- off-target energy limit
+- secondary-structure energy limit
+- random seed
+- graph-search parameters when present
 
-- **Initial Subset Size**: number of requested sequence pairs used to build the seed pool before the first vertex-cover run.
-- **Vertex-Cover Max Iterations**: number of refinement iterations used inside each graph-based optimization run.
-- **Prune Fraction**: controls how strongly the current graph-based solution is perturbed before it is refined again.
-- **Progress Report Interval (min)**: when nonzero, pass 2 collection is chunked into timed intervals. At each boundary a peek vertex cover estimates the current total without committing results.
+The app then recomputes the on-target, off-target, and secondary-structure energies using the recorded NUPACK parameters and shows the resulting plots directly in the interface. It also writes two timestamped PDF artifacts into the local `results/` folder:
+- on-target vs. off-target energy histogram
+- secondary-structure energy histogram
 
+This tab is disabled while a live search is running.
 
----
-
-
-
-
-## Advanced use via scripts (from here on no longer up to date)
-
-You can manually download example [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) from GitHub demonstrating how to use the tool.
-
-Once downloaded, you can move the scripts into any directory you like and add that directory to your `PATH` environment variable.
-
-There are four scripts that are typically executed in sequence:
 
 ---
 
-### 1. `preanalyze_sequences.py`  
-- Creates a complete list of all possible sequence pairs of a given length (plus optional flanking sequences).  
-- Randomly selects a subset and computes both **on-target** (intra-pair) and **off-target** (inter-pair) energies.  
-- Plots energy histograms to help you decide:  
-  - Which **on-target energy range** you want.  
-  - Gives you a first impression of **off-target energies**.  
-- You should use **Script 2** to refine your choice of off-target energy cutoff.
 
----
 
-### 2. `analyze_on_target_range.py`  
-- Same as **Script 1**, but the random subset is selected **within a specific on-target energy range**.  
-- This lets you fine-tune your **off-target binding energy cutoff** based on the specific sequences you are interested in.  
-- Idea: Pick your **on-target energy** → analyze the typical **off-target energies** → select a reasonable cutoff.
 
----
+## Advanced Use via Scripts (Partly Outdated)
 
-### 3. `run_sequence_search.py`  
-- Runs the **actual sequence search** based on the parameters you determined using Scripts 1 and 2.  
-- Creates the full list of sequence pairs and uses the evolutionary vertex cover algorithm to select an orthogonal set.  
-- Logs progress to the console and saves:  
-  - The selected sequences (`.txt` files) in the **results** folder.  
-  - Energy distribution plots.  
-- This is the main script that gives you your usable orthogonal sequences.
-- You can press **Ctrl+C** at any time to trigger a keyboard interrupt; the best sequences found so far will still be saved, and the rest of the script will complete its cleanup steps.  
----
+The main top-level scripts in [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) mirror the app workflow and are useful when you want to run the same steps from the command line.
 
-### 4. `analyze_saved_sequences.py` *(optional)*  
-- Loads a previously saved sequence list from the **results** folder and recomputes/plots on-target and off-target energies.  
-- Useful if you want to re-plot without rerunning the full selection (**Script 3 already plots by default**).
+Unless noted otherwise, these scripts write their output into a local `results/` folder created in the directory from which the script is executed.
 
-### 5. `legacy` Directory
+### CLI workflow
 
-- Contains an older, self-contained version of the scripts that **does not** use evolutionary optimization.  
-- This legacy workflow still finds good orthogonal sets but **requires precomputing all** pairwise interactions up front—only practical for sequence lengths ≤ 7.  
-- The `legacy/` folder includes its own `results/` and `pre_compute_energies/` subfolders. 
-- Further usage details and parameter explanations are included in comments at the top of each legacy script. Additional notes appear in the end of this README.
+#### `pre_analize_sequences.py`
+- Command-line mirror of **Pilot Analysis**.
+- Samples sequence pairs for the current layout and thermodynamic model.
+- Computes on-target, off-target, and secondary-structure energies.
+- Use it to choose a reasonable on-target energy range and secondary-structure limit.
+
+#### `pre_analize_sequences_in_range.py`
+- Command-line mirror of **Off-Target Limit** selection.
+- Samples sequence pairs within a chosen on-target energy range.
+- Recomputes off-target energies for that filtered pool.
+- Use it to choose a reasonable off-target energy limit after fixing the on-target range.
+
+#### `run_sequence_search.py`
+- Command-line mirror of **Orthogonal Sequence-Pair Search**.
+- Runs the hybrid search with the chosen thermodynamic limits.
+- Writes the selected sequence pairs and related output artifacts into the local `results/` folder.
+- This is the main non-app entry point for generating orthogonal sequence pairs.
+
+#### `run_naive_search.py`
+- Baseline command-line search using the naive sequential acceptance strategy.
+- Useful for comparison against the hybrid search.
+
+### Utility scripts
+
+#### `load_sequences_from_txt_and_plot.py`
+- Loads sequence pairs from a plain-text file.
+- Recomputes on-target, off-target, and secondary-structure energies.
+- Writes on/off-target and self-energy histogram PDFs.
+
+#### `load_sequences_from_xlsx_and_plot.py`
+- Loads sequence pairs from a saved XLSX search report.
+- Uses the recorded NUPACK parameters from the workbook metadata.
+- Recomputes on-target, off-target, and secondary-structure energies.
+- Writes on/off-target and self-energy histogram PDFs.
+
+### Auxiliary and legacy material
+
+- `auxilary_scripts/` contains older helper material and figure-generation utilities that are not part of the main supported workflow.
+- `legacy/` contains an older search workflow that precomputes all pairwise interactions up front. This is only practical for small sequence spaces.
+- `benchmarking/` contains benchmark scripts used for algorithm comparisons and paper figures.
 
 ---
 
 ## Typical File Structure
 
-Executing the scripts will make some folders and files appear in the folder you execute the scripts from.  
-A **results** folder will appear automatically with the found orthogonal sequence pairs saved as `.txt` files.  
-A **pre_compute_energies** folder will also appear automatically (if it does not exist yet) and will contain `.pkl` files with precomputed energy values.  
+The scripts and app write output into a local `results/` folder created in the directory from which they are executed.
 
-The file structure will look like this:
+Typical outputs include:
+- saved sequence-pair lists
+- XLSX search reports
+- PDF energy histograms
 
 ```text
-scripts/
+working_directory/
     results/
-        mysequences101.txt
-    pre_compute_energies/
-        energy_library.pkl
-    the_scripts.py
-    some_plots.pdf
+        ortho_sequences_ui_2026-05-30_12-00-00.xlsx
+        ortho_sequences.xlsx
+        my_sequences.txt
+        some_report_on_off_target_2026-05-30_12-00-00.pdf
+        some_report_self_energy_2026-05-30_12-00-00.pdf
 ```
 
-## Energy Computations and Precompute Library
+## Energy Computations
 
 To compute binding energies, we use **NUPACK 4.0** thermodynamic calculations.  
 This is computationally expensive, especially when computing all cross-interactions between sequence pairs.
 
-To speed up the computations, we use two strategies:  
-1. **Multiprocessing** to parallelize energy calculations across multiple CPU cores.  
-2. A **precompute library** to avoid computing the same interaction energy more than once.
-
-The precompute library is loaded by each instance of the multiprocessing.  
-Importantly, updating the precompute library is done **outside** of the multiprocessing processes to avoid file corruption.
-
-There is a global variable:
-
-    USE_LIBRARY = True
-
-which specifies whether to use the precompute library or not.
-
-You can specify the name of the precompute library with:
-
-    hf.choose_precompute_library("my_new_cache.pkl")
-
-If the specified library file does not exist, running any script will automatically create it inside the `pre_computed_energies` folder.
-
-Whether using the precompute library speeds up your run depends on your use case:  
-- For **small sequence sets** or **short sequences**, it usually helps.  
-- For **longer sequences** (>=7 bases), the library can grow very large, and loading the `.pkl` file may slow things down.
-
----
-
-### Fixed NUPACK Conditions
-
-The input conditions for NUPACK are currently **hardcoded**:  
-- Temperature: 37 °C  
-- Sodium concentration: 0.05 M  
-- Magnesium concentration: 0.025 M  
-
-If you need different parameters, you must manually adjust the code.
-
----
-
-### Note on Precompute Library Performance
-
-- The current implementation of saving/loading the precompute library is **not fully optimized**.  
-- When the `.pkl` file grows too large, overall runtime can increase due to file I/O.  
-- To avoid excessively large libraries, define a **new precompute library** for each on-target energy range you explore.
+The current implementation uses **multiprocessing** to parallelize NUPACK calculations across multiple CPU cores. Runtime therefore depends strongly on both the number of sequence pairs being evaluated and the number of off-target interactions that must be checked.
 
 
 ## Algorithm Basic Idea
 
-The core of the algorithm is a heuristic that attempts to find a minimum vertex cover—a known NP-hard problem—so the solution it finds may not be optimal.
+OrthoSeq formulates orthogonal sequence-pair selection as a graph problem.
 
-1. **Modeling off-target interactions as a graph**  
-   - Each sequence pair is a vertex.  
-   - An edge connects two vertices if their off-target binding energy exceeds the chosen threshold (i.e., they “interact” too strongly).  
+1. **Prefilter the pool**  
+   Sequence pairs are first filtered by on-target energy and secondary-structure energy.
 
-2. **Orthogonal set ⇒ Independent set**  
-   Finding a set of sequence pairs with no unwanted interactions is equivalent to removing vertices until no edges remain.  
-   Removing as few vertices as possible (to leave as large a pool of orthogonal sequences as possible) is exactly the **minimum vertex cover** problem.
+2. **Define conflicts by off-target binding**  
+   Two sequence pairs are considered incompatible if any of their off-target interactions exceeds the chosen off-target limit.
 
-3. **Why a heuristic?**  
-   Since minimum vertex cover is NP-hard, we use a greedy heuristic with iterative perturbation to find a small cover (and thus a large independent set) in reasonable time.
+3. **Find a large orthogonal set**  
+   The remaining problem is to identify a large subset of mutually compatible sequence pairs, corresponding to an independent set in the conflict graph.
+
+4. **Use a hybrid search strategy**  
+   The main search first builds an initial orthogonal set from a moderate-size pool, then collects additional sequence pairs that are already compatible with that initial orthogonal set, and finally runs a graph search on the collected sequence-pair pool.
 
 ### Core Functions
 
-- **`greedy_vertex_cover_heuristic(E, …)`**  
-  Repeatedly removes the highest-degree vertex to greedily cover edges.
-
-- **`iterative_vertex_cover_refinement(V, E, …)`**  
-  Wraps the greedy heuristic in an iterative perturbation loop. Each iteration removes a fraction of vertices from the current cover, repairs uncovered edges, cleans the repaired full cover against the full graph, and keeps the result if the independent set improved.
-
 - **`hybrid_search(sequence_source, …)`**  
-  The main two-pass search driver. Pass 1 collects a seed pool, computes its conflict graph, and retains an initial independent set. Pass 2 samples additional candidates, cross-references them against the retained seed set, then runs vertex cover on the fresh candidates only and unions those survivors into the retained set.
+  Main hybrid search driver used by the app and by the main command-line search script.
 
-Each of these functions is documented in detail in their respective docstrings.
+- **`verify_selected_pairs(...)`**  
+  Recomputes on-target, self, and off-target energies for a final selected set before writing the XLSX report.
+
+- **`load_found_pairs(...)` and `load_metadata(...)`**  
+  Canonical readers for loading sequence pairs and metadata back from a saved XLSX search report.
 
 ### Print statements
 
-There are a couple of print statements that report on the current process of the hybrid search. They’re useful for understanding exactly what the algorithm is doing at each step:
+The hybrid search prints a few status lines that are useful for understanding which phase of the search is currently running.
 
 ---
 
 ```text
-=== Pass 1: Initial sampling ===
+=== Initial graph search ===
 ```
-➔ The search has entered the seed pass.
+The search has entered the initial graph-search phase.
 
 ---
 
 ```text
-Sampling 450 candidate pairs (energy + self-energy filter)...
+Selecting 450 sequence pairs for the initial graph search...
 ```
-➔ Candidate collection is running. Each sampled pair must pass the on-target, self-energy, and same-strand homodimer gates before it enters the seed pool.
+The search is drawing sequence pairs for the initial graph-search pool. Each pair must satisfy the on-target and secondary-structure filters before it is accepted.
 
 ---
 
 ```text
-Running vertex cover on 191 pairs...
+Running graph search on 191 sequence pairs...
 ```
-➔ The seed pool is fixed. The algorithm is now building the conflict graph for that pool and pruning it down to an independent set.
+The initial pool is fixed and the graph search is now identifying an initial orthogonal set.
 
 ---
 
 ```text
-=== Pass 2: Cross-referenced collection ===
-Collecting candidate pairs cross-referenced against 27 retained (NUPACK budget: 4926148)...
+=== Candidate collection ===
+Collecting sequence pairs against 27 initial orthogonal sequence pairs (NUPACK budget: 4926148)...
 ```
-➔ The search has entered the collection pass. New candidates are sampled under the same thermodynamic filters and must additionally have zero conflicts against the retained seed set before entering the fresh pool.
+The search has entered the collection phase. New sequence pairs must satisfy the same thermodynamic filters and must also be compatible with the initial orthogonal set.
 
 ---
 
 ```text
-Running vertex cover on 31 candidate pairs...
+Candidate sequence-pair collection progress: accepted 94 sequence pairs after 848 attempts and 12990 direct NUPACK calls (2.0 min elapsed).
 ```
-➔ The collection pass is finalized by running vertex cover on the fresh candidates only. Survivors are then unioned into the retained set.
+This is a periodic progress update from the collection phase.
 
 ---
 
 ```text
---- Progress report triggered (20 min interval reached) ---
-Running peek vertex cover on 94 collected candidate pairs...
+--- Manual checkpoint triggered ---
+Running graph search on 94 collected sequence pairs...
 ```
-➔ Optional progress reporting is enabled. The search estimates the current total without committing a final result for the pass.
+The search is estimating the current total without finalizing the run.
+
+---
+
+```text
+Stop detected during collection. Finalizing current sequence-pair pool.
+Running final graph search on 31 sequence pairs...
+```
+The search has stopped collecting new sequence pairs and is finalizing the current sequence-pair pool.
 
 ---
 
 ```text
 Calculating with 12 cores...
 ```
-➔ Started parallel processing using 12 worker processes  
+Parallel NUPACK computation has started.
+
+```text
+Computing off-target energies for 31375 handle-antihandle interactions.
+```
+One of the off-target interaction batches is being evaluated.
+
 ```text
 100%|████████████████████████████████████████████████████████████████████| 31375/31375 [00:06<00:00, 4822.91it/s]
 ```
-➔ Progress update for one of the batched NUPACK calculations.
+Progress bar for one of the batched NUPACK computations.
+
+## XLSX Report Structure
+
+The XLSX workbook written by the app and by the main search/reporting scripts is the canonical saved search artifact. It is also the format used by the **Load Results** tab and by `load_sequences_from_xlsx_and_plot.py`.
+
+### How to interpret the workbook
+
+- `found_pairs` is the final answer.
+- `run_metadata` explains under which thermodynamic and search conditions that answer was produced.
+- `search_progress` explains how the answer was reached.
+- `validation` indicates whether the final verified set satisfies the requested limits cleanly.
+- the matrix sheets expose the full verified off-target interaction structure of the selected set.
+
+### Main sheets
+
+#### `run_metadata`
+This sheet stores the run configuration as key-value pairs. Important keys include:
+
+- `input.length`: core binding-domain length
+- `input.fivep_ext`: fixed 5' extension
+- `input.threep_ext`: fixed 3' extension
+- `input.unwanted_substrings`: excluded substrings used during sequence generation
+- `input.apply_unwanted_to`: whether the excluded substrings were applied to the core only or to the full sequence
+- `search.min_ontarget` and `search.max_ontarget`: requested on-target energy range
+- `search.offtarget_limit`: requested off-target energy limit
+- `search.self_energy_limit`: requested secondary-structure energy limit
+- `search.initial_fresh_pair_count`: internal metadata key for the initial graph-search subset size
+- `search.prune_fraction`: internal metadata key for the perturbation fraction used by the graph search
+- `search.vc_max_iterations`: internal metadata key for the graph-search iteration count
+- `search.random_seed`: random seed used for the run
+- `search.total_nupack_budget`: total NUPACK call budget, when one was used
+- `search.total_nupack_calls`: total NUPACK calls executed by the search
+- `search.search_duration_s`: total search runtime in seconds
+- `nupack.material`: DNA or RNA model
+- `nupack.celsius`: temperature
+- `nupack.sodium`: sodium concentration
+- `nupack.magnesium`: magnesium concentration
+
+This sheet is the source of truth for replaying the thermodynamic model used during the search.
+
+#### `found_pairs`
+This is the final orthogonal sequence-pair set. Each row corresponds to one final selected sequence pair and includes:
+
+- the pair index used in the report
+- the global pair ID when available
+- `seq`: the handle strand
+- `rc_seq`: the antihandle strand, which is the intended binding partner derived from the reverse complement of the core binding domain
+- verified on-target energy
+- verified secondary-structure energy for `seq`
+- verified secondary-structure energy for `rc_seq`
+
+#### `selected_hh`, `selected_hah`, `selected_ahah`
+These are the verified off-target energy matrices for the final selected set:
+
+- `selected_hh`: handle-handle interactions, meaning interactions between the `seq` strands
+- `selected_hah`: handle-antihandle interactions, meaning interactions between `seq` and `rc_seq`
+- `selected_ahah`: antihandle-antihandle interactions, meaning interactions between the `rc_seq` strands
+
+The row and column labels encode:
+
+```text
+pair_id : strand_type : sequence
+```
+
+where `strand_type` is `H` for the handle strand and `A` for the intended partner strand.
+
+#### `search_progress`
+This sheet records the main generation stages of the search. For hybrid search runs it includes rows for the initial graph-search stage and the collection stage. Typical columns include:
+
+- `pass`: stage name, for example `seed` or `collection`
+- `pairs_collected`: number of sequence pairs collected into that stage before graph search
+- `pairs_after_vc`: number of orthogonal sequence pairs recovered from that stage after graph search
+- `total_retained`: total orthogonal sequence pairs retained after the stage completed
+- `nupack_calls_executed`: NUPACK calls charged to that stage
+- `stopped_early`: whether the stage ended by stop request, interrupt, budget, or another non-default termination condition
+- `attempts`: number of sequence-pair draws attempted in that stage
+- `passed_ontarget_and_self`: number of sequence pairs that passed the on-target and secondary-structure filters
+- `passed_homodimer`: number of sequence pairs that also passed the same-strand off-target screen
+- `accepted_into_pool`: number of sequence pairs that entered the stage pool
+- `notes`: termination reason or other short stage note
+
+This sheet is most useful for understanding how much of the result came from the initial graph search versus the later sequence-pair pool.
+
+#### `validation`
+This sheet stores simple pass/fail checks on the final selected set, including:
+
+- whether the selected set is nonempty
+- whether all on-target energies lie within the requested range
+- whether all self energies lie above the requested limit
+- how many verified off-target violations remain
+
+### Optional sheets
+
+#### `seed_pass_pairs`
+For hybrid search runs, this sheet stores the sequence pairs selected for the initial graph search, before the graph search removes conflicts. These sequence pairs are therefore **not** necessarily orthogonal.
+
+#### `seed_hh`, `seed_hah`, `seed_ahah`
+For hybrid search runs, these are the verified off-target energy matrices for the initial graph-search input pool stored in `seed_pass_pairs`, using the same handle-handle, handle-antihandle, and antihandle-antihandle convention described above. These matrices are useful for inspecting the structure of the conflict graph before graph search removes conflicting sequence pairs.
 
 
 ## Legacy Scripts Basic Use
@@ -392,5 +479,4 @@ The `legacy/` directory includes two self-contained scripts for finding orthogon
 **Output & Folders**  
 - The legacy scripts are self-contained and have their own pre_compute_library
 - The `results` folder is created automatically in the legacy directory and contains the found orthogonal sequences in for example`independent_sequences.txt`.  
-- The `pre_computed_energies` folder is created automatically and contains the cached `.pkl` energy files.  
 - The off-target energies (here `subset_data_7mers96to101.pkl`) are saved in the same folder as the script.

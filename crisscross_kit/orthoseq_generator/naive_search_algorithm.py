@@ -117,11 +117,11 @@ def naive_search(
         while True:
             if stop_event is not None and stop_event.is_set():
                 stopped_reason = "stop_event"
-                _status("Stop event detected. Stopping naive search.")
+                _status("Stop requested. Stopping naive search.")
                 break
             if total_nupack_budget is not None and total_nupack_calls >= total_nupack_budget:
                 stopped_reason = "total_nupack_budget"
-                _status("Total NUPACK budget reached. Stopping naive search.")
+                _status("NUPACK call budget reached. Stopping naive search.")
                 break
 
             attempts += 1

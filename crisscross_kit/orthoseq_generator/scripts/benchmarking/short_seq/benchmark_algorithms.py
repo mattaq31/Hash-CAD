@@ -665,9 +665,8 @@ def run_hybrid_search_offline_to_xlsx(
     stopped_reason = None
 
     _status(
-        f"=== Pass 1: Initial sampling ===\n"
-        f"Sampling {initial_fresh_pair_count} candidate pairs "
-        "(energy + self-energy + homodimer filter)..."
+        f"=== Initial graph search ===\n"
+        f"Selecting {initial_fresh_pair_count} sequence pairs for the initial graph search..."
     )
     _, seed_pair_ids, seed_stop_reason, seed_selection_calls, seed_stats = _select_subset_in_energy_range_offline(
         dataset,
@@ -680,13 +679,19 @@ def run_hybrid_search_offline_to_xlsx(
         offtarget_limit=offtarget_limit,
     )
     total_nupack_calls += seed_selection_calls
-    _status(f"Selected {len(seed_pair_ids)} candidate pairs [{seed_selection_calls} virtual NUPACK calls]")
+    _status(
+        f"Selected {len(seed_pair_ids)} sequence pairs for the initial graph search "
+        f"[{seed_selection_calls} virtual NUPACK calls]"
+    )
 
     if not seed_pair_ids:
-        raise ValueError("Offline hybrid found no sequences during pass 1; no report can be written.")
+        raise ValueError(
+            "Offline hybrid found no sequence pairs during the initial graph search; "
+            "no report can be written."
+        )
 
     seed_verified = _build_verified_from_dataset(dataset, seed_pair_ids)
-    _status(f"Running vertex cover on {len(seed_pair_ids)} pairs...")
+    _status(f"Running graph search on {len(seed_pair_ids)} sequence pairs...")
     retained_pair_ids, seed_vc_calls = _run_vertex_cover_offline(
         seed_pair_ids,
         dataset,
@@ -697,7 +702,7 @@ def run_hybrid_search_offline_to_xlsx(
     total_nupack_calls += seed_vc_calls
     retained_pairs = [get_pair_by_global_id(dataset, global_id) for global_id in sorted(retained_pair_ids)]
     _status(
-        f"Independent set: {len(retained_pair_ids)} pairs retained | "
+        f"Initial orthogonal sequence pairs identified: {len(retained_pair_ids)} | "
         f"NUPACK calls: {total_nupack_calls}"
     )
     generation_data.append(
@@ -718,11 +723,12 @@ def run_hybrid_search_offline_to_xlsx(
 
     if seed_stop_reason == "pool_exhausted":
         stopped_reason = "pool_exhausted"
-        _status("Offline hybrid exhausted the finite pool during pass 1. Skipping pass 2.")
+        _status("Offline hybrid exhausted the finite pool before candidate collection.")
     else:
         _status(
-            f"=== Pass 2: Cross-referenced collection ===\n"
-            f"Collecting candidate pairs cross-referenced against {len(retained_pair_ids)} retained..."
+            f"=== Candidate collection ===\n"
+            f"Collecting candidate sequence pairs against {len(retained_pair_ids)} "
+            f"initial orthogonal sequence pairs..."
         )
         _, collection_pair_ids, collection_stop_reason, collection_calls, collection_stats = (
             _select_subset_in_energy_range_offline(
@@ -738,13 +744,13 @@ def run_hybrid_search_offline_to_xlsx(
         )
         total_nupack_calls += collection_calls
         _status(
-            f"Collected {len(collection_pair_ids)} candidate pairs "
-            f"[{collection_calls} pass 2 virtual NUPACK calls]"
+            f"Collected {len(collection_pair_ids)} candidate sequence pairs "
+            f"[{collection_calls} virtual NUPACK calls]"
         )
 
         added_pairs_after_vc = 0
         if collection_pair_ids:
-            _status(f"Running vertex cover on {len(collection_pair_ids)} candidate pairs...")
+            _status(f"Running final graph search on {len(collection_pair_ids)} candidate sequence pairs...")
             independent_set, collection_vc_calls = _run_vertex_cover_offline(
                 collection_pair_ids,
                 dataset,
@@ -757,13 +763,13 @@ def run_hybrid_search_offline_to_xlsx(
             retained_pairs = [get_pair_by_global_id(dataset, global_id) for global_id in sorted(retained_pair_ids)]
             added_pairs_after_vc = len(independent_set)
             _status(
-                f"Independent set: {added_pairs_after_vc} additional pairs found | "
-                f"Total retained: {len(retained_pair_ids)} | "
+                f"Orthogonal sequence pairs found in candidate pool: {added_pairs_after_vc} | "
+                f"Total orthogonal sequence pairs: {len(retained_pair_ids)} | "
                 f"NUPACK calls: {total_nupack_calls}"
             )
         else:
             collection_vc_calls = 0
-            _status("No candidate pairs found in pass 2.")
+            _status("No candidate sequence pairs collected.")
 
         generation_data.append(
             _build_progress_row(

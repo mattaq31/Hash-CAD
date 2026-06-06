@@ -1,268 +1,447 @@
-# Orthogonal Sequence Generator
+# Orthogonal Sequence Generator (OrthoSeq)
 
-## Problem It Solves
+This README is for people reading or changing the `orthoseq_generator` code. It is not the main user guide.
 
-This tool helps you find sets of **orthogonally binding DNA sequence pairs**. The main focus is on selecting sequences based on **thermodynamic binding energy**, not sequence diversity (as commonly used in barcoding).
+For the user-facing workflow and interpretation, see [`docs/docs/orthoseq/index.md`](../../docs/docs/orthoseq/index.md). That page explains how to use the tool. This page explains how the package is put together, what the important modules do, and where the rough edges are.
 
-Orthogonality here means:  
-- Each sequence binds strongly to its intended partner (**on-target**)  
-- Sequences do **not** bind significantly to any unintended partner (**off-target**)  
+The package also sits next to the paper *Graph-based design of DNA sequence-pair libraries with orthogonal binding specificity*. The paper and the user docs mostly describe the selection problem as finding a large **independent set** in a conflict graph. In the code, we use the removal-side and **vertex cover** perspective more often. That difference in wording is important when reading the code.
 
-Unlike other orthogonal sequence generators that use **De Bruijn graphs** or focus on **Hamming distance** for barcode generation, this tool uses **NUPACK** to compute actual hybridization energies. The sequence selection is based **solely on thermodynamic interactions**.
+## Graph search: paper framing versus code framing
 
-To maximize the number of orthogonal sequences found under given constraints, we employ:  
-- **Advanced graph-theoretic algorithms** (iterative vertex-cover heuristic)  
-- A **two-pass hybrid search** strategy that separates exploration from exploitation  
+In both the paper and the code, the graph model is the same:
 
-The algorithm works best for sequences up to **13 or 14 nucleotides** long (plus optional fixed 5' and 3' extensions, defined by the user).
+- each sequence pair is a vertex
+- an off-target conflict creates an edge
+- an orthogonal library is an independent set
 
----
+The difference is in how the search is described. In the code, we use the removal-side and vertex-cover perspective more often:
 
-## Basic Use
+- build the conflict graph
+- find a small vertex cover heuristically
+- remove those vertices
+- treat the survivors as the orthogonal set
 
-Installation instructions can be found in the main `README.md` file located in the main [`crisscross_kit`](https://github.com/mattaq31/Hash-CAD) folder. You can download example [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) from GitHub that demonstrate how to use the tool.
+So when reading the code:
 
-Once `crisscross_kit` is  installed, you can copy the scripts into any directory you like and add that directory to your `PATH` environment variable.
+- `retained_pair_ids` is the current independent set
+- `removed_vertices` or `vertex_cover` is the set being discarded
 
-There are four scripts that are typically executed in sequence:
+This is not a disagreement with the paper. It is the same graph problem written from the opposite side because the heuristic implementation is organized around removing bad vertices.
 
+## Scope of the package
 
----
+`orthoseq_generator` is a NUPACK-based search package for finding sets of DNA sequence pairs that:
 
-### 1. `preanalyze_sequences.py`  
-- Creates a complete list of all possible sequence pairs of a given length (plus optional flanking sequences).  
-- Randomly selects a subset and computes both **on-target** (intra-pair) and **off-target** (inter-pair) energies.  
-- Plots energy histograms to help you decide:  
-  - Which **on-target energy range** you want.  
-  - Gives you a first impression of **off-target energies**.  
-- You should use **Script 2** to refine your choice of off-target energy cutoff.
+- bind within a chosen on-target energy range
+- do not bind too strongly to unintended partners
+- do not form too much secondary structure on their own
 
----
+The package has three main layers:
 
-### 2. `analyze_on_target_range.py`  
-- Same as **Script 1**, but the random subset is selected **within a specific on-target energy range**.  
-- This lets you fine-tune your **off-target binding energy cutoff** based on the specific sequences you are interested in.  
-- Idea: Pick your **on-target energy** → analyze the typical **off-target energies** → select a reasonable cutoff.
+1. sequence pair generation and NUPACK evaluation
+2. graph-based or naive search over sequence pairs
+3. reporting and a Streamlit app around the search
 
----
+It does not try to be a full thermodynamics framework. It is a focused search tool with a GUI, a few command-line scripts, and a report format that the rest of the codebase can replay.
 
-### 3. `run_sequence_search.py`  
-- **Main entry point** for running the orthogonal sequence search from code.
-- Runs the **actual sequence search** based on the parameters you determined using Scripts 1 and 2.  
-- Uses the two-pass hybrid search algorithm to select an orthogonal set:
-  - **Pass 1 (Seed):** Collects candidate pairs filtered by on-target energy, self-energy, and same-strand homodimer threshold, then runs vertex cover to resolve remaining conflicts.
-  - **Pass 2 (Collection):** Collects additional candidates cross-referenced against the seed survivors, with the same on-target, self-energy, and homodimer filters applied before admission, then runs vertex cover on fresh candidates only.
-- Saves a verified XLSX report with the found pairs, energy matrices, and search metadata.
-- Also saves energy distribution plots.  
-- You can press **Ctrl+C** at any time to trigger a keyboard interrupt; the best sequences found so far will still be saved.  
+## Repository and module structure
 
-### 3b. `run_naive_search.py`  
-- Implements a **naive greedy baseline** for comparison with the hybrid algorithm.
-- Samples candidate pairs on the fly and greedily accepts each pair only if it passes on-target, self-energy, same-strand homodimer, and cross-reference checks against all previously accepted pairs.
-- Does not use vertex cover or graph-based optimization — acceptance is purely sequential.
-- Produces the same XLSX report format as the hybrid search, so results are directly comparable.
-- Useful for benchmarking: under the same NUPACK budget and constraints, how many pairs does the greedy approach find vs. the hybrid?
----
-
-### 4. `analyze_saved_sequences.py` *(optional)*  
-- Loads a previously saved sequence list from the **results** folder and recomputes/plots on-target and off-target energies.  
-- Useful if you want to re-plot without rerunning the full selection (**Script 3 already plots by default**).
-
-### 5. `legacy` Directory
-
-- Contains an older, self-contained version of the scripts that **does not** use evolutionary optimization.  
-- This legacy workflow still finds good orthogonal sets but **requires precomputing all** pairwise interactions up front—only practical for sequence lengths ≤ 7.  
-- The `legacy/` folder includes its own `results/` and `pre_compute_energies/` subfolders. 
-- Further usage details and parameter explanations are included in comments at the top of each legacy script. Additional notes appear in the end of this README.
-
----
-
-## Typical File Structure
-
-Executing the scripts will make some folders and files appear in the folder you execute the scripts from.  
-A **results** folder will appear automatically with the found orthogonal sequence pairs saved as `.xlsx` reports.  
-
-The file structure will look like this:
+At the top level, the package is organized like this:
 
 ```text
-scripts/
-    results/
-        ortho_sequences.xlsx
-    the_scripts.py
-    some_plots.pdf
+orthoseq_generator/
+├── helper_functions.py
+├── sequence_generation.py
+├── energy_computations.py
+├── energy_plots.py
+├── vertex_cover_algorithms.py
+├── search_algorithm.py
+├── naive_search_algorithm.py
+├── search_reporting.py
+├── search_report_reader.py
+├── sequence_computations.py
+├── numeric_functions.py
+├── streamlit_app/
+└── scripts/
 ```
 
-## Energy Computations
+The important modules are:
 
-To compute binding energies, we use **NUPACK 4.0** thermodynamic calculations.  
-This is computationally expensive, especially when computing all cross-interactions between sequence pairs.
+- `helper_functions.py`
+  - global NUPACK parameter state via `set_nupack_params()`
+  - global energy mode via `set_energy_type()`
+  - default `results/` folder handling via `get_default_results_folder()`
+  - plain text pair save/load helpers
 
-To speed up the computations, we use **multiprocessing** to parallelize energy calculations across multiple CPU cores. The number of workers is determined automatically from available CPUs (or SLURM allocation on clusters).
+- `sequence_generation.py`
+  - reverse complement helper `revcom()`
+  - canonical pair ordering via `sorted_key()`
+  - live sequence pair generation source `SequencePairRegistry`
+  - full sequence pair pool builders `create_sequence_pairs_pool()` and `create_seqwalk_sequence_pairs_pool()`
+  - the SeqWalk-based path is still closer to prototyping support than to the main workflow
+  - simple random subset helper `select_subset()`
 
----
+- `energy_computations.py`
+  - low-level NUPACK wrapper `compute_nupack_energy()`
+  - parallel on-target and off-target matrix computation
+  - sequence-pair filtering and live sampling in `select_subset_in_energy_range()`
+  - direct compatibility testing in `crossreference_sequences()`
 
-### NUPACK Conditions
+- `vertex_cover_algorithms.py`
+  - converts off-target matrices into graph edges with `build_edges()`
+  - greedy cover heuristic `greedy_vertex_cover_heuristic()`
+  - iterative improvement loop `iterative_vertex_cover_refinement()`
 
-The NUPACK thermodynamic parameters are set via `hf.set_nupack_params()`:  
-- Material (e.g. `'dna'`)  
-- Temperature in Celsius  
-- Sodium concentration in M  
-- Magnesium concentration in M  
+- `search_algorithm.py`
+  - main hybrid search entry point `hybrid_search()`
+  - `_run_seed_pass()` and `_run_collection_pass()` for the two hybrid stages
+  - manual checkpoint support
+  - progress-row construction
+  - in paper terms: initial graph-search subset step, collection step, and final graph search
 
-These are configured in each script and in the Streamlit app before the search runs.
+- `naive_search_algorithm.py`
+  - live greedy baseline `naive_search()`
 
-## Algorithm Basic Idea
+- `search_reporting.py`
+  - canonical XLSX writer `write_hybrid_search_result_xlsx()`
+  - direct NUPACK verification with `verify_selected_pairs()`
+  - validation summary with `validate_selected_pairs()`
 
-The core of the algorithm is a heuristic that attempts to find a minimum vertex cover—a known NP-hard problem—so the solution it finds may not be optimal.
+- `search_report_reader.py`
+  - workbook read helpers such as `load_metadata()`, `load_found_pairs()`, `load_seed_pairs()`, and `load_offtarget_matrices()`
+  - `load_metadata()` is the main entry point for replaying saved conditions
 
-1. **Modeling off-target interactions as a graph**  
-   - Each sequence pair is a vertex.  
-   - An edge connects two vertices if their off-target binding energy exceeds the chosen threshold (i.e., they “interact” too strongly).  
+- `sequence_computations.py`
+  - compatibility shim
+  - re-exports functions from `sequence_generation.py`, `energy_computations.py`, and `energy_plots.py`
+  - many scripts and app files still import through this older name
 
-2. **Orthogonal set ⇒ Independent set**  
-   Finding a set of sequence pairs with no unwanted interactions is equivalent to removing vertices until no edges remain.  
-   Removing as few vertices as possible (to leave as large a pool of orthogonal sequences as possible) is exactly the **minimum vertex cover** problem.
+- `energy_plots.py`
+  - Matplotlib histogram writers used mainly by scripts and result replay
 
-3. **Why a heuristic?**  
-   Since minimum vertex cover is NP-hard, we use a greedy heuristic with iterative perturbation to find a small cover (and thus a large independent set) in reasonable time.
+- `numeric_functions.py`
+  - analytic and numeric independent-set estimators
+  - not part of the core search path
 
-### Two-Pass Hybrid Search
+Other directories:
 
-The main search algorithm (`hybrid_search` in `search_algorithm.py`) works in two passes:
+- `streamlit_app/`: the UI
+- `scripts/`: command-line entry points, benchmarks, legacy code, and utility scripts
 
-**Pass 1 (Seed):**
-- Collect `initial_fresh_pair_count` candidate pairs filtered by on-target energy, self-energy, and same-strand homodimer threshold.
-- Compute the full pairwise off-target energy matrix (O(n^2) NUPACK calls).
-- Build the conflict graph and run the iterative vertex-cover heuristic.
-- Survivors become the retained set.
+## Streamlit app structure
 
-**Pass 2 (Collection):**
-- Collect additional candidate pairs, each filtered by the same on-target, self-energy, and homodimer gates and then cross-referenced against the retained set (zero violations required).
-- Because every accepted candidate is already compatible with all retained pairs, the final vertex cover only resolves conflicts among fresh candidates (O(fresh^2) instead of O((fresh+retained)^2)).
-- A manual checkpoint request can run a diagnostic peek vertex cover on the currently collected fresh pool and then continue collection from the same state.
-- When collection stops for any normal termination reason, user stop request, or Ctrl+C, the already-collected fresh pool still goes through the same final vertex-cover step before survivors are unioned into the retained set.
+The app code lives in `streamlit_app/`.
 
-The search terminates when the NUPACK call budget is exhausted, the user interrupts (Ctrl+C or stop button), or live sampling becomes effectively exhausted under the duplicate-streak heuristic.
+Main pieces:
 
-**Manual checkpointing:** During pass 2, the app can explicitly request a checkpoint. That triggers the same expensive peek estimate that used to be timer-driven, but only when asked for.
+- `cli.py`
+  - console entry point that launches Streamlit against `orthoseq_app.py`
 
-### Core Functions
+- `orthoseq_app.py`
+  - page layout
+  - sidebar inputs for sequence layout and NUPACK settings
+  - tab routing
+  - log console setup
 
-- **`iterative_vertex_cover_refinement(V, E, …)`**  
-  The vertex-cover heuristic. Repeatedly removes the highest-degree vertex to greedily cover edges. Wraps this in an iterative perturbation loop: each iteration removes a fraction of vertices (`prune_fraction`) from the current cover, re-covers uncovered edges, cleans the repaired full cover against the full graph, and checks if the independent set improved.
+- `state_manager.py`
+  - all long-lived Streamlit session keys
+  - default thresholds
+  - thread queues and flags
 
-- **`hybrid_search(sequence_pairs, …)`**  
-  The main search entry point. Orchestrates the two-pass strategy described above. Called by the CLI script, Streamlit app, and benchmark runners. Expects a live sequence source such as `SequencePairRegistry` that provides `sample_pair()` and `get_pair_by_id()`. If pass 2 receives a manual checkpoint request, it runs a diagnostic peek vertex cover and then resumes collection from the same state. If pass 2 stops early because of a user stop request or Ctrl+C, the collected pass-2 pool is still finalized through the standard vertex-cover path before results are returned.
+- `logging_utils.py`
+  - queue-backed logger wiring so background work can stream status messages into the UI
 
-- **`select_subset_in_energy_range(sequence_pairs, …)`**  
-  The candidate collection workhorse. Draws random pairs, evaluates on-target/self-energy filters, rejects strong same-strand homodimers, optionally cross-references against a retained pool, and accumulates accepted pairs until a stop condition fires. Returns a `stop_reason` string (`"timeout"`, `"nupack_limit"`, `"stop_event"`, `"checkpoint_request"`, `"keyboard_interrupt"`, `"duplicate_streak_limit_reached=<value>"`, or `None` for normal completion) instead of a boolean. Supports hot-start via `prior_state`: the returned state dict can be passed back to resume collection with the same tested set and counters. The budget check is VC-aware and reserves `estimate_offtarget_nupack_calls(N) = 2 * N^2` calls for the downstream vertex cover.
+- `plotly_utils.py`
+  - interactive histogram builders for on/off-target and self-energy plots
 
-- **`crossreference_sequences(new_pair, pool, …)`**  
-  Checks whether a single candidate pair is compatible with all pairs in a pool by evaluating all four strand combinations. Short-circuits on first violation.
+- `tabs/tab_selection_helper.py`
+  - thermodynamic helper plots for fraction bound and fraction unpaired
 
-### Console Output
+- `tabs/tab_exploratory.py`
+  - pilot analysis tab
+  - samples a subset, computes on-target, off-target, and self energies, and shows the first set of histograms
 
-The algorithm prints structured status messages during execution:
+- `tabs/tab_refinement.py`
+  - off-target limit selection tab
+  - samples within the chosen on-target window and estimates conflict probability
 
-```text
-=== Pass 1: Initial sampling ===
-Sampling 450 candidate pairs (energy + self-energy filter)...
-Selected 450 candidate pairs [853 NUPACK calls]
-Running vertex cover on 450 pairs...
-Computing off-target energies for plus-plus interactions
-Calculating with 12 cores...
-100%|████████████████████████| 101475/101475 [00:06<00:00, 4822.91it/s]
-Independent set: 120 pairs retained | NUPACK calls: 405853 | elapsed=45.2s
-=== Pass 2: Cross-referenced collection ===
-Collecting candidate pairs cross-referenced against 120 retained (NUPACK budget: 4594147)...
-Collected 340 candidate pairs [1200000 NUPACK calls]
-Running vertex cover on 340 candidate pairs...
-Independent set: 95 additional pairs found | Total retained: 215 | NUPACK calls: 1836421 | elapsed=320.5s
-```
+- `tabs/tab_search.py`
+  - live hybrid search tab
+  - starts the search in a worker thread
+  - handles stop requests, manual checkpoints, final verification, and XLSX export
 
-When a manual checkpoint is requested during pass 2:
+- `tabs/tab_load_results.py`
+  - workbook replay tab
+  - reads a saved XLSX report, restores the recorded NUPACK settings, recomputes energies, and recreates plots
 
-```text
---- Manual checkpoint triggered ---
-Running peek vertex cover on 94 collected candidate pairs...
-Candidate pairs collected so far: 94 | Retained from seed: 120 | New from collection (after peek VC): 29 | Estimated total: 149 | NUPACK calls: 7482 | elapsed=1200.5s
---- Resuming collection ---
-```
+The app mostly orchestrates. The real search logic remains in the package modules above, especially `search_algorithm.py`, `energy_computations.py`, and `search_reporting.py`.
 
-When the search is stopped interactively or interrupted during pass 2:
+## Search pipeline structure
 
-```text
-Stop detected during pass 2 collection. Finalizing current candidate pool.
-Running vertex cover on 94 candidate pairs...
-Independent set: 29 additional pairs found | Total retained: 149 | NUPACK calls: 7482 | elapsed=1200.5s
-```
+The main search path is the hybrid search in `search_algorithm.py`.
 
-### Search Progress Reporting
+### 1. Sequence source
 
-The verified XLSX report contains a `search_progress` sheet. For the live
-hybrid search, the main progress columns are:
+The usual live sequence pair generation source is `SequencePairRegistry` in `sequence_generation.py`.
 
-- `pass`
-- `pairs_collected`
-- `pairs_after_vc`
-- `total_retained`
-- `nupack_calls_executed`
-- `stopped_early`
-- `attempts`
-- `passed_ontarget_and_self`
-- `passed_homodimer`
-- `accepted_into_pool`
+It is responsible for:
 
-For the live naive search, the same vocabulary is used as far as it applies.
-Naive rows are emitted per accepted pair (plus a final summary row), so
-`pairs_after_vc` is left blank because there is no vertex-cover stage.
+- generating random core sequences
+- applying fixed 5' and 3' extensions
+- filtering unwanted substrings
+- sorting sequence pairs into one canonical order so each pair appears only once
+- assigning a stable integer ID to each unique sequence pair inside one registry instance
 
-### Shared Report Readers
+Those registry IDs are used throughout the search code as the graph vertex labels.
 
-The shared writer in `search_reporting.py` now has a matching light-weight
-reader module: `orthoseq_generator.search_report_reader`.
+### 2. Candidate filtering
 
-Use it from plotting or analysis scripts when you want stable access to the
-standard workbook contents without rewriting local pandas boilerplate.
+The main filtering function is `select_subset_in_energy_range()` in `energy_computations.py`.
+
+For each sampled sequence pair, it can apply:
+
+- on-target energy range filtering
+- secondary-structure filtering on both strands
+- same-strand homodimer rejection against the off-target limit
+- optional cross-reference checks against an already retained pool
+
+This function is the main workhorse for both hybrid passes.
+
+### 3. Seed pass (`_run_seed_pass()`, initial graph-search step in the paper)
+
+The first hybrid stage is `_run_seed_pass()` in `search_algorithm.py`.
+
+It:
+
+1. collects a fixed-size sequence-pair pool
+2. computes the full off-target matrix for that pool
+3. builds the conflict graph with `build_edges()`
+4. runs the vertex-cover heuristic
+5. keeps the surviving sequence pairs as the initial orthogonal set
+
+In the workbook, `seed_pass_pairs` means all sequence pairs in that initial graph-search subset, not only the surviving orthogonal ones.
+
+### 4. Collection pass (`_run_collection_pass()`, collection step plus final graph search in the paper)
+
+The second hybrid stage is `_run_collection_pass()`.
+
+It:
+
+1. keeps sampling fresh sequence pairs
+2. cross-references each sequence pair against the retained seed set
+3. only admits sequence pairs that are already compatible with the seed set
+4. runs one more graph search on the collected fresh pool
+5. unions those survivors with the retained seed survivors
+
+This is the main scaling trick in the package. The second graph search only resolves conflicts among the fresh sequence pairs, not between fresh and retained sequence pairs, because compatibility with the retained set was already enforced during collection.
+
+### 5. Naive baseline
+
+`naive_search()` in `naive_search_algorithm.py` is the simpler baseline.
+
+It does not build a conflict graph. It just accepts sequence pairs one by one if they pass:
+
+- on-target and self-energy filters
+- homodimer checks
+- direct cross-reference against already accepted pairs
+
+This is closer to the constructive independent-set framing from the paper.
+
+## Reporting pipeline
+
+The report system is centered on two modules:
+
+- `search_reporting.py` writes the canonical workbook
+- `search_report_reader.py` reads it
+
+### Writer side
+
+The shared writer is `write_hybrid_search_result_xlsx()`.
+
+Despite the name, it is the canonical writer for more than the hybrid search. Naive search uses it too.
+
+The workbook normally contains:
+
+- `run_metadata`
+- `found_pairs`
+- `selected_hh`
+- `selected_hah`
+- `selected_ahah`
+- `search_progress`
+- `validation`
+
+Hybrid runs can also include:
+
+- `seed_pass_pairs`
+- `seed_hh`
+- `seed_hah`
+- `seed_ahah`
+
+The writer assumes that the final set has already been re-verified by direct NUPACK calls. That verification happens in `verify_selected_pairs()`, not implicitly inside the writer.
+
+### Reader side
+
+`search_report_reader.py` is the light-weight reader that other code should use instead of reimplementing workbook parsing.
 
 Main helpers:
 
-- `load_metadata(report_path)` -> `dict`
-- `load_found_pairs(report_path)` -> `DataFrame`
-- `load_seed_pairs(report_path)` -> `DataFrame | None`
-- `load_search_progress(report_path)` -> `DataFrame | None`
-- `load_offtarget_matrices(report_path, family="selected" | "seed")` -> `dict[str, DataFrame]`
+- `load_metadata()`
+- `load_found_pairs()`
+- `load_seed_pairs()` for the full `seed_pass_pairs` sheet from the initial graph-search subset
+- `load_search_progress()`
+- `load_offtarget_matrices()`
 
-Design rules:
+### Replaying saved runs
 
-- metadata is lightly parsed (`N.A.` -> `None`, booleans and numerics restored)
-- sheets and matrices stay as ordinary pandas `DataFrame`s
-- off-target matrices remain 2D with their original axis labels
-- matrix-axis labels can be parsed separately with `parse_pair_label(...)` or
-  `parse_axis_labels(...)` when needed
+From the implementation side, the workbook metadata is the main reference for replaying a run.
 
-`search_progress` is intentionally returned raw because its column set varies
-by algorithm.
+That matters because:
 
+- the saved sequence list alone is not enough to restore thermodynamic conditions
+- pair IDs are only meaningful inside the registry instance that created them
+- the replay path needs recorded NUPACK settings, search thresholds, and search parameters
 
-## Legacy Scripts Basic Use
+The load-results tab follows this rule. It reads the workbook metadata, restores the NUPACK settings from that metadata, and recomputes energies from the saved sequences.
 
-The `legacy/` directory includes two self-contained scripts for finding orthogonal 7-mer sequence pairs or smaller without evolutionary optimization.
+## Key contracts between modules
 
-1. **`precompute_energies.py`**  
-   - Generates all 7-mer sequence pairs (with a 'TT' 5′ flank), filtering out any with four identical bases in a row.  
-   - Selects all pairs whose on-target energies lie within a specified range.  
-   - Computes off-target interaction energies for the selected subset.  
-   - Saves the subset, their indices, and off-target energies to for example `subset_data_7mers96to101.pkl`. This is a separate saving routine and does not end up in the pre_compute_energies directory but in the legacy folder itself.
+These are the main assumptions that hold the package together.
 
-2. **`legacy_sequence_search.py`**  
-   - Loads the pickled subset and off-target energies from for example `subset_data_7mers96to101.pkl`.  
-   - Builds the off-target interaction graph using a user-defined cutoff.  
-   - Runs the iterative vertex-cover heuristic to find the minimal cover.  
-   - Derives the independent set (orthogonal sequences) and saves them to for example `independent_sequences.txt` in `results`.
+### Sequence pair representation
 
-**Output & Folders**  
-- The lecacy scripts are self-contained and have their own pre_compute_library
-- The `results` folder is created automatically in the legacy directory and contains the found orthogonal sequences in for example`independent_sequences.txt`.  
-- The `pre_computed_energies` folder is created automatically and contains the cached `.pkl` energy files.  
-- The off-target energies (here `subset_data_7mers96to101.pkl`) are saved in the same folder as the script.
+Most modules pass sequence pairs around as:
+
+```python
+(seq, rc_seq)
+```
+
+This is the standard tuple contract used by the search code, reporting, and plotting.
+
+### Registry ID contract
+
+`hybrid_search()` expects a live sequence-pair source that provides:
+
+- `sample_pair() -> (pair_id, pair)`
+- `get_pair_by_id(pair_id) -> pair`
+
+The pair IDs are treated as stable vertex labels for the life of that registry instance. They should not be mixed across different registries.
+
+### Matrix alignment
+
+The off-target matrices returned by `compute_offtarget_energies()` are interpreted in the order of the `subset` passed in. `build_edges()` relies on the matching `indices` list to map matrix positions back to registry IDs.
+
+There is also an important matrix-value contract: a `0` in these matrices means that the interaction was not computed for that matrix position, not that the interaction energy is actually zero. This comes from how the triangular and cross-family matrices are filled. Downstream code already treats those zeros as structural placeholders rather than real energies.
+
+### Search-time versus report-time energies
+
+Search-time filtering uses direct NUPACK calls and graph heuristics. Final reports are expected to use `verify_selected_pairs()` again on the selected set. The workbook is meant to reflect the verified final energies, not only the search-time bookkeeping.
+
+### Global thermodynamic settings
+
+Low-level energy code reads global state from `helper_functions.py`. Callers are expected to call `set_nupack_params()` and `set_energy_type()` before running searches, plots, or report verification.
+
+## Global state and sharp edges
+
+There are a few implementation details that are worth knowing before changing the code.
+
+### Global NUPACK state
+
+`helper_functions.py` keeps `NUPACK_PARAMS` and `ENERGY_TYPE` as module-level globals.
+
+That means:
+
+- low-level energy code is not pure
+- callers must sync the globals before running a search
+- worker processes copy this state through `_init_worker()`
+- report replay temporarily mutates global state and then restores it
+
+This is convenient in scripts and the Streamlit app, but it is not a clean library boundary.
+
+### `results/` is cwd-relative
+
+`get_default_results_folder()` builds `results/` under `os.getcwd()`.
+
+So output location depends on where the process was launched, not on the package location.
+
+That is fine for ad hoc script use, but it is easy to forget when:
+
+- running the same script from different folders
+- launching the app from an IDE
+- comparing saved outputs across runs
+
+Also, not every artifact path is fully normalized through that helper. Some scripts still write PDFs by simple relative filename.
+
+### Naming drift
+
+There are a few names that reflect history more than clarity.
+
+- `sequence_computations.py` is now mostly a compatibility re-export layer.
+- `write_hybrid_search_result_xlsx()` is the shared writer for hybrid and naive runs.
+- `pre_analize_sequences.py` and `pre_analize_sequences_in_range.py` keep the older misspelling.
+- the code often says `seq` and `rc_seq`, but `SequencePairRegistry` canonicalizes pair order with `sorted_key()`. So the first tuple element is simply the first element of the canonicalized sequence pair tuple.
+
+## Energy modes
+
+The low-level energy mode is controlled by `set_energy_type()` in `helper_functions.py`.
+
+Supported values are:
+
+- `minimum`
+  - uses NUPACK MFE output for the complex
+  - this is a single-structure minimum-energy view
+  - it is not the same thing as an ensemble association free energy
+
+- `total`
+  - uses partition-function free energies
+  - computes association-style energy as `G_AB - G_A - G_B`
+  - this is the main mode used by the current app and search scripts
+
+- `totalu`
+  - also uses partition-function free energies
+  - returns `G_AB` for the complex without subtracting monomer free energies
+  - this is mostly useful for older or specialized workflows
+
+One implementation detail matters here: in the current code, `total` and `totalu` clamp weak or positive values to `-1.0`. The idea is that once the interaction is that weak, the exact value does not matter for the sequence-pair selection logic.
+
+## Scripts overview
+
+The `scripts/` directory is mixed. Some files are current entry points, some are benchmark code, and some are old utility material.
+
+Main current scripts:
+
+- `scripts/pre_analize_sequences.py`
+  - rough pilot analysis
+  - samples a subset and plots on-target, off-target, and self-energy distributions
+
+- `scripts/pre_analize_sequences_in_range.py`
+  - second analysis step after choosing an on-target window
+  - samples inside that window and helps choose the off-target limit
+
+- `scripts/run_sequence_search.py`
+  - standalone hybrid search example
+  - runs the main search, verifies the result, and writes the canonical XLSX workbook
+
+- `scripts/run_naive_search.py`
+  - standalone naive baseline example
+  - writes the same report format for comparison
+
+- `scripts/load_sequences_from_txt_and_plot.py`
+  - replay from a plain text pair list
+
+- `scripts/load_sequences_from_xlsx_and_plot.py`
+  - replay from the canonical workbook
+  - this is the script-level counterpart of the load-results tab
+
+Supporting directories:
+
+- `scripts/benchmarking/`
+  - benchmark and figure-generation code
+  - useful if you are working on the paper comparisons rather than the app
+
+- `scripts/legacy/`
+  - older workflow that precomputes full interaction data up front
+  - only practical for small sequence spaces
+
+- `scripts/auxilary_scripts/`
+  - helper and scratch material
+  - useful for one-off analysis, but not a clean public surface
