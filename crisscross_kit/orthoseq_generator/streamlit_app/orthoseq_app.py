@@ -1,9 +1,13 @@
 if __name__ == "__main__":
     import html
+    import importlib.util
+    import os
     import random
+    import signal
+    import threading
+    import time
     from pathlib import Path
     import streamlit as st
-    import streamlit.components.v1 as components
     from orthoseq_generator import helper_functions as hf
     from orthoseq_generator import sequence_computations as sc
     from orthoseq_generator.streamlit_app.state_manager import init_session_state
@@ -21,12 +25,61 @@ if __name__ == "__main__":
 
     # 1. Page Config
     st.set_page_config(page_title="Orthoseq Generator", layout="wide")
-    st.title("OrthoSeq")
+    nupack_available = importlib.util.find_spec("nupack") is not None
 
     # 2. Session State and Logging
     init_session_state()
     setup_logger(st.session_state.log_queue)
     drain_log_queue()
+
+    def _shutdown_streamlit_after_delay(delay_seconds=1.5):
+        def _shutdown():
+            time.sleep(delay_seconds)
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        threading.Thread(target=_shutdown, daemon=True).start()
+
+    if st.session_state.get("quit_app_requested", False):
+        if not st.session_state.get("quit_app_shutdown_started", False):
+            st.session_state.quit_app_shutdown_started = True
+            _shutdown_streamlit_after_delay()
+        st.title("OrthoSeq")
+        st.warning("App closed. You can close this tab.")
+        st.html(
+            """
+            <script>
+            setTimeout(() => {
+              window.close();
+              setTimeout(() => {
+                window.location.replace("about:blank");
+              }, 250);
+            }, 250);
+            </script>
+            """,
+            width="stretch",
+            unsafe_allow_javascript=True,
+        )
+        st.stop()
+
+    title_col, quit_col = st.columns([9, 1])
+    with title_col:
+        st.title("OrthoSeq")
+    with quit_col:
+        if st.session_state.get("confirm_quit_app", False):
+            if st.button("Confirm Quit", type="primary"):
+                st.session_state.confirm_quit_app = False
+                st.session_state.quit_app_requested = True
+                st.rerun()
+            if st.button("Cancel"):
+                st.session_state.confirm_quit_app = False
+                st.rerun()
+        else:
+            if st.button("Quit App"):
+                st.session_state.confirm_quit_app = True
+                st.rerun()
+
+    if not nupack_available:
+        st.error(hf.get_nupack_install_message())
 
     if st.session_state.search_running or st.session_state.pilot_running or st.session_state.refine_running:
         st_autorefresh(interval=500, key="global_poll")
@@ -58,7 +111,7 @@ if __name__ == "__main__":
     log_height_px = int(st.session_state.log_console_height_px)
     visible_line_count = int(st.session_state.log_visible_line_count)
     log_text = html.escape("\n".join(st.session_state.log_buffer[-visible_line_count:]))
-    components.html(
+    st.html(
         f"""
         <div
           id="log-console"
@@ -84,7 +137,8 @@ if __name__ == "__main__":
         }}
         </script>
         """,
-        height=log_height_px + 40,
+        width="stretch",
+        unsafe_allow_javascript=True,
     )
 
     # 3. Sidebar: Global Settings
@@ -179,28 +233,36 @@ if __name__ == "__main__":
                 random.setstate(random_state)
 
     st.sidebar.subheader("SeqWalk")
+    seqwalk_available = importlib.util.find_spec("seqwalk") is not None
+    if not seqwalk_available and st.session_state.use_seqwalk:
+        st.session_state.use_seqwalk = False
+
     use_seqwalk = st.sidebar.checkbox(
         "Use SeqWalk Cores",
         key="use_seqwalk",
-        disabled=st.session_state.busy,
+        disabled=(st.session_state.busy or not seqwalk_available),
     )
+    if not seqwalk_available:
+        st.sidebar.caption(
+            "Optional dependency not installed. Install SeqWalk separately if you want SeqWalk-backed cores."
+        )
     st.session_state.seqwalk_k = max(1, min(int(st.session_state.seqwalk_k), int(seq_length)))
     seqwalk_k = st.sidebar.number_input(
         "SeqWalk k",
         min_value=1,
         max_value=int(seq_length),
         key="seqwalk_k",
-        disabled=(st.session_state.busy or not use_seqwalk),
+        disabled=(st.session_state.busy or not use_seqwalk or not seqwalk_available),
     )
     seqwalk_rcfree = st.sidebar.checkbox(
         "RCfree",
         key="seqwalk_rcfree",
-        disabled=(st.session_state.busy or not use_seqwalk),
+        disabled=(st.session_state.busy or not use_seqwalk or not seqwalk_available),
     )
     seqwalk_cores = None
     seqwalk_error = None
 
-    if use_seqwalk:
+    if use_seqwalk and seqwalk_available:
         try:
             seqwalk_cores = _cached_seqwalk_cores(
                 length=int(seq_length),
@@ -214,7 +276,11 @@ if __name__ == "__main__":
         else:
             st.sidebar.caption(f"SeqWalk cores generated: {len(seqwalk_cores)}")
 
-    st.session_state.input_invalid = not (valid_fivep and valid_threep) or seqwalk_error is not None
+    st.session_state.input_invalid = (
+        not (valid_fivep and valid_threep)
+        or seqwalk_error is not None
+        or not nupack_available
+    )
 
     # Registry Factory helper
     def get_registry():
@@ -277,4 +343,4 @@ if __name__ == "__main__":
     elif nav == "4. Sequence Search":
         render_search_tab(get_registry, nupack_params)
     else:
-        render_load_results_tab()
+        render_load_results_tab(nupack_available)

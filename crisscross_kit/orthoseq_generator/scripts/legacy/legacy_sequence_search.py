@@ -26,7 +26,7 @@ if __name__ == "__main__":
     random.seed(RANDOM_SEED)
 
     # 2) Load the saved subset data (sequences, indices, off-target energies)
-    with open('subset_data_7mers96to100.pkl', 'rb') as f:
+    with open('subset_data_7mers96to101.pkl', 'rb') as f:
         data = pickle.load(f)
 
     subset = data['subset']   # list of (seq, rc_seq) pairs

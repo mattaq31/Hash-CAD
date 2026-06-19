@@ -2,17 +2,7 @@
 ## Problem It Solves
 OrthoSeq is a tool for identifying sets of **orthogonally binding nucleic-acid sequence pairs**. In this context, a sequence pair consists of a strand and its intended binding partner. The goal is to construct large sets of such pairs that bind strongly on target while avoiding appreciable off-target binding.
 
-OrthoSeq uses **NUPACK** to evaluate thermodynamic interaction energies. Sequence pairs are selected such that:
-- each sequence pair has an **on-target** interaction within a user-defined energy range
-- off-target interactions with all other sequence pairs remain below a user-defined **off-target** limit
-- each individual strand has sufficiently weak secondary-structure formation according to a user-defined **secondary-structure** energy limit
-
-The sequence layout can be defined by choosing the core binding-domain length together with optional 5' and 3' extensions. Thermodynamic model parameters can also be set, including nucleic acid type, temperature, sodium concentration, and magnesium concentration.
-
-The sequence search is integrated into a Streamlit-based graphical user interface. The app supports parameter selection, exploratory analysis, off-target limit selection, and direct sequence search from the same interface.
-
-
----
+~~---
 ## Installation
 
 OrthoSeq is recommended to run inside a **Miniconda** environment.
@@ -26,22 +16,28 @@ The main installation complication is **NUPACK**:
 
 1. Install **Miniconda** if you do not have it already.
 
-2. Create and activate a fresh environment:
+Official Miniconda installer:
+- [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install)
+
+2. Open a terminal or console window, then create and activate a fresh conda environment:
 
 ```bash
 conda create -n orthoseq python=3.11
 conda activate orthoseq
 ```
 
-3. Upgrade `pip` inside that environment:
+3. Upgrade `pip` inside that conda environment:
 
 ```bash
 pip install -U pip
 ```
 
-4. Install **NUPACK** first.
+4. Install **NUPACK** first into the conda environment.
 
-Go to the official NUPACK page, accept the license, download the current release, and unzip it.
+Go to the official NUPACK download page, log in or create an account, accept the license, download the current release, and unzip it inside your download folder.
+
+Official download page:
+- [NUPACK Download](https://www.nupack.org/download/overview)
 
 Official guide:
 - [NUPACK 4 Getting Started](https://docs.nupack.org/start/)
@@ -59,6 +55,23 @@ pip install "crisscross-kit[streamlit]"
 ```
 This installs the package together with the Streamlit web app dependencies.
 
+Optional SeqWalk support:
+
+SeqWalk is not required for the app. The SeqWalk mode in the sidebar is optional and can be left disabled.
+
+If you want SeqWalk support, first try:
+
+```bash
+pip install seqwalk
+```
+
+Be aware that SeqWalk currently declares `numpy<2`, which can prevent clean pip resolution even when the rest of OrthoSeq installs correctly. 
+If a fresh pip install is blocked only by SeqWalk's NumPy version bound you can try:
+
+```bash
+pip install --no-deps seqwalk
+```~~
+
 6. Start the app:
 To start the app while preventing system sleep during long searches, run one of the following in your conda environment:
 
@@ -74,7 +87,7 @@ systemd-inhibit --what=idle:sleep orthoseq_app
 
 These commands prevent automatic system sleep during long runs.
 
-This opens the Streamlit interface in your browser.
+This opens the Streamlit interface in your browser. 
 
 ---
 ## Using the App
@@ -86,8 +99,8 @@ Use the global settings panel on the left side of the app.
 
 Here you can define the sequence layout:
 - core sequence length
-- optional 5' and 3' extensions by entering a base string such as `TTAG`
-- unwanted substrings such as `TTTT`
+- optional 5' and 3' extensions by entering a base string such as `TTTT`
+- unwanted substrings such as `GGGG`
 
 There is an illustration at the top of the panel showing the resulting binding layout.
 
@@ -134,7 +147,7 @@ The second plot shows the secondary-structure energy distribution. You can enter
 
 ### 3. Choose the off-target binding limit
 
-In the **Off-Target Limit** tab, the on-target range and secondary-structure limit transferred from the pilot analysis are shown again. You can choose a sample size and click **Run Off-Target Analysis**.
+In the **Off-Target Limit** tab, the on-target range and secondary-structure limit transferred from the pilot analysis are shown again. You can choose a sample size and click **Run Off-Target Binding Analysis**.
 
 The app then selects a random set of sequence pairs that satisfy the previously chosen conditions and computes the on-target and off-target energies again with NUPACK.
 
@@ -186,45 +199,52 @@ The app then recomputes the on-target, off-target, and secondary-structure energ
 
 
 
-## Advanced Use via Scripts (Partly Outdated)
+## Advanced Use via Scripts
 
-The main top-level scripts in [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) mirror the app workflow and are useful when you want to run the same steps from the command line.
+The main top-level scripts in [`scripts`](https://github.com/mattaq31/Hash-CAD/tree/main/crisscross_kit/orthoseq_generator/scripts) roughly mirror the app workflow, but they are best treated as editable example scripts rather than polished command-line interfaces.
+
+In these scripts, the main input parameters are intentionally kept directly in the file. This makes them easy to adapt when you want to build your own custom workflow or work from a pre-generated sequence pool.
 
 Unless noted otherwise, these scripts write their output into a local `results/` folder created in the directory from which the script is executed.
 
 ### CLI workflow
 
 #### `pre_analize_sequences.py`
-- Command-line mirror of **Pilot Analysis**.
+- Editable example corresponding to **Pilot Analysis**.
 - Samples sequence pairs for the current layout and thermodynamic model.
 - Computes on-target, off-target, and secondary-structure energies.
 - Use it to choose a reasonable on-target energy range and secondary-structure limit.
+- The current example defaults to unrestricted registry sampling. An optional SeqWalk initialization example is included as a commented block that you can enable manually, or you can replace it with your own pre-generated sequence pool.
 
 #### `pre_analize_sequences_in_range.py`
-- Command-line mirror of **Off-Target Limit** selection.
+- Editable example corresponding to **Off-Target Limit** selection.
 - Samples sequence pairs within a chosen on-target energy range.
 - Recomputes off-target energies for that filtered pool.
 - Use it to choose a reasonable off-target energy limit after fixing the on-target range.
+- An optional SeqWalk initialization example is included as a commented block that you can enable manually.
 
 #### `run_sequence_search.py`
-- Command-line mirror of **Orthogonal Sequence-Pair Search**.
+- Main editable example corresponding to **Orthogonal Sequence-Pair Search**.
 - Runs the hybrid search with the chosen thermodynamic limits.
-- Writes the selected sequence pairs and related output artifacts into the local `results/` folder.
+- Writes a verified XLSX run report and related output artifacts into the local `results/` folder.
 - This is the main non-app entry point for generating orthogonal sequence pairs.
+- An optional SeqWalk initialization example is included as a commented block that you can enable manually.
 
 #### `run_naive_search.py`
-- Baseline command-line search using the naive sequential acceptance strategy.
+- Baseline editable command-line search using the naive sequential acceptance strategy.
+- Writes a verified XLSX run report and related output artifacts into the local `results/` folder.
 - Useful for comparison against the hybrid search.
 
 ### Utility scripts
 
 #### `load_sequences_from_txt_and_plot.py`
 - Loads sequence pairs from a plain-text file.
+- In the current example, the input file is read from the standard `results/` folder unless the script is edited.
 - Recomputes on-target, off-target, and secondary-structure energies.
 - Writes on/off-target and self-energy histogram PDFs.
 
 #### `load_sequences_from_xlsx_and_plot.py`
-- Loads sequence pairs from a saved XLSX search report.
+- Loads sequence pairs from a verified XLSX search report.
 - Uses the recorded NUPACK parameters from the workbook metadata.
 - Recomputes on-target, off-target, and secondary-structure energies.
 - Writes on/off-target and self-energy histogram PDFs.
@@ -233,7 +253,7 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 
 - `auxilary_scripts/` contains older helper material and figure-generation utilities that are not part of the main supported workflow.
 - `legacy/` contains an older search workflow that precomputes all pairwise interactions up front. This is only practical for small sequence spaces.
-- `benchmarking/` contains benchmark scripts used for algorithm comparisons and paper figures.
+- `benchmarking/` contains benchmark scripts, configs, and analysis workflows used for algorithm comparisons, performance studies, and paper-related figures.
 
 ---
 
@@ -476,21 +496,21 @@ For hybrid search runs, these are the verified off-target energy matrices for th
 
 ## Legacy Scripts Basic Use
 
-The `legacy/` directory includes two self-contained scripts for finding orthogonal 7-mer sequence pairs or smaller without evolutionary optimization.
+The `legacy/` directory includes two older self-contained scripts for finding orthogonal 7-mer sequence pairs or smaller without the newer hybrid workflow.
 
 1. **`precompute_energies.py`**  
    - Generates all 7-mer sequence pairs (with a 'TT' 5′ flank), filtering out any with four identical bases in a row.  
    - Selects all pairs whose on-target energies lie within a specified range.  
    - Computes off-target interaction energies for the selected subset.  
-   - Saves the subset, their indices, and off-target energies to for example `subset_data_7mers96to101.pkl`. This is a separate saving routine and does not end up in the pre_compute_energies directory but in the legacy folder itself.
+   - Saves the subset, their indices, and off-target energies into a pickle file such as `subset_data_7mers96to101.pkl` in the current working directory.
 
 2. **`legacy_sequence_search.py`**  
    - Loads the pickled subset and off-target energies from for example `subset_data_7mers96to101.pkl`.  
    - Builds the off-target interaction graph using a user-defined cutoff.  
-   - Runs the iterative vertex-cover heuristic to find the minimal cover.  
+   - Runs the iterative vertex-cover refinement heuristic on that graph.  
    - Derives the independent set (orthogonal sequences) and saves them to for example `independent_sequences.txt` in `results`.
 
 **Output & Folders**  
-- The legacy scripts are self-contained and have their own pre_compute_library
-- The `results` folder is created automatically in the legacy directory and contains the found orthogonal sequences in for example`independent_sequences.txt`.  
-- The off-target energies (here `subset_data_7mers96to101.pkl`) are saved in the same folder as the script.
+- The legacy scripts are self-contained examples and use their own direct file outputs rather than the shared XLSX reporting workflow.
+- The pickle file (for example `subset_data_7mers96to101.pkl`) is written in the current working directory.
+- The final selected sequences are written through the standard `results/` helper, so `independent_sequences.txt` ends up in the local `results/` folder relative to the directory from which the script is executed.

@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-streamlit = ["streamlit", "plotly", "streamlit-autorefresh", "seqwalk"]
+streamlit = ["streamlit>=1.58.0", "plotly", "streamlit-autorefresh"]
 3d = ["pyvista", "imageio", "imageio-ffmpeg"]
 blender = ["bpy==4.2.0"]
 

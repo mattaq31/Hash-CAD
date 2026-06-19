@@ -20,7 +20,6 @@ Main Steps:
 '''
 
 import random
-from seqwalk import design
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 
@@ -31,7 +30,10 @@ if __name__ == "__main__":
 
     # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
-    seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
+    seqwalk_cores = None
+    # Optional SeqWalk example:
+    # from seqwalk import design
+    # seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
         length=16,
         fivep_ext="",

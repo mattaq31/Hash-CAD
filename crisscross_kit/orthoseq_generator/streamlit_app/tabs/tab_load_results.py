@@ -11,7 +11,7 @@ from orthoseq_generator.search_report_reader import load_found_pairs, load_metad
 from orthoseq_generator.streamlit_app import plotly_utils as pu
 
 
-def render_load_results_tab():
+def render_load_results_tab(nupack_available=True):
     st.header("Load Existing Results")
     st.write("Load a saved XLSX search report and recreate the energy plots.")
 
@@ -29,6 +29,7 @@ def render_load_results_tab():
             uploaded_report is None
             or st.session_state.search_running
             or st.session_state.busy
+            or not nupack_available
         ),
     ):
         st.session_state.busy = True
@@ -104,7 +105,7 @@ def render_load_results_tab():
             st.session_state.loaded_report_self_fig = None
             st.session_state.loaded_report_on_off_pdf_path = None
             st.session_state.loaded_report_self_pdf_path = None
-            st.session_state.loaded_report_error = repr(e)
+            st.session_state.loaded_report_error = str(e)
         finally:
             hf.set_nupack_params(
                 material=previous_nupack["MATERIAL"],

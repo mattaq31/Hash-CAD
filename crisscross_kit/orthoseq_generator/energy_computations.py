@@ -14,6 +14,7 @@ import logging
 logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 
+
 def estimate_offtarget_nupack_calls(num_sequence_pairs):
     """
     Estimate the direct NUPACK calls required for a full pairwise off-target matrix.
@@ -61,6 +62,7 @@ def compute_nupack_energy(seq1, seq2, type="total"):
     Computes the Gibbs free energy of hybridization between two DNA sequences
     using NUPACK.
     """
+    hf.require_nupack()
     from nupack import Complex, Model, Strand, complex_analysis
 
     A = Strand(seq1, name="H1")
@@ -153,6 +155,7 @@ def compute_pair_energy_on(i, seq, rc_seq):
 
 
 def compute_ontarget_energies(sequence_list):
+    hf.require_nupack()
     energies = np.zeros(len(sequence_list))
     self_energies_seq = np.zeros(len(sequence_list))
     self_energies_rc_seq = np.zeros(len(sequence_list))
@@ -197,6 +200,7 @@ def compute_pair_energy_off(i, j, seq1, seq2):
 
 
 def compute_offtarget_energies(sequence_pairs):
+    hf.require_nupack()
     handles = [seq for seq, rc_seq in sequence_pairs]
     antihandles = [rc_seq for seq, rc_seq in sequence_pairs]
 

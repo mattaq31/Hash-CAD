@@ -1,3 +1,4 @@
+import importlib
 import os
 from datetime import datetime
 
@@ -8,6 +9,38 @@ NUPACK_PARAMS = {
     "SODIUM": 0.05,
     "MAGNESIUM": 0.025
 }
+
+
+def get_nupack_install_message():
+    """
+    Return the canonical user-facing installation guidance for NUPACK.
+
+    :returns: Installation/help text for missing NUPACK.
+    :rtype: str
+    """
+    return (
+        "NUPACK is required for orthoseq thermodynamic calculations, but it is not installed "
+        "in this Python environment. NUPACK is not installed via pip in the normal way.\n\n"
+        "Download page (account required):\n"
+        "https://www.nupack.org/download/overview\n\n"
+        "Install from the downloaded package directory:\n"
+        "pip install -U nupack -f ~/Downloads/nupack-VERSION/package\n\n"
+        "Here, `nupack-VERSION` means the name of the downloaded and unzipped NUPACK folder.\n\n"
+        "Official installation instructions:\n"
+        "https://docs.nupack.org/start/"
+    )
+
+
+def require_nupack():
+    """
+    Ensure that the NUPACK Python module is importable.
+
+    :raises RuntimeError: If NUPACK is unavailable in the current environment.
+    """
+    try:
+        importlib.import_module("nupack")
+    except ImportError as exc:
+        raise RuntimeError(get_nupack_install_message()) from exc
 
 
 def set_energy_type(energy_type="total"):

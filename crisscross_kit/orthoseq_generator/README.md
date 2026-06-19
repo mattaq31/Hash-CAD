@@ -4,7 +4,7 @@ This README is for people reading or changing the `orthoseq_generator` code. It 
 
 For the user-facing workflow and interpretation, see [`docs/docs/orthoseq/index.md`](../../docs/docs/orthoseq/index.md). That page explains how to use the tool. This page explains how the package is put together, what the important modules do, and where the rough edges are.
 
-The package also sits next to the paper *Graph-based design of DNA sequence-pair libraries with orthogonal binding specificity*. The paper and the user docs mostly describe the selection problem as finding a large **independent set** in a conflict graph. In the code, we use the removal-side and **vertex cover** perspective more often. That difference in wording is important when reading the code.
+The package also sits next to the paper *OrthoSeq: Design of Thermodynamically Orthogonal DNA Sequence-Pair Libraries*. The paper and the user docs mostly describe the selection problem as finding a large **independent set** in a conflict graph. In the code, we use the removal-side and **vertex cover** perspective more often. That difference in wording is important when reading the code.
 
 ## Graph search: paper framing versus code framing
 

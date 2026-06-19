@@ -51,7 +51,7 @@ def _search_worker(
         else:
             out_q.put(("done", res, time.time() - start_time, None))
     except Exception as e:
-        out_q.put(("done", None, time.time() - start_time, repr(e)))
+        out_q.put(("done", None, time.time() - start_time, str(e)))
 
 def render_search_tab(registry_factory, nupack_params):
     st.header("Step 3: Orthogonal Sequence-Pair Search")

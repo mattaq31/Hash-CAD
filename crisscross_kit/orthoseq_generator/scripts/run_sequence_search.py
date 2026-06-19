@@ -26,8 +26,6 @@ Usage:
 
 import random
 from pathlib import Path
-# Optional: uncomment for SeqWalk-backed runs.
-from seqwalk import design
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.search_algorithm import hybrid_search
@@ -44,7 +42,10 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
     res_name = "ortho_16mers8p16_new_sheettest7.xlsx"
-    seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
+    seqwalk_cores = None
+    # Optional SeqWalk example:
+    # from seqwalk import design
+    # seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
         length=16,
         fivep_ext="",

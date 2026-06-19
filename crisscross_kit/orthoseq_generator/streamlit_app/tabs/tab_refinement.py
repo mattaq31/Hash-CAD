@@ -25,7 +25,7 @@ def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out
         off_e = sc.compute_offtarget_energies(subset)
         out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), None))
     except Exception as e:
-        out_q.put(("done", None, None, None, repr(e)))
+        out_q.put(("done", None, None, None, str(e)))
 
 def render_refinement_tab(registry_factory, nupack_params):
     st.header("Step 2: Off-Target Limit Selection")

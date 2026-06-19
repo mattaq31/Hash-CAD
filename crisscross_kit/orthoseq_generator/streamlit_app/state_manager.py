@@ -166,4 +166,4 @@ def init_session_state():
     if "seqwalk_k" not in st.session_state:
         st.session_state.seqwalk_k = 6
     if "seqwalk_rcfree" not in st.session_state:
-        st.session_state.seqwalk_rcfree = True
+        st.session_state.seqwalk_rcfree = False
