@@ -32,6 +32,10 @@ RUN_METADATA_KEY_ORDER = [
     "input.threep_ext",
     "input.unwanted_substrings",
     "input.apply_unwanted_to",
+    "input.used_seqwalk",
+    "input.seqwalk_k",
+    "input.seqwalk_rcfree",
+    "input.seqwalk_core_count",
     "search.offtarget_limit",
     "search.min_ontarget",
     "search.max_ontarget",
@@ -206,6 +210,7 @@ def validate_selected_pairs(
 def build_selected_sequence_data(
     final_pairs: list[tuple[str, str]],
     pair_ids: list[int],
+    sequence_source=None,
 ) -> list[dict]:
     """
     Build the canonical per-pair report entries for the `found_pairs` sheet.
@@ -223,6 +228,12 @@ def build_selected_sequence_data(
     :param pair_ids: Stable global IDs aligned with `final_pairs`.
     :type pair_ids: list[int]
 
+    :param sequence_source: Optional registry-like source that can provide
+                            provenance for selected pairs via
+                            `get_origin_core_by_id(pair_id)` and
+                            `get_origin_seq_by_id(pair_id)`.
+    :type sequence_source: object or None
+
     :returns: Selected-sequence report entries containing local sheet order,
               global IDs, and the two sequences for each pair.
     :rtype: list[dict]
@@ -231,12 +242,18 @@ def build_selected_sequence_data(
         raise ValueError("final_pairs and pair_ids must have the same length.")
     selected_sequence_data = []
     for idx, (seq, rc_seq) in enumerate(final_pairs):
+        pair_id = int(pair_ids[idx])
         entry = {
             "pair_idx": idx,
-            "global_pair_id": int(pair_ids[idx]),
+            "global_pair_id": pair_id,
             "seq": seq,
             "rc_seq": rc_seq,
         }
+        if sequence_source is not None:
+            if hasattr(sequence_source, "get_origin_core_by_id"):
+                entry["origin_core"] = sequence_source.get_origin_core_by_id(pair_id)
+            if hasattr(sequence_source, "get_origin_seq_by_id"):
+                entry["origin_seq_with_flank"] = sequence_source.get_origin_seq_by_id(pair_id)
         selected_sequence_data.append(entry)
     return selected_sequence_data
 
@@ -351,6 +368,10 @@ def write_hybrid_search_result_xlsx(
         "input.threep_ext": input_params.get("threep_ext"),
         "input.unwanted_substrings": input_params.get("unwanted_substrings"),
         "input.apply_unwanted_to": input_params.get("apply_unwanted_to"),
+        "input.used_seqwalk": input_params.get("used_seqwalk"),
+        "input.seqwalk_k": input_params.get("seqwalk_k"),
+        "input.seqwalk_rcfree": input_params.get("seqwalk_rcfree"),
+        "input.seqwalk_core_count": input_params.get("seqwalk_core_count"),
         "search.offtarget_limit": search_params.get("offtarget_limit"),
         "search.max_ontarget": search_params.get("max_ontarget"),
         "search.min_ontarget": search_params.get("min_ontarget"),

@@ -64,6 +64,7 @@ class SequencePairRegistry:
         self._rng = random.Random(seed)
         self._pair_to_id = {}
         self._id_to_pair = []
+        self._id_to_origin_core = {}
 
         self._bases = ("A", "T", "C", "G")
         if preselected_cores is None:
@@ -102,6 +103,18 @@ class SequencePairRegistry:
         seq, rc_seq = self._make_flanked(core_seq)
         return sorted_key(seq, rc_seq)
 
+    def _get_or_create_pair_id(self, pair, origin_core=None):
+        existing_id = self._pair_to_id.get(pair)
+        if existing_id is not None:
+            return existing_id
+
+        new_id = len(self._id_to_pair)
+        self._pair_to_id[pair] = new_id
+        self._id_to_pair.append(pair)
+        if origin_core is not None:
+            self._id_to_origin_core[new_id] = str(origin_core)
+        return new_id
+
     def _is_valid(self, core_seq):
         core_rc = revcom(core_seq)
 
@@ -130,13 +143,7 @@ class SequencePairRegistry:
                     continue
 
                 pair = self._make_pair(core_seq)
-                existing_id = self._pair_to_id.get(pair)
-                if existing_id is not None:
-                    return existing_id, pair
-
-                new_id = len(self._id_to_pair)
-                self._pair_to_id[pair] = new_id
-                self._id_to_pair.append(pair)
+                new_id = self._get_or_create_pair_id(pair, origin_core=core_seq)
                 return new_id, pair
 
         for _ in range(int(max_tries)):
@@ -145,13 +152,7 @@ class SequencePairRegistry:
                 continue
 
             pair = self._make_pair(core_seq)
-            existing_id = self._pair_to_id.get(pair)
-            if existing_id is not None:
-                return existing_id, pair
-
-            new_id = len(self._id_to_pair)
-            self._pair_to_id[pair] = new_id
-            self._id_to_pair.append(pair)
+            new_id = self._get_or_create_pair_id(pair)
             return new_id, pair
 
         raise RuntimeError(
@@ -161,6 +162,15 @@ class SequencePairRegistry:
 
     def get_pair_by_id(self, pair_id):
         return self._id_to_pair[int(pair_id)]
+
+    def get_origin_core_by_id(self, pair_id):
+        return self._id_to_origin_core.get(int(pair_id))
+
+    def get_origin_seq_by_id(self, pair_id):
+        origin_core = self.get_origin_core_by_id(pair_id)
+        if origin_core is None:
+            return None
+        return f"{self.fivep_ext}{origin_core}{self.threep_ext}"
 
     def __len__(self):
         return len(self._id_to_pair)

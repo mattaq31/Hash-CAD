@@ -192,6 +192,10 @@ It is responsible for:
 - sorting sequence pairs into one canonical order so each pair appears only once
 - assigning a stable integer ID to each unique sequence pair inside one registry instance
 
+If `preselected_cores` are provided, the registry samples from that supplied core set instead of generating unrestricted random cores. This is the path currently used for the Streamlit SeqWalk add-on.
+
+One extra detail now matters for that SeqWalk path: the registry can preserve the original sampled SeqWalk core as optional provenance metadata keyed by `pair_id`. The internal search logic still works on the canonicalized sequence pair, but the final report can also expose the original SeqWalk-oriented core and flanked strand for barcode-oriented use cases.
+
 Those registry IDs are used throughout the search code as the graph vertex labels.
 
 ### 2. Candidate filtering
@@ -278,6 +282,13 @@ Hybrid runs can also include:
 - `seed_ahah`
 
 The writer assumes that the final set has already been re-verified by direct NUPACK calls. That verification happens in `verify_selected_pairs()`, not implicitly inside the writer.
+
+When SeqWalk mode was used in the Streamlit app, `found_pairs` can include two additional provenance columns:
+
+- `origin_core`
+- `origin_seq_with_flank`
+
+These columns preserve the original sampled SeqWalk orientation for the final reported sequences only. The seed-pass sheets and intermediate progress sheets intentionally remain unchanged.
 
 ### Reader side
 
@@ -379,6 +390,7 @@ There are a few names that reflect history more than clarity.
 - `write_hybrid_search_result_xlsx()` is the shared writer for hybrid and naive runs.
 - `pre_analize_sequences.py` and `pre_analize_sequences_in_range.py` keep the older misspelling.
 - the code often says `seq` and `rc_seq`, but `SequencePairRegistry` canonicalizes pair order with `sorted_key()`. So the first tuple element is simply the first element of the canonicalized sequence pair tuple.
+- for SeqWalk-backed runs, that canonical pair order is still the internal search representation, but the final `found_pairs` sheet can additionally record the original sampled SeqWalk orientation via `origin_core` and `origin_seq_with_flank`.
 
 ## Energy modes
 

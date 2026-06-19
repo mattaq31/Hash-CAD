@@ -31,9 +31,9 @@ if __name__ == "__main__":
 
     # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
-    seqwalk_cores = design.max_size(20, 10, alphabet="ACGT")
+    seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=20,
+        length=16,
         fivep_ext="",
         threep_ext="",
         unwanted_substrings=[],
@@ -44,16 +44,15 @@ if __name__ == "__main__":
 
 
     # 3) Select subset within desired on-target energy range (based on first script’s histograms)
-    max_ontarget = -23
-    min_ontarget = -25
+    max_ontarget = -17.5
+    min_ontarget = -23
     hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
     subset, indices, _, _, _ = sc.select_subset_in_energy_range(
         sequence_pairs_object,
         energy_min=min_ontarget,
         energy_max=max_ontarget,
-        self_energy_min=-1.25,
+        self_energy_min=-1.,
         max_size=50,
-        timeout_s=20,
     )
 
     # 5) Compute on-target energies for the restricted subset

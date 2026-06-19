@@ -25,6 +25,7 @@ Main Steps:
 '''
 
 import random
+# Optional: uncomment for SeqWalk-backed runs.
 from seqwalk import design
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
@@ -36,15 +37,15 @@ if __name__ == "__main__":
 
     # 2) Generate the full pool of 7-mer handle/antihandle pairs,
     #    excluding any with 'AAAA', 'CCCC', 'GGGG', or 'TTTT'
-    #seqwalk_cores = design.max_size(10, 5, alphabet="ACGT",RCfree=True)
+    seqwalk_cores = design.max_size(16, 8, alphabet="ACGT",RCfree=True)
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=10,
+        length=16,
         fivep_ext="",
         threep_ext="",
         unwanted_substrings=[],
         apply_unwanted_to="core",
         seed=RANDOM_SEED,
-        preselected_cores=None,
+        preselected_cores=seqwalk_cores
     )
 
     # 3) Configure the NUPACK model parameters.

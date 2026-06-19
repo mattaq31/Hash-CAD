@@ -463,8 +463,8 @@ def plot_single_batch(data_root: Path, summary_path: Path | None, output_dir: Pa
 if __name__ == "__main__":
     module_dir = Path(__file__).resolve().parents[1]
     default_data_roots = [
-        module_dir / "data" / "batch_x_TTTT_sigma1p0_seed41",
-        module_dir / "data" / "batch_x______sigma1p0_seed41",
+        module_dir / "data" / "batch_x25TTTT_sigma1p0_seed41",
+        module_dir / "data" / "batch_x25_____sigma1p0_seed41",
     ]
 
     parser = argparse.ArgumentParser()

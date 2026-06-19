@@ -629,6 +629,10 @@ def hybrid_search(
     unwanted = getattr(sequence_pairs, "unwanted_substrings", None)
     apply_to = getattr(sequence_pairs, "apply_unwanted_to", None)
     random_seed = getattr(sequence_pairs, "seed", None)
+    use_seqwalk = getattr(sequence_pairs, "use_seqwalk", False)
+    seqwalk_k = getattr(sequence_pairs, "seqwalk_k", None)
+    seqwalk_rcfree = getattr(sequence_pairs, "seqwalk_rcfree", None)
+    seqwalk_core_count = getattr(sequence_pairs, "seqwalk_core_count", None)
 
     material = hf.NUPACK_PARAMS.get("MATERIAL")
     celsius = hf.NUPACK_PARAMS.get("CELSIUS")
@@ -661,6 +665,10 @@ def hybrid_search(
         f"3' extension: {threep_ext!r}\n"
         f"Excluded substrings: {unwanted}\n"
         f"Apply excluded substrings to: {apply_to}\n"
+        f"Use SeqWalk: {use_seqwalk}\n"
+        f"SeqWalk k: {seqwalk_k}\n"
+        f"SeqWalk RCfree: {seqwalk_rcfree}\n"
+        f"SeqWalk core count: {seqwalk_core_count}\n"
         f"Material: {material}\n"
         f"Temperature (C): {celsius}\n"
         f"Sodium (M): {sodium}\n"
@@ -765,6 +773,10 @@ def hybrid_search(
                 "threep_ext": threep_ext,
                 "unwanted_substrings": unwanted,
                 "apply_unwanted_to": apply_to,
+                "used_seqwalk": bool(use_seqwalk),
+                "seqwalk_k": seqwalk_k,
+                "seqwalk_rcfree": seqwalk_rcfree,
+                "seqwalk_core_count": seqwalk_core_count,
             },
             "nupack": {
                 "material": material,

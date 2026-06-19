@@ -161,3 +161,9 @@ def init_session_state():
         st.session_state.loaded_report_self_pdf_path = None
     if "loaded_report_error" not in st.session_state:
         st.session_state.loaded_report_error = None
+    if "use_seqwalk" not in st.session_state:
+        st.session_state.use_seqwalk = False
+    if "seqwalk_k" not in st.session_state:
+        st.session_state.seqwalk_k = 6
+    if "seqwalk_rcfree" not in st.session_state:
+        st.session_state.seqwalk_rcfree = True

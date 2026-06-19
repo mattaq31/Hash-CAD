@@ -26,6 +26,8 @@ Usage:
 
 import random
 from pathlib import Path
+# Optional: uncomment for SeqWalk-backed runs.
+from seqwalk import design
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.search_algorithm import hybrid_search
@@ -42,25 +44,26 @@ if __name__ == "__main__":
     RANDOM_SEED = 42
     random.seed(RANDOM_SEED)
     res_name = "ortho_16mers8p16_new_sheettest7.xlsx"
-
+    seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
         length=16,
         fivep_ext="",
         threep_ext="",
         unwanted_substrings=["GGGG","CCCC"],
         apply_unwanted_to="core",
-        seed=RANDOM_SEED
+        seed=RANDOM_SEED,
+        preselected_cores=seqwalk_cores
     )
 
 
     # 3) Define energy thresholds based on prior analysis
     hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
     hf.set_energy_type("total")
-    max_ontarget = -19.2693004082526
-    min_ontarget = -21.3125901333289
-    offtarget_limit = -8.16042278445031
-    self_energy_limit = -0.991947123099227
-    TOTAL_NUPACK_BUDGET = 3000
+    max_ontarget = -17.5
+    min_ontarget = -23
+    offtarget_limit = -10
+    self_energy_limit = -1
+    TOTAL_NUPACK_BUDGET = 10000000
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
 
     search_result = hybrid_search(
@@ -69,9 +72,9 @@ if __name__ == "__main__":
         max_ontarget,
         min_ontarget,
         self_energy_limit,
-        initial_fresh_pair_count=50,
+        initial_fresh_pair_count=900,
         total_nupack_budget=TOTAL_NUPACK_BUDGET,
-        prune_fraction=0.2,
+        prune_fraction=0.5,
         vc_max_iterations=1000,
         stop_event=None,
         return_diagnostics=True,

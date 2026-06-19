@@ -281,6 +281,7 @@ def render_search_tab(registry_factory, nupack_params):
                 selected_sequence_data = build_selected_sequence_data(
                     orthogonal_seq_pairs,
                     search_run_data["final_pair_ids"],
+                    sequence_source=st.session_state.registry,
                 )
                 verified = verify_selected_pairs(
                     selected_sequence_data,
@@ -312,7 +313,14 @@ def render_search_tab(registry_factory, nupack_params):
                         "total_nupack_calls": search_run_data["total_nupack_calls"],
                         "search_duration_s": st.session_state.search_duration,
                     },
-                    input_params={"source_kind": "on_the_fly_registry", **search_run_data["sequence_source"]},
+                    input_params={
+                        "source_kind": (
+                            "seqwalk_preselected_registry"
+                            if search_run_data["sequence_source"].get("used_seqwalk")
+                            else "on_the_fly_registry"
+                        ),
+                        **search_run_data["sequence_source"],
+                    },
                     artifact_info={"dataset_dir": None, "dataset_toml": None, "dataset_npz": None},
                     nupack_params=search_run_data["nupack"],
                     generation_data=search_run_data["generation_data"],

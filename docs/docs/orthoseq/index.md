@@ -101,6 +101,12 @@ Further down in the panel, you can set the thermodynamic parameters:
 
 If you select RNA, the sodium and magnesium concentrations are ignored because the NUPACK RNA model is defined only for 1 M sodium.
 
+At the bottom of the same panel, there is also an optional **SeqWalk** section. If **Use SeqWalk Cores** is enabled, candidate core sequences are drawn from a SeqWalk-generated code set instead of being generated as unrestricted random cores. In this mode, you can choose:
+- the SeqWalk `k` parameter
+- whether SeqWalk should enforce `RCfree`
+
+The sidebar also shows the raw number of SeqWalk cores generated for the current settings. This count is the direct SeqWalk output before OrthoSeq applies its own thermodynamic filtering during sampling.
+
 ### Selection Helper
 
 The **Selection Helper** tab is optional, but useful for interpreting thermodynamic values experimentally.
@@ -157,8 +163,6 @@ Two interactive controls are available while the search is running:
 
 After the search finishes, the app verifies the final sequence pairs directly with NUPACK, displays the final plots, and writes a timestamped XLSX report into the local `results/` folder. The same report can also be downloaded from the app as `ortho_sequences.xlsx`.
 
-Internally, the search first builds an initial orthogonal set from a moderate-size pool of sequence pairs. It then collects additional sequence pairs that are already compatible with that initial orthogonal set and performs a final graph search on the collected sequence-pair pool. This hybrid strategy is more efficient than recomputing a full conflict graph over the entire growing set at each step.
-
 ### 5. Load an existing search report
 
 The **Load Results** tab lets you upload a previously saved XLSX search report and recreate the plots without rerunning the full search.
@@ -175,7 +179,6 @@ The app then recomputes the on-target, off-target, and secondary-structure energ
 - on-target vs. off-target energy histogram
 - secondary-structure energy histogram
 
-This tab is disabled while a live search is running.
 
 
 ---
@@ -383,6 +386,10 @@ This sheet stores the run configuration as key-value pairs. Important keys inclu
 - `input.threep_ext`: fixed 3' extension
 - `input.unwanted_substrings`: excluded substrings used during sequence generation
 - `input.apply_unwanted_to`: whether the excluded substrings were applied to the core only or to the full sequence
+- `input.used_seqwalk`: whether the candidate cores came from a SeqWalk-generated code set
+- `input.seqwalk_k`: the SeqWalk `k` setting when SeqWalk mode was used
+- `input.seqwalk_rcfree`: whether SeqWalk was run with reverse-complement freedom enabled
+- `input.seqwalk_core_count`: the raw number of SeqWalk cores generated for the recorded settings
 - `search.min_ontarget` and `search.max_ontarget`: requested on-target energy range
 - `search.offtarget_limit`: requested off-target energy limit
 - `search.self_energy_limit`: requested secondary-structure energy limit
@@ -410,6 +417,13 @@ This is the final orthogonal sequence-pair set. Each row corresponds to one fina
 - verified on-target energy
 - verified secondary-structure energy for `seq`
 - verified secondary-structure energy for `rc_seq`
+
+When SeqWalk mode was used, the sheet can also include:
+
+- `origin_core`: the original sampled SeqWalk core before OrthoSeq canonicalized the sequence pair
+- `origin_seq_with_flank`: the original SeqWalk-oriented strand after adding the fixed 5' and 3' extensions
+
+These provenance columns are only attached to the final `found_pairs` sheet. They are meant for cases where the final exported sequences are used as barcodes and the original SeqWalk orientation must be preserved, even though the internal search logic still canonicalizes sequence-pair order.
 
 #### `selected_hh`, `selected_hah`, `selected_ahah`
 These are the verified off-target energy matrices for the final selected set:

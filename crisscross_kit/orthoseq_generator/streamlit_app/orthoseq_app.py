@@ -1,5 +1,6 @@
 if __name__ == "__main__":
     import html
+    import random
     from pathlib import Path
     import streamlit as st
     import streamlit.components.v1 as components
@@ -20,7 +21,7 @@ if __name__ == "__main__":
 
     # 1. Page Config
     st.set_page_config(page_title="Orthoseq Generator", layout="wide")
-    st.title("Orthoseq")
+    st.title("OrthoSeq")
 
     # 2. Session State and Logging
     init_session_state()
@@ -152,16 +153,88 @@ if __name__ == "__main__":
         label_visibility="collapsed",
     )
 
+    @st.cache_data(show_spinner=False)
+    def _cached_seqwalk_cores(length, k, rcfree, seed):
+        try:
+            from seqwalk import design
+        except ImportError as exc:
+            raise RuntimeError("SeqWalk is required for this mode. Install it with `pip install seqwalk`.") from exc
+
+        random_state = None
+        if seed is not None:
+            random_state = random.getstate()
+            random.seed(int(seed))
+
+        try:
+            return list(
+                design.max_size(
+                    int(length),
+                    int(k),
+                    alphabet="ACGT",
+                    RCfree=bool(rcfree),
+                )
+            )
+        finally:
+            if random_state is not None:
+                random.setstate(random_state)
+
+    st.sidebar.subheader("SeqWalk")
+    use_seqwalk = st.sidebar.checkbox(
+        "Use SeqWalk Cores",
+        key="use_seqwalk",
+        disabled=st.session_state.busy,
+    )
+    st.session_state.seqwalk_k = max(1, min(int(st.session_state.seqwalk_k), int(seq_length)))
+    seqwalk_k = st.sidebar.number_input(
+        "SeqWalk k",
+        min_value=1,
+        max_value=int(seq_length),
+        key="seqwalk_k",
+        disabled=(st.session_state.busy or not use_seqwalk),
+    )
+    seqwalk_rcfree = st.sidebar.checkbox(
+        "RCfree",
+        key="seqwalk_rcfree",
+        disabled=(st.session_state.busy or not use_seqwalk),
+    )
+    seqwalk_cores = None
+    seqwalk_error = None
+
+    if use_seqwalk:
+        try:
+            seqwalk_cores = _cached_seqwalk_cores(
+                length=int(seq_length),
+                k=int(seqwalk_k),
+                rcfree=bool(seqwalk_rcfree),
+                seed=int(random_seed),
+            )
+        except Exception as exc:
+            seqwalk_error = str(exc)
+            st.sidebar.error(seqwalk_error)
+        else:
+            st.sidebar.caption(f"SeqWalk cores generated: {len(seqwalk_cores)}")
+
+    st.session_state.input_invalid = not (valid_fivep and valid_threep) or seqwalk_error is not None
+
     # Registry Factory helper
     def get_registry():
-        return sc.SequencePairRegistry(
+        if use_seqwalk and seqwalk_error is not None:
+            raise RuntimeError(seqwalk_error)
+
+        registry = sc.SequencePairRegistry(
             length=seq_length,
             fivep_ext=fivep_ext,
             threep_ext=threep_ext,
             unwanted_substrings=unwanted,
             apply_unwanted_to=apply_to,
-            seed=random_seed
+            seed=random_seed,
+            preselected_cores=seqwalk_cores if use_seqwalk else None,
         )
+        registry.use_seqwalk = bool(use_seqwalk)
+        registry.seqwalk_k = int(seqwalk_k) if use_seqwalk else None
+        registry.seqwalk_rcfree = bool(seqwalk_rcfree) if use_seqwalk else None
+        registry.seqwalk_core_count = len(seqwalk_cores) if use_seqwalk and seqwalk_cores is not None else None
+        return registry
 
     def sync_nupack_params():
         hf.set_nupack_params(

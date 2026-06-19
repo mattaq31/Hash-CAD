@@ -5,6 +5,7 @@ import streamlit as st
 
 R_KCAL = 1.98720425864083e-3
 RHO_H2O = 55.14
+SELECTION_HELPER_PLOT_POINTS = 4000
 
 
 def _store_selection_helper_conc_nm():
@@ -121,7 +122,7 @@ def render_selection_helper_tab(nupack_params):
 
     if st.button("Plot", key="selection_helper_plot_assoc", disabled=st.session_state.busy):
         conc_m = conc_nm * 1e-9
-        dg_assoc = np.linspace(0.0, -40.0, 400)
+        dg_assoc = np.linspace(0.0, -40.0, SELECTION_HELPER_PLOT_POINTS)
         frac_bound = np.array([
             _fraction_bound_from_dg(dg, conc_m, temp_c) for dg in dg_assoc
         ])
@@ -168,7 +169,7 @@ def render_selection_helper_tab(nupack_params):
     )
     if st.button("Plot", key="selection_helper_plot_secondary", disabled=st.session_state.busy):
         rt = R_KCAL * (273.15 + temp_c)
-        gp_vals = np.linspace(0.0, -10.0, 400)
+        gp_vals = np.linspace(0.0, -10.0, SELECTION_HELPER_PLOT_POINTS)
         p_unpaired = np.exp(gp_vals / rt)
         p_unpaired = np.clip(p_unpaired, 0.0, 1.0)
         st.session_state.selection_helper_secondary_fig = _make_line_plot(
