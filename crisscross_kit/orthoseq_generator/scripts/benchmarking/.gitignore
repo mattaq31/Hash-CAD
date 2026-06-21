@@ -3,3 +3,4 @@ __MACOSX/
 *.png
 slurm-*.out
 slurm-*.err
+zenodo/
