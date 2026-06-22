@@ -76,6 +76,11 @@
       "category": "assembly_plates"
     },
     {
+      "name": "sw_src011_fluorescenthandles",
+      "path": "assembly_plates/sw_src011_fluorescenthandles.xlsx",
+      "category": "assembly_plates"
+    },
+    {
       "name": "P3510_SSW_cnt_patterning",
       "path": "cargo_plates/P3510_SSW_cnt_patterning.xlsx",
       "category": "cargo_plates"

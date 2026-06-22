@@ -2043,8 +2043,10 @@ limitations under the License.
 --------------------------------------------------------------------------------
 cross_file
 flutter_plugin_android_lifecycle
+path_provider
 path_provider_android
 path_provider_foundation
+path_provider_platform_interface
 url_launcher_android
 url_launcher_ios
 url_launcher_linux
@@ -6676,9 +6678,7 @@ SOFTWARE.
 --------------------------------------------------------------------------------
 flutter_lints
 google_identity_services_web
-path_provider
 path_provider_linux
-path_provider_platform_interface
 path_provider_windows
 plugin_platform_interface
 url_launcher
