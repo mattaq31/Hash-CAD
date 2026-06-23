@@ -1,0 +1,16 @@
+sequences = [
+    ["GCGTATGC", 1000],
+    ["GCATACGC", 1000],
+    ["TTTTTTTT", 100]
+]
+
+material = "dna"
+celsius = 37
+sodium = 0.05
+magnesium = 0.015
+max_complex_size = 2
+compute = ["pfunc", "mfe"]
+tube_name = "simple_binding_example"
+strand_prefix = "seq"
+
+[options]
