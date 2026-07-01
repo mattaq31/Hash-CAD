@@ -26,9 +26,9 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
           setHoverCoordinates(appState);
         }
       },
-      // flip shortcut (F key flips the seed multi-slat generator)
+      // flip shortcut (F key flips the multi-slat generator direction for slat-add and seed modes)
       SingleActivator(LogicalKeyboardKey.keyF): () {
-        if (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED') {
+        if (getActionMode(actionState) == 'Slat-Add' || (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED')) {
           appState.flipMultiSlatGenerator();
           if (hoverPosition != null) {
             setHoverCoordinates(appState);
