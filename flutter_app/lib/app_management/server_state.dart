@@ -2,7 +2,7 @@
 
 import '../grpc_client_architecture/client_entry.dart';
 import '../grpc_client_architecture/health.pbgrpc.dart';
-import 'main_design_io.dart';
+import 'design_io/design_io.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
 import '../crisscross_core/slats.dart';
 

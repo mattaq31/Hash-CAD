@@ -27,9 +27,15 @@ def handle_evolve(config_file):
     else:
         suppress_handle_array_export = False
 
+    if 'save_first' in evolution_params:
+        save_first = evolution_params['save_first']
+        del evolution_params['save_first']
+    else:
+        save_first = False
+
     evolve_manager = EvolveManager(**evolution_params, megastructure=megastructure)
 
-    evolve_manager.run_full_experiment(logging_interval, suppress_handle_array_export=suppress_handle_array_export)
+    evolve_manager.run_full_experiment(logging_interval, suppress_handle_array_export=suppress_handle_array_export, save_first=save_first)
 
 
 if __name__ == '__main__':

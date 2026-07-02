@@ -7,6 +7,7 @@ from datetime import datetime
 _precompute_library_filename = None
 
 USE_LIBRARY = False
+ENERGY_TYPE = "total"
 NUPACK_PARAMS = {
     "MATERIAL": "dna",
     "CELSIUS": 37,

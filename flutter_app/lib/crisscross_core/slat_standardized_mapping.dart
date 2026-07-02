@@ -1,6 +1,25 @@
 import 'dart:math';
 import 'parasitic_valency.dart';
 
+const Set<String> _doubleBarrelSlatTypes = {
+  'DB-L',
+  'DB-L-60',
+  'DB-L-120',
+  'DB-R',
+  'DB-R-60',
+  'DB-R-120',
+};
+
+/// Returns the compatibility keyword required for a slat staple at [position]/[side].
+///
+/// Returning `null` means the slat uses the default tube-compatible staple.
+String? getRequiredStapleCompatibility(String slatType, int position, int side) {
+  if (_doubleBarrelSlatTypes.contains(slatType) && position == 16 && (side == 2 || side == 5)) {
+    return 'db';
+  }
+  return null;
+}
+
 /// Convert a square-grid coordinate (row=x, col=y) to triangular coordinates.
 /// Python reference: convert_to_triangular(coord) -> (-y, (x+y)/2)
 /// We keep the same row/col ordering as in the Python helper.

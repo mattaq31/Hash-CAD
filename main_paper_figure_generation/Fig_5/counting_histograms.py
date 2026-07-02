@@ -7,11 +7,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from scipy.stats import spearmanr  # rank-based correlation test
 
 # ====== paths & config (edit these) ======
 # FIRST EXPORT LABELS FROM QUPATH TO GET THE DATA FOR THIS PLOT
 DATA_FOLDER = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\exp1_hamming_distance\counting_results")
 OUTPUT_DIR  = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_5\resources")
+#OUTPUT_DIR  = Path(r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\final_figures\revision\T_test_results")
 SELECTED_CONDITIONS = [24, 27, 29, 30]
 
 # scores (x positions)
@@ -241,6 +243,35 @@ def save_boxplot_svg(df_counts, score_map, output_dir):
     plt.close(fig)
 
 
+def report_spearman_test(df_counts, score_map):
+    """Report Spearman correlation between loss values and measured image counts."""
+    losses = []
+    measured_counts = []
+
+    for cond in df_counts.columns:
+        loss = score_map.get(int(cond))
+        if loss is None or np.isnan(loss):
+            continue
+        # Use every measured image count for this condition and pair it with that condition's loss.
+        values = df_counts[cond].dropna().to_numpy(dtype=float)
+        losses.extend([float(loss)] * len(values))
+        measured_counts.extend(values.tolist())
+
+    losses = np.asarray(losses, dtype=float)
+    measured_counts = np.asarray(measured_counts, dtype=float)
+
+    if losses.size < 2 or measured_counts.size < 2:
+        print("Spearman test: not enough data.")
+        return
+
+    # Spearman tests whether the monotonic ordering of loss tracks the ordering of measured counts.
+    rho, p_value = spearmanr(losses, measured_counts, nan_policy="omit")
+    print("\nSpearman test: loss vs measured structures per image")
+    print(f"n = {losses.size}")
+    print(f"rho = {rho:.4f}")
+    print(f"p = {p_value:.4g}")
+
+
 # ====== run ======
 if __name__ == "__main__":
     df_counts = load_counts_dataframe(DATA_FOLDER, SELECTED_CONDITIONS)
@@ -248,3 +279,5 @@ if __name__ == "__main__":
 
     save_histograms_per_condition(df_counts, SCORE_MAP, OUTPUT_DIR)
     save_boxplot_svg(df_counts, SCORE_MAP, OUTPUT_DIR)
+    # Print the correlation statistics after generating the figure files.
+    report_spearman_test(df_counts, SCORE_MAP)

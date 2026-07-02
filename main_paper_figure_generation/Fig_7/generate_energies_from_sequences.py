@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # 2) Optional: Enable precomputed energy cache for faster performance
     #hf.choose_precompute_library("my_new_cache.pkl")
     hf.USE_LIBRARY = False  # Set to True to use the cache, False to force recomputation
-
+    hf.ENERGY_TYPE = "totalu"
 
     on_e = sc.compute_ontarget_energies(sequence_pairs)
     pickle.dump(on_e,open(outpath + "on_e_new64.pkl","wb"))

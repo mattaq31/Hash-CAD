@@ -5,6 +5,7 @@ import 'dart:math';
 
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/cargo.dart';
+import '../crisscross_core/fluorophore.dart';
 import '../crisscross_core/seed.dart';
 import '../crisscross_core/handle_plates.dart';
 import '../echo_and_experimental_helpers/plate_layout_state.dart';
@@ -25,6 +26,8 @@ import 'design_state_mixins/design_state_cargo_mixin.dart';
 import 'design_state_mixins/design_state_seed_mixin.dart';
 import 'design_state_mixins/design_state_plate_mixin.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
+import 'design_state_mixins/design_state_grouping_mixin.dart';
+import 'design_state_mixins/design_state_fluorophore_mixin.dart';
 
 /// Finds the first free integer key in a map
 int firstFreeKey(Map<int, String> map, {int start = 1}) {
@@ -92,7 +95,9 @@ class DesignState extends ChangeNotifier
         DesignStateCargoMixin,
         DesignStateSeedMixin,
         DesignStatePlateMixin,
-        DesignStateHandleLinkMixin {
+        DesignStateHandleLinkMixin,
+        DesignStateGroupingMixin,
+        DesignStateFluorophoreMixin {
   // Grid and coordinate system constants
   @override
   final double gridSize = 10.0; // do not change
@@ -265,7 +270,13 @@ class DesignState extends ChangeNotifier
   };
 
   @override
+  Map<String, Fluorophore> fluorophorePalette = {};
+
+  @override
   PlateLibrary plateStack = PlateLibrary();
+
+  @override
+  String? plateCompatibilityWarning;
 
   /// Persisted echo plate layout state — populated on import, consumed by echo window on init.
   PlateLayoutState? echoPlateLayoutState;
@@ -339,6 +350,7 @@ class DesignState extends ChangeNotifier
     gridMode = value;
     clearAll();
     undoStack = SlatUndoStack();
+    saveUndoState();
     notifyListeners();
   }
 

@@ -15,19 +15,24 @@ mixin DesignStatePhantomMixin on ChangeNotifier, DesignStateContract {
       Slat slat = referenceSlats[iterID]!;
       Map<int, Offset> coords = slatCoordinates[iterID]!;
 
-      // assigns a new key from the reference slat's phantom map
-      if (!phantomMap.containsKey(slat.id)) phantomMap[slat.id] = {};
-      int phantomKey = firstFreeKey(phantomMap[slat.id]!);
+      // If the reference slat is itself a phantom, resolve to the true parent
+      String trueParentId = slat.phantomParent ?? slat.id;
+      Slat trueParent = slats[trueParentId] ?? slat;
 
-      // creates a new slat with a new ID, copies handles and then links it to the original slat via phantomID
-      slats['${slat.id}-P$phantomKey'] = Slat(phantomKey, '${slat.id}-P$phantomKey', layer, coords,
-          uniqueColor: slat.uniqueColor, slatType: slat.slatType, phantomParent: slat.id);
-      slats['${slat.id}-P$phantomKey']!.copyHandlesFromSlat(slat);
-      phantomMap[slat.id]![phantomKey] = '${slat.id}-P$phantomKey';
+      // assigns a new key from the true parent's phantom map
+      if (!phantomMap.containsKey(trueParentId)) phantomMap[trueParentId] = {};
+      int phantomKey = firstFreeKey(phantomMap[trueParentId]!);
+
+      // creates a new slat with a new ID, copies handles and then links it to the true parent via phantomParent
+      String newId = '$trueParentId-P$phantomKey';
+      slats[newId] = Slat(phantomKey, newId, layer, coords,
+          uniqueColor: trueParent.uniqueColor, slatType: trueParent.slatType, phantomParent: trueParentId);
+      slats[newId]!.copyHandlesFromSlat(trueParent);
+      phantomMap[trueParentId]![phantomKey] = newId;
 
       // add the slat to the list by adding a map of all coordinate offsets to the slat ID
       occupiedGridPoints.putIfAbsent(layer, () => {});
-      occupiedGridPoints[layer]?.addAll({for (var offset in coords.values) offset: '${slat.id}-P$phantomKey'});
+      occupiedGridPoints[layer]?.addAll({for (var offset in coords.values) offset: newId});
     }
 
     hammingValueValid = false;

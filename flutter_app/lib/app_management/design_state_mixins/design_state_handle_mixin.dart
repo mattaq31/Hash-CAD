@@ -5,8 +5,7 @@ import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/parasitic_valency.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
 import '../../crisscross_core/common_utilities.dart' hide getLayerByOrder;
-import '../main_design_io.dart';
-import 'design_state_handle_link_mixin.dart';
+import '../design_io/design_io.dart';
 import 'design_state_contract.dart';
 
 /// Mixin containing handle assignment and assembly handle operations for DesignState
@@ -344,6 +343,7 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
 
   @override
   void deleteSelectedHandles(String slatSide){
+    if (selectedAssemblyPositions.isEmpty) return;
     int integerSlatSide = getSlatSideFromLayer(layerMap, selectedLayerKey, slatSide);
     for (var coord in selectedAssemblyPositions) {
       var slat = slats[occupiedGridPoints[selectedLayerKey]?[coord]]!;
@@ -360,9 +360,30 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
   void moveAssemblyHandle(Map<Offset, Offset> coordinateTransferMap, String layerID, String slatSide) {
     int integerSlatSide = getSlatSideFromLayer(layerMap, layerID, slatSide);
 
+    void applyMovedFluorophore(HandleKey key, String? fluorophoreName) {
+      final slat = slats[key.$1];
+      if (slat == null) return;
+
+      final baseId = slat.phantomParent ?? key.$1;
+      final affectedSlatIds = [baseId, ...phantomMap[baseId]?.values ?? const <String>[]];
+      for (var affectedSlatId in affectedSlatIds) {
+        final affectedSlat = slats[affectedSlatId];
+        if (affectedSlat == null) continue;
+
+        final handle = getHandleDict(affectedSlat, key.$3)[key.$2];
+        if (handle == null) continue;
+
+        if (fluorophoreName == null) {
+          handle.remove('fluorophore');
+        } else {
+          handle['fluorophore'] = fluorophoreName;
+        }
+      }
+    }
+
     // PHASE 1: Collect handle data and link keys before changes
     List<({Offset fromCoord, Offset toCoord, Slat slatDonor, int donorPosition,
-           Slat slatReceiver, int receiverPosition, String handleValue, String handleCategory,
+           Slat slatReceiver, int receiverPosition, String handleValue, String handleCategory, String? fluorophore,
            HandleKey oldKey, HandleKey newKey})> moveOperations = [];
 
     for (var fromCoord in coordinateTransferMap.keys) {
@@ -378,6 +399,7 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
 
       String handleValue = handleDict[donorPosition]!['value'].toString();
       String handleCategory = handleDict[donorPosition]!['category'];
+      String? fluorophore = handleDict[donorPosition]!['fluorophore'] as String?;
       Offset toCoord = coordinateTransferMap[fromCoord]!;
 
       if (toCoord == fromCoord) continue; // no movement
@@ -390,14 +412,14 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       int receiverPosition = slatReceiver.slatCoordinateToPosition[toCoord]!;
 
       // Track old and new keys for link manager update
-      HandleKey oldKey = (slatDonor.id, donorPosition, integerSlatSide);
-      HandleKey newKey = (slatReceiver.id, receiverPosition, integerSlatSide);
+      HandleKey oldKey = (slatDonor.phantomParent ?? slatDonor.id, donorPosition, integerSlatSide);
+      HandleKey newKey = (slatReceiver.phantomParent ?? slatReceiver.id, receiverPosition, integerSlatSide);
 
       moveOperations.add((
         fromCoord: fromCoord, toCoord: toCoord,
         slatDonor: slatDonor, donorPosition: donorPosition,
         slatReceiver: slatReceiver, receiverPosition: receiverPosition,
-        handleValue: handleValue, handleCategory: handleCategory,
+        handleValue: handleValue, handleCategory: handleCategory, fluorophore: fluorophore,
         oldKey: oldKey, newKey: newKey,
       ));
     }
@@ -416,6 +438,7 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
     // PHASE 4: Add to destination
     for (var op in moveOperations) {
       smartSetHandle(op.slatReceiver, op.receiverPosition, integerSlatSide, op.handleValue, op.handleCategory);
+      applyMovedFluorophore(op.newKey, op.fluorophore);
     }
 
     hammingValueValid = false;
@@ -576,6 +599,20 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       }
     }
 
+    // Backup fluorophore assignments before clearing handles
+    final fluorophoreBackup = <String, Map<int, Map<int, String>>>{};
+    for (var slat in slats.values) {
+      for (var side in [2, 5]) {
+        final handleDict = side == 2 ? slat.h2Handles : slat.h5Handles;
+        for (var entry in handleDict.entries) {
+          final fluor = entry.value['fluorophore'] as String?;
+          if (fluor != null) {
+            fluorophoreBackup.putIfAbsent(slat.id, () => {}).putIfAbsent(side, () => {})[entry.key] = fluor;
+          }
+        }
+      }
+    }
+
     // Clear existing assembly handles
     for (var slat in slats.values) {
       slat.clearAssemblyHandles();
@@ -591,6 +628,20 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
       handleArray = generateRandomSlatHandles(slatArray, uniqueHandleCount, seed: seed, additionalPositions: additionalPositions);
     }
     assignAssemblyHandleArray(handleArray, minPos, maxPos);
+
+    // Restore fluorophore assignments to handles that still exist
+    for (var entry in fluorophoreBackup.entries) {
+      final slat = slats[entry.key];
+      if (slat == null) continue;
+      for (var sideEntry in entry.value.entries) {
+        final handleDict = sideEntry.key == 2 ? slat.h2Handles : slat.h5Handles;
+        for (var posEntry in sideEntry.value.entries) {
+          if (handleDict.containsKey(posEntry.key)) {
+            handleDict[posEntry.key]!['fluorophore'] = posEntry.value;
+          }
+        }
+      }
+    }
 
     // assigns all remaining handles that were out of bounds of the handle array
     if (allAvailableHandles && outOfBoundsPositions != null && outOfBoundsPositions.isNotEmpty) {

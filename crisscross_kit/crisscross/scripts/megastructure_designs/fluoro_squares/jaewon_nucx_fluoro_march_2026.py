@@ -1,0 +1,50 @@
+import os
+
+from crisscross.core_functions.megastructure_composition import convert_slats_into_echo_commands
+from crisscross.core_functions.megastructures import Megastructure
+from crisscross.helper_functions import create_dir_if_empty
+from crisscross.helper_functions.lab_helper_sheet_generation import prepare_all_standard_sheets
+from crisscross.plate_mapping import get_cutting_edge_plates, get_plateclass
+from crisscross.plate_mapping.plate_constants import seed_slat_purification_handles, cargo_plate_folder
+
+########## CONFIG
+experiment_folder = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Crisscross Designs/Matthew/fluoro_nucx_basic_square'
+echo_folder = os.path.join(experiment_folder, 'echo')
+lab_helper_folder = os.path.join(experiment_folder, 'lab_helpers')
+create_dir_if_empty(echo_folder, lab_helper_folder)
+
+design_file = os.path.join(experiment_folder, 'fluoro_x_square.xlsx')
+
+########## LOADING DESIGNS
+mega = Megastructure(import_design_file=design_file)
+
+generate_echo = True
+main_plates = get_cutting_edge_plates()
+src_004 = get_plateclass('HashCadPlate', seed_slat_purification_handles, cargo_plate_folder)
+
+mega.patch_placeholder_handles(main_plates + (src_004,))
+mega.patch_flat_staples(main_plates[0])  # this plate contains only flat staples
+
+valency_results = mega.get_parasitic_interactions()
+print(f'Parasitic interactions for megastructure - Max valency: {valency_results["worst_match_score"]}, effective valency: {valency_results["mean_log_score"]}, similarity score: {valency_results["similarity_score"]}')
+
+if generate_echo:
+    ref_vol = 75
+    commands_barrels = convert_slats_into_echo_commands(slat_dict=mega.slats,
+                                                        destination_plate_name=f'jaewon_fluoroX',
+                                                        reference_transfer_volume_nl=ref_vol,
+                                                        output_folder=echo_folder,
+                                                        center_only_well_pattern=True,
+                                                        plate_viz_type='barcode',
+                                                        normalize_volumes=True,
+                                                        output_filename=f'jaewon_fluoroX_echo.csv')
+
+    prepare_all_standard_sheets(mega.slats, os.path.join(lab_helper_folder, f'jaewon_fluoroX.xlsx'),
+                                reference_single_handle_volume=ref_vol,
+                                reference_single_handle_concentration=500,
+                                echo_sheet=commands_barrels,
+                                handle_mix_ratio=15,
+                                slat_mixture_volume=50,
+                                peg_concentration=3,
+                                split_core_staple_pools=True,
+                                peg_groups_per_layer=2)

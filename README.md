@@ -28,7 +28,7 @@
 
 <p align="center">
 <a href="https://github.com/mattaq31/Hash-CAD/releases">
-  <img src="https://img.shields.io/github/v/tag/mattaq31/Hash-CAD?label=%23-CAD%20Latest&logo=flutter&logoColor=white&style=flat">
+  <img src="https://img.shields.io/github/v/tag/mattaq31/Hash-CAD?filter=v*&label=%23-CAD%20Latest&logo=flutter&logoColor=white&style=flat">
 </a>
 <a href="https://github.com/mattaq31/Hash-CAD/actions/workflows/flutter-web-deploy.yml">
   <img src="https://img.shields.io/github/actions/workflow/status/mattaq31/Hash-CAD/flutter-web-deploy.yml?label=Web&style=flat&logo=flutter&logoColor=white" alt="Web CI Status">

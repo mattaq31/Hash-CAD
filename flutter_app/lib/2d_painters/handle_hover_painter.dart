@@ -56,8 +56,8 @@ class HandleHoverPainter extends CustomPainter {
     }
 
     if (hoverPosition != null && cargoArrayPoints.isNotEmpty) {
-      // Check if we're in assembly mode (panelMode == 1)
-      bool isAssemblyMode = actionState.panelMode == 1;
+      // Check if we're in assembly mode (panelMode == 2)
+      bool isAssemblyMode = actionState.panelMode == 2;
 
       if (!isAssemblyMode && appState.cargoAdditionType == 'SEED') {
         // special seed drawing supersedes normal cargo drawing

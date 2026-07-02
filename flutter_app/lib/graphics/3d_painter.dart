@@ -14,6 +14,7 @@ import '../2d_painters/helper_functions.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
+import '../app_management/action_state.dart';
 import '../main_windows/floating_switches.dart';
 import './custom_3d_meshes.dart';
 import '../crisscross_core/seed.dart';
@@ -290,10 +291,10 @@ class ThreeDisplay extends StatefulWidget {
   const ThreeDisplay({super.key});
 
   @override
-  State<ThreeDisplay> createState() => _ThreeDisplay();
+  State<ThreeDisplay> createState() => ThreeDisplayState();
 }
 
-class _ThreeDisplay extends State<ThreeDisplay> {
+class ThreeDisplayState extends State<ThreeDisplay> {
   late three.ThreeJS threeJs;
   bool isSetupComplete = false;
   double VFOV = 70;
@@ -656,7 +657,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
   }
 
   /// Adds, deletes or updates all handles for a slat (both H2 and H5)
-  void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette) {
+  void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette, {Color? slatResolvedColor}) {
     final handleName = '${slat.id}-handle-$handlePosition-$handleSide';
 
     if (!handleIDs.containsKey(slat.id)) {
@@ -686,7 +687,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     bool isBlocked = handleType.contains('ASSEMBLY') && cargoName == '0';
     if (existingHandle && !isBlocked && (assemblyHandleView && handleType.contains('ASSEMBLY') || cargoHandleView && handleType == 'CARGO' || seedHandleView && handleType == 'SEED')) {
-      Color color = handleType.contains('ASSEMBLY') ? layerMap[slat.layer]!['color']: handleType == 'CARGO' ? cargoPalette[cargoName]!.color: cargoPalette['SEED']!.color;
+      Color color = handleType.contains('ASSEMBLY') ? (slatResolvedColor ?? layerMap[slat.layer]!['color']): handleType == 'CARGO' ? cargoPalette[cargoName]!.color: cargoPalette['SEED']!.color;
       positionHandleInstance(slat.id, handleName, position, color, order, topSide, handleSide, handleType, handleInstanceExists);
     } else if (handleInstanceExists){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
@@ -697,7 +698,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
 
   /// Adds, updates or removes assembly handles from the 3D scene based on the current state of the slat.
-  void manageHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette) {
+  /// [slatResolvedColor] is the slat's display color (respects color mode), used for assembly handles.
+  void manageHandles(Slat baseSlat, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette, {Color? slatResolvedColor}) {
     final topSide = (layerMap[baseSlat.layer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
     final color = layerMap[baseSlat.layer]?['color'].value & 0x00FFFFFF;
     final order = layerMap[baseSlat.layer]?['order'].toDouble();
@@ -711,7 +713,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         topSide,
         'H2',
         layerMap,
-        cargoPalette
+        cargoPalette,
+        slatResolvedColor: slatResolvedColor,
       );
       handleAssembly(
         baseSlat,
@@ -722,15 +725,23 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         topSide,
         'H5',
         layerMap,
-        cargoPalette
+        cargoPalette,
+        slatResolvedColor: slatResolvedColor,
       );
     }
   }
 
   /// Adds all provided slats into the 3D scene, updating existing slats if necessary.
-  void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette){
+  void manageSlats(List<Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette,
+      ActionState actionState, String selectedLayerKey, {Color? Function(String)? groupColorResolver}) {
 
     if (!isSetupComplete) return;
+
+    slats = slats.where((slat) {
+      if (layerMap[slat.layer]?['hidden'] == true) return false;
+      if (actionState.isolateSlatLayerView && slat.layer != selectedLayerKey) return false;
+      return true;
+    }).toList();
 
     Set localIDs = slats.map((slat) => slat.id).toSet();
 
@@ -744,7 +755,15 @@ class _ThreeDisplay extends State<ThreeDisplay> {
 
     for (var slat in slats) {
 
-      Color mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
+      Color mainColor;
+      switch (actionState.slatColorMode) {
+        case SlatColorMode.natural:
+          mainColor = slat.uniqueColor ?? layerMap[slat.layer]?['color'];
+        case SlatColorMode.layer:
+          mainColor = layerMap[slat.layer]?['color'];
+        case SlatColorMode.group:
+          mainColor = groupColorResolver?.call(slat.id) ?? layerMap[slat.layer]?['color'];
+      }
       double slatAngle;
 
       if (slat.slatType == 'tube') {
@@ -803,11 +822,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
               finalX, finalY);
         }
       }
-      manageHandles(slat, layerMap, cargoPalette);
+      manageHandles(slat, layerMap, cargoPalette, slatResolvedColor: mainColor);
     }
   }
 
-  void manageSeeds(Map<(String, String, Offset), Seed> seedRoster, Map<String, Map<String, dynamic>> layerMap, Color color){
+  void manageSeeds(Map<(String, String, Offset), Seed> seedRoster, Map<String, Map<String, dynamic>> layerMap, Color color,
+      ActionState actionState, String selectedLayerKey) {
     if (!isSetupComplete) return;
 
     if (gridMode != lastGridMode){
@@ -817,6 +837,12 @@ class _ThreeDisplay extends State<ThreeDisplay> {
       lastGridMode = gridMode;
       seedIDs.clear();
     }
+
+    seedRoster = Map.fromEntries(seedRoster.entries.where((seed) {
+      if (layerMap[seed.key.$1]?['hidden'] == true) return false;
+      if (actionState.isolateSlatLayerView && seed.key.$1 != selectedLayerKey) return false;
+      return true;
+    }));
 
     Set localIDs = seedRoster.keys.toSet();
     Set removedIDs = seedIDs.difference(localIDs);
@@ -1054,8 +1080,9 @@ class _ThreeDisplay extends State<ThreeDisplay> {
         }
       }
 
-      manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
-      manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color);
+      final actionState = context.watch<ActionState>();
+      manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette, actionState, appState.selectedLayerKey, groupColorResolver: appState.resolveGroupColor);
+      manageSeeds(appState.seedRoster, appState.layerMap, appState.cargoPalette['SEED']!.color, actionState, appState.selectedLayerKey);
 
       if (hoverView) {
         manageHoverPreview(appState);
@@ -1123,7 +1150,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                         onChanged: (val) => setState(() {
                           helixBundleView = val;
                           clearScene();
-                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette, actionState, appState.selectedLayerKey, groupColorResolver: appState.resolveGroupColor);
                         }),
                       ),
                       buildFabIcon(
@@ -1134,7 +1161,7 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                         onChanged: (val) => setState(() {
                           slatTipExtendView = val;
                           clearScene();
-                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette);
+                          manageSlats(appState.slats.values.toList(), appState.layerMap, appState.cargoPalette, actionState, appState.selectedLayerKey, groupColorResolver: appState.resolveGroupColor);
                         }),
                       ),
                       buildFabIcon(
@@ -1185,6 +1212,8 @@ class _ThreeDisplay extends State<ThreeDisplay> {
                     ],
                   ) : const SizedBox.shrink(),
                 ),
+                buildColorModeButton(context: context, actionState: actionState),
+                const SizedBox(width: 8),
                 FloatingActionButton.small(
                   foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   backgroundColor: Theme.of(context).colorScheme.primary,

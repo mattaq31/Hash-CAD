@@ -213,7 +213,7 @@ class _GridAndCanvasState extends State<GridAndCanvas>
               backgroundColor: Theme.of(context).colorScheme.primary,
               child: Icon(Icons.camera),
               onPressed: () async {
-                final options = await showSvgExportDialog(context, actionState);
+                final options = await showSvgExportDialog(context, actionState, hasGroupConfig: appState.activeGroupConfig != null);
                 if (options != null) {
                   exportSlatsToSvg(
                     slats: appState.slats.values.toList(),

@@ -312,6 +312,14 @@ class EvolveManager:
         self.next_candidates = candidate_handle_arrays
 
 
+    def _save_handle_array_to_excel(self, folder, filename):
+        writer = pd.ExcelWriter(os.path.join(folder, filename), engine='xlsxwriter')
+        for layer_index in range(self.handle_array.shape[-1]):
+            df = pd.DataFrame(self.handle_array[..., layer_index])
+            df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
+            writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0], df.shape[1] - 1, self.excel_conditional_formatting)
+        writer.close()
+
     def export_results(self, main_folder_path=None, generate_unique_folder_name=True, parameter_export=False, suppress_handle_array_export=False):
 
         if main_folder_path:
@@ -385,20 +393,7 @@ class EvolveManager:
 
 
         if not suppress_handle_array_export:
-            # prepare a checkpoint of the current best handle array
-            writer = pd.ExcelWriter(
-                os.path.join(output_folder, f'best_handle_array_generation_{self.current_generation}.xlsx'),
-                engine='xlsxwriter')
-
-            # prints out handle dataframes in standard format
-            for layer_index in range(self.handle_array.shape[-1]):
-                df = pd.DataFrame(self.handle_array[..., layer_index])
-                df.to_excel(writer, sheet_name=f'handle_interface_{layer_index + 1}', index=False, header=False)
-                # Apply conditional formatting for easy color-based identification
-                writer.sheets[f'handle_interface_{layer_index + 1}'].conditional_format(0, 0, df.shape[0],
-                                                                                        df.shape[1] - 1,
-                                                                                        self.excel_conditional_formatting)
-            writer.close()
+            self._save_handle_array_to_excel(output_folder, f'best_handle_array_generation_{self.current_generation}.xlsx')
 
         if parameter_export:
             full_parameter_set = {
@@ -420,11 +415,12 @@ class EvolveManager:
 
             toml.dump(full_parameter_set, open(os.path.join(output_folder, 'evolution_config.toml'), 'w'))
 
-    def run_full_experiment(self, logging_interval=10, suppress_handle_array_export=False):
+    def run_full_experiment(self, logging_interval=10, suppress_handle_array_export=False, save_first=False):
         """
         Runs a full evolution experiment.
         :param logging_interval: The frequency at which logs should be written to file (including the best hamming array file).
         :param suppress_handle_array_export: If true, the best handle array will not be exported at each logging interval, saving space.
+        :param save_first: If true, saves the best handle array from the initial random population as 'best_handle_array_initial.xlsx'.
         """
 
         if self.log_tracking_directory is None:
@@ -434,6 +430,12 @@ class EvolveManager:
             with tqdm(total=self.max_evolution_generations - self.current_generation, desc='Evolution Progress', miniters=self.progress_bar_update_iterations) as pbar:
                 for index, generation in enumerate(range(self.current_generation, self.max_evolution_generations)):
                     self.single_evolution_step()
+
+                    if save_first and index == 0:
+                        create_dir_if_empty(self.log_tracking_directory)
+                        self._save_handle_array_to_excel(self.log_tracking_directory, 'best_handle_array_initial.xlsx')
+                        save_first = False  # only save once
+
                     if (index+1) % logging_interval == 0:
                         self.export_results(suppress_handle_array_export=suppress_handle_array_export)
 

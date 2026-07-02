@@ -48,6 +48,7 @@ void main() {
     test('toExcelString/fromExcelString round-trip', () {
       const config = WellConfig(ratio: 20, volume: 100, scaffoldConc: 75);
       final serialized = config.toExcelString();
+      expect(serialized, 'r20.0_v100.0_sc75.0');
       final restored = WellConfig.fromExcelString(serialized);
       expect(restored, isNotNull);
       expect(restored!.ratio, 20);
@@ -61,7 +62,8 @@ void main() {
 
     test('fromExcelString returns null for malformed input', () {
       expect(WellConfig.fromExcelString('abc'), isNull);
-      expect(WellConfig.fromExcelString('1_s2'), isNull); // only 2 parts
+      expect(WellConfig.fromExcelString('r_v_sc'), isNull);
+      expect(WellConfig.fromExcelString('15.0_s50.0_s50.0'), isNull);
     });
 
     test('copyWith preserves unset fields', () {

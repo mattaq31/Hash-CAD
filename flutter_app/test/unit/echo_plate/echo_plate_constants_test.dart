@@ -130,6 +130,47 @@ void main() {
       expect(result.exceedsVolume, isFalse);
     });
 
+    test('manual placeholder does NOT trigger incomplete', () {
+      final slat = Slat(1, 'slat-1', 'A', createTestSlatCoordinates(const Offset(0, 0)));
+      slat.setPlaceholderHandle(1, 2, 'val', 'ASSEMBLY');
+
+      final result = wellWarningState(slat, const WellConfig(), manualPositions: {(2, 1)});
+      expect(result.incomplete, isFalse);
+    });
+
+    test('non-manual placeholder still triggers incomplete', () {
+      final slat = Slat(1, 'slat-1', 'A', createTestSlatCoordinates(const Offset(0, 0)));
+      slat.setPlaceholderHandle(1, 2, 'val', 'ASSEMBLY');
+
+      final result = wellWarningState(slat, const WellConfig(), manualPositions: {(5, 3)});
+      expect(result.incomplete, isTrue);
+    });
+
+    test('mixed manual and non-manual placeholders → incomplete', () {
+      final slat = Slat(1, 'slat-1', 'A', createTestSlatCoordinates(const Offset(0, 0)));
+      slat.setPlaceholderHandle(1, 2, 'val', 'ASSEMBLY');
+      slat.setPlaceholderHandle(2, 2, 'val', 'ASSEMBLY');
+
+      final result = wellWarningState(slat, const WellConfig(), manualPositions: {(2, 1)});
+      expect(result.incomplete, isTrue);
+    });
+
+    test('all placeholders manual → volume check proceeds', () {
+      final slat = Slat(1, 'slat-1', 'A', createTestSlatCoordinates(const Offset(0, 0)));
+      slat.setPlaceholderHandle(1, 2, 'val', 'ASSEMBLY');
+      // Add high-volume handles to trigger exceedsVolume
+      for (int i = 2; i <= 32; i++) {
+        slat.setHandle(i, 2, 'ATCG', 'A1', 'Plate_1', 'val', 'ASSEMBLY', 25);
+      }
+      for (int i = 1; i <= 32; i++) {
+        slat.setHandle(i, 5, 'ATCG', 'A1', 'Plate_1', 'val', 'ASSEMBLY', 25);
+      }
+
+      final result = wellWarningState(slat, const WellConfig(), manualPositions: {(2, 1)});
+      expect(result.incomplete, isFalse);
+      expect(result.exceedsVolume, isTrue);
+    });
+
     test('boundary: exactly echoMaxWellVolumeNl does NOT trigger', () {
       final slat = Slat(1, 'slat-1', 'A', createTestSlatCoordinates(const Offset(0, 0)));
       // We need exactly 25000 nL total. echoRoundedVolumeNl(37.5, conc) per handle.

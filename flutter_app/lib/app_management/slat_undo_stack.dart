@@ -1,8 +1,10 @@
 import '../crisscross_core/slats.dart';
 import 'package:flutter/material.dart';
 import '../crisscross_core/cargo.dart';
+import '../crisscross_core/fluorophore.dart';
 import '../crisscross_core/seed.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
+import 'design_state_mixins/design_state_grouping_mixin.dart';
 
 class DesignSaveState {
   final Map<String, Slat> slats;
@@ -10,11 +12,14 @@ class DesignSaveState {
   final Map<String, Map<String, dynamic>> layerMap;
   final Map<String, dynamic> layerMetaData;
   final Map<String, Cargo> cargoPalette;
+  final Map<String, Fluorophore> fluorophorePalette;
   final Map<String, Map<Offset, String>> occupiedCargoPoints;
   final Map<(String, String, Offset), Seed> seedRoster;
   final Map<String, Map<int, String>> phantomMap;
   final HandleLinkManager assemblyLinkManager;
   final String gridMode;
+  final Map<String, GroupConfiguration> groupConfigurations;
+  final String? activeGroupConfigId;
 
   DesignSaveState({
     required this.slats,
@@ -22,11 +27,14 @@ class DesignSaveState {
     required this.layerMap,
     required this.layerMetaData,
     required this.cargoPalette,
+    required this.fluorophorePalette,
     required this.occupiedCargoPoints,
     required this.seedRoster,
     required this.phantomMap,
     required this.assemblyLinkManager,
     required this.gridMode,
+    required this.groupConfigurations,
+    required this.activeGroupConfigId,
   });
 
   /// Deep copy constructor
@@ -45,6 +53,9 @@ class DesignSaveState {
       cargoPalette: {
         for (var e in cargoPalette.entries) e.key: e.value // copy() if needed
       },
+      fluorophorePalette: {
+        for (var e in fluorophorePalette.entries) e.key: e.value
+      },
       occupiedCargoPoints: {
         for (var e in occupiedCargoPoints.entries) e.key: Map.from(e.value)
       },
@@ -56,7 +67,31 @@ class DesignSaveState {
       },
       assemblyLinkManager: assemblyLinkManager.copy(),
       gridMode: gridMode,
+      groupConfigurations: _copyGroupConfigurations(groupConfigurations),
+      activeGroupConfigId: activeGroupConfigId,
     );
+  }
+
+  /// Deep copies the full group configuration hierarchy.
+  static Map<String, GroupConfiguration> _copyGroupConfigurations(Map<String, GroupConfiguration> configs) {
+    return {
+      for (var e in configs.entries)
+        e.key: GroupConfiguration(
+          id: e.value.id,
+          name: e.value.name,
+          nextGroupNumber: e.value.nextGroupNumber,
+          groups: {
+            for (var g in e.value.groups.entries)
+              g.key: SlatGroup(
+                id: g.value.id,
+                name: g.value.name,
+                color: g.value.color,
+                slatIds: Set.from(g.value.slatIds),
+              )
+          },
+          slatToGroup: Map.from(e.value.slatToGroup),
+        )
+    };
   }
 }
 

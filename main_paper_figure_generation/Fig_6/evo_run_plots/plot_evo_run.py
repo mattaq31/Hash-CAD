@@ -5,7 +5,7 @@ import csv
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import LogLocator, LogFormatter
+import pickle
 from matplotlib.ticker import LogLocator, LogFormatterMathtext
 
 # ====== mm helpers ======
@@ -218,13 +218,7 @@ def compute_scores_from_hist(data, fudge_dG, start_match=0, scale_const=126.0):
     return -np.log(avg) / fudge_dG
 
 
-def plot_scores_overview(
-    all_scores,
-    title="Score vs Generation",
-    output_svg=None,
-    x_left=1.0,
-    colors=None,
-):
+def plot_scores_overview(all_scores, title="Score vs Generation", output_svg=None, x_left=1.0, colors=None,):
     """
     Plot multiple score arrays (one per key in all_scores) on a shared log–x scale.
 
@@ -312,122 +306,147 @@ def plot_scores_overview(
 
 # ====== run ======
 if __name__ == "__main__":
-    # for score now called loss
+
+    # ---- file paths (edit these for your machine) ----
+    # EVO_RUNS_DIR = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs"
+    EVO_RUNS_DIR = '/Users/matt/Partners HealthCare Dropbox/Matthew Aquilina/Origami Crisscross Team Docs/Papers/hash_cad/evolution_runs/figure_4_example_runs/evo_runs'
+    # OUTPUT_DIR = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6\resources"
+    OUTPUT_DIR = '/Users/matt/Desktop'
+
+    BIRD_CSV = os.path.join(EVO_RUNS_DIR, "bird_long_fast", "match_histograms.csv")
+    SUNFLOWER_CSV = os.path.join(EVO_RUNS_DIR, "sunflower_long_fast", "match_histograms.csv")
+    SQUARE_CSV = os.path.join(EVO_RUNS_DIR, "square_long_fast", "match_histograms.csv")
+    HEXAGON_CSV = os.path.join(EVO_RUNS_DIR, "hexagon_long", "match_histograms.csv")
+
+    # ---- plot toggles ----
+    PLOT_BIRD = False
+    PLOT_SUNFLOWER = False
+    PLOT_SQUARE = False
+    PLOT_HEXAGON = False  # not used for paper
+    PLOT_SCORES_OVERVIEW = False
+    PLOT_SCORES_OVERVIEW_SUNFLOWER_RANDOM = True
+
+    # ---- shared settings ----
     start = 0
     all_scores = {}
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\bird_long_fast\match_histograms.csv"
+    # ---- Bird ----
+    if PLOT_BIRD:
+        name = "Bird"
+        data, header = load_match_histogram(BIRD_CSV)
+        custom_colors = ["#600700", "#9f241a", "#dc482e", "#f1968f", "#f4cac8"]
+        scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+        all_scores[name] = scores
 
-    name = "Bird"
-    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name + "_valencies.svg"
+        fig, ax = plot_loglog_matches_vs_index(
+            data, header, start_match=1, end_match=10,
+            title="Elimination of Parasitic Interaction",
+            output_svg=os.path.join(OUTPUT_DIR, name + "_valencies.svg"),
+            colors=custom_colors,
+        )
+        plt.show()
 
-    data, header = load_match_histogram(CSV_PATH)
-    data_Bird = data
-    custom_colors = ["#600700", "#9f241a", "#dc482e", "#f1968f", "#f4cac8"]
-    scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+    # ---- Sunflower ----
+    if PLOT_SUNFLOWER:
+        name = "Sunflower"
+        data, header = load_match_histogram(SUNFLOWER_CSV)
+        custom_colors = ["#593f00", "#9e7300", "#d6a000", "#fbbe00", "#ffdba0"]
+        scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+        all_scores[name] = scores
 
+        fig, ax = plot_loglog_matches_vs_index(
+            data, header, start_match=1, end_match=10,
+            title="Elimination of Parasitic Interaction",
+            output_svg=os.path.join(OUTPUT_DIR, name + "_valencies.svg"),
+            colors=custom_colors,
+        )
+        plt.show()
 
-    # add scores with key Hexagon to all_scores
-    all_scores[name] = scores
+    # ---- Square ----
+    if PLOT_SQUARE:
+        name = "Square"
+        data, header = load_match_histogram(SQUARE_CSV)
+        custom_colors = ["#004455", "#0088AA", "#46bde2", "#a8dff5"]
+        scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+        all_scores[name] = scores
 
-    fig, ax = plot_loglog_matches_vs_index(
-        data,
-        header,
-        start_match=1,
-        end_match=10,
-        title="Elimination of Parasitic Interaction",
-        output_svg=OUT_SVG,
-        colors=custom_colors
-    )
-    plt.show()
+        fig, ax = plot_loglog_matches_vs_index(
+            data, header, start_match=1, end_match=10,
+            title="Elimination of Parasitic Interaction",
+            output_svg=os.path.join(OUTPUT_DIR, name + "_valencies.svg"),
+            colors=custom_colors,
+        )
+        plt.show()
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\sunflower_long_fast\match_histograms.csv"
+    # ---- Hexagon (not used for paper) ----
+    if PLOT_HEXAGON:
+        name = "Hexagon"
+        data, header = load_match_histogram(HEXAGON_CSV)
+        custom_colors = ["#004455", "#0088AA", "#00AAD4", "#55DDFF", "#AAEEFF"]
+        scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+        all_scores[name] = scores
 
-    name = "Sunflower"
-    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name + "_valencies.svg"
+        fig, ax = plot_loglog_matches_vs_index(
+            data, header, start_match=1, end_match=10,
+            title="Elimination of Parasitic Interaction",
+            output_svg=os.path.join(OUTPUT_DIR, name + "_valencies.svg"),
+            colors=custom_colors,
+        )
+        plt.show()
 
-    data, header = load_match_histogram(CSV_PATH)
-    data_sunflower = data
-    custom_colors = ["#593f00", "#9e7300", "#d6a000", "#fbbe00","#ffdba0"]
-    scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+    # ---- Scores overview ----
+    if PLOT_SCORES_OVERVIEW:
+        series_colors = ["#dc482e", "#fbbe00", "#46bde2"]
 
+        fig, ax = plot_scores_overview(
+            all_scores,
+            title="Loss Optimization",
+            output_svg=os.path.join(OUTPUT_DIR, "scores_overview.svg"),
+            x_left=1.0,
+            colors=series_colors,
+        )
+        plt.show()
 
-    # add scores with key Hexagon to all_scores
-    all_scores[name] = scores
+    # ---- Scores overview ----
+    if PLOT_SCORES_OVERVIEW_SUNFLOWER_RANDOM:
+        series_colors = ["#fbbe00", "#46bde2"]
 
-    fig, ax = plot_loglog_matches_vs_index(
-        data,
-        header,
-        start_match=1,
-        end_match=10,
-        title="Elimination of Parasitic Interaction",
-        output_svg=OUT_SVG,
-        colors=custom_colors
-    )
-    plt.show()
+        name = "Evolutionary Algorithm"
+        data, header = load_match_histogram(SUNFLOWER_CSV)
+        custom_colors = ["#593f00", "#9e7300", "#d6a000", "#fbbe00", "#ffdba0"]
+        scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+        all_scores[name] = scores
 
-    CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\square_long_fast\match_histograms.csv"
+        # truncate algorithm trace to first 2000 generations (2000 x 50 = 100k evaluations)
+        all_scores[name] = scores[:2000]
 
-    name = "Square"
-    OUT_SVG = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name + "_valencies.svg"
+        with open('large_scale_sunflower_random_generation_scores_64.pkl', "rb") as f:
+            random_sunflower_gen = np.array(pickle.load(f))
 
-    data, header = load_match_histogram(CSV_PATH)
-    data_square = data
-    custom_colors = ["#004455", "#0088AA", "#46bde2", "#a8dff5"]
-    scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
+        # transform random trace: cumulative best every 50 samples (matching 50 candidates/generation)
+        cumulative_min = np.minimum.accumulate(random_sunflower_gen)
+        all_scores['Random Generation'] = cumulative_min[49::50]  # take value at end of each 50-sample window
 
-    # add scores with key Hexagon to all_scores
-    all_scores[name] = scores
+        fig, ax = plt.subplots(figsize=(10,5))
 
-    fig, ax = plot_loglog_matches_vs_index(
-        data,
-        header,
-        start_match=1,
-        end_match=10,
-        title="Elimination of Parasitic Interaction",
-        output_svg=OUT_SVG,
-        colors=custom_colors
-    )
-    plt.show()
+        for (label, s), color in zip(all_scores.items(), series_colors):
+            x = np.arange(1, len(s) + 1, dtype=float)
+            m = np.isfinite(s)
+            ax.plot(x[m], s[m], label=label, color=color, linewidth=mm_to_pt(LINE_MM_DATA * 3))
 
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_xlabel("Generation", fontsize=20)
+        ax.set_ylabel("Loss", fontsize=20)
+        ax.tick_params(axis='both', labelsize=16)
+        ax.grid(True, which="major", axis="x", linewidth=mm_to_pt(0.10), color="black", alpha=0.3)
+        ax.legend(
+            frameon=False, fontsize=18,
+            handlelength=1.3, handletextpad=0.4, labelspacing=0.25,
+        )
+        ax.set_xscale("log")
+        plt.tight_layout()
 
-    OUT_SCORES_SVG = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6\resources/scores_overview.svg"
-    series_colors = ["#dc482e", "#fbbe00" , "#46bde2"]
-
-    fig, ax = plot_scores_overview(
-        all_scores,
-        title="Loss Optimization",
-        output_svg=OUT_SCORES_SVG,
-        x_left=1.0,
-        colors=series_colors,
-    )
-    plt.show()
-
-
-    ##### NOT USED FOR PAPER #####
-
-
-    # CSV_PATH = r"C:\Users\Flori\Dropbox\CrissCross\Papers\hash_cad\evolution_runs\figure_4_example_runs\evo_runs\hexagon_long\match_histograms.csv"
-    #
-    # name = "Hexagon"
-    # OUT_SVG  = "C:/Users\Flori\Dropbox\CrissCross\Papers\hash_cad\Figures\Figure_6/resources/" + name +"_valencies.svg"
-    #
-    # data, header = load_match_histogram(CSV_PATH)
-    # data_hexagon = data
-    # custom_colors = ["#004455","#0088AA", "#00AAD4", "#55DDFF", "#AAEEFF" ]
-    # scores = compute_scores_from_hist(data, -10.0, start_match=start, scale_const=126.0)
-    #
-    #
-    # # add scores with key Hexagon to all_scores
-    # all_scores[name] = scores
-    #
-    # fig, ax = plot_loglog_matches_vs_index(
-    #     data,
-    #     header,
-    #     start_match=1,
-    #     end_match=10,
-    #     title="Elimination of Parasitic Interaction",
-    #     output_svg=OUT_SVG,
-    #     colors=custom_colors
-    # )
-    # plt.show()
+        out_path = os.path.join(OUTPUT_DIR, "sunflower_random_comparison.png")
+        fig.savefig(out_path, dpi=600, bbox_inches="tight", pad_inches=PAD_INCHES)
+        plt.show()

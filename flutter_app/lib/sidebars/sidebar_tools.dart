@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'echo_sidebar.dart';
+import 'grouping_sidebar.dart';
 import '../app_management/shared_app_state.dart';
 import 'slat_design_sidebar.dart';
 import 'assembly_handles_sidebar.dart';
@@ -91,10 +92,12 @@ class _SideBarToolsState extends State<SideBarTools> {
                       if (actionState.panelMode == 0)
                         SlatDesignTools(),
                       if (actionState.panelMode == 1)
-                        AssemblyHandleDesignTools(),
+                        GroupingTools(),
                       if (actionState.panelMode == 2)
-                        CargoDesignTools(),
+                        AssemblyHandleDesignTools(),
                       if (actionState.panelMode == 3)
+                        CargoDesignTools(),
+                      if (actionState.panelMode == 4)
                         EchoTools(),
                     ],
                   ),

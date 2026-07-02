@@ -130,6 +130,8 @@ dmypy.json
 
 # Mac Files
 *.DS_Store
+*.pdf
+*.svg
 
 # temp scripts
 scratch/*

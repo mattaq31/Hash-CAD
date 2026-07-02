@@ -25,7 +25,7 @@ megastructure = Megastructure(import_design_file=design_file)
 regen_graphics = False
 generate_echo = True
 
-main_plates = get_cutting_edge_plates(200)
+main_plates = get_cutting_edge_plates(handle_library_working_stock_concentration=200)
 src_004 = get_plateclass('HashCadPlate', seed_slat_purification_handles, cargo_plate_folder)
 src_007 = get_plateclass('HashCadPlate', simpsons_mixplate_antihandles, cargo_plate_folder)
 
