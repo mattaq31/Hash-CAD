@@ -101,6 +101,11 @@
       "category": "cargo_plates"
     },
     {
+      "name": "P3945_SSW_fribourg_cnt_3",
+      "path": "cargo_plates/P3945_SSW_fribourg_cnt_3.xlsx",
+      "category": "cargo_plates"
+    },
+    {
       "name": "sw_src004_pulldownhandles",
       "path": "cargo_plates/sw_src004_pulldownhandles.xlsx",
       "category": "cargo_plates"
