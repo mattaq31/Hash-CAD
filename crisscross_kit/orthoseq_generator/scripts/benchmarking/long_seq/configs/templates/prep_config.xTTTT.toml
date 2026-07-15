@@ -31,7 +31,7 @@ duplicate_streak_limit = 1000000
 min_progress_interval_s = 1.0
 
 [hybrid]
-initial_fresh_pair_counts = [250,450,900]
+initial_fresh_pair_counts = [250,450,900,2500]
 prune_fraction = 0.2
 vc_max_iterations = 1000
 

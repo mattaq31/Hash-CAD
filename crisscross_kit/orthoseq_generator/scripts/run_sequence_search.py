@@ -38,10 +38,15 @@ from orthoseq_generator.search_reporting import (
 
 
 if __name__ == "__main__":
-    # 1) Set a random seed for reproducibility 
-    RANDOM_SEED = 42
+    # 1) Set a random seed for reproducibility
+    RANDOM_SEED = 41
     random.seed(RANDOM_SEED)
-    res_name = "ortho_16mers8p16_new_sheettest7.xlsx"
+    TOTAL_NUPACK_BUDGET = 10_000_000
+    INITIAL_FRESH_PAIR_COUNT = 10_000_000
+    res_name = (
+        "hybrid_len16_5p_none_limitm8p16_budget10000000_"
+        "initial_graph_budget_exhaust_seed41.xlsx"
+    )
     seqwalk_cores = None
     # Optional SeqWalk example:
     # from seqwalk import design
@@ -50,22 +55,22 @@ if __name__ == "__main__":
         length=16,
         fivep_ext="",
         threep_ext="",
-        unwanted_substrings=["GGGG","CCCC"],
-        apply_unwanted_to="core",
+        unwanted_substrings=["GGGG", "CCCC"],
+        apply_unwanted_to="full",
         seed=RANDOM_SEED,
         preselected_cores=seqwalk_cores
     )
 
 
     # 3) Define energy thresholds based on prior analysis
-    hf.set_nupack_params(material='dna', celsius=37, sodium=0.05, magnesium=0.025)
+    hf.set_nupack_params(material="dna", celsius=37.0, sodium=0.05, magnesium=0.025)
     hf.set_energy_type("total")
-    max_ontarget = -17.5
-    min_ontarget = -23
-    offtarget_limit = -10
-    self_energy_limit = -1
-    TOTAL_NUPACK_BUDGET = 10000000
+    max_ontarget = -19.308503678279084
+    min_ontarget = -21.350806979612546
+    offtarget_limit = -8.160422784450315
+    self_energy_limit = -0.9919471230992267
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
+    print(f"Initial graph search requested pairs: {INITIAL_FRESH_PAIR_COUNT}")
 
     search_result = hybrid_search(
         sequence_pairs_object,
@@ -73,9 +78,9 @@ if __name__ == "__main__":
         max_ontarget,
         min_ontarget,
         self_energy_limit,
-        initial_fresh_pair_count=900,
+        initial_fresh_pair_count=INITIAL_FRESH_PAIR_COUNT,
         total_nupack_budget=TOTAL_NUPACK_BUDGET,
-        prune_fraction=0.5,
+        prune_fraction=0.2,
         vc_max_iterations=1000,
         stop_event=None,
         return_diagnostics=True,

@@ -794,13 +794,16 @@ def main():
 
                         hybrid_job_name = f"ls_hybrid_l{length}_{condition_stem}"
                         hybrid_script_path = config_dir / f"hybrid_{condition_stem}.sh"
+                        hybrid_run_server_cfg = dict(server_hybrid_cfg)
+                        if initial_count == 2500:
+                            hybrid_run_server_cfg["cpus"] = 10
                         write_text(
                             hybrid_script_path,
                             build_server_script(
                                 job_name=hybrid_job_name,
                                 runner_relpath=runner_rel_hybrid,
                                 config_relpath=condition_toml_rel,
-                                server_cfg=server_hybrid_cfg,
+                                server_cfg=hybrid_run_server_cfg,
                                 output_stem=hybrid_output_stem,
                             ),
                         )
