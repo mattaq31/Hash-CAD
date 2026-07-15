@@ -102,6 +102,7 @@ def _write_dataset_toml(metadata_path: Path, metadata: dict) -> None:
         f"celsius = {metadata['celsius']}",
         f"sodium = {metadata['sodium']}",
         f"magnesium = {metadata['magnesium']}",
+        f"energy_type = {_toml_string(metadata['energy_type'])}",
         "",
         "[derived]",
         f"total_candidate_count = {metadata['total_candidate_count']}",
@@ -288,6 +289,7 @@ def build_short_seq_dataset(
         "celsius": float(celsius),
         "sodium": float(sodium),
         "magnesium": float(magnesium),
+        "energy_type": hf.ENERGY_TYPE,
         "total_candidate_count": len(all_pairs),
         "matrix_candidate_count": len(matrix_pairs),
         "mean_ontarget_energy": mean_ontarget_energy,
@@ -320,6 +322,8 @@ def load_dataset(dataset_dir: str | Path) -> dict:
     dataset_dir = Path(dataset_dir)
     with (dataset_dir / "dataset.toml").open("rb") as f:
         metadata = tomllib.load(f)
+    metadata.setdefault("nupack", {})
+    metadata["nupack"].setdefault("energy_type", "total")
     with np.load(dataset_dir / "dataset.npz", allow_pickle=False) as data:
         bundle = {key: data[key] for key in data.files}
     bundle["dataset_dir"] = str(dataset_dir)

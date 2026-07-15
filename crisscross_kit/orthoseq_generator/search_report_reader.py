@@ -89,6 +89,7 @@ def load_metadata(report_path: str | Path) -> dict:
         if not key or key == "nan":
             continue
         metadata[key] = _parse_metadata_value(row["value"])
+    metadata.setdefault("nupack.energy_type", "total")
     return metadata
 
 

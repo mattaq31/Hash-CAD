@@ -26,6 +26,7 @@ if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
 from benchmark_dataset_tools import build_short_seq_dataset
+from orthoseq_generator import helper_functions as hf
 
 
 if __name__ == "__main__":
@@ -42,8 +43,10 @@ if __name__ == "__main__":
     celsius = 37
     sodium = 0.05
     magnesium = 0.025
+    energy_type = "total"
     lengths = [4, 5, 6, 7]
     fivep_ext_variants = ["", "TTTT"]
+    hf.set_energy_type(energy_type)
 
     params_text = f"""range_sigma = {range_sigma}
 threep_ext = "{threep_ext}"
@@ -54,6 +57,7 @@ material = "{material}"
 celsius = {celsius}
 sodium = {sodium}
 magnesium = {magnesium}
+energy_type = "{energy_type}"
 lengths = [{", ".join(str(length) for length in lengths)}]
 fivep_ext_variants = [{", ".join(f'"{fivep_ext}"' for fivep_ext in fivep_ext_variants)}]
 """

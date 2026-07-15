@@ -289,6 +289,7 @@ def naive_search(
                 "celsius": celsius,
                 "sodium": sodium,
                 "magnesium": magnesium,
+                "energy_type": hf.ENERGY_TYPE,
             },
             "stopped_reason": stopped_reason,
             "attempts": int(attempts),

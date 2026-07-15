@@ -358,6 +358,7 @@ def build_run_toml(
         f"celsius = {toml_literal(float(nupack_cfg['celsius']))}",
         f"sodium = {toml_literal(float(nupack_cfg['sodium']))}",
         f"magnesium = {toml_literal(float(nupack_cfg['magnesium']))}",
+        f"energy_type = {toml_literal(str(nupack_cfg.get('energy_type', 'total')))}",
         "",
         "[output]",
         f"dir = {toml_literal(output_dir)}",
@@ -607,6 +608,7 @@ def main():
         sodium=float(nupack_cfg["sodium"]),
         magnesium=float(nupack_cfg["magnesium"]),
     )
+    hf.set_energy_type(str(nupack_cfg.get("energy_type", "total")))
 
     sample_size = int(prep_cfg["sample_size"])
     range_sigma = float(prep_cfg["range_sigma"])

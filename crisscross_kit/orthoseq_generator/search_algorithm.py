@@ -783,6 +783,7 @@ def hybrid_search(
                 "celsius": celsius,
                 "sodium": sodium,
                 "magnesium": magnesium,
+                "energy_type": hf.ENERGY_TYPE,
             },
             "stopped_reason": stopped_reason,
         }

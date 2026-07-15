@@ -134,7 +134,7 @@ def build_registry_from_metadata(metadata: dict, outside_seed: int | None):
         sodium=float(metadata.get("nupack.sodium") or 0.05),
         magnesium=float(metadata.get("nupack.magnesium") or 0.025),
     )
-    hf.set_energy_type("total")
+    hf.set_energy_type(str(metadata.get("nupack.energy_type") or "total"))
 
     registry = sc.SequencePairRegistry(
         length=length,

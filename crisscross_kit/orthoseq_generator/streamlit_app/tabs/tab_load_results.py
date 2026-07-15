@@ -37,6 +37,7 @@ def render_load_results_tab(nupack_available=True):
 
         temp_report_path = None
         previous_nupack = hf.NUPACK_PARAMS.copy()
+        previous_energy_type = hf.ENERGY_TYPE
         try:
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 tmp.write(uploaded_report.getvalue())
@@ -52,6 +53,7 @@ def render_load_results_tab(nupack_available=True):
                 sodium=metadata["nupack.sodium"],
                 magnesium=metadata["nupack.magnesium"],
             )
+            hf.set_energy_type(metadata.get("nupack.energy_type", "total"))
 
             on_e, self_e_seq, self_e_rc_seq = sc.compute_ontarget_energies(sequence_pairs)
             off_e = sc.compute_offtarget_energies(sequence_pairs)
@@ -113,6 +115,7 @@ def render_load_results_tab(nupack_available=True):
                 sodium=previous_nupack["SODIUM"],
                 magnesium=previous_nupack["MAGNESIUM"],
             )
+            hf.set_energy_type(previous_energy_type)
             if temp_report_path is not None and temp_report_path.exists():
                 temp_report_path.unlink()
             st.session_state.busy = False
@@ -131,6 +134,7 @@ def render_load_results_tab(nupack_available=True):
             f"Temperature (C): {metadata['nupack.celsius']}",
             f"Sodium (M): {metadata['nupack.sodium']}",
             f"Magnesium (M): {metadata['nupack.magnesium']}",
+            f"Energy type: {metadata.get('nupack.energy_type', 'total')}",
         ]
         criteria_lines = []
         if metadata.get("search.min_ontarget") is not None and metadata.get("search.max_ontarget") is not None:

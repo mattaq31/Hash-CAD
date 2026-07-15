@@ -41,8 +41,8 @@ if __name__ == "__main__":
     # 1) Set a random seed for reproducibility
     RANDOM_SEED = 41
     random.seed(RANDOM_SEED)
-    TOTAL_NUPACK_BUDGET = 10_000_000
-    INITIAL_FRESH_PAIR_COUNT = 10_000_000
+    TOTAL_NUPACK_BUDGET = 10_000_0
+    INITIAL_FRESH_PAIR_COUNT = 50
     res_name = (
         "hybrid_len16_5p_none_limitm8p16_budget10000000_"
         "initial_graph_budget_exhaust_seed41.xlsx"

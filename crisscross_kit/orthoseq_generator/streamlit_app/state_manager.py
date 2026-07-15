@@ -167,3 +167,5 @@ def init_session_state():
         st.session_state.seqwalk_k = 6
     if "seqwalk_rcfree" not in st.session_state:
         st.session_state.seqwalk_rcfree = False
+    if "homodimer_bound_fraction_correction" not in st.session_state:
+        st.session_state.homodimer_bound_fraction_correction = False

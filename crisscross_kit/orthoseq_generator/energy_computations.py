@@ -1,5 +1,6 @@
 import os
 import multiprocessing as mp
+import math
 import random
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -13,6 +14,12 @@ import logging
 
 logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
+
+R_KCAL_PER_MOL_K = 0.00198720425864083
+
+
+def _rt_kcal_per_mol():
+    return R_KCAL_PER_MOL_K * (float(hf.NUPACK_PARAMS["CELSIUS"]) + 273.15)
 
 
 def estimate_offtarget_nupack_calls(num_sequence_pairs):
@@ -94,13 +101,15 @@ def compute_nupack_energy(seq1, seq2, type="total"):
             energy = mfe_list[0].energy
             G_A = 0
             G_B = 0
-        elif type == "total":
+        elif type in {"total", "total_bound_fraction"}:
             if homo:
                 results = complex_analysis([complex_obj, mono_obj_A], model=model1, compute=["pfunc"])
                 G_AB = results[complex_obj].free_energy
                 G_A = results[mono_obj_A].free_energy
                 G_B = G_A
                 energy = G_AB - 2.0 * G_A
+                if type == "total_bound_fraction":
+                    energy -= _rt_kcal_per_mol() * math.log(2.0)
             else:
                 results = complex_analysis(
                     [complex_obj, mono_obj_A, mono_obj_B],
@@ -135,7 +144,9 @@ def compute_nupack_energy(seq1, seq2, type="total"):
             if energy > -1:
                 energy = -1.0
         else:
-            raise ValueError('type must be either "minimum", "total", or "totalu"')
+            raise ValueError(
+                'type must be either "minimum", "total", "totalu", or "total_bound_fraction"'
+            )
 
         return energy, G_A, G_B
     except Exception as exc:

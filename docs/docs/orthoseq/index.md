@@ -111,6 +111,9 @@ Further down in the panel, you can set the thermodynamic parameters:
 - temperature
 - sodium concentration
 - magnesium concentration
+- energy convention
+
+The default OrthoSeq energy convention is `total`, which corresponds to the direct NUPACK association free energy used by legacy OrthoSeq runs and reports. The sidebar also provides a **Homodimer bound-fraction correction** checkbox. When enabled, OrthoSeq uses the script-compatible `total_bound_fraction` convention described below.
 
 If you select RNA, the sodium and magnesium concentrations are ignored because the NUPACK RNA model is defined only for 1 M sodium.
 
@@ -182,6 +185,7 @@ The **Load Results** tab lets you upload a previously saved XLSX search report a
 
 The tab reads the sequence pairs and recorded metadata from the workbook, including:
 - NUPACK material, temperature, sodium concentration, and magnesium concentration
+- NUPACK/OrthoSeq energy type
 - on-target energy range
 - off-target energy limit
 - secondary-structure energy limit
@@ -282,6 +286,25 @@ To compute binding energies, we use **NUPACK 4.0** thermodynamic calculations.
 This is computationally expensive, especially when computing all cross-interactions between sequence pairs.
 
 The current implementation uses **multiprocessing** to parallelize NUPACK calculations across multiple CPU cores. Runtime therefore depends strongly on both the number of sequence pairs being evaluated and the number of off-target interactions that must be checked.
+
+### Energy types
+
+OrthoSeq stores the binding-energy convention used for a run as `nupack.energy_type` in the XLSX report metadata.
+
+The default energy type is:
+
+- `total`: the NUPACK association free energy used by legacy OrthoSeq runs. For a two-strand complex this is computed as the free energy of the complex minus the free energies of the two isolated strands. This is the convention used by the Streamlit app by default.
+
+An additional energy type is available in the app sidebar and in script-based workflows:
+
+- `total_bound_fraction`: the same as `total` for heterodimers, but with a homodimer correction of `-RT ln(2)` applied to same-strand dimers. This maps homodimer association energies onto the same strand-material bound-fraction scale as heterodimers. At 37 C, the correction is approximately `-0.43 kcal/mol`, making homodimer interactions slightly more conservative under the same off-target energy limit.
+
+The difference matters only for homodimers. It reflects two possible interpretations of an off-target threshold:
+
+- With `total`, the threshold applies the same association-free-energy limit to heterodimers and homodimers.
+- With `total_bound_fraction`, the threshold applies the same approximate bound-fraction limit to strand material in either a heterodimer or homodimer complex.
+
+Older reports and benchmark datasets that do not contain `nupack.energy_type` should be interpreted as `total`.
 
 
 ## Algorithm Basic Idea
@@ -420,6 +443,7 @@ This sheet stores the run configuration as key-value pairs. Important keys inclu
 - `search.total_nupack_budget`: total NUPACK call budget, when one was used
 - `search.total_nupack_calls`: total NUPACK calls executed by the search
 - `search.search_duration_s`: total search runtime in seconds
+- `nupack.energy_type`: binding-energy convention used for search and verification
 - `nupack.material`: DNA or RNA model
 - `nupack.celsius`: temperature
 - `nupack.sodium`: sodium concentration

@@ -48,6 +48,7 @@ RUN_METADATA_KEY_ORDER = [
     "search.initial_fresh_pair_count",
     "search.search_duration_s",
     "stopped_reason",
+    "nupack.energy_type",
     "nupack.material",
     "nupack.celsius",
     "nupack.sodium",
@@ -116,6 +117,7 @@ def verify_selected_pairs(selected_sequence_data: list[dict], nupack_params: dic
             sodium=nupack_params["sodium"],
             magnesium=nupack_params["magnesium"],
         )
+        hf.set_energy_type(nupack_params.get("energy_type", "total"))
 
     on_target, self_seq, self_rc = compute_ontarget_energies(selected_pairs)
     off_target = compute_offtarget_energies(selected_pairs)
@@ -383,6 +385,7 @@ def write_hybrid_search_result_xlsx(
         "search.total_nupack_budget": search_params.get("total_nupack_budget"),
         "search.total_nupack_calls": search_params.get("total_nupack_calls"),
         "search.search_duration_s": search_params.get("search_duration_s"),
+        "nupack.energy_type": nupack_params.get("energy_type", "total"),
         "nupack.material": nupack_params.get("material"),
         "nupack.celsius": nupack_params.get("celsius"),
         "nupack.sodium": nupack_params.get("sodium"),

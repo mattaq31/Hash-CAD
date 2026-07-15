@@ -68,7 +68,7 @@ def main():
         sodium=float(nupack_cfg["sodium"]),
         magnesium=float(nupack_cfg["magnesium"]),
     )
-    hf.set_energy_type("total")
+    hf.set_energy_type(str(nupack_cfg.get("energy_type", "total")))
 
     sequence_pairs_object = sc.SequencePairRegistry(
         length=length,

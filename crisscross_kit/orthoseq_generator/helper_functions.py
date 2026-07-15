@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 ENERGY_TYPE = "total"
+ENERGY_TYPES = {"minimum", "total", "totalu", "total_bound_fraction"}
 NUPACK_PARAMS = {
     "MATERIAL": "dna",
     "CELSIUS": 37,
@@ -48,14 +49,16 @@ def set_energy_type(energy_type="total"):
     Updates the global energy mode used for all NUPACK energy computations.
 
     :param energy_type: Energy mode passed through to `compute_nupack_energy`.
-                        Supported values are "minimum", "total", and "totalu".
+                        Supported values are "minimum", "total", "totalu",
+                        and "total_bound_fraction".
     :type energy_type: str
 
     :returns: None
     :rtype: None
     """
-    if energy_type not in {"minimum", "total", "totalu"}:
-        raise ValueError('energy_type must be one of "minimum", "total", or "totalu".')
+    if energy_type not in ENERGY_TYPES:
+        valid_types = ", ".join(f'"{value}"' for value in sorted(ENERGY_TYPES))
+        raise ValueError(f"energy_type must be one of {valid_types}.")
     global ENERGY_TYPE
     ENERGY_TYPE = energy_type
 

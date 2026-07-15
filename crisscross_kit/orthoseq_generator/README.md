@@ -86,6 +86,7 @@ The important modules are:
   - parallel on-target and off-target matrix computation
   - sequence-pair filtering and live sampling in `select_subset_in_energy_range()`
   - direct compatibility testing in `crossreference_sequences()`
+  - implements the supported energy types described below
 
 - `vertex_cover_algorithms.py`
   - converts off-target matrices into graph edges with `build_edges()`
@@ -406,14 +407,23 @@ Supported values are:
 - `total`
   - uses partition-function free energies
   - computes association-style energy as `G_AB - G_A - G_B`
-  - this is the main mode used by the current app and search scripts
+  - this is the default mode used by the app and search scripts
+  - this is also the legacy default for old reports and benchmark datasets
+
+- `total_bound_fraction`
+  - uses the same partition-function association energy as `total`
+  - leaves heterodimer energies unchanged
+  - for homodimers only, subtracts `RT ln(2)` from the association free energy
+  - this maps homodimer association energies onto the same strand-material bound-fraction scale as heterodimers
 
 - `totalu`
   - also uses partition-function free energies
   - returns `G_AB` for the complex without subtracting monomer free energies
   - this is mostly useful for older or specialized workflows
 
-One implementation detail matters here: in the current code, `total` and `totalu` clamp weak or positive values to `-1.0`. The idea is that once the interaction is that weak, the exact value does not matter for the sequence-pair selection logic.
+Reporting and replay depend on the energy mode. New XLSX reports store it as `nupack.energy_type`; old reports without this metadata are treated as `total`. Search diagnostics include the energy type in their `nupack` bundle so `verify_selected_pairs()` can recompute final report energies using the same convention as the search.
+
+One implementation detail matters here: in the current code, `total`, `total_bound_fraction`, and `totalu` clamp weak or positive values to `-1.0`. The idea is that once the interaction is that weak, the exact value does not matter for the sequence-pair selection logic.
 
 ## Scripts overview
 

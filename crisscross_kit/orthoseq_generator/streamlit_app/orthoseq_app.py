@@ -276,6 +276,20 @@ if __name__ == "__main__":
         else:
             st.sidebar.caption(f"SeqWalk cores generated: {len(seqwalk_cores)}")
 
+    st.sidebar.subheader("Energy Convention")
+    use_homodimer_correction = st.sidebar.checkbox(
+        "Homodimer bound-fraction correction",
+        key="homodimer_bound_fraction_correction",
+        disabled=st.session_state.busy,
+        help=(
+            "Default off. When enabled, applies a -RT ln(2) correction to homodimer "
+            "association energies only."
+        ),
+    )
+    energy_type = "total_bound_fraction" if use_homodimer_correction else "total"
+    if use_homodimer_correction:
+        st.sidebar.caption("Homodimers are evaluated slightly more conservatively.")
+
     st.session_state.input_invalid = (
         not (valid_fivep and valid_threep)
         or seqwalk_error is not None
@@ -309,7 +323,7 @@ if __name__ == "__main__":
             sodium=sodium,
             magnesium=magnesium
         )
-        hf.set_energy_type("total")
+        hf.set_energy_type(energy_type)
 
     nupack_params = {
         'random_seed': random_seed,
@@ -323,6 +337,7 @@ if __name__ == "__main__":
         'celsius': celsius,
         'sodium': sodium,
         'magnesium': magnesium,
+        'energy_type': energy_type,
     }
 
     # 4. Navigation
