@@ -16,25 +16,34 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
 
     int direction = appState.layerMap[appState.selectedLayerKey]!["direction"];
 
-    Offset cursorCoordinate, slatMultiJump, slatInnerJump;
+    Offset cursorCoordinate, slatMultiJump, slatInnerJump, dbBarrelJump;
 
+    // multiGenerator: may be flipped by F key - controls inter-slat spawn direction
     var multiGenerator = appState.multiSlatGenerators;
+    // directionGenerator: controls the direction along the length of a single slat
     var directionGenerator = appState.slatDirectionGenerators;
+    // canonicalMultiGenerator: always the original (non-flipped) direction, used for the barrel-to-barrel
+    // offset within a single double-barrel slat so that flipping only changes where new slats spawn,
+    // not the internal DB geometry
+    var canonicalMultiGenerator = appState.standardTilt ? appState.multiSlatGenerators : appState.multiSlatGeneratorsAlternate;
 
     if (realSpaceFormat) {
       cursorCoordinate = cursorPoint;
       if (appState.gridMode == '60') {
         slatMultiJump = multiplyOffsets(multiGenerator[(appState.gridMode, direction)]!, Offset(appState.x60Jump, appState.y60Jump));
         slatInnerJump = multiplyOffsets(directionGenerator[(appState.gridMode, direction)]!, Offset(appState.x60Jump, appState.y60Jump));
+        dbBarrelJump = multiplyOffsets(canonicalMultiGenerator[(appState.gridMode, direction)]!, Offset(appState.x60Jump, appState.y60Jump));
       } else {
-        slatMultiJump = multiGenerator[(appState.gridMode, direction)]! * appState.gridSize;
-        slatInnerJump = directionGenerator[(appState.gridMode, direction)]! * appState.gridSize;
+        slatMultiJump = multiGenerator[(appState.gridMode, direction)]! * appState.gridSize;  // inter-slat spacing (flippable)
+        slatInnerJump = directionGenerator[(appState.gridMode, direction)]! * appState.gridSize;  // along-slat direction
+        dbBarrelJump = canonicalMultiGenerator[(appState.gridMode, direction)]! * appState.gridSize;  // DB barrel offset (fixed)
       }
     } else {
       cursorCoordinate = appState.convertRealSpacetoCoordinateSpace(cursorPoint);
 
       slatMultiJump = multiGenerator[(appState.gridMode, direction)]!;
       slatInnerJump = directionGenerator[(appState.gridMode, direction)]!;
+      dbBarrelJump = canonicalMultiGenerator[(appState.gridMode, direction)]!;
     }
 
     int shearOffset = 0;
@@ -58,11 +67,12 @@ mixin GridControlPositionGeneratorsMixin<T extends StatefulWidget> on State<T>, 
         if (appState.slatAdditionType == 'tube') {
           incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * j.toDouble()) + (slatInnerJump * i.toDouble());
         } else {
-          // double barrel slat generation
+          // double barrel slat generation - uses dbBarrelJump (canonical direction) for barrel offset,
+          // and slatMultiJump for inter-slat spacing so the flip only affects spawn direction
           if (i < 16) {
             incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * j.toDouble() * 2 * dbSign) + (slatInnerJump * i.toDouble());
           } else {
-            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * (1 + (j.toDouble() * 2)) * dbSign) + (slatInnerJump * (31 + shearOffset - i).toDouble());
+            incomingSlats[j]?[i + 1] = cursorCoordinate + (slatMultiJump * j.toDouble() * 2 * dbSign) + (dbBarrelJump * dbSign) + (slatInnerJump * (31 + shearOffset - i).toDouble());
           }
         }
       }

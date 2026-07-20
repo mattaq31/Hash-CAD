@@ -16,6 +16,8 @@ from crisscross.plate_mapping.plate_constants import seed_slat_purification_hand
 
 # Standard structure, assembly process should be done in two steps
 
+# REFER TO "flip_script.py" FOR THE FINAL VERSION OF THIS SCRIPT
+
 ########################################
 # General stuff
 

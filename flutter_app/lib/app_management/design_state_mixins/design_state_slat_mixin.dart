@@ -245,6 +245,7 @@ mixin DesignStateSlatMixin on ChangeNotifier, DesignStateContract {
       }
     }
 
+    cleanupDeletedSlat(ID);
     slats.remove(ID);
     occupiedGridPoints[layer]?.removeWhere((key, value) => value == ID);
 

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/cargo.dart';
+import '../../crisscross_core/fluorophore.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/common_utilities.dart';
@@ -10,6 +11,7 @@ import '../../echo_and_experimental_helpers/plate_layout_state.dart';
 import '../slat_undo_stack.dart';
 import '../shared_app_state.dart';
 import 'design_state_handle_link_mixin.dart';
+import 'design_state_grouping_mixin.dart';
 
 /// Contract defining all shared members between DesignState mixins.
 /// This enables IDE navigation (Find Usages) to work across mixins by
@@ -88,11 +90,24 @@ mixin DesignStateContract on ChangeNotifier {
   set assemblyLinkManager(HandleLinkManager value);
   Map<String, Cargo> get cargoPalette;
   set cargoPalette(Map<String, Cargo> value);
+  Map<String, Fluorophore> get fluorophorePalette;
+  set fluorophorePalette(Map<String, Fluorophore> value);
   PlateLibrary get plateStack;
+  String? get plateCompatibilityWarning;
+  set plateCompatibilityWarning(String? value);
   PlateLayoutState? get echoPlateLayoutState;
   set echoPlateLayoutState(PlateLayoutState? value);
   bool get echoPlateLayoutFromImport;
   set echoPlateLayoutFromImport(bool value);
+  Map<String, GroupConfiguration> get groupConfigurations;
+  set groupConfigurations(Map<String, GroupConfiguration> value);
+  String? get activeGroupConfigId;
+  set activeGroupConfigId(String? value);
+  GroupConfiguration? get activeGroupConfig;
+  bool get preserveSelectionOnLayerChange;
+  set preserveSelectionOnLayerChange(bool value);
+  int get groupVersion;
+  set groupVersion(int value);
 
   // === Methods from DesignStateCoreMixin ===
   void setHoverPreview(HoverPreview? preview);
@@ -182,6 +197,7 @@ mixin DesignStateContract on ChangeNotifier {
 
   // === Methods from DesignStateCargoMixin ===
   void addCargoType(Cargo cargo);
+  void renameCargoType(String oldName, String newName, {String? newShortName, Color? newColor});
   void deleteCargoType(String cargoName);
   Cargo getCargoFromCoordinate(Offset coordinate, String layerID, String slatSide);
   void deleteAllCargo();
@@ -216,7 +232,50 @@ mixin DesignStateContract on ChangeNotifier {
   void unlinkHandle(HandleKey key);
   void toggleHandleBlock(HandleKey key);
   void setHandleEnforcedValue(HandleKey key, int value, {bool requestStateUpdate = true});
-  void linkHandlesAndPropagate(List<HandleKey> keys);
+  void linkHandlesAndPropagate(List<HandleKey> keys, {bool requestStateUpdate = true});
   void toggleHandleBlockAndApply(HandleKey key);
   void setHandleEnforcedValueAndApply(HandleKey key, int value);
+
+  // === Methods from DesignStateGroupingMixin ===
+  String? get selectedGroupId;
+  void createGroupConfiguration({String? name});
+  void deleteGroupConfiguration(String configId);
+  void renameGroupConfiguration(String configId, String newName);
+  void setActiveGroupConfiguration(String? configId);
+  void createGroupFromSelection();
+  void deleteGroup(String groupId);
+  void renameGroup(String groupId, String newName);
+  void recolorGroup(String groupId, Color color);
+  void addSlatsToGroup(String groupId, List<String> slatIds);
+  void removeSlatsFromGroup(String groupId, List<String> slatIds);
+  void selectGroupSlats(String groupId);
+  void updateGroupToSelection(String groupId);
+  void autoGroupSlats(int groupSize, {bool ungroupedOnly = false});
+  void clearAllGroups();
+  void cleanupDeletedSlat(String slatId);
+  void resetGroupState();
+  Color? resolveGroupColor(String slatId);
+
+  // === Methods from DesignStateFluorophoreMixin ===
+
+  /// Adds a new fluorophore to the per-design palette.
+  void addFluorophore(Fluorophore fluorophore);
+  /// Renames a fluorophore and cascades to all tagged handles.
+  void renameFluorophore(String oldName, String newName);
+  /// Deletes a fluorophore and clears it from all tagged handles.
+  void deleteFluorophore(String name);
+  /// Updates the visual marker shape of a fluorophore.
+  void updateFluorophoreShape(String name, FluorophoreShape shape);
+  /// Assigns a fluorophore tag to the handle at [key].
+  void assignFluorophoreToHandle(HandleKey key, String fluorophoreName);
+  /// Removes the fluorophore tag from the handle at [key].
+  void clearFluorophoreFromHandle(HandleKey key);
+  /// Assigns a fluorophore to multiple handles across matching slats.
+  void massAssignFluorophore(Map<String, Set<(int, int)>> perSlatPositions, String fluorophoreName);
+  /// Clears fluorophore tags from multiple handles across matching slats.
+  void massClearFluorophore(Map<String, Set<(int, int)>> perSlatPositions);
+  /// Removes all fluorophore tags from every handle in the design.
+  void clearAllFluorophoreAssignments();
+  /// Returns the effective compatibility token (fluorophore name or standard compatibility).
+  String? getEffectiveCompatibility(String slatType, int position, int side, String slatId);
 }

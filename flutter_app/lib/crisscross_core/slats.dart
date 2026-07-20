@@ -139,9 +139,13 @@ class Slat {
     }
 
     if (slatSide == 2) {
+      final existingFluorophore = h2Handles[handleId]?['fluorophore'];
       h2Handles[handleId] = {'value': value, 'category': category.toUpperCase(), 'placeholder': true};
+      if (existingFluorophore != null) h2Handles[handleId]!['fluorophore'] = existingFluorophore;
     } else if (slatSide == 5) {
+      final existingFluorophore = h5Handles[handleId]?['fluorophore'];
       h5Handles[handleId] = {'value': value, 'category': category.toUpperCase(), 'placeholder': true};
+      if (existingFluorophore != null) h5Handles[handleId]!['fluorophore'] = existingFluorophore;
     } else {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
@@ -161,14 +165,15 @@ class Slat {
       placeholderList.remove(inputId);
     }
 
-    if (slatSide == 2) {
-      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
-    } else if (slatSide == 5) {
-      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
-    }
+    final handleDict = slatSide == 2 ? h2Handles : h5Handles;
+    final existingFluorophore = handleDict[handleId]?['fluorophore'];
+    final newEntry = <String, dynamic>{'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
+    if (existingFluorophore != null) newEntry['fluorophore'] = existingFluorophore;
+    handleDict[handleId] = newEntry;
   }
 
   /// Defines the full details of a handle on a slat.
+  /// Preserves the fluorophore field if already set on this handle position.
   void setHandle(int handleId, int slatSide, String sequence, String well, String plateName, String value, String category, int concentration) {
     if (handleId < 1 || handleId > maxLength) {
       throw Exception('Handle ID out of range');
@@ -179,13 +184,15 @@ class Slat {
       placeholderList.remove(inputId);
     }
 
-    if (slatSide == 2) {
-      h2Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
-    } else if (slatSide == 5) {
-      h5Handles[handleId] = {'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
-    } else {
+    if (slatSide != 2 && slatSide != 5) {
       throw Exception('Wrong slat side specified (only 2 or 5 available)');
     }
+
+    final handleDict = slatSide == 2 ? h2Handles : h5Handles;
+    final existingFluorophore = handleDict[handleId]?['fluorophore'];
+    final newEntry = <String, dynamic>{'sequence': sequence, 'well': well, 'plate': plateName, 'value': value, 'category': category.toUpperCase(), 'concentration': concentration};
+    if (existingFluorophore != null) newEntry['fluorophore'] = existingFluorophore;
+    handleDict[handleId] = newEntry;
   }
 
   bool checkPlaceholder(int handleID, int slatSide){

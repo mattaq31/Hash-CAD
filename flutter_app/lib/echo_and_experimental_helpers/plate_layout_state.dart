@@ -1,7 +1,10 @@
-import '../app_management/design_io_constants.dart';
+import '../app_management/design_io/design_io_constants.dart';
+import '../app_management/design_state_mixins/design_state_grouping_mixin.dart';
 import '../crisscross_core/slats.dart';
 import 'echo_export.dart' show generatePlateLayout96;
 import 'echo_plate_constants.dart';
+import 'master_mix_config.dart';
+import 'peg_purification_config.dart';
 
 final List<String> _plate96Wells = generatePlateLayout96();
 
@@ -19,17 +22,17 @@ class WellConfig {
   /// Total slat quantity in pmol: scaffoldConc * volume / 1000.
   double get totalSlatQuantity => scaffoldConc * volume / 1000;
 
-  /// Serializes to a compact string for Excel storage: "ratio_sVolume_sScaffoldConc".
-  String toExcelString() => '${ratio}_s${volume}_s$scaffoldConc';
+  /// Serializes to a descriptive string for Excel storage: "r{ratio}_v{volume}_sc{scaffoldConc}".
+  String toExcelString() => 'r${ratio}_v${volume}_sc$scaffoldConc';
 
   /// Parses a config string produced by [toExcelString].
   static WellConfig? fromExcelString(String s) {
     if (s.isEmpty) return null;
-    final parts = s.split('_s');
-    if (parts.length != 3) return null;
-    final r = double.tryParse(parts[0]);
-    final v = double.tryParse(parts[1]);
-    final sc = double.tryParse(parts[2]);
+    final match = RegExp(r'^r([^_]+)_v([^_]+)_sc(.+)$').firstMatch(s);
+    if (match == null) return null;
+    final r = double.tryParse(match.group(1)!);
+    final v = double.tryParse(match.group(2)!);
+    final sc = double.tryParse(match.group(3)!);
     if (r == null || v == null || sc == null) return null;
     return WellConfig(ratio: r, volume: v, scaffoldConc: sc);
   }
@@ -77,6 +80,10 @@ class PlateLayoutState {
   /// Maps a base slat ID to all IDs in its duplicate group (including the base).
   Map<String, Set<String>> duplicateGroups;
 
+  /// Per-slat manual handle markings: baseSlatId → set of (helix, position).
+  /// Helix is 2 or 5, position is 1-based (1..maxLength).
+  Map<String, Set<(int helix, int position)>> manualHandles;
+
   /// Tracks the next duplicate counter per base slat ID.
   Map<String, int> _duplicateCounters;
 
@@ -89,6 +96,22 @@ class PlateLayoutState {
   /// User-assigned experiment title, persisted with the design file.
   String experimentTitle;
 
+  /// Master mix configuration, persisted with the design file.
+  MasterMixConfig masterMixConfig;
+
+  /// Export format flags, persisted with the design file.
+  bool generatePdf;
+  bool generateCsv;
+  bool generateHelperSheets;
+  bool generatePegSheet;
+  bool normalizeVolumes;
+
+  /// Maximum allowed handle volume per well (nL) — used for warnings.
+  double maxWellVolumeNl;
+
+  /// PEG purification configuration, persisted with the design file.
+  PegPurificationConfig pegConfig;
+
   PlateLayoutState({
     List<String>? unassignedSlats,
     Map<int, Map<String, String?>>? plateAssignments,
@@ -96,16 +119,26 @@ class PlateLayoutState {
     Map<String, int>? duplicateCounters,
     Map<int, String>? plateNames,
     Map<int, Map<String, WellConfig>>? wellConfigs,
+    Map<String, Set<(int, int)>>? manualHandles,
     this.experimentTitle = 'Experiment',
+    this.masterMixConfig = const MasterMixConfig(),
+    this.generatePdf = true,
+    this.generateCsv = true,
+    this.generateHelperSheets = false,
+    this.generatePegSheet = false,
+    this.normalizeVolumes = false,
+    this.maxWellVolumeNl = 25000,
+    this.pegConfig = const PegPurificationConfig(),
   })  : unassignedSlats = unassignedSlats ?? [],
         plateAssignments = plateAssignments ?? {},
         duplicateGroups = duplicateGroups ?? {},
         _duplicateCounters = duplicateCounters ?? {},
         plateNames = plateNames ?? {},
-        wellConfigs = wellConfigs ?? {};
+        wellConfigs = wellConfigs ?? {},
+        manualHandles = manualHandles ?? {};
 
-  /// Returns the user-assigned name for a plate, defaulting to 'Plate'.
-  String plateName(int index) => plateNames[index] ?? 'Plate';
+  /// Returns the user-assigned name for a plate, defaulting to 'P{index+1}'.
+  String plateName(int index) => plateNames[index] ?? 'P${index + 1}';
 
   /// Renames a plate. Name must be max 25 chars, alphanumeric + underscore only.
   void renamePlate(int index, String name) {
@@ -162,6 +195,57 @@ class PlateLayoutState {
     }
   }
 
+  /// Returns the manual handle positions for a slat (empty set if none marked).
+  Set<(int, int)> getManualHandles(String slatId) {
+    return manualHandles[baseSlatId(slatId)] ?? {};
+  }
+
+  /// Sets the manual handle positions for a slat, replacing any existing markings.
+  void setManualHandles(String slatId, Set<(int, int)> positions) {
+    final base = baseSlatId(slatId);
+    if (positions.isEmpty) {
+      manualHandles.remove(base);
+    } else {
+      manualHandles[base] = Set<(int, int)>.from(positions);
+    }
+  }
+
+  /// Applies manual handle markings to all slats in the given selected well keys.
+  void applyManualHandlesToSelected(Set<String> selectedKeys, Set<(int, int)> positions) {
+    for (var key in selectedKeys) {
+      final parts = key.split(':');
+      final plate = int.parse(parts[0]);
+      final well = parts[1];
+      final slatId = plateAssignments[plate]?[well];
+      if (slatId == null) continue;
+      setManualHandles(slatId, positions);
+    }
+  }
+
+  /// Returns true if all selected slats have identical manual handle configurations.
+  bool selectedHaveSameManualConfig(Set<String> selectedKeys) {
+    Set<(int, int)>? reference;
+    for (var key in selectedKeys) {
+      final parts = key.split(':');
+      final plate = int.parse(parts[0]);
+      final well = parts[1];
+      final slatId = plateAssignments[plate]?[well];
+      if (slatId == null) continue;
+      final config = getManualHandles(slatId);
+      if (reference == null) {
+        reference = config;
+      } else if (!_setsEqual(reference, config)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _setsEqual(Set<(int, int)> a, Set<(int, int)> b) {
+    if (a.length != b.length) return false;
+    return a.containsAll(b);
+  }
+
   /// Applies a [WellConfig] to the given selected well keys (format: "plate:well").
   void applyConfigToSelected(Set<String> keys, WellConfig config) {
     for (var key in keys) {
@@ -181,7 +265,7 @@ class PlateLayoutState {
     return PlateLayoutState(
       unassignedSlats: sorted.map((e) => e.key).toList(),
       plateAssignments: {0: {for (var w in _plate96Wells) w: null}},
-      plateNames: {0: 'Plate'},
+      plateNames: {0: 'P1'},
       experimentTitle: experimentTitle,
     );
   }
@@ -190,7 +274,7 @@ class PlateLayoutState {
   void addPlate() {
     final newIndex = plateAssignments.isEmpty ? 0 : (plateAssignments.keys.toList()..sort()).last + 1;
     plateAssignments[newIndex] = {for (var w in _plate96Wells) w: null};
-    plateNames[newIndex] = 'Plate';
+    plateNames[newIndex] = 'P${newIndex + 1}';
   }
 
   /// Removes a plate, returning any assigned slats to the sidebar.
@@ -398,8 +482,13 @@ class PlateLayoutState {
   /// Any already-assigned slats remain in place; unassigned slats fill empty wells.
   /// When [columnsThreeToTenOnly] is true, only wells in columns 3-10 (0-indexed 2-9) are used.
   /// When [splitSlatTypes] is true, different slat types are placed on separate plates.
+  /// When [splitSlatGroups] is true, each group in [activeGroupConfig] gets a separate plate.
   void autoAssign(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap,
-      {bool columnsThreeToTenOnly = false, bool splitSlatTypes = false, bool splitSlatLayers = false}) {
+      {bool columnsThreeToTenOnly = false,
+      bool splitSlatTypes = false,
+      bool splitSlatLayers = false,
+      bool splitSlatGroups = false,
+      GroupConfiguration? activeGroupConfig}) {
     if (unassignedSlats.isEmpty) return;
 
     // Sort unassigned slats using the standard ordering
@@ -428,6 +517,26 @@ class PlateLayoutState {
 
       for (var layerGroup in groupsByLayer.values) {
         _autoAssignGroup(layerGroup, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
+      }
+    } else if (splitSlatGroups && activeGroupConfig != null) {
+      // Group slats by their assigned group, preserving sorted order within each group
+      final groupsByConfig = <String, List<String>>{};
+      final ungroupedSlats = <String>[];
+      for (var entry in toAssign) {
+        final groupId = activeGroupConfig.slatToGroup[entry.key];
+        if (groupId != null) {
+          groupsByConfig.putIfAbsent(groupId, () => []).add(entry.key);
+        } else {
+          ungroupedSlats.add(entry.key);
+        }
+      }
+
+      for (var group in groupsByConfig.values) {
+        _autoAssignGroup(group, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
+      }
+      // Ungrouped slats go on their own plate at the end
+      if (ungroupedSlats.isNotEmpty) {
+        _autoAssignGroup(ungroupedSlats, columnsThreeToTenOnly: columnsThreeToTenOnly, startOnNewPlate: true);
       }
     } else {
       _autoAssignGroup(toAssign.map((e) => e.key).toList(), columnsThreeToTenOnly: columnsThreeToTenOnly);
@@ -477,7 +586,7 @@ class PlateLayoutState {
       if (wellIdx >= emptyWells.length) {
         final newPlateIndex = (plateAssignments.keys.toList()..sort()).last + 1;
         plateAssignments[newPlateIndex] = {for (var w in _plate96Wells) w: null};
-        plateNames[newPlateIndex] = 'Plate';
+        plateNames[newPlateIndex] = 'P${newPlateIndex + 1}';
         for (var w in _plate96Wells) {
           if (columnsThreeToTenOnly) {
             final col = wellCol(w);
@@ -494,118 +603,232 @@ class PlateLayoutState {
     }
   }
 
-  /// Exports each plate as a human-readable 9×13 grid (header row + A-H, label col + 1-12)
-  /// followed by a blank separator row and a 9×13 config grid.
-  /// Returns a map from plate index to a record containing the plate name and grid data.
-  Map<int, ({String name, List<List<dynamic>> grid})> exportPlateGrids() {
-    final result = <int, ({String name, List<List<dynamic>> grid})>{};
-    for (var plateEntry in plateAssignments.entries) {
-      final plateIndex = plateEntry.key;
-      final plate = plateEntry.value;
-      final grid = <List<dynamic>>[];
-      // Header row: [experimentTitle, 1, 2, ..., 12]
-      grid.add([experimentTitle, ...List.generate(12, (i) => i + 1)]);
-      // Data rows: ["A", slatId_or_empty, ...]
+  /// Exports all plates into a single consolidated grid for the `output_echo_plates` sheet.
+  ///
+  /// Each plate block: title row, slat header, 8 data rows, blank, config header, 8 config rows,
+  /// followed by 2 blank rows of spacing. After all plates, a manual handles section is appended.
+  List<List<dynamic>> exportConsolidatedGrid() {
+    final result = <List<dynamic>>[];
+    final sortedKeys = plateAssignments.keys.toList()..sort();
+
+    for (var plateIndex in sortedKeys) {
+      final plate = plateAssignments[plateIndex]!;
+      final name = plateName(plateIndex);
+
+      // Title row
+      result.add(['$echoConsolidatedTitlePrefix$name (index=$plateIndex)$echoConsolidatedTitleSuffix']);
+
+      // Slat header row
+      result.add([experimentTitle, ...List.generate(12, (i) => i + 1)]);
+      // Slat data rows A-H
       for (var r = 0; r < 8; r++) {
         final row = <dynamic>[plateRows[r]];
         for (var c = 0; c < 12; c++) {
-          final well = wellName(r, c);
-          row.add(plate[well] ?? '');
+          row.add(plate[wellName(r, c)] ?? '');
         }
-        grid.add(row);
+        result.add(row);
       }
-      // Blank separator row (row 9)
-      grid.add(List.filled(13, ''));
-      // Config header row (row 10): [experimentTitle, 1, 2, ..., 12]
-      grid.add([experimentTitle, ...List.generate(12, (i) => i + 1)]);
-      // Config data rows (rows 11-18): ["A", configString_or_empty, ...]
+
+      // Blank separator
+      result.add(List.filled(13, ''));
+
+      // Config header row
+      result.add([experimentTitle, ...List.generate(12, (i) => i + 1)]);
+      // Config data rows A-H
       final plateConfigs = wellConfigs[plateIndex] ?? {};
       for (var r = 0; r < 8; r++) {
         final row = <dynamic>[plateRows[r]];
         for (var c = 0; c < 12; c++) {
-          final well = wellName(r, c);
-          final config = plateConfigs[well];
+          final config = plateConfigs[wellName(r, c)];
           row.add(config?.toExcelString() ?? '');
         }
-        grid.add(row);
+        result.add(row);
       }
-      result[plateIndex] = (name: plateName(plateIndex), grid: grid);
+
+      // 2 blank rows between plates
+      result.add(List.filled(13, ''));
+      result.add(List.filled(13, ''));
+    }
+
+    // Manual handles section
+    if (manualHandles.isNotEmpty) {
+      result.add([echoManualHandlesMarker]);
+      result.add(['Slat ID', 'Positions']);
+      for (var entry in manualHandles.entries) {
+        if (entry.value.isEmpty) continue;
+        result.add([entry.key, _serializeManualPositions(entry.value)]);
+      }
+    }
+
+    return result;
+  }
+
+  /// Serializes manual handle positions to compact string format: "2:1,3,5|5:2,4,6".
+  static String _serializeManualPositions(Set<(int, int)> positions) {
+    final h2 = positions.where((p) => p.$1 == 2).map((p) => p.$2).toList()..sort();
+    final h5 = positions.where((p) => p.$1 == 5).map((p) => p.$2).toList()..sort();
+    final parts = <String>[];
+    if (h2.isNotEmpty) parts.add('2:${h2.join(',')}');
+    if (h5.isNotEmpty) parts.add('5:${h5.join(',')}');
+    return parts.join('|');
+  }
+
+  /// Parses compact string format "2:1,3,5|5:2,4,6" into a set of (helix, position) tuples.
+  static Set<(int, int)> _parseManualPositions(String s) {
+    final result = <(int, int)>{};
+    if (s.isEmpty) return result;
+    for (var part in s.split('|')) {
+      final colonIdx = part.indexOf(':');
+      if (colonIdx < 0) continue;
+      final helix = int.tryParse(part.substring(0, colonIdx));
+      if (helix == null) continue;
+      for (var posStr in part.substring(colonIdx + 1).split(',')) {
+        final pos = int.tryParse(posStr.trim());
+        if (pos != null) result.add((helix, pos));
+      }
     }
     return result;
   }
 
-  /// Reconstructs a PlateLayoutState from echo plate sheets in a design file.
-  /// Returns null if no echo plate sheets are found.
-  static PlateLayoutState? fromExcelSheets(
-    Map<String, List<List<dynamic>>> sheets,
-    Map<String, Slat> slats,
-    Map<String, Map<String, dynamic>> layerMap,
-  ) {
-    // Find echo plate sheets with format p{N}_{name}
-    final plateSheetRegex = RegExp(r'^' + echoPlateSheetPrefix + r'(\d+)_(.+)$');
-    final plateSheetNames = sheets.keys.where((k) => plateSheetRegex.hasMatch(k)).toList()
-      ..sort((a, b) {
-        final numA = int.parse(plateSheetRegex.firstMatch(a)!.group(1)!);
-        final numB = int.parse(plateSheetRegex.firstMatch(b)!.group(1)!);
-        return numA.compareTo(numB);
-      });
+  /// Exports all export settings and master mix config as key-value pairs
+  /// for writing to the lab_metadata sheet.
+  Map<String, String> exportLabMetadata() {
+    return {
+      'experiment_title': experimentTitle,
+      'generate_pdf': generatePdf.toString(),
+      'generate_csv': generateCsv.toString(),
+      'generate_helper_sheets': generateHelperSheets.toString(),
+      'generate_peg_sheet': generatePegSheet.toString(),
+      'normalize_volumes': normalizeVolumes.toString(),
+      'max_well_volume_nl': maxWellVolumeNl.toString(),
+      ...masterMixConfig.toMap(),
+      ...pegConfig.toMap(),
+    };
+  }
 
-    if (plateSheetNames.isEmpty) return null;
+  /// Reconstructs a PlateLayoutState from the consolidated `output_echo_plates` sheet.
+  ///
+  /// Scans rows for title markers to separate plate blocks, then parses
+  /// slat data and config data from each block. Returns null if no plates found.
+  static PlateLayoutState? fromConsolidatedSheet(
+    List<List<dynamic>> rows,
+    Map<String, Slat> slats,
+    Map<String, Map<String, dynamic>> layerMap, {
+    Map<String, String>? labMetadata,
+  }) {
+    if (rows.isEmpty) return null;
 
     final plateAssignments = <int, Map<String, String?>>{};
     final parsedPlateNames = <int, String>{};
     final parsedWellConfigs = <int, Map<String, WellConfig>>{};
+    final parsedManualHandles = <String, Set<(int, int)>>{};
     String parsedExperimentTitle = 'Experiment';
     final allPlacedIds = <String>[];
 
-    for (var sheetName in plateSheetNames) {
-      final match = plateSheetRegex.firstMatch(sheetName)!;
-      final plateIndex = int.parse(match.group(1)!);
-      final pName = match.group(2)!;
-      final rows = sheets[sheetName]!;
-      final plateMap = <String, String?>{for (var w in _plate96Wells) w: null};
+    // Regex to extract plate name and index from title row
+    final titleRegex = RegExp(
+      r'^' + RegExp.escape(echoConsolidatedTitlePrefix) + r'(.+?) \(index=(\d+)\)' +
+      RegExp.escape(echoConsolidatedTitleSuffix) + r'$',
+    );
 
-      // rows[0] is the header row; rows 1-8 are data rows A-H
-      for (var r = 1; r < rows.length && r <= 8; r++) {
-        final row = rows[r];
+    int i = 0;
+    while (i < rows.length) {
+      final firstCell = rows[i].isNotEmpty ? rows[i][0].toString() : '';
+
+      // Check for manual handles section
+      if (firstCell == echoManualHandlesMarker) {
+        i += 2; // skip marker + header row
+        while (i < rows.length && rows[i].isNotEmpty) {
+          final row = rows[i];
+          if (row.length >= 2 && row[0] != null && row[0].toString().isNotEmpty) {
+            final slatId = row[0].toString();
+            final positions = _parseManualPositions(row[1].toString());
+            if (positions.isNotEmpty) parsedManualHandles[slatId] = positions;
+          }
+          i++;
+        }
+        break;
+      }
+
+      // Check for plate title row
+      final titleMatch = titleRegex.firstMatch(firstCell);
+      if (titleMatch == null) {
+        i++;
+        continue;
+      }
+
+      final pName = titleMatch.group(1)!;
+      final plateIndex = int.parse(titleMatch.group(2)!);
+      final plateMap = <String, String?>{for (var w in _plate96Wells) w: null};
+      i++; // move past title row
+
+      // Parse slat header (row i) and data rows (i+1 to i+8)
+      if (i < rows.length) {
+        // Experiment title from the header row
+        final headerCell = rows[i].isNotEmpty ? rows[i][0]?.toString() : null;
+        if (headerCell != null && headerCell.isNotEmpty) {
+          parsedExperimentTitle = headerCell;
+        }
+        i++; // skip header row
+      }
+
+      // 8 data rows (A-H)
+      for (var r = 0; r < 8 && i < rows.length; r++, i++) {
+        final row = rows[i];
         for (var c = 1; c < row.length && c <= 12; c++) {
           final cellValue = row[c];
-          final well = wellName(r - 1, c - 1);
           if (cellValue != null && cellValue.toString().isNotEmpty) {
             final slatId = cellValue.toString();
-            plateMap[well] = slatId;
+            plateMap[wellName(r, c - 1)] = slatId;
             allPlacedIds.add(slatId);
           }
         }
       }
+
       plateAssignments[plateIndex] = plateMap;
       parsedPlateNames[plateIndex] = pName;
 
-      // Parse config grid (rows 10-18) if present
-      if (rows.length > 10) {
-        final expTitleCell = rows[10][0];
-        if (expTitleCell != null && expTitleCell.toString().isNotEmpty) {
-          parsedExperimentTitle = expTitleCell.toString();
-        }
-        final plateConfigMap = <String, WellConfig>{};
-        for (var r = 11; r < rows.length && r <= 18; r++) {
-          final row = rows[r];
-          for (var c = 1; c < row.length && c <= 12; c++) {
-            final cellValue = row[c];
-            if (cellValue != null && cellValue.toString().isNotEmpty) {
-              final config = WellConfig.fromExcelString(cellValue.toString());
-              if (config != null) {
-                final well = wellName(r - 11, c - 1);
-                plateConfigMap[well] = config;
-              }
+      // Skip blank separator row
+      if (i < rows.length) i++;
+
+      // Parse config header + 8 config data rows
+      if (i < rows.length) i++; // skip config header
+      final plateConfigMap = <String, WellConfig>{};
+      for (var r = 0; r < 8 && i < rows.length; r++, i++) {
+        final row = rows[i];
+        for (var c = 1; c < row.length && c <= 12; c++) {
+          final cellValue = row[c];
+          if (cellValue != null && cellValue.toString().isNotEmpty) {
+            final config = WellConfig.fromExcelString(cellValue.toString());
+            if (config != null) {
+              plateConfigMap[wellName(r, c - 1)] = config;
             }
           }
         }
-        if (plateConfigMap.isNotEmpty) {
-          parsedWellConfigs[plateIndex] = plateConfigMap;
-        }
+      }
+      if (plateConfigMap.isNotEmpty) {
+        parsedWellConfigs[plateIndex] = plateConfigMap;
+      }
+
+      // Skip 2 blank spacer rows between plates
+      while (i < rows.length && rows[i].every((c) => c == null || c.toString().isEmpty)) {
+        i++;
       }
     }
+
+    if (plateAssignments.isEmpty) return null;
+
+    // Parse lab metadata (master mix config + export settings)
+    final m = labMetadata ?? {};
+    final parsedMixConfig = MasterMixConfig.fromMap(m);
+    final labExperimentTitle = m['experiment_title'];
+    final parsedGeneratePdf = m['generate_pdf'] != 'false';
+    final parsedGenerateCsv = m['generate_csv'] != 'false';
+    final parsedGenerateHelper = m['generate_helper_sheets'] == 'true';
+    final parsedGeneratePeg = m['generate_peg_sheet'] == 'true';
+    final parsedPegConfig = PegPurificationConfig.fromMap(m);
+    final parsedNormalize = m['normalize_volumes'] == 'true';
+    final parsedMaxWellVolume = double.tryParse(m['max_well_volume_nl'] ?? '') ?? 25000;
 
     // Rebuild duplicateGroups and counters in a single pass
     final duplicateGroups = <String, Set<String>>{};
@@ -619,7 +842,6 @@ class PlateLayoutState {
         final current = duplicateCounters[base] ?? 0;
         if (suffix > current) duplicateCounters[base] = suffix;
       } else if (duplicateGroups.containsKey(base)) {
-        // Base ID placed without suffix but has duplicates — track it
         duplicateGroups[base]!.add(id);
       }
     }
@@ -636,7 +858,16 @@ class PlateLayoutState {
       duplicateCounters: duplicateCounters,
       plateNames: parsedPlateNames,
       wellConfigs: parsedWellConfigs,
-      experimentTitle: parsedExperimentTitle,
+      manualHandles: parsedManualHandles,
+      experimentTitle: labExperimentTitle ?? parsedExperimentTitle,
+      masterMixConfig: parsedMixConfig,
+      generatePdf: parsedGeneratePdf,
+      generateCsv: parsedGenerateCsv,
+      generateHelperSheets: parsedGenerateHelper,
+      generatePegSheet: parsedGeneratePeg,
+      normalizeVolumes: parsedNormalize,
+      maxWellVolumeNl: parsedMaxWellVolume,
+      pegConfig: parsedPegConfig,
     )..ensureDefaultConfigs();
   }
 
@@ -656,7 +887,18 @@ class PlateLayoutState {
         for (var e in wellConfigs.entries)
           e.key: {for (var w in e.value.entries) w.key: w.value.copy()},
       },
+      manualHandles: {
+        for (var e in manualHandles.entries) e.key: Set<(int, int)>.from(e.value),
+      },
       experimentTitle: experimentTitle,
+      masterMixConfig: masterMixConfig,
+      generatePdf: generatePdf,
+      generateCsv: generateCsv,
+      generateHelperSheets: generateHelperSheets,
+      generatePegSheet: generatePegSheet,
+      normalizeVolumes: normalizeVolumes,
+      maxWellVolumeNl: maxWellVolumeNl,
+      pegConfig: pegConfig,
     );
   }
 
@@ -720,10 +962,11 @@ class PlateLayoutState {
         }
       }
 
-      // Clean up duplicate groups
+      // Clean up duplicate groups and manual handles
       for (var baseId in deletedIds) {
         duplicateGroups.remove(baseId);
         _duplicateCounters.remove(baseId);
+        manualHandles.remove(baseId);
       }
     }
 
@@ -826,7 +1069,7 @@ class PlateLayoutState {
     // No space found — create a new plate
     final newPlateIndex = plateAssignments.isEmpty ? 0 : (plateAssignments.keys.toList()..sort()).last + 1;
     plateAssignments[newPlateIndex] = {for (var w in _plate96Wells) w: null};
-    plateNames[newPlateIndex] = 'Plate';
+    plateNames[newPlateIndex] = 'P${newPlateIndex + 1}';
     final well = wellName(0, 0);
     plateAssignments[newPlateIndex]![well] = slatId;
     wellConfigs.putIfAbsent(newPlateIndex, () => {}).putIfAbsent(well, () => const WellConfig());

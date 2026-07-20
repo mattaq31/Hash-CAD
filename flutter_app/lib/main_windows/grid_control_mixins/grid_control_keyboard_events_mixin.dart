@@ -26,11 +26,13 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
           setHoverCoordinates(appState);
         }
       },
-      // flip shortcut for 60deg layers
+      // flip shortcut (F key flips the multi-slat generator direction for slat-add and seed modes)
       SingleActivator(LogicalKeyboardKey.keyF): () {
-        appState.flipMultiSlatGenerator();
-        if (getActionMode(actionState) == 'Slat-Add' && hoverPosition != null) {
-          setHoverCoordinates(appState);
+        if (getActionMode(actionState) == 'Slat-Add' || (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED')) {
+          appState.flipMultiSlatGenerator();
+          if (hoverPosition != null) {
+            setHoverCoordinates(appState);
+          }
         }
       },
       // flip shortcut (T key works in move mode for slats, and in cargo-add mode for seed transpose)
@@ -71,10 +73,10 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Add');
         }
-        else if (actionState.panelMode == 1) {
+        else if (actionState.panelMode == 2) {
           actionState.updateAssemblyMode('Add');
         }
-        else if (actionState.panelMode == 2) {
+        else if (actionState.panelMode == 3) {
           actionState.updateCargoMode('Add');
         }
       },
@@ -82,10 +84,10 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Delete');
         }
-        else if (actionState.panelMode == 1) {
+        else if (actionState.panelMode == 2) {
           actionState.updateAssemblyMode('Delete');
         }
-        else if (actionState.panelMode == 2) {
+        else if (actionState.panelMode == 3) {
           actionState.updateCargoMode('Delete');
         }
       },
@@ -93,10 +95,10 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Move');
         }
-        else if (actionState.panelMode == 1) {
+        else if (actionState.panelMode == 2) {
           actionState.updateAssemblyMode('Move');
         }
-        else if (actionState.panelMode == 2) {
+        else if (actionState.panelMode == 3) {
           actionState.updateCargoMode('Move');
         }
       },

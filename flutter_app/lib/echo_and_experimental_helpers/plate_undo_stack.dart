@@ -1,5 +1,7 @@
 import 'plate_layout_state.dart';
 
+/// Manages undo/redo history for plate layout changes, storing deep copies of PlateLayoutState.
+/// Just a nice convenience function for users.
 class PlateUndoStack {
   final List<PlateLayoutState> _history = [];
   int _currentIndex = -1;

@@ -84,11 +84,16 @@ print('SEED PLATES COMPLETE')
 
 output_folder = os.path.join(main_folder, 'assembly_plates')
 create_dir_if_empty(output_folder)
+latest_output_folder = os.path.join(main_folder, 'latest_assembly_plates')
+create_dir_if_empty(latest_output_folder)
 
 all_ass_plates = cckz_h2_antihandle_plates + cckz_h5_handle_plates + cckz_h5_sample_handle_plates + cckz_h2_sample_antihandle_plates + crisscross_h2_handle_plates + crisscross_h5_handle_plates
 ass_sides = ['h2'] * 6 + ['h5'] * 6 + ['h5'] * 3 + ['h2'] * 3 + ['h2'] * 3 + ['h5'] * 6
 ass_categories = ['ASSEMBLY_ANTIHANDLE'] * 6 + ['ASSEMBLY_HANDLE'] * 6 + ['ASSEMBLY_HANDLE'] * 3 + ['ASSEMBLY_ANTIHANDLE'] * 3 + ['ASSEMBLY_ANTIHANDLE'] * 3 + ['ASSEMBLY_HANDLE'] * 3 + ['ASSEMBLY_ANTIHANDLE'] * 3
 ass_versions = ['v2'] * 6 + ['v2'] * 6 + ['v2'] * 3 + ['v2'] * 3 + ['v1'] * 3 + ['v1'] * 6
+
+# Sets for determining output folder
+latest_plates_set = set(cckz_h2_antihandle_plates + cckz_h5_handle_plates)
 
 # ASSEMBLY HANDLE PREPARATION
 for ass_plate, h_side, category, version in zip(all_ass_plates, ass_sides, ass_categories, ass_versions):
@@ -112,7 +117,8 @@ for ass_plate, h_side, category, version in zip(all_ass_plates, ass_sides, ass_c
     if sp_name == 'P3601_MA':
         plate.loc[plate['well'].isin(['N19', 'N22', 'N24']), 'concentration'] = 50
 
-    export_standardized_plate_sheet(plate, output_folder, ass_plate + '.xlsx')
+    dest_folder = latest_output_folder if ass_plate in latest_plates_set else output_folder
+    export_standardized_plate_sheet(plate, dest_folder, ass_plate + '.xlsx')
 
 print('ASSEMBLY PLATES COMPLETE')
 

@@ -53,8 +53,8 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     Map<Offset, Set<Offset>> seedLayerChecks = {}; // newSeedCoord -> adjacentLayerOccupancy
     Set<Offset> hiddenSeedLayerPositions = {}; // Old seed positions being moved (to exclude)
 
-    if (actionState.panelMode == 0) {
-      // slat mode
+    if (actionState.panelMode == 0 || actionState.panelMode == 1) {
+      // slat mode (or grouping mode which uses slat selection)
       occupiedPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys;
 
       for (var slatId in hiddenSlats) {
@@ -96,7 +96,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
           }
         }
       }
-    } else if (actionState.panelMode == 1) {
+    } else if (actionState.panelMode == 2) {
       // assembly handle mode - check for cargo/seed occupancy
       String layerSideKey = generateLayerSideKey(appState.selectedLayerKey, actionState.assemblyAttachMode);
       appState.occupiedCargoPoints.putIfAbsent(layerSideKey, () => {});
@@ -176,7 +176,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     if (seedLayerChecks.isNotEmpty) {
       // For slat move: we need to map old seed positions to new positions
       // For cargo move/add: coordinates ARE the new positions directly
-      if (actionState.panelMode == 0 && hiddenSlats.isNotEmpty) {
+      if ((actionState.panelMode == 0 || actionState.panelMode == 1) && hiddenSlats.isNotEmpty) {
         // Match old positions to new positions in coordinates list
         // coordinates contains new positions for ALL selected slats in order
         int coordIndex = 0;
@@ -245,8 +245,8 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     bool snapHoverValid = true;
     List<Offset> queryCoordinates = [];
 
-    if (actionState.panelMode == 0) {
-      // slat mode
+    if (actionState.panelMode == 0 || actionState.panelMode == 1) {
+      // slat mode (or grouping mode which shares slat movement logic)
       // preselectedSlats means that the slats are already selected and are being moved
       if (preSelectedPositions) {
         Offset slatOffset = appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor);
@@ -261,7 +261,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
         Map<int, Map<int, Offset>> allSlatCoordinates = generateSlatPositions(snapPosition, false, appState);
         queryCoordinates = allSlatCoordinates.values.expand((innerMap) => innerMap.values).toList();
       }
-    } else if (actionState.panelMode == 1) {
+    } else if (actionState.panelMode == 2) {
       // assembly handle mode
 
       // assembly handles are not allowed on the top-most or bottom-most layer (make a new empty layer to do that)
@@ -300,7 +300,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     snapHoverValid = !checkCoordinateOccupancy(appState, actionState, queryCoordinates);
 
     // For handles, also check that all destination coordinates have slats to bind to
-    if (snapHoverValid && actionState.panelMode != 0) {
+    if (snapHoverValid && actionState.panelMode != 0 && actionState.panelMode != 1) {
       var slatPositions = appState.occupiedGridPoints[appState.selectedLayerKey]?.keys;
       if (slatPositions != null) {
         for (var coord in queryCoordinates) {
@@ -398,7 +398,9 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
 
   @override
   String getActionMode(ActionState actionState) {
-    if (actionState.panelMode == 0) {
+    if (actionState.panelMode == 1) {
+      return "Slat-Move";
+    } else if (actionState.panelMode == 0) {
       if (actionState.slatMode == "Add") {
         return "Slat-Add";
       } else if (actionState.slatMode == "Delete") {
@@ -408,7 +410,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       } else {
         return "Neutral";
       }
-    } else if (actionState.panelMode == 1) {
+    } else if (actionState.panelMode == 2) {
       if (actionState.assemblyMode == 'Add') {
         return "Assembly-Add";
       } else if (actionState.assemblyMode == 'Delete') {
@@ -418,7 +420,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       } else {
         return "Neutral";
       }
-    } else if (actionState.panelMode == 2) {
+    } else if (actionState.panelMode == 3) {
       if (actionState.cargoMode == 'Add') {
         return "Cargo-Add";
       } else if (actionState.cargoMode == 'Delete') {

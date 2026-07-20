@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 
+import '../app_management/design_io/file_picker_helpers.dart';
+
 Future<void> saveSvg(String svgString, String fileName) async {
   String? filePath = await FilePicker.platform.saveFile(
     dialogTitle: 'Save As',
@@ -10,7 +12,7 @@ Future<void> saveSvg(String svgString, String fileName) async {
   );
 
   if (filePath != null) {
-    final file = File(filePath);
+    final file = File(ensureExtension(filePath, 'svg'));
     await file.writeAsString(svgString);
   }
 }

@@ -15,7 +15,7 @@ class PlateGrid extends StatelessWidget {
   final Map<String, Slat> slats;
   final Map<String, Map<String, dynamic>> layerMap;
   final void Function(int fromPlate, String fromWell, int toPlate, String toWell) onWellToWell;
-  final void Function(String slatId, int toPlate, String toWell) onSidebarToWell;
+  final void Function(String slatId, int toPlate, String toWell, {List<String>? slatIds}) onSidebarToWell;
   final GlobalKey<WellWidgetState> Function(int plate, String well) wellKeyFor;
   final Set<String> selectedWells;
   final void Function(int plate, String well) onWellClick;
@@ -25,14 +25,19 @@ class PlateGrid extends StatelessWidget {
   final void Function(int plate, String well) onGroupDragHover;
   final ({bool isValid, String? ghostSlatId})? Function(int plate, String well) ghostStateFor;
   final bool Function(int plate, String well) isSourceWellDuringGroupDrag;
+  final void Function(int plate, String well, int count)? onSidebarDragHover;
+  final VoidCallback? onSidebarDragLeave;
   final PlateLayoutState layoutState;
   final VoidCallback? onRemovePlate;
   final String plateName;
   final int plateDisplayNumber;
   final VoidCallback? onRenamePlate;
   final VoidCallback? onConfigPlate;
+  final VoidCallback? onSelectAllPlate;
   final bool showMetricView;
   final Map<String, WellConfig>? plateWellConfigs;
+  final EchoWellColorMode echoColorMode;
+  final Color? Function(String slatId)? resolveGroupColor;
 
   const PlateGrid({
     super.key,
@@ -51,14 +56,19 @@ class PlateGrid extends StatelessWidget {
     required this.onGroupDragHover,
     required this.ghostStateFor,
     required this.isSourceWellDuringGroupDrag,
+    this.onSidebarDragHover,
+    this.onSidebarDragLeave,
     required this.layoutState,
     required this.plateName,
     required this.plateDisplayNumber,
     this.onRemovePlate,
     this.onRenamePlate,
     this.onConfigPlate,
+    this.onSelectAllPlate,
     this.showMetricView = false,
     this.plateWellConfigs,
+    this.echoColorMode = EchoWellColorMode.natural,
+    this.resolveGroupColor,
   });
 
   @override
@@ -86,6 +96,11 @@ class PlateGrid extends StatelessWidget {
               if (onRenamePlate != null) ...[
                 const SizedBox(width: 4),
                 _HoverableIconButton(onTap: onRenamePlate!, icon: Icons.edit, hoverColor: Colors.blue),
+              ],
+              if (onSelectAllPlate != null) ...[
+                const SizedBox(width: 4),
+                _HoverableIconButton(
+                    onTap: onSelectAllPlate!, icon: Icons.select_all, hoverColor: Colors.indigo),
               ],
               if (onConfigPlate != null) ...[
                 const SizedBox(width: 4),
@@ -165,9 +180,10 @@ class PlateGrid extends StatelessWidget {
     final isSelected = selectedWells.contains(wellKey);
     final ghostState = ghostStateFor(plateIndex, well);
     final isSource = isSourceWellDuringGroupDrag(plateIndex, well);
-    final color = designColorFor(slat, layerMap);
+    final color = echoDesignColorFor(slat, layerMap, echoColorMode, resolveGroupColor);
     final isInDupGroup = slatId != null && layoutState.duplicateGroups.containsKey(baseSlatId(slatId));
-    final displayName = slat != null ? slatDisplayName(slat, layerMap) : null;
+    final displayName = slat != null ? slatDisplayName(slat, layerMap, slats: slats) : null;
+    final manualPos = lookupId != null ? layoutState.getManualHandles(lookupId) : const <(int, int)>{};
 
     return WellWidget(
       key: wellKeyFor(plateIndex, well),
@@ -184,6 +200,7 @@ class PlateGrid extends StatelessWidget {
       showMetricView: showMetricView,
       wellConfig: plateWellConfigs?[well],
       slatType: slat?.slatType,
+      manualPositions: manualPos,
       onWellToWell: onWellToWell,
       onSidebarToWell: onSidebarToWell,
       onWellClick: () => onWellClick(plateIndex, well),
@@ -191,6 +208,8 @@ class PlateGrid extends StatelessWidget {
       isGroupDragging: isGroupDragging,
       onGroupDragStart: () => onGroupDragStart(plateIndex, well),
       onGroupDragHover: () => onGroupDragHover(plateIndex, well),
+      onSidebarDragHover: onSidebarDragHover,
+      onSidebarDragLeave: onSidebarDragLeave,
     );
   }
 }

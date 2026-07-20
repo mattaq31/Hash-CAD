@@ -14,10 +14,15 @@ import 'echo_plate_pdf_export.dart';
 import 'echo_plate_sidebar.dart';
 import 'echo_plate_well.dart';
 import 'echo_well_config_dialog.dart';
+import 'manual_handle_dialog.dart';
+import 'mass_manual_handle_dialog.dart';
+import 'master_mix_config.dart';
+import 'master_mix_export.dart';
+import 'peg_purification_export.dart';
 import 'plate_layout_state.dart';
 import 'plate_undo_stack.dart';
 
-import 'save_file_web.dart' if (dart.library.io) '../echo_and_experimental_helpers/save_file_desktop.dart';
+import '../app_management/design_io/save_file_web.dart' if (dart.library.io) '../app_management/design_io/save_file_desktop.dart';
 
 // ---------------------------------------------------------------------------
 // EchoPlateWindow — top-level overlay container
@@ -41,24 +46,34 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   bool _isHeaderHovered = false;
   bool _animationComplete = true;
 
-  // Multi-select
+  // Multi-select (plate wells)
   Set<String> _selectedWells = {};
   Offset? _rubberBandStart;
   Offset? _rubberBandCurrent;
   bool _isRubberBanding = false;
   bool _modifierHeld = false;
 
+  // Multi-select (sidebar slats)
+  Set<String> _selectedSidebarSlats = {};
+  int? _lastTappedSidebarIndex;
+
+  // Sidebar multi-drag hover preview
+  ({int plate, String well, int count})? _sidebarDragHover;
+
   // Auto-assign options
   bool _columnsThreeToTenOnly = false;
   bool _overwriteExisting = false;
   bool _splitSlatTypes = false;
   bool _splitSlatLayers = false;
+  bool _splitSlatGroups = false;
 
   // Metric view toggle
   bool _showMetricView = false;
 
-  // Export options
-  bool _normalizeVolumes = false;
+  // Echo well color mode (local to this window)
+  EchoWellColorMode _echoColorMode = EchoWellColorMode.natural;
+
+  // Export options (stored on _layoutState for persistence)
 
   // Last used well config (remembered across config dialogs)
   WellConfig _lastUsedConfig = const WellConfig();
@@ -163,7 +178,6 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   /// Keeps appState's echo plate reference in sync (shares the same object — no deep copy).
-  /// Export calls exportPlateGrids() which only reads, so sharing is safe.
   void _syncLayoutToAppState() {
     final appState = context.read<DesignState>();
     appState.echoPlateLayoutState = _layoutState;
@@ -201,11 +215,91 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     }
   }
 
-  void _handleSidebarToWell(String slatId, int toPlate, String toWell) {
+  void _handleSidebarToWell(String slatId, int toPlate, String toWell, {List<String>? slatIds}) {
     setState(() {
-      _layoutState!.moveSlatFromSidebarToWell(slatId, toPlate, toWell);
+      if (slatIds != null && slatIds.length > 1) {
+        _placeSidebarSlatsSequentially(slatIds, toPlate, toWell);
+      } else {
+        _layoutState!.moveSlatFromSidebarToWell(slatId, toPlate, toWell);
+      }
+      _selectedSidebarSlats.clear();
+      _sidebarDragHover = null;
     });
     _saveUndoState();
+  }
+
+  /// Places multiple slats starting at the given well, filling column-first.
+  void _placeSidebarSlatsSequentially(List<String> slatIds, int startPlate, String startWell) {
+    int row = wellRow(startWell);
+    int col = wellCol(startWell);
+    int plate = startPlate;
+
+    for (var id in slatIds) {
+      if (row >= plateRows.length) {
+        // Move to next column
+        row = 0;
+        col++;
+      }
+      if (col >= plateCols.length) break;
+      final well = wellName(row, col);
+      _layoutState!.moveSlatFromSidebarToWell(id, plate, well);
+      row++;
+    }
+  }
+
+  void _handleSidebarSlatTapped(String slatId, int index) {
+    final isShiftHeld = HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftLeft) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftRight);
+    final isCmdHeld = HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.metaLeft) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.metaRight) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.controlLeft) ||
+        HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.controlRight);
+
+    setState(() {
+      _selectedWells.clear();
+      if (isShiftHeld && _lastTappedSidebarIndex != null) {
+        // Range select from last tapped to current
+        final start = _lastTappedSidebarIndex!.clamp(0, _layoutState!.unassignedSlats.length - 1);
+        final end = index;
+        final lo = start < end ? start : end;
+        final hi = start < end ? end : start;
+        for (var i = lo; i <= hi; i++) {
+          _selectedSidebarSlats.add(_layoutState!.unassignedSlats[i]);
+        }
+      } else if (isCmdHeld) {
+        // Toggle individual selection
+        if (_selectedSidebarSlats.contains(slatId)) {
+          _selectedSidebarSlats.remove(slatId);
+        } else {
+          _selectedSidebarSlats.add(slatId);
+        }
+      } else {
+        // Single select
+        if (_selectedSidebarSlats.contains(slatId) && _selectedSidebarSlats.length == 1) {
+          _selectedSidebarSlats.clear();
+        } else {
+          _selectedSidebarSlats = {slatId};
+        }
+      }
+      _lastTappedSidebarIndex = index;
+    });
+  }
+
+  void _handleSidebarDragHover(int plate, String well, int count) {
+    if (count <= 1) {
+      if (_sidebarDragHover != null) setState(() => _sidebarDragHover = null);
+      return;
+    }
+    final newHover = (plate: plate, well: well, count: count);
+    if (_sidebarDragHover != newHover) {
+      setState(() => _sidebarDragHover = newHover);
+    }
+  }
+
+  void _handleSidebarDragLeave() {
+    if (_sidebarDragHover != null) {
+      setState(() => _sidebarDragHover = null);
+    }
   }
 
   void _handleWellToSidebar(int fromPlate, String fromWell) {
@@ -231,7 +325,10 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _layoutState!.autoAssign(appState.slats, appState.layerMap,
           columnsThreeToTenOnly: _columnsThreeToTenOnly,
           splitSlatTypes: _splitSlatTypes,
-          splitSlatLayers: _splitSlatLayers);
+          splitSlatLayers: _splitSlatLayers,
+          splitSlatGroups: _splitSlatGroups,
+          activeGroupConfig: appState.activeGroupConfig);
+      _selectedSidebarSlats.clear();
     });
     _saveUndoState();
   }
@@ -258,6 +355,103 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       _selectedWells.clear();
     });
     _saveUndoState();
+  }
+
+  void _handleSelectAll() {
+    setState(() {
+      _selectedWells = {};
+      for (var plateEntry in _layoutState!.plateAssignments.entries) {
+        for (var wellEntry in plateEntry.value.entries) {
+          if (wellEntry.value != null) {
+            _selectedWells.add('${plateEntry.key}:${wellEntry.key}');
+          }
+        }
+      }
+    });
+  }
+
+  void _handleSelectAllPlate(int plateIndex) {
+    setState(() {
+      final plate = _layoutState!.plateAssignments[plateIndex];
+      if (plate == null) return;
+      for (var wellEntry in plate.entries) {
+        if (wellEntry.value != null) {
+          _selectedWells.add('$plateIndex:${wellEntry.key}');
+        }
+      }
+    });
+  }
+
+  Future<void> _handleMarkManualHandles(DesignState appState) async {
+    if (_selectedWells.isEmpty) return;
+
+    // Determine if all selected slats share the same manual handle config
+    final mixedConfig = !_layoutState!.selectedHaveSameManualConfig(_selectedWells);
+
+    // Collect distinct slat IDs from the selection
+    final selectedSlatIds = <String>{};
+    for (var key in _selectedWells) {
+      final parts = key.split(':');
+      final plate = int.parse(parts[0]);
+      final well = parts[1];
+      final slatId = _layoutState!.plateAssignments[plate]?[well];
+      if (slatId != null) selectedSlatIds.add(baseSlatId(slatId));
+    }
+
+    final multipleSlatsSelected = selectedSlatIds.length > 1;
+
+    // Get current manual positions and handle data from the first selected slat
+    Set<(int, int)> currentPositions = {};
+    Slat? firstSlat;
+    for (var slatId in selectedSlatIds) {
+      currentPositions = _layoutState!.getManualHandles(slatId);
+      firstSlat = appState.slats[slatId];
+      break;
+    }
+
+    _dialogOpen = true;
+    final result = await showManualHandleDialog(
+      context,
+      currentManualPositions: currentPositions,
+      mixedConfig: mixedConfig,
+      h5Handles: firstSlat?.h5Handles,
+      h2Handles: firstSlat?.h2Handles,
+      multipleSlatsSelected: multipleSlatsSelected,
+      slatName: firstSlat != null ? slatDisplayName(firstSlat, appState.layerMap, slats: appState.slats) : null,
+    );
+    _dialogOpen = false;
+
+    if (result != null) {
+      setState(() {
+        _layoutState!.applyManualHandlesToSelected(_selectedWells, result);
+      });
+      _saveUndoState();
+    }
+  }
+
+  Future<void> _handleMassManualEdit(DesignState appState) async {
+    _dialogOpen = true;
+    final result = await showMassManualHandleDialog(
+      context,
+      slats: appState.slats,
+      layoutState: _layoutState!,
+    );
+    _dialogOpen = false;
+
+    if (result != null) {
+      setState(() {
+        if (result.clearAll) {
+          _layoutState!.manualHandles.clear();
+        } else {
+          for (var entry in result.perSlatPositions.entries) {
+            final existing = _layoutState!.getManualHandles(entry.key);
+            final merged = Set<(int, int)>.from(existing)..addAll(entry.value);
+            _layoutState!.setManualHandles(entry.key, merged);
+          }
+        }
+      });
+      _saveUndoState();
+    }
   }
 
   void _handleAddPlate() {
@@ -372,6 +566,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
           maxLength: 40,
           autofocus: true,
           decoration: const InputDecoration(labelText: 'Experiment name'),
+          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[/\\]'))],
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) Navigator.pop(ctx, value.trim());
           },
@@ -443,7 +638,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     final config = await showWellConfigDialog(context,
         title: 'Configure All Wells',
         initial: _lastUsedConfig,
-        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats),
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl);
     _dialogOpen = false;
     if (config == null) return;
     _lastUsedConfig = config;
@@ -467,7 +663,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     final config = await showWellConfigDialog(context,
         title: 'Edit Selected Wells',
         initial: initial,
-        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats),
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl);
     _dialogOpen = false;
     if (config == null) return;
     _lastUsedConfig = config;
@@ -484,7 +681,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     final config = await showWellConfigDialog(context,
         title: 'Configure Plate',
         initial: _lastUsedConfig,
-        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats));
+        estimateVolumeNl: (c) => _estimateMaxVolumeNl(c, affectedSlats),
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl);
     _dialogOpen = false;
     if (config == null) return;
     _lastUsedConfig = config;
@@ -503,6 +701,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftRight);
 
     setState(() {
+      _selectedSidebarSlats.clear();
       if (isShiftHeld) {
         if (isOccupied) {
           if (_selectedWells.contains(key)) {
@@ -624,6 +823,31 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   ({bool isValid, String? ghostSlatId})? _ghostStateFor(int plate, String well) {
+    // Sidebar multi-drag hover preview
+    if (_sidebarDragHover != null) {
+      if (plate != _sidebarDragHover!.plate) return null;
+      final startRow = wellRow(_sidebarDragHover!.well);
+      final startCol = wellCol(_sidebarDragHover!.well);
+      final wellRow_ = wellRow(well);
+      final wellCol_ = wellCol(well);
+
+      int row = startRow;
+      int col = startCol;
+      for (var i = 0; i < _sidebarDragHover!.count; i++) {
+        if (row == wellRow_ && col == wellCol_) {
+          return (isValid: true, ghostSlatId: null);
+        }
+        row++;
+        if (row >= plateRows.length) {
+          row = 0;
+          col++;
+        }
+        if (col >= plateCols.length) break;
+      }
+      return null;
+    }
+
+    // Group drag ghost preview
     if (_groupDragAnchor == null || _groupDragOffsets == null || _groupDragHoverWell == null) return null;
     if (plate != _groupDragHoverWell!.plate) return null;
 
@@ -750,6 +974,12 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       // If a fresh import happened while hidden, replace the layout entirely
       if (appState.echoPlateLayoutFromImport && appState.echoPlateLayoutState != null) {
         _applyImportedLayout(appState);
+      } else if (_layoutState != null && appState.echoPlateLayoutState == null) {
+        // Design was cleared/switched while hidden — discard stale local state
+        _layoutState = null;
+        _undoStack.clear();
+        _selectedWells.clear();
+        _wellKeys.clear();
       }
       return const SizedBox.shrink();
     }
@@ -760,6 +990,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     } else if (appState.echoPlateLayoutFromImport && appState.echoPlateLayoutState != null) {
       // A fresh import happened while the echo window was open — replace layout
       _applyImportedLayout(appState);
+    } else if (appState.echoPlateLayoutState == null) {
+      // Design was cleared/switched without echo data — reset to fresh state
+      _initialize(appState);
     } else {
       // Sync with design on every rebuild (picks up added/removed slats)
       _layoutState!.syncWithDesign(appState.slats, appState.layerMap);
@@ -815,6 +1048,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                   onDuplicateSelected: _handleDuplicateSelected,
                   onConfigAll: _handleConfigAll,
                   onEditSelected: _handleEditSelected,
+                  onSelectAll: _handleSelectAll,
+                  onMarkManualHandles: () => _handleMarkManualHandles(appState),
+                  onMassManualEdit: () => _handleMassManualEdit(appState),
                   hasSelection: _selectedWells.isNotEmpty,
                 ),
                 Expanded(
@@ -833,13 +1069,24 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         splitSlatTypes: _splitSlatTypes,
                         onSplitSlatTypesChanged: (v) => setState(() {
                           _splitSlatTypes = v;
-                          if (v) _splitSlatLayers = false;
+                          if (v) { _splitSlatLayers = false; _splitSlatGroups = false; }
                         }),
                         splitSlatLayers: _splitSlatLayers,
                         onSplitSlatLayersChanged: (v) => setState(() {
                           _splitSlatLayers = v;
-                          if (v) _splitSlatTypes = false;
+                          if (v) { _splitSlatTypes = false; _splitSlatGroups = false; }
                         }),
+                        splitSlatGroups: _splitSlatGroups,
+                        splitSlatGroupsEnabled: appState.activeGroupConfig != null,
+                        onSplitSlatGroupsChanged: (v) => setState(() {
+                          _splitSlatGroups = v;
+                          if (v) { _splitSlatTypes = false; _splitSlatLayers = false; }
+                        }),
+                        echoColorMode: _echoColorMode,
+                        resolveGroupColor: appState.resolveGroupColor,
+                        selectedSlatIds: _selectedSidebarSlats,
+                        onSlatTapped: _handleSidebarSlatTapped,
+                        onClearSelection: () => setState(() => _selectedSidebarSlats.clear()),
                       ),
                       const VerticalDivider(width: 1, thickness: 1),
                       Expanded(
@@ -851,6 +1098,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                 PlateColorKeyBar(
                   showMetricView: _showMetricView,
                   onToggleMetricView: () => setState(() => _showMetricView = !_showMetricView),
+                  colorMode: _echoColorMode,
+                  onColorModeChanged: (mode) => setState(() => _echoColorMode = mode),
                 ),
                 _buildExportSection(appState),
               ],
@@ -863,12 +1112,23 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
   /// Returns true if any assigned slat still has placeholder handles.
   bool _hasIncompleteSlats(Map<String, Slat> slats) {
+    final manualHandles = _layoutState!.manualHandles;
     for (var plate in _layoutState!.plateAssignments.values) {
       for (var slatId in plate.values) {
         if (slatId == null) continue;
         final base = baseSlatId(slatId);
         final slat = slats[base];
-        if (slat != null && slat.placeholderList.isNotEmpty) return true;
+        if (slat == null || slat.placeholderList.isEmpty) continue;
+        final manualPositions = manualHandles[base] ?? const {};
+        final hasNonManualPlaceholder = slat.placeholderList.any((entry) {
+          final parts = entry.split('-');
+          if (parts.length < 3) return true;
+          final position = int.tryParse(parts[1]);
+          final helix = int.tryParse(parts[2].replaceFirst('h', ''));
+          if (position == null || helix == null) return true;
+          return !manualPositions.contains((helix, position));
+        });
+        if (hasNonManualPlaceholder) return true;
       }
     }
     return false;
@@ -876,7 +1136,6 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
   Widget _buildExportSection(DesignState appState) {
     final hasIncompleteSlats = _hasIncompleteSlats(appState.slats);
-    // Check if any slats are assigned at all
     final hasAssignments = _layoutState!.plateAssignments.values.any((plate) => plate.values.any((v) => v != null));
 
     return Container(
@@ -888,29 +1147,11 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: Checkbox(
-                      value: _normalizeVolumes,
-                      onChanged: (v) => setState(() => _normalizeVolumes = v ?? false),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text('Normalize volumes', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-                ],
-              ),
-            ),
-          ),
+          const Expanded(child: SizedBox.shrink()),
           FilledButton.icon(
-            onPressed: hasIncompleteSlats || !hasAssignments ? null : () => _showExportDialog(appState),
+            onPressed: hasIncompleteSlats || !hasAssignments
+                ? null
+                : () => _showExportDialog(appState),
             icon: const Icon(Icons.download, size: 20),
             label: const Text('Export', style: TextStyle(fontSize: 14)),
             style: FilledButton.styleFrom(
@@ -937,67 +1178,44 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   }
 
   Future<void> _showExportDialog(DesignState appState) async {
-    bool generatePdf = true;
-    bool generateCsv = true;
-
     _dialogOpen = true;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Export Echo Instructions'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CheckboxListTile(
-                value: generatePdf,
-                onChanged: (v) => setDialogState(() => generatePdf = v ?? false),
-                title: const Text('Generate PDF plate layouts', style: TextStyle(fontSize: 14)),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              CheckboxListTile(
-                value: generateCsv,
-                onChanged: (v) => setDialogState(() => generateCsv = v ?? false),
-                title: const Text('Generate Echo CSV instructions', style: TextStyle(fontSize: 14)),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              CheckboxListTile(
-                value: false,
-                onChanged: null,
-                title: Text('Generate lab helper sheets', style: TextStyle(fontSize: 14, color: Colors.grey.shade400)),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: generatePdf || generateCsv ? () => Navigator.pop(ctx, true) : null,
-              child: const Text('Go'),
-            ),
-          ],
-        ),
-      ),
+    final result = await showExportSettingsDialog(
+      context,
+      generatePdf: _layoutState!.generatePdf,
+      generateCsv: _layoutState!.generateCsv,
+      generateHelperSheets: _layoutState!.generateHelperSheets,
+      generatePegSheet: _layoutState!.generatePegSheet,
+      normalizeVolumes: _layoutState!.normalizeVolumes,
+      maxWellVolumeNl: _layoutState!.maxWellVolumeNl,
+      config: _layoutState!.masterMixConfig,
+      pegConfig: _layoutState!.pegConfig,
     );
     _dialogOpen = false;
-
-    if (confirmed == true) {
-      await _runExport(appState, generatePdf: generatePdf, generateCsv: generateCsv);
+    if (result != null) {
+      setState(() {
+        _layoutState!.generatePdf = result.pdf;
+        _layoutState!.generateCsv = result.csv;
+        _layoutState!.generateHelperSheets = result.helper;
+        _layoutState!.generatePegSheet = result.pegSheet;
+        _layoutState!.normalizeVolumes = result.normalize;
+        _layoutState!.maxWellVolumeNl = result.maxWellVolumeNl;
+        _layoutState!.masterMixConfig = result.config;
+        _layoutState!.pegConfig = result.pegConfig;
+      });
+      _syncLayoutToAppState();
+      if (result.runExport && (result.pdf || result.csv || result.helper || result.pegSheet)) {
+        _runExport(appState);
+      }
     }
   }
 
-  Future<void> _runExport(DesignState appState, {required bool generatePdf, required bool generateCsv}) async {
+  Future<void> _runExport(DesignState appState) async {
     final files = <String, Uint8List>{};
-    final baseName = appState.designName;
+    final designName = appState.designName;
+    final expTitle = _layoutState!.experimentTitle;
     EchoCsvResult? csvResult;
 
-    if (generatePdf) {
+    if (_layoutState!.generatePdf) {
       final pdfBytes = await buildPlateLayoutPdf(
         _layoutState!.plateAssignments,
         appState.slats,
@@ -1006,31 +1224,79 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
         duplicateGroups: _layoutState!.duplicateGroups,
         layerMap: appState.layerMap,
         experimentTitle: _layoutState!.experimentTitle,
+        colorMode: _echoColorMode,
+        resolveGroupColor: appState.resolveGroupColor,
+        manualHandles: _layoutState!.manualHandles,
       );
-      files['${baseName}_plate_layout.pdf'] = pdfBytes;
+      files['${expTitle}_plate_layout.pdf'] = pdfBytes;
     }
 
-    if (generateCsv) {
+    if (_layoutState!.generateCsv) {
       csvResult = generateEchoCsv(
         plateAssignments: _layoutState!.plateAssignments,
         wellConfigs: _layoutState!.wellConfigs,
         plateNames: _layoutState!.plateNames,
         slats: appState.slats,
         layerMap: appState.layerMap,
-        normalizeVolumes: _normalizeVolumes,
+        normalizeVolumes: _layoutState!.normalizeVolumes,
+        manualHandles: _layoutState!.manualHandles,
       );
-      files['${baseName}_echo_instructions.csv'] = csvResult.csvBytes;
+      files['${expTitle}_echo_instructions.csv'] = csvResult.csvBytes;
+      if (csvResult.manualCsvBytes != null) {
+        files['${expTitle}_manual_handles.csv'] = csvResult.manualCsvBytes!;
+      }
+    }
+
+    MasterMixResult? mmResult;
+    if (_layoutState!.generateHelperSheets) {
+      mmResult = generateMasterMixExcel(
+        plateAssignments: _layoutState!.plateAssignments,
+        wellConfigs: _layoutState!.wellConfigs,
+        plateNames: _layoutState!.plateNames,
+        slats: appState.slats,
+        layerMap: appState.layerMap,
+        mixConfig: _layoutState!.masterMixConfig,
+        normalizeVolumes: _layoutState!.normalizeVolumes,
+        maxWellVolumeNl: _layoutState!.maxWellVolumeNl,
+        experimentTitle: _layoutState!.experimentTitle,
+        manualHandles: _layoutState!.manualHandles,
+      );
+      files['${expTitle}_master_mix.xlsx'] = mmResult.bytes;
+    }
+
+    PegPurificationResult? pegResult;
+    if (_layoutState!.generatePegSheet) {
+      final pegGroups = await _resolvePegGroups(appState);
+      if (pegGroups != null) {
+        pegResult = generatePegPurificationExcel(
+          groups: pegGroups,
+          slats: appState.slats,
+          layerMap: appState.layerMap,
+          plateAssignments: _layoutState!.plateAssignments,
+          wellConfigs: _layoutState!.wellConfigs,
+          plateNames: _layoutState!.plateNames,
+          pegConfig: _layoutState!.pegConfig,
+          experimentTitle: _layoutState!.experimentTitle,
+          groupColors: _resolveGroupColors(appState),
+        );
+        files['${expTitle}_peg_purification.xlsx'] = pegResult.bytes;
+      }
     }
 
     if (files.isEmpty) return;
 
-    // Show volume warning before saving, with option to cancel
-    if (csvResult != null && csvResult.warnings.isNotEmpty && mounted) {
-      final shouldContinue = await _showVolumeWarningDialog(csvResult.warnings);
+    // Collect all warnings and show a single pre-save dialog if any exist.
+    final allWarnings = <String>[
+      if (csvResult != null) ...csvResult.warnings,
+      if (mmResult != null) ...mmResult.warnings,
+      if (pegResult != null) ...pegResult.warnings,
+    ];
+    if (allWarnings.isNotEmpty && mounted) {
+      final shouldContinue = await _showVolumeWarningDialog(allWarnings);
       if (!shouldContinue) return;
     }
 
-    final folderName = '${baseName}_echo_instructions';
+    final folderName = '${designName}_$expTitle';
     await saveMultipleFiles(files, folderName);
   }
 
@@ -1061,6 +1327,75 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     );
     _dialogOpen = false;
     return result ?? false;
+  }
+
+  /// Resolves slat groups for PEG export. Returns null if the user cancels.
+  Future<Map<String, List<String>>?> _resolvePegGroups(DesignState appState) async {
+    final config = appState.activeGroupConfig;
+    if (config != null && config.groups.isNotEmpty) {
+      return {for (var g in config.groups.values) g.name: g.slatIds.toList()};
+    }
+
+    // No groups — ask user what to do
+    _dialogOpen = true;
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        final sizeCtrl = TextEditingController(text: '16');
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('No Slat Groups'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('PEG purification sheets require slat groups to organize slats into columns.'),
+                const SizedBox(height: 16),
+                const Text('Auto-group slats with group size:'),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: sizeCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(isDense: true),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancel PEG Export')),
+              FilledButton(
+                onPressed: () {
+                  final size = int.tryParse(sizeCtrl.text) ?? 16;
+                  Navigator.pop(ctx, size);
+                },
+                child: const Text('Auto-group'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    _dialogOpen = false;
+
+    if (result == null) return null;
+
+    // Create a group config if none exists, then auto-group
+    if (appState.activeGroupConfig == null) {
+      appState.createGroupConfiguration(name: 'PEG Groups');
+    }
+    appState.autoGroupSlats(result);
+
+    final updatedConfig = appState.activeGroupConfig;
+    if (updatedConfig == null || updatedConfig.groups.isEmpty) return null;
+    return {for (var g in updatedConfig.groups.values) g.name: g.slatIds.toList()};
+  }
+
+  Map<String, Color>? _resolveGroupColors(DesignState appState) {
+    final config = appState.activeGroupConfig;
+    if (config == null) return null;
+    return {for (var g in config.groups.values) g.name: g.color};
   }
 
   Widget _buildPlateScrollArea(DesignState appState) {
@@ -1100,16 +1435,21 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
                         onGroupDragHover: _updateGroupDragHover,
                         ghostStateFor: _ghostStateFor,
                         isSourceWellDuringGroupDrag: _isSourceWellDuringGroupDrag,
+                        onSidebarDragHover: _handleSidebarDragHover,
+                        onSidebarDragLeave: _handleSidebarDragLeave,
                         layoutState: _layoutState!,
                         plateName: _layoutState!.plateName(plateIndex),
                         plateDisplayNumber: i + 1,
                         onRenamePlate: () => _handleRenamePlate(plateIndex),
                         onConfigPlate: () => _handleConfigPlate(plateIndex),
+                        onSelectAllPlate: () => _handleSelectAllPlate(plateIndex),
                         onRemovePlate: _layoutState!.plateAssignments.length > 1
                             ? () => _handleRemovePlate(plateIndex)
                             : null,
                         showMetricView: _showMetricView,
                         plateWellConfigs: _layoutState!.wellConfigs[plateIndex],
+                        echoColorMode: _echoColorMode,
+                        resolveGroupColor: appState.resolveGroupColor,
                       );
                     }),
                   ],

@@ -19,7 +19,7 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
   @override
   void updateActiveLayer(String value) {
     selectedLayerKey = value;
-    clearSelection();
+    if (!preserveSelectionOnLayerChange) clearSelection();
     notifyListeners();
   }
 
@@ -33,7 +33,7 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
       selectedLayerKey = layerMap.keys.firstWhere((key) =>
           layerMap[key]!['order'] == (layerMap[selectedLayerKey]!['order'] - 1 + layerMap.length) % layerMap.length);
     }
-    clearSelection();
+    if (!preserveSelectionOnLayerChange) clearSelection();
     notifyListeners();
   }
 
