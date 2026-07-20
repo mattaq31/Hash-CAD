@@ -139,8 +139,8 @@ scratch/*
 # orthoseq results
 results/
 noflank_results/
-tests/hybrid_energy_type_*.xlsx
-tests/hybrid_energy_type_summary.toml
+crisscross_kit/orthoseq_generator/tests/hybrid_energy_type_*.xlsx
+crisscross_kit/orthoseq_generator/tests/hybrid_energy_type_summary.toml
 
 # temporary excel files
 ~$*
