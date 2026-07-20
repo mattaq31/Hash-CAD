@@ -1,28 +1,10 @@
 # OrthoSeq Benchmark Data
 
 This archive contains the benchmark data associated with the OrthoSeq
-manuscript, "OrthoSeq: Design of Thermodynamically Orthogonal DNA
-Sequence-Pair Libraries."
+manuscript, "OrthoSeq: A Design Workflow for Thermodynamically Orthogonal DNA Sequence-Pair Libraries."
 
 It contains the full benchmark outputs and the reduced sequence libraries used
 for the Supporting Information.
-
-
-## Funding and Compute Resources
-
-This dataset is associated with work supported in part by:
-
-- the German Research Foundation (Deutsche Forschungsgemeinschaft, DFG)
-  Walter Benjamin Programme, project `553862611`
-- the Dana-Farber Cancer Institute Claudia Adams Barr Program for Cancer
-  Research
-- the Korea-US Collaborative Research Fund (KUCRF), grant
-  `RS-2024-00468463`
-
-The O2 High Performance Compute Cluster, supported by the Research Computing
-Group at Harvard Medical School, was used to accelerate development of the
-evolutionary algorithm and the final large-scale parameter sweeps.
-
 
 ## Archive Scope
 
@@ -235,24 +217,24 @@ For long-sequence benchmarks, extracted libraries are grouped by:
 - core binding-domain length
 
 
-## SeqWalk Comparison
+## seqwalk Comparison
 
 The folder `seqwalk_comparison/` contains the three datasets used for the
-Figure 5 comparison between thermodynamic search and SeqWalk-derived sequence
+Figure 5 comparison between thermodynamic search and seqwalk-derived sequence
 libraries.
 
 It contains:
 
 - `figure5_seqwalk_max_orthogonality_len16_n72_seed42.xlsx`
-  - the SeqWalk-only comparison arm used for Figure 5A
-  - 16-nt barcodes generated with SeqWalk in max-orthogonality mode
+  - the seqwalk-only comparison arm used for Figure 5A
+  - 16-nt barcodes generated with seqwalk in max-orthogonality mode
 - `figure5_search_only_hybrid_len16_noflank_init450.xlsx`
   - the benchmark-derived comparison arm used for Figure 5B
   - a copy of the canonical long-sequence benchmark workbook for the 16-nt,
     no-flank, hybrid-search condition with initial subset size 450
 - `figure5_hybrid_len16_noflank_seqwalk_k6_seed42.xlsx`
-  - the SeqWalk + thermodynamic postfilter comparison arm used for Figure 5C
-  - a SeqWalk-derived 16-nt candidate pool filtered with the hybrid-search
+  - the seqwalk + thermodynamic postfilter comparison arm used for Figure 5C
+  - a seqwalk-derived 16-nt candidate pool filtered with the hybrid-search
     workflow under the thermodynamic criteria described in the manuscript
 
 The Figure 5B workbook is duplicated here for convenience so that all three
@@ -420,7 +402,7 @@ libraries in the manuscript and Supporting Information.
 - The 25 C long-sequence data correspond to the lower-temperature benchmark
   repeat reported in the Supporting Information.
 - The `seqwalk_comparison/` folder contains the three workbooks used for the
-  Figure 5 comparison with SeqWalk.
+  Figure 5 comparison with seqwalk.
 
 
 ## Notes
@@ -430,3 +412,18 @@ libraries in the manuscript and Supporting Information.
 - The extracted libraries are reduced convenience files for direct use in the
   Supporting Information and for quick inspection of the final selected
   sequence pairs.
+- 
+## Funding and Compute Resources
+
+This dataset is associated with work supported in part by:
+
+- the German Research Foundation (Deutsche Forschungsgemeinschaft, DFG)
+  Walter Benjamin Programme, project `553862611`
+- the Dana-Farber Cancer Institute Claudia Adams Barr Program for Cancer
+  Research
+- the Korea-US Collaborative Research Fund (KUCRF), grant
+  `RS-2024-00468463`
+
+The O2 High Performance Compute Cluster, supported by the Research Computing
+Group at Harvard Medical School, was used to accelerate development of the
+evolutionary algorithm and the final large-scale parameter sweeps.
