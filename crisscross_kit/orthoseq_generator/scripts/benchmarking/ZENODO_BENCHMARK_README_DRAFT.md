@@ -175,6 +175,12 @@ hybrid search were compared under a fixed budget of 10 million NUPACK calls.
 The main manuscript benchmark uses the 37 C datasets. The 25 C benchmark is a
 lower-temperature repeat reported in the Supporting Information.
 
+Some 37 C long-sequence runs request `search.initial_fresh_pair_count = 2500`.
+In practice, the fixed 10-million-NUPACK-call budget was exhausted during the
+initial graph-aware search after approximately 2235 sequence pairs. These runs
+are included in extracted libraries only when they produce the largest final
+`found_pairs` count for that condition.
+
 ### Generated Benchmark Conditions
 
 The folder `configs/generated/` contains the parameter files used to define

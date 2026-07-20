@@ -404,15 +404,19 @@ def plot_one_target(
     hybrid_report = data_dir / f"hybrid_{report_stem}_init900_seed41.xlsx"
     hybrid_init250_report = data_dir / f"hybrid_{report_stem}_init250_seed41.xlsx"
     hybrid_init450_report = data_dir / f"hybrid_{report_stem}_init450_seed41.xlsx"
+    hybrid_init2500_report = data_dir / f"hybrid_{report_stem}_init2500_seed41.xlsx"
     naive_report = data_dir / f"naive_{report_stem}_seed41.xlsx"
 
     print(f"loading prepared analysis data for {batch_name} / {length_label} / {condition_label}...", flush=True)
     seed_df = pd.read_excel(analysis_workbook, sheet_name="seed_conflict_probability")
     outside_df = pd.read_excel(analysis_workbook, sheet_name="outside_to_inside")
     inside_against_outside_df = pd.read_excel(analysis_workbook, sheet_name="inside_to_outside")
-    hybrid_progress_df = pd.read_excel(hybrid_report, sheet_name="search_progress")
-    hybrid_init250_progress_df = pd.read_excel(hybrid_init250_report, sheet_name="search_progress")
-    hybrid_init450_progress_df = pd.read_excel(hybrid_init450_report, sheet_name="search_progress")
+    hybrid_progress_dfs = []
+    for progress_report in (hybrid_init250_report, hybrid_init450_report, hybrid_report, hybrid_init2500_report):
+        if progress_report.exists():
+            hybrid_progress_dfs.append(pd.read_excel(progress_report, sheet_name="search_progress"))
+        else:
+            print(f"missing progress report, skipping: {progress_report.name}", flush=True)
     naive_progress_df = pd.read_excel(naive_report, sheet_name="search_progress")
     print(
         f"loaded seed_rows={len(seed_df)} outside_rows={len(outside_df)} "
@@ -459,11 +463,13 @@ def plot_one_target(
     naive_progress_rows = naive_progress_rows.dropna().sort_values("passed_homodimer")
 
     hybrid_seed_points = []
-    for progress_df in (hybrid_init250_progress_df, hybrid_init450_progress_df, hybrid_progress_df):
+    for progress_df in hybrid_progress_dfs:
         seed_row = progress_df.loc[progress_df["pass"] == "seed", ["pairs_collected", "pairs_after_vc"]].copy()
         seed_row["pairs_collected"] = pd.to_numeric(seed_row["pairs_collected"], errors="coerce")
         seed_row["pairs_after_vc"] = pd.to_numeric(seed_row["pairs_after_vc"], errors="coerce")
         seed_row = seed_row.dropna()
+        if seed_row.empty:
+            continue
         row = seed_row.iloc[-1]
         hybrid_seed_points.append((float(row["pairs_collected"]), float(row["pairs_after_vc"])))
     hybrid_seed_points = sorted(hybrid_seed_points, key=lambda pair: pair[0])
@@ -471,7 +477,7 @@ def plot_one_target(
     hybrid_seed_pairs_after_vc = np.array([point[1] for point in hybrid_seed_points], dtype=float)
 
     hybrid_collection_points = []
-    for progress_df in (hybrid_init250_progress_df, hybrid_init450_progress_df, hybrid_progress_df):
+    for progress_df in hybrid_progress_dfs:
         collection_row = progress_df.loc[
             progress_df["pass"] == "collection",
             ["pairs_collected", "pairs_after_vc"],
@@ -483,6 +489,8 @@ def plot_one_target(
             collection_row["pairs_after_vc"], errors="coerce"
         )
         collection_row = collection_row.dropna()
+        if collection_row.empty:
+            continue
         row = collection_row.iloc[-1]
         hybrid_collection_points.append((float(row["pairs_collected"]), float(row["pairs_after_vc"])))
     hybrid_collection_points = sorted(hybrid_collection_points, key=lambda pair: pair[0])
@@ -518,7 +526,7 @@ def plot_one_target(
 
 if __name__ == "__main__":
     conflict_probability_xmax = 0.36
-    progress_xmax = 2000.0
+    progress_xmax = 2550.0
     fit_eval_points = 4000
     fit_linewidth = 1.2
     fit_zorder = 4

@@ -10,6 +10,7 @@ default.
 Within each sequence-length cluster the bar order is:
 
 - naive
+- graph-aware init=2500, when present
 - hybrid init=900
 - hybrid init=450
 - hybrid init=250
@@ -50,6 +51,14 @@ AXIS_LINEWIDTH = 0.5
 BAR_EDGE_LINEWIDTH = 0.5
 
 SUMMARY_FILENAME_STEM = "long_seq_single_limit_batch_summary"
+GRAPH_AWARE_INIT_COUNT = 2500
+SERIES_COLORS = {
+    ("naive", None): "#808080",
+    ("hybrid", GRAPH_AWARE_INIT_COUNT): "#3B6FB6",
+    ("hybrid", 900): "#2A9D8F",
+    ("hybrid", 450): "#63B7AF",
+    ("hybrid", 250): "#9FD4CF",
+}
 
 
 def format_limit_label(value: float) -> str:
@@ -92,7 +101,7 @@ def parse_workbook_filename(report_path: Path) -> dict | None:
     }
 
 
-def load_summary(summary_path: Path) -> tuple[list[int], str, str, float, float]:
+def load_summary(summary_path: Path) -> tuple[list[int], str, str, float, float, list[int]]:
     """Load the one-limit batch layout from `batch_summary.toml`."""
     with summary_path.open("rb") as fh:
         summary = tomllib.load(fh)
@@ -104,7 +113,8 @@ def load_summary(summary_path: Path) -> tuple[list[int], str, str, float, float]
     fivep_label = normalize_fivep_label(first.get("fivep_ext", ""))
     limit_label = format_limit_label(limit_value)
     target_fraction_bound = float(first["target_fraction_bound"])
-    return lengths, fivep_label, limit_label, limit_value, target_fraction_bound
+    initial_fresh_pair_counts = [int(value) for value in summary.get("initial_fresh_pair_counts", [])]
+    return lengths, fivep_label, limit_label, limit_value, target_fraction_bound, initial_fresh_pair_counts
 
 
 def collect_runs(data_root: Path) -> list[dict]:
@@ -156,12 +166,57 @@ def compute_shared_y_max(runs: list[dict]) -> float:
     return max(1.0, max(values) * 1.08 + 2.0) if values else 1.0
 
 
+def build_series_specs(runs: list[dict], summary_initial_counts: list[int] | None = None) -> list[dict]:
+    """Build ordered plot series from the batch summary or observed workbooks."""
+    if summary_initial_counts is None:
+        hybrid_inits = sorted(
+            {
+                int(run["init_count"])
+                for run in runs
+                if run["algorithm"] == "hybrid" and run["init_count"] is not None
+            },
+            reverse=True,
+        )
+    else:
+        hybrid_inits = sorted({int(value) for value in summary_initial_counts}, reverse=True)
+
+    series_specs = [
+        {
+            "key": ("naive", None),
+            "algorithm": "naive",
+            "init_count": None,
+            "label": "Naive",
+            "color": SERIES_COLORS[("naive", None)],
+        }
+    ]
+    for init_count in hybrid_inits:
+        series_key = ("hybrid", int(init_count))
+        series_specs.append(
+            {
+                "key": series_key,
+                "algorithm": "hybrid",
+                "init_count": int(init_count),
+                "label": "Graph-aware" if init_count == GRAPH_AWARE_INIT_COUNT else f"Hybrid {init_count}",
+                "color": SERIES_COLORS.get(series_key, "#2A9D8F"),
+            }
+        )
+    return series_specs
+
+
+def normalized_series_key(algorithm: str, init_count) -> tuple[str, int | None]:
+    """Normalize pandas NaN values in the summary table back to series keys."""
+    if algorithm == "naive":
+        return "naive", None
+    return "hybrid", int(init_count)
+
+
 def build_summary_table(
     runs: list[dict],
     conflict_probability_by_length: dict[int, float],
     *,
     fivep_label: str,
     limit_label: str,
+    series_specs: list[dict],
 ) -> pd.DataFrame:
     """Build the exact plotted values plus naive-relative improvements."""
     if not runs:
@@ -182,18 +237,8 @@ def build_summary_table(
             ]
         )
 
-    series_order = {
-        ("naive", None): 0,
-        ("hybrid", 900): 1,
-        ("hybrid", 450): 2,
-        ("hybrid", 250): 3,
-    }
-    series_labels = {
-        ("naive", None): "Naive",
-        ("hybrid", 900): "Hybrid 900",
-        ("hybrid", 450): "Hybrid 450",
-        ("hybrid", 250): "Hybrid 250",
-    }
+    series_order = {spec["key"]: idx for idx, spec in enumerate(series_specs)}
+    series_labels = {spec["key"]: spec["label"] for spec in series_specs}
 
     summary_df = pd.DataFrame(runs).copy()
     summary_df = summary_df.loc[
@@ -215,14 +260,15 @@ def build_summary_table(
     ]
     summary_df.loc[summary_df["algorithm"] == "naive", "absolute_improvement_vs_naive"] = 0
     summary_df.loc[summary_df["algorithm"] == "naive", "percent_improvement_vs_naive"] = 0.0
+    row_series_keys = [
+        normalized_series_key(algorithm, init_count)
+        for algorithm, init_count in zip(summary_df["algorithm"], summary_df["init_count"], strict=True)
+    ]
     summary_df["series_label"] = [
-        series_labels.get((algorithm, init_count), str(algorithm))
-        for algorithm, init_count in zip(summary_df["algorithm"], summary_df["init_count"], strict=True)
+        series_labels.get(series_key, str(algorithm))
+        for series_key, algorithm in zip(row_series_keys, summary_df["algorithm"], strict=True)
     ]
-    summary_df["series_order"] = [
-        series_order.get((algorithm, init_count), 999)
-        for algorithm, init_count in zip(summary_df["algorithm"], summary_df["init_count"], strict=True)
-    ]
+    summary_df["series_order"] = [series_order.get(series_key, 999) for series_key in row_series_keys]
     summary_df["seed_conflict_probability"] = summary_df["length"].map(conflict_probability_by_length)
     summary_df = summary_df.sort_values(["length", "series_order"], ignore_index=True)
     return summary_df[
@@ -258,6 +304,7 @@ def plot_batch(
     fivep_label: str,
     output_dir: Path,
     shared_y_max: float,
+    series_specs: list[dict],
 ) -> Path:
     """Render the single-limit clustered bar plot and return the output path."""
     import matplotlib
@@ -269,19 +316,9 @@ def plot_batch(
     matplotlib.rcParams["font.family"] = "Arial"
     matplotlib.rcParams["svg.fonttype"] = "none"
 
-    series_order = [("naive", None), ("hybrid", 900), ("hybrid", 450), ("hybrid", 250)]
-    series_colors = {
-        ("naive", None): "#808080",
-        ("hybrid", 900): "#2A9D8F",
-        ("hybrid", 450): "#63B7AF",
-        ("hybrid", 250): "#9FD4CF",
-    }
-    series_labels = {
-        ("naive", None): "Naive",
-        ("hybrid", 900): "Hybrid 900",
-        ("hybrid", 450): "Hybrid 450",
-        ("hybrid", 250): "Hybrid 250",
-    }
+    series_order = [spec["key"] for spec in series_specs]
+    series_colors = {spec["key"]: spec["color"] for spec in series_specs}
+    series_labels = {spec["key"]: spec["label"] for spec in series_specs}
 
     run_lookup = {
         (run["length"], run["algorithm"], run["limit_label"], run["init_count"]): run
@@ -405,25 +442,26 @@ def plot_single_batch(data_root: Path, summary_path: Path | None, output_dir: Pa
 
     runs = collect_runs(resolved_data_root)
     if resolved_summary_path is not None and resolved_summary_path.exists():
-        lengths, fivep_label, limit_label, _, _ = load_summary(resolved_summary_path)
+        lengths, fivep_label, limit_label, _, _, summary_initial_counts = load_summary(resolved_summary_path)
         summary_source = str(resolved_summary_path)
     else:
         lengths, fivep_label, limit_label = infer_batch_layout_from_runs(runs)
+        summary_initial_counts = None
         summary_source = "inferred from workbooks"
     conflict_probability_by_length = compute_conflict_probability_by_length(runs)
+    series_specs = build_series_specs(runs, summary_initial_counts)
     summary_df = build_summary_table(
         runs,
         conflict_probability_by_length,
         fivep_label=fivep_label,
         limit_label=limit_label,
+        series_specs=series_specs,
     )
 
     expected_keys = {
-        (length, "naive", limit_label, None) for length in lengths
-    } | {
-        (length, "hybrid", limit_label, init_count)
+        (length, spec["algorithm"], limit_label, spec["init_count"])
         for length in lengths
-        for init_count in [900, 450, 250]
+        for spec in series_specs
     }
     run_keys = {
         (run["length"], run["algorithm"], run["limit_label"], run["init_count"])
@@ -455,6 +493,7 @@ def plot_single_batch(data_root: Path, summary_path: Path | None, output_dir: Pa
         fivep_label=fivep_label,
         output_dir=resolved_output_dir,
         shared_y_max=shared_y_max,
+        series_specs=series_specs,
     )
     print(f"wrote plot: {output_path}")
     return output_path
@@ -463,8 +502,8 @@ def plot_single_batch(data_root: Path, summary_path: Path | None, output_dir: Pa
 if __name__ == "__main__":
     module_dir = Path(__file__).resolve().parents[1]
     default_data_roots = [
-        module_dir / "data" / "batch_x25TTTT_sigma1p0_seed41",
-        module_dir / "data" / "batch_x25_____sigma1p0_seed41",
+        module_dir / "data" / "batch_x_TTTT_sigma1p0_seed41",
+        module_dir / "data" / "batch_x______sigma1p0_seed41",
     ]
 
     parser = argparse.ArgumentParser()

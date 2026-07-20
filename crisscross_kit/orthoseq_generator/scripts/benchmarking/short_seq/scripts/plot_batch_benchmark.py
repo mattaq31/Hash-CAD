@@ -52,7 +52,7 @@ HYBRID_VARIANT_COLORS = [
 ]
 ALGORITHM_LABELS = {
     "naive": "Naive",
-    "vertex_cover": "Vertex cover",
+    "vertex_cover": "Graph-aware",
     "hybrid_offline": "Hybrid",
 }
 OUTPUT_FILENAME_STEM = "batch_benchmark_found_pair_count"
