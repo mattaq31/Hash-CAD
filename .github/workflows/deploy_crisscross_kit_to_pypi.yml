@@ -61,6 +61,11 @@ jobs:
           CIBW_ARCHS_LINUX: "x86_64 aarch64"
           CIBW_ARCHS_MACOS: "arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
+          # manylinux2014 (default) ships GCC 10.2.1, but modern NumPy only
+          # provides manylinux_2_28 wheels and its source build needs GCC >= 10.3.
+          # Build on manylinux_2_28 so NumPy installs from a wheel instead.
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+          CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_28"
           MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: |
           cibuildwheel --output-dir wheelhouse ./crisscross_kit
