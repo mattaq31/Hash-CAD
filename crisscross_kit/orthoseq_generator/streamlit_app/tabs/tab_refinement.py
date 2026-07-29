@@ -8,13 +8,12 @@ from orthoseq_generator.streamlit_app import plotly_utils as pu
 
 def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out_q):
     try:
-        subset, indices, _, _ = sc.select_subset_in_energy_range(
+        subset, indices, _, _, _ = sc.select_subset_in_energy_range(
             registry,
             energy_min=float(min_on),
             energy_max=float(max_on),
             self_energy_min=float(self_energy_limit),
             max_size=refine_size,
-            Use_Library=False,
             timeout_s=20,
         )
 
@@ -26,7 +25,7 @@ def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out
         off_e = sc.compute_offtarget_energies(subset)
         out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), None))
     except Exception as e:
-        out_q.put(("done", None, None, None, repr(e)))
+        out_q.put(("done", None, None, None, str(e)))
 
 def render_refinement_tab(registry_factory, nupack_params):
     st.header("Step 2: Off-Target Limit Selection")
@@ -87,7 +86,7 @@ def render_refinement_tab(registry_factory, nupack_params):
     st.info(
         f"On-target energy range set in pilot analysis: "
         f"[{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
-        f"Minimum secondary-structure energy set in pilot analysis: {st.session_state.self_energy_limit:.2f} kcal/mol"
+        f"Minimum self-folding energy set in pilot analysis: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
     refine_size = st.number_input(
@@ -132,7 +131,7 @@ def render_refinement_tab(registry_factory, nupack_params):
         with col_y:
             if st.button("Use This Value", key="btn_commit_offtarget", disabled=st.session_state.busy):
                 st.session_state.offtarget_limit = float(st.session_state.draft_offtarget_limit)
-                st.success("Committed. Tab 3 now uses this off-target limit.")
+                st.success("Value Transferred")
 
         conflict_probability = vca.compute_pair_conflict_probability(
             st.session_state.off_e_range,
@@ -164,7 +163,7 @@ def render_refinement_tab(registry_factory, nupack_params):
 
         if st.session_state.self_e_range is not None:
             st.markdown("---")
-            st.subheader("Secondary-Structure Energy Distribution")
+            st.subheader("Self-Folding Energy Distribution")
 
             self_fig = pu.create_self_energy_histogram(
                 st.session_state.self_e_range,

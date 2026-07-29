@@ -1,7 +1,8 @@
-from seqwalk import design
+# Optional: uncomment to use SeqWalk directly in this script.
+# from seqwalk import design
 
 L, k = 20, 6
-lib = design.max_size(L, k, alphabet="ACGT")
+# lib = design.max_size(L, k, alphabet="ACGT")
 
 # sanity: lengths
 assert all(len(s) == L for s in lib)

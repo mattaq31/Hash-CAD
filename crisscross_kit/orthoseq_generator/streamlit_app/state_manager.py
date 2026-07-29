@@ -20,6 +20,8 @@ def init_session_state():
         st.session_state.busy = False
     if "stop_event" not in st.session_state:
         st.session_state.stop_event = threading.Event()
+    if "checkpoint_event" not in st.session_state:
+        st.session_state.checkpoint_event = threading.Event()
     if "input_invalid" not in st.session_state:
         st.session_state.input_invalid = False
     
@@ -51,10 +53,14 @@ def init_session_state():
 
     if "orthogonal_seq_pairs" not in st.session_state:
         st.session_state.orthogonal_seq_pairs = None
+    if "search_run_data" not in st.session_state:
+        st.session_state.search_run_data = None
     if "search_completed" not in st.session_state:
         st.session_state.search_completed = False
     if "search_duration" not in st.session_state:
         st.session_state.search_duration = 0.0
+    if "search_report_path" not in st.session_state:
+        st.session_state.search_report_path = None
     
     # Committed parameters
     if "min_ontarget" not in st.session_state:
@@ -77,11 +83,27 @@ def init_session_state():
         st.session_state.search_thread = None
     if "stop_requested" not in st.session_state:
         st.session_state.stop_requested = False
+    if "checkpoint_requested" not in st.session_state:
+        st.session_state.checkpoint_requested = False
+    if "latest_checkpoint_initial_orthogonal" not in st.session_state:
+        st.session_state.latest_checkpoint_initial_orthogonal = None
+    if "latest_checkpoint_candidate_count" not in st.session_state:
+        st.session_state.latest_checkpoint_candidate_count = None
+    if "latest_checkpoint_candidate_orthogonal" not in st.session_state:
+        st.session_state.latest_checkpoint_candidate_orthogonal = None
+    if "latest_checkpoint_estimate" not in st.session_state:
+        st.session_state.latest_checkpoint_estimate = None
         
     if "log_queue" not in st.session_state:
         st.session_state.log_queue = queue.Queue()
     if "log_buffer" not in st.session_state:
         st.session_state.log_buffer = []
+    if "log_console_height_px" not in st.session_state:
+        st.session_state.log_console_height_px = 180
+    if "log_visible_line_count" not in st.session_state:
+        st.session_state.log_visible_line_count = 3000
+    if "log_buffer_max_lines" not in st.session_state:
+        st.session_state.log_buffer_max_lines = 50000
 
     if "pilot_queue" not in st.session_state:
         st.session_state.pilot_queue = queue.Queue()
@@ -109,18 +131,10 @@ def init_session_state():
         st.session_state.search_error = None
     if "subset_size_search" not in st.session_state:
         st.session_state.subset_size_search = 450
-    if "generations" not in st.session_state:
-        st.session_state.generations = 50
-    if "search_vc_multistart" not in st.session_state:
-        st.session_state.search_vc_multistart = 30
     if "search_vc_max_iterations" not in st.session_state:
         st.session_state.search_vc_max_iterations = 5000
     if "search_prune_fraction" not in st.session_state:
         st.session_state.search_prune_fraction = 0.2
-    if "search_max_nupack_calls" not in st.session_state:
-        st.session_state.search_max_nupack_calls = 50000
-    if "search_history_subset_scale" not in st.session_state:
-        st.session_state.search_history_subset_scale = 1.0
     if "pilot_size" not in st.session_state:
         st.session_state.pilot_size = 50
     if "refine_size" not in st.session_state:
@@ -131,3 +145,27 @@ def init_session_state():
         st.session_state.selection_helper_assoc_fig = None
     if "selection_helper_secondary_fig" not in st.session_state:
         st.session_state.selection_helper_secondary_fig = None
+    if "loaded_report_metadata" not in st.session_state:
+        st.session_state.loaded_report_metadata = None
+    if "loaded_report_name" not in st.session_state:
+        st.session_state.loaded_report_name = None
+    if "loaded_report_pair_count" not in st.session_state:
+        st.session_state.loaded_report_pair_count = None
+    if "loaded_report_fig" not in st.session_state:
+        st.session_state.loaded_report_fig = None
+    if "loaded_report_self_fig" not in st.session_state:
+        st.session_state.loaded_report_self_fig = None
+    if "loaded_report_on_off_pdf_path" not in st.session_state:
+        st.session_state.loaded_report_on_off_pdf_path = None
+    if "loaded_report_self_pdf_path" not in st.session_state:
+        st.session_state.loaded_report_self_pdf_path = None
+    if "loaded_report_error" not in st.session_state:
+        st.session_state.loaded_report_error = None
+    if "use_seqwalk" not in st.session_state:
+        st.session_state.use_seqwalk = False
+    if "seqwalk_k" not in st.session_state:
+        st.session_state.seqwalk_k = 6
+    if "seqwalk_rcfree" not in st.session_state:
+        st.session_state.seqwalk_rcfree = False
+    if "homodimer_bound_fraction_correction" not in st.session_state:
+        st.session_state.homodimer_bound_fraction_correction = False

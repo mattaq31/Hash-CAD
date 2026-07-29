@@ -1,13 +1,9 @@
-import signal
+import importlib
 import os
-import pickle
 from datetime import datetime
 
-# Default file name for the energy library
-_precompute_library_filename = None
-
-USE_LIBRARY = False
 ENERGY_TYPE = "total"
+ENERGY_TYPES = {"minimum", "total", "totalu", "total_bound_fraction"}
 NUPACK_PARAMS = {
     "MATERIAL": "dna",
     "CELSIUS": 37,
@@ -15,15 +11,66 @@ NUPACK_PARAMS = {
     "MAGNESIUM": 0.025
 }
 
+
+def get_nupack_install_message():
+    """
+    Return the canonical user-facing installation guidance for NUPACK.
+
+    :returns: Installation/help text for missing NUPACK.
+    :rtype: str
+    """
+    return (
+        "NUPACK is required for orthoseq thermodynamic calculations, but it is not installed "
+        "in this Python environment. NUPACK is not installed via pip in the normal way.\n\n"
+        "Download page (account required):\n"
+        "https://www.nupack.org/download/overview\n\n"
+        "Install from the downloaded package directory:\n"
+        "pip install -U nupack -f ~/Downloads/nupack-VERSION/package\n\n"
+        "Here, `nupack-VERSION` means the name of the downloaded and unzipped NUPACK folder.\n\n"
+        "Official installation instructions:\n"
+        "https://docs.nupack.org/start/"
+    )
+
+
+def require_nupack():
+    """
+    Ensure that the NUPACK Python module is importable.
+
+    :raises RuntimeError: If NUPACK is unavailable in the current environment.
+    """
+    try:
+        importlib.import_module("nupack")
+    except ImportError as exc:
+        raise RuntimeError(get_nupack_install_message()) from exc
+
+
+def set_energy_type(energy_type="total"):
+    """
+    Updates the global energy mode used for all NUPACK energy computations.
+
+    :param energy_type: Energy mode passed through to `compute_nupack_energy`.
+                        Supported values are "minimum", "total", "totalu",
+                        and "total_bound_fraction".
+    :type energy_type: str
+
+    :returns: None
+    :rtype: None
+    """
+    if energy_type not in ENERGY_TYPES:
+        valid_types = ", ".join(f'"{value}"' for value in sorted(ENERGY_TYPES))
+        raise ValueError(f"energy_type must be one of {valid_types}.")
+    global ENERGY_TYPE
+    ENERGY_TYPE = energy_type
+
+
 def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
     """
     Updates global NUPACK parameters used for all energy computations.
 
     Notes
     -----
-    These values are read by functions in `sequence_computations` when building
-    a NUPACK `Model`. If you change parameters, you should also choose a new
-    precompute library filename to avoid mixing incompatible energies.
+    These values are read by functions in `energy_computations` when building
+    a NUPACK `Model`.
 
     :param material: NUPACK material type (e.g., "dna").
     :type material: str
@@ -44,142 +91,32 @@ def set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025):
     NUPACK_PARAMS["CELSIUS"] = celsius
     NUPACK_PARAMS["SODIUM"] = sodium
     NUPACK_PARAMS["MAGNESIUM"] = magnesium
-
-
-
-
-def choose_precompute_library(filename):
-    """
-    Sets the name of the precomputed energy library file.
-
-    Notes
-    -----
-    Updates the global variable used by other functions to locate the correct library.
-
-    :param filename: Name of the pickle file where precomputed energies are or will be stored.
-    :type filename: str
-
-    :returns: None
-    :rtype: None
-    """
-
-    global _precompute_library_filename
-    _precompute_library_filename = filename
-
-
-
-class DelayedKeyboardInterrupt:
-    """
-    Context manager that delays KeyboardInterrupt (Ctrl+C) during critical operations.
-
-    This prevents corruption of the precomputed energy library by deferring interrupt
-    handling until the protected block (e.g., file writes) completes.
-
-    Usage
-    -----
-    with DelayedKeyboardInterrupt():
-        # perform critical operation, like saving files
-        save_pickle_atomic(...)
-
-    Notes
-    -----
-    - On entering, replaces the SIGINT handler to queue the signal.
-    - On exit, restores the original handler and re-raises if an interrupt was received.
-    """
-    
-    def __enter__(self):
-        self.signal_received = False
-        self.old_handler = signal.getsignal(signal.SIGINT)
-        signal.signal(signal.SIGINT, self.handler)
-
-    def handler(self, sig, frame):
-        print("\nDelayed KeyboardInterrupt until file writing is done...")
-        self.signal_received = (sig, frame)
-
-    def __exit__(self, type, value, traceback):
-        signal.signal(signal.SIGINT, self.old_handler)
-        if self.signal_received:
-            self.old_handler(*self.signal_received)
-
-
-
-
-def save_pickle_atomic(data, filepath):
-    """
-    Saves a Python object to disk as a pickle file in a safe and atomic way.
-
-    Notes
-    -----
-    - Writes data to a temporary file (`<filepath>.tmp`) first, then atomically replaces
-      the original file to avoid corruption if a crash occurs during writing.
-    - Creates the target directory if it does not exist.
-
-    :param data: Python object to save (typically a dictionary).
-    :type data: any
-
-    :param filepath: Full path to the target pickle file.
-    :type filepath: str
-
-    :returns: None
-    :rtype: None
-    """
-    
-    tmp_path = filepath + ".tmp"
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    with open(tmp_path, "wb") as f:
-        pickle.dump(data, f)
-
-    # This safely replaces the original file with the completed tmp file
-    os.replace(tmp_path, filepath)
-
-
-
-
-
-
-def get_library_path():
-    """
-    Returns the full file path to the currently selected precomputed energy library.
-
-    Description
-    -----------
-    Constructs a path by combining the 'pre_computed_energies' folder with the
-    filename set via `choose_precompute_library()`. If no filename has been set,
-    defaults to 'test_lib.pkl'.
-
-    :returns: Full path to the pickle file containing the precomputed Gibbs free energy dictionary.
-    :rtype: str
-    """
-    
-    folder = "pre_computed_energies"
-    filename = _precompute_library_filename or "test_lib.pkl"
-    return os.path.join(folder, filename)
-
-
 def get_default_results_folder():
 
     """
-    Returns the default path to the 'noflank_results' folder where output files containing the generated sequence pairs are saved.
+    Returns the default path to the generic `results` folder where output
+    artifacts are saved.
 
     Description
     -----------
-    The noflank_results directory is created automatically if it does not exist.
+    The results directory is created automatically if it does not exist.
     The path is based on the current working directory from which the script was executed.
     
 
-    :returns: Absolute path to the 'noflank_results' directory.
+    :returns: Absolute path to the `results` directory.
     :rtype: str
     """
     
     
     base_dir = os.getcwd()  # Directory from which the script was executed
-    folder_path = os.path.join(base_dir, "noflank_results")
+    folder_path = os.path.join(base_dir, "results")
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
 def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
     """
-    Saves a list of DNA sequence pairs to a plain text file in the default noflank_results folder.
+    Saves a list of DNA sequence pairs to a plain text file in the default
+    results folder.
 
     Description
     -----------
@@ -219,19 +156,19 @@ def save_sequence_pairs_to_txt(sequence_pairs, filename=None):
 
 def load_sequence_pairs_from_txt(filename,use_default_results_folder=True):
     """
-    Loads DNA sequence pairs from a plain text file in the default noflank_results folder.
+    Loads DNA sequence pairs from a plain text file in the default results folder.
 
     Description
     -----------
     Reads a tab-separated text file where each line contains a sequence and its
-    reverse complement. The file is located in the noflank_results directory returned by
+    reverse complement. The file is located in the results directory returned by
     `get_default_results_folder()`.
 
     :param filename: Name of the text file to load.
     :type filename: str
 
     :param use_default_results_folder: If True, interpret `filename` relative to the
-                                       default noflank_results folder; otherwise treat it as
+                                       default results folder; otherwise treat it as
                                        an absolute or relative path.
     :type use_default_results_folder: bool
 

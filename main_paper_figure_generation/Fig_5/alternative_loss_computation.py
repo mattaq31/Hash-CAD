@@ -38,7 +38,6 @@ if __name__ == '__main__':
             off_target_energies = pickle.load(f)
         print(f'Loaded on-target and off-target energies from cache.')
     else:
-        hf.USE_LIBRARY = False
         hf.ENERGY_TYPE = "totalu"
         on_target_energies = sc.compute_ontarget_energies(sequence_pairs)
         print('On-target energies for sequence pairs computed.')

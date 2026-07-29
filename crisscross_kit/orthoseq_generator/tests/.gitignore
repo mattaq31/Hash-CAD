@@ -1,0 +1,9 @@
+*.pkl
+.idea/
+*.pdf
+*.svg
+.dump/
+.Old_unsorted/
+*.txt
+*.csv
+*.xlsx

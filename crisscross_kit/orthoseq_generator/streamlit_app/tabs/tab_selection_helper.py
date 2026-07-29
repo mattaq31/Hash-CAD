@@ -5,6 +5,7 @@ import streamlit as st
 
 R_KCAL = 1.98720425864083e-3
 RHO_H2O = 55.14
+SELECTION_HELPER_PLOT_POINTS = 4000
 
 
 def _store_selection_helper_conc_nm():
@@ -59,7 +60,7 @@ def _make_line_plot(x_vals, y_vals, title, x_label, y_label, x_range=None):
 
 def render_selection_helper_tab(nupack_params):
     st.header("Selection Helper")
-    st.write("Reference plots relating energy values to strand binding and secondary-structure formation.")
+    st.write("Reference plots relating energy values to strand binding and self-folding.")
 
     temp_c = float(nupack_params["celsius"])
     st.caption(f"Using temperature: T= 273.15K + {temp_c:.1f}K")
@@ -121,7 +122,7 @@ def render_selection_helper_tab(nupack_params):
 
     if st.button("Plot", key="selection_helper_plot_assoc", disabled=st.session_state.busy):
         conc_m = conc_nm * 1e-9
-        dg_assoc = np.linspace(0.0, -40.0, 400)
+        dg_assoc = np.linspace(0.0, -40.0, SELECTION_HELPER_PLOT_POINTS)
         frac_bound = np.array([
             _fraction_bound_from_dg(dg, conc_m, temp_c) for dg in dg_assoc
         ])
@@ -137,11 +138,11 @@ def render_selection_helper_tab(nupack_params):
     if st.session_state.get("selection_helper_assoc_fig") is not None:
         st.plotly_chart(st.session_state.selection_helper_assoc_fig, width="stretch")
 
-    st.subheader("Secondary Structure Formation")
+    st.subheader("Self-Folding")
     st.markdown(
         r"""
     Transition of a strand between the fully unpaired state $U$ and any folded
-    secondary-structure state $S$:
+    self-folded state $S$:
 
     $$
     U \rightleftharpoons S
@@ -162,19 +163,19 @@ def render_selection_helper_tab(nupack_params):
 
     st.caption(
         r"$G_p$ corresponds to $G_A$ and $G_B$ above and is related to the partition function "
-        r"$Q$ over the secondary-structure ensemble (including the unpaired state) via "
+        r"$Q$ over the self-folding ensemble (including the unpaired state) via "
         r"$Q=\exp(-\frac{G_p}{RT})$. "
         r"$G_0=0$ is the unpaired-state reference used by NUPACK."
     )
     if st.button("Plot", key="selection_helper_plot_secondary", disabled=st.session_state.busy):
         rt = R_KCAL * (273.15 + temp_c)
-        gp_vals = np.linspace(0.0, -10.0, 400)
+        gp_vals = np.linspace(0.0, -10.0, SELECTION_HELPER_PLOT_POINTS)
         p_unpaired = np.exp(gp_vals / rt)
         p_unpaired = np.clip(p_unpaired, 0.0, 1.0)
         st.session_state.selection_helper_secondary_fig = _make_line_plot(
             gp_vals,
             p_unpaired,
-            "Secondary Structure Formation",
+            "Self-Folding",
             "Standard Gibbs free energy",
             "Fraction in the fully unpaired state",
             x_range=[-5.0, 0.0],

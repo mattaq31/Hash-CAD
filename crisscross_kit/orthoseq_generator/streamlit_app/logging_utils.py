@@ -27,7 +27,7 @@ def setup_logger(log_queue):
     if existing is None:
         ui_handler = QueueLogHandler(log_queue)
         ui_handler.name = UI_HANDLER_NAME
-        ui_handler.setFormatter(logging.Formatter("%(levelname)s | %(message)s"))
+        ui_handler.setFormatter(logging.Formatter("%(message)s"))
         logger.addHandler(ui_handler)
     else:
         if getattr(existing, "q", None) is not log_queue:
@@ -37,3 +37,6 @@ def setup_logger(log_queue):
 def drain_log_queue():
     while not st.session_state.log_queue.empty():
         st.session_state.log_buffer.append(st.session_state.log_queue.get())
+    max_lines = int(st.session_state.get("log_buffer_max_lines", 50000))
+    if max_lines > 0 and len(st.session_state.log_buffer) > max_lines:
+        st.session_state.log_buffer = st.session_state.log_buffer[-max_lines:]
