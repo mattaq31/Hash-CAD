@@ -1,13 +1,17 @@
 # Orthogonal Sequence Generator (OrthoSeq)
+
 ## Problem It Solves
+
 OrthoSeq is a tool for identifying sets of **orthogonally binding nucleic-acid sequence pairs**. In this context, a sequence pair consists of a strand and its intended binding partner. The goal is to construct large sets of such pairs that bind strongly on target while avoiding appreciable off-target binding.
 
-~~---
+---
+
 ## Installation
 
 OrthoSeq is recommended to run inside a **Miniconda** environment.
 
 The main installation complication is **NUPACK**:
+
 - NUPACK is required for the thermodynamic calculations
 - NUPACK is not installed via pip in the normal way
 - because of NUPACK, this workflow currently only works for **macOS and Linux**
@@ -16,81 +20,84 @@ The main installation complication is **NUPACK**:
 
 1. Install **Miniconda** if you do not have it already.
 
-Official Miniconda installer:
-- [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install)
+    Official installer:
+
+    - [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install)
 
 2. Open a terminal or console window, then create and activate a fresh conda environment:
 
-```bash
-conda create -n orthoseq python=3.11
-conda activate orthoseq
-```
+    ```bash
+    conda create -n orthoseq python=3.11
+    conda activate orthoseq
+    ```
 
-3. Upgrade `pip` inside that conda environment:
+3. Upgrade `pip` inside that conda environment.
 
-```bash
-pip install -U pip
-```
+    ```bash
+    pip install -U pip
+    ```
 
-4. Install **NUPACK** first into the conda environment.
+4. Install **NUPACK** into the conda environment.
 
-Go to the official NUPACK download page, log in or create an account, accept the license, download the current release, and unzip it inside your download folder.
+    Go to the official NUPACK download page, log in or create an account, accept the license, download the current release, and unzip it inside your download folder.
 
-Official download page:
-- [NUPACK Download](https://www.nupack.org/download/overview)
+    - [NUPACK Download](https://www.nupack.org/download/overview)
+    - [NUPACK 4 Getting Started](https://docs.nupack.org/start/)
 
-Official guide:
-- [NUPACK 4 Getting Started](https://docs.nupack.org/start/)
+    Then install it from the downloaded package directory:
 
-Then install it from the downloaded package directory inside your conda environment:
+    ```bash
+    pip install -U nupack -f ~/Downloads/nupack-VERSION/package
+    ```
 
-```bash
-pip install -U nupack -f ~/Downloads/nupack-VERSION/package
-```
-Here, `nupack-VERSION` means the name of the downloaded and unzipped NUPACK folder.
+    Here, `nupack-VERSION` means the name of the downloaded and unzipped NUPACK folder.
 
-5. Install `crisscross_kit` with the Streamlit extra:
-```bash
-pip install "crisscross-kit[streamlit]"
-```
-This installs the package together with the Streamlit web app dependencies.
+5. Install `crisscross_kit` with the Streamlit extra.
 
-Optional SeqWalk support:
+    ```bash
+    pip install "crisscross-kit[streamlit]"
+    ```
 
-SeqWalk is not required for the app. The SeqWalk mode in the sidebar is optional and can be left disabled.
+    This installs the package together with the Streamlit web app dependencies.
 
-If you want SeqWalk support, first try:
+6. Optional: install SeqWalk support.
 
-```bash
-pip install seqwalk
-```
+    SeqWalk is not required for the app. The SeqWalk mode in the sidebar is optional and can be left disabled.
 
-Be aware that SeqWalk currently declares `numpy<2`, which can prevent clean pip resolution even when the rest of OrthoSeq installs correctly. 
-If a fresh pip install is blocked only by SeqWalk's NumPy version bound you can try:
+    If you want SeqWalk support, first try:
 
-```bash
-pip install --no-deps seqwalk
-```~~
+    ```bash
+    pip install seqwalk
+    ```
 
-6. Start the app:
-To start the app while preventing system sleep during long searches, run one of the following in your conda environment:
+    Be aware that SeqWalk currently declares `numpy<2`, which can prevent clean pip resolution even when the rest of OrthoSeq installs correctly. If a fresh pip install is blocked only by SeqWalk's NumPy version bound, you can try:
 
-macOS:
-```bash
-caffeinate -i orthoseq_app
-```
+    ```bash
+    pip install --no-deps seqwalk
+    ```
 
-Ubuntu or other systemd-based Linux systems:
-```bash
-systemd-inhibit --what=idle:sleep orthoseq_app
-```
+7. Start the app.
 
-These commands prevent automatic system sleep during long runs.
+    To start the app while preventing system sleep during long searches, run one of the following in your conda environment:
 
-This opens the Streamlit interface in your browser. 
+    macOS:
+
+    ```bash
+    caffeinate -i orthoseq_app
+    ```
+
+    Ubuntu or other systemd-based Linux systems:
+
+    ```bash
+    systemd-inhibit --what=idle:sleep orthoseq_app
+    ```
+
+    These commands prevent automatic system sleep during long runs. The app opens the Streamlit interface in your browser.
 
 ---
+
 ## Using the App
+
 Basic workflow:
 
 ### 1. Set the global sequence and thermodynamic parameters
@@ -98,6 +105,7 @@ Basic workflow:
 Use the global settings panel on the left side of the app.
 
 Here you can define the sequence layout:
+
 - core sequence length
 - optional 5' and 3' extensions by entering a base string such as `TTTT`
 - unwanted substrings such as `GGGG`
@@ -107,17 +115,16 @@ There is an illustration at the top of the panel showing the resulting binding l
 Sequences containing unwanted substrings are excluded from the search. The unwanted-substring filter can be applied either to the core sequence only or to the full sequence including the user-defined extensions. Be careful not to choose unwanted substrings that are already part of your fixed extensions, or no valid sequences may remain.
 
 Further down in the panel, you can set the thermodynamic parameters:
+
 - nucleic acid type: DNA or RNA
 - temperature
 - sodium concentration
 - magnesium concentration
-- energy convention
-
-The default OrthoSeq energy convention is `total`, which corresponds to the direct NUPACK association free energy used by legacy OrthoSeq runs and reports. The sidebar also provides a **Homodimer bound-fraction correction** checkbox. When enabled, OrthoSeq uses the script-compatible `total_bound_fraction` convention described below.
 
 If you select RNA, the sodium and magnesium concentrations are ignored because the NUPACK RNA model is defined only for 1 M sodium.
 
 At the bottom of the same panel, there is also an optional **SeqWalk** section. If **Use SeqWalk Cores** is enabled, candidate core sequences are drawn from a SeqWalk-generated code set instead of being generated as unrestricted random cores. In this mode, you can choose:
+
 - the SeqWalk `k` parameter
 - whether SeqWalk should enforce `RCfree`
 
@@ -128,6 +135,7 @@ The sidebar also shows the raw number of SeqWalk cores generated for the current
 The **Selection Helper** tab is optional, but useful for interpreting thermodynamic values experimentally.
 
 It provides reference plots for:
+
 - fraction bound of two strands vs. binding energy
 - fraction of strands that remain fully unpaired vs. self-folding energy
 
@@ -138,6 +146,7 @@ You can set the strand concentration for the first plot. The plots depend on the
 Start by getting an overview of the binding energies for the selected sequence layout.
 
 In the **Pilot Analysis** tab, choose a sample size and click **Run Pilot Analysis**. The app selects a random set of sequence pairs according to the layout and thermodynamic settings from the left panel. It then computes:
+
 - on-target binding energies
 - off-target binding energies
 - self-folding energies
@@ -167,6 +176,7 @@ In the **Orthogonal Sequence-Pair Search** tab, the transferred parameter values
 While the search is running, progress messages are shown in the logging window above the workflow tabs.
 
 The **Search Parameters** panel contains the main search controls:
+
 - **Initial Graph Search Subset Size**
 - **Graph Search Iterations**
 - **Perturbation Fraction**
@@ -174,6 +184,7 @@ The **Search Parameters** panel contains the main search controls:
 In most cases, the default values are a good starting point.
 
 Two interactive controls are available while the search is running:
+
 - **Checkpoint Now** computes an intermediate estimate from the currently collected sequence-pair pool and then continues the search.
 - **Stop Searching** stops further sequence-pair collection and finalizes the current sequence-pair pool before returning the best orthogonal sequence pairs found so far.
 
@@ -184,6 +195,7 @@ After the search finishes, the app verifies the final sequence pairs directly wi
 The **Load Results** tab lets you upload a previously saved XLSX search report and recreate the plots without rerunning the full search.
 
 The tab reads the sequence pairs and recorded metadata from the workbook, including:
+
 - NUPACK material, temperature, sodium concentration, and magnesium concentration
 - NUPACK/OrthoSeq energy type
 - on-target energy range
@@ -193,6 +205,7 @@ The tab reads the sequence pairs and recorded metadata from the workbook, includ
 - graph-search parameters when present
 
 The app then recomputes the on-target, off-target, and self-folding energies using the recorded NUPACK parameters and shows the resulting plots directly in the interface. It also writes two timestamped PDF artifacts into the local `results/` folder:
+
 - on-target vs. off-target energy histogram
 - self-folding energy histogram
 
@@ -214,6 +227,7 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 ### CLI workflow
 
 #### `pre_analize_sequences.py`
+
 - Editable example corresponding to **Pilot Analysis**.
 - Samples sequence pairs for the current layout and thermodynamic model.
 - Computes on-target, off-target, and self-folding energies.
@@ -221,6 +235,7 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 - The current example defaults to unrestricted registry sampling. An optional SeqWalk initialization example is included as a commented block that you can enable manually, or you can replace it with your own pre-generated sequence pool.
 
 #### `pre_analize_sequences_in_range.py`
+
 - Editable example corresponding to **Off-Target Limit** selection.
 - Samples sequence pairs within a chosen on-target energy range.
 - Recomputes off-target energies for that filtered pool.
@@ -228,6 +243,7 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 - An optional SeqWalk initialization example is included as a commented block that you can enable manually.
 
 #### `run_sequence_search.py`
+
 - Main editable example corresponding to **Orthogonal Sequence-Pair Search**.
 - Runs the hybrid search with the chosen thermodynamic limits.
 - Writes a verified XLSX run report and related output artifacts into the local `results/` folder.
@@ -235,6 +251,7 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 - An optional SeqWalk initialization example is included as a commented block that you can enable manually.
 
 #### `run_naive_search.py`
+
 - Baseline editable command-line search using the naive sequential acceptance strategy.
 - Writes a verified XLSX run report and related output artifacts into the local `results/` folder.
 - Useful for comparison against the hybrid search.
@@ -242,12 +259,14 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 ### Utility scripts
 
 #### `load_sequences_from_txt_and_plot.py`
+
 - Loads sequence pairs from a plain-text file.
 - In the current example, the input file is read from the standard `results/` folder unless the script is edited.
 - Recomputes on-target, off-target, and self-folding energies.
 - Writes on/off-target and self-folding histogram PDFs.
 
 #### `load_sequences_from_xlsx_and_plot.py`
+
 - Loads sequence pairs from a verified XLSX search report.
 - Uses the recorded NUPACK parameters from the workbook metadata.
 - Recomputes on-target, off-target, and self-folding energies.
@@ -266,6 +285,7 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 The scripts and app write output into a local `results/` folder created in the directory from which they are executed.
 
 Typical outputs include:
+
 - saved sequence-pair lists
 - XLSX search reports
 - PDF energy histograms
@@ -502,6 +522,7 @@ This sheet records the main generation stages of the search. For hybrid search r
 This sheet is most useful for understanding how much of the result came from the initial graph search versus the later sequence-pair pool.
 
 #### `validation`
+
 This sheet stores simple pass/fail checks on the final selected set, including:
 
 - whether the selected set is nonempty
@@ -512,9 +533,11 @@ This sheet stores simple pass/fail checks on the final selected set, including:
 ### Optional sheets
 
 #### `seed_pass_pairs`
+
 For hybrid search runs, this sheet stores the sequence pairs selected for the initial graph search, before the graph search removes conflicts. These sequence pairs are therefore **not** necessarily orthogonal.
 
 #### `seed_hh`, `seed_hah`, `seed_ahah`
+
 For hybrid search runs, these are the verified off-target energy matrices for the initial graph-search input pool stored in `seed_pass_pairs`, using the same handle-handle, handle-antihandle, and antihandle-antihandle convention described above. These matrices are useful for inspecting the structure of the conflict graph before graph search removes conflicting sequence pairs.
 
 
@@ -534,7 +557,8 @@ The `legacy/` directory includes two older self-contained scripts for finding or
    - Runs the iterative vertex-cover refinement heuristic on that graph.  
    - Derives the independent set (orthogonal sequences) and saves them to for example `independent_sequences.txt` in `results`.
 
-**Output & Folders**  
+### Output and Folders
+
 - The legacy scripts are self-contained examples and use their own direct file outputs rather than the shared XLSX reporting workflow.
 - The pickle file (for example `subset_data_7mers96to101.pkl`) is written in the current working directory.
 - The final selected sequences are written through the standard `results/` helper, so `independent_sequences.txt` ends up in the local `results/` folder relative to the directory from which the script is executed.
