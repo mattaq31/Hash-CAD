@@ -438,29 +438,29 @@ PegPurificationResult generatePegPurificationExcel({
   _setCell(sheet, 3, 30, 'Resus1 (µL)', style: _sHeader);
   _setCell(sheet, 4, 30, 'Resus2 (µL)', style: _sHeader);
 
-  // Buffer table: Resus1 = 150 µL total wash, Resus2 = 2000 µL resuspension
+  // Buffer table: prepare 2000 µL stock of each buffer (add 150 µL Resus1 per sample; Resus2 volumes are per-sample)
   _setCell(sheet, 0, 31, '10X TEF', style: _sNormal);
   _setCell(sheet, 1, 31, '10X', style: _sNormal);
   _setCell(sheet, 2, 31, '1X', style: _sNormal);
-  _setCell(sheet, 3, 31, 15, style: _sNormal);
+  _setCell(sheet, 3, 31, 200, style: _sNormal);
   _setCell(sheet, 4, 31, 200, style: _sNormal);
 
   _setCell(sheet, 0, 32, '1M MgCl₂', style: _sNormal);
   _setCell(sheet, 1, 32, '1000 mM', style: _sNormal);
-  _setCell(sheet, 2, 32, '200 mM / 100 mM', style: _sNormal);
-  _setCell(sheet, 3, 32, 30, style: _sNormal);
-  _setCell(sheet, 4, 32, 200, style: _sNormal);
+  _setCell(sheet, 2, 32, '20 mM / 10 mM', style: _sNormal);
+  _setCell(sheet, 3, 32, 40, style: _sNormal);
+  _setCell(sheet, 4, 32, 20, style: _sNormal);
 
   _setCell(sheet, 0, 33, 'UPW', style: _sNormal);
   _setCell(sheet, 1, 33, '—', style: _sNormal);
   _setCell(sheet, 2, 33, '—', style: _sNormal);
-  _setCell(sheet, 3, 33, 105, style: _sNormal);
-  _setCell(sheet, 4, 33, 1600, style: _sNormal);
+  _setCell(sheet, 3, 33, 1760, style: _sNormal);
+  _setCell(sheet, 4, 33, 1780, style: _sNormal);
 
   _setCell(sheet, 0, 34, 'Total', style: _sBold);
   _setCell(sheet, 1, 34, '', style: _sNormal);
   _setCell(sheet, 2, 34, '', style: _sNormal);
-  _setCell(sheet, 3, 34, 150, style: _sBold);
+  _setCell(sheet, 3, 34, 2000, style: _sBold);
   _setCell(sheet, 4, 34, 2000, style: _sBold);
 
   // --- Row 36: Slat group reference table header ---
