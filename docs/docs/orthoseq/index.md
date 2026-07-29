@@ -64,17 +64,13 @@ The main installation complication is **NUPACK**:
 
     SeqWalk is not required for the app. The SeqWalk mode in the sidebar is optional and can be left disabled.
 
-    If you want SeqWalk support, first try:
-
-    ```bash
-    pip install seqwalk
-    ```
-
-    Be aware that SeqWalk currently declares `numpy<2`, which can prevent clean pip resolution even when the rest of OrthoSeq installs correctly. If a fresh pip install is blocked only by SeqWalk's NumPy version bound, you can try:
+    SeqWalk currently declares a dependency on `numpy<2`, which can conflict with the rest of the OrthoSeq environment. For the SeqWalk mode used here, install SeqWalk without changing the already installed dependencies:
 
     ```bash
     pip install --no-deps seqwalk
     ```
+
+    We checked the SeqWalk source code and found that its sequence-generation functions do not use NumPy. NumPy is used in SeqWalk's analysis helpers, not in the sequence generation path used by OrthoSeq, so this installation method should be fine for OrthoSeq's optional SeqWalk mode.
 
 7. Start the app.
 
