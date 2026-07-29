@@ -1,10 +1,10 @@
-# #-CAD and Crisscross Library Packages
+# #-CAD, OrthoSeq and Crisscross Library Packages
 
 <p align="center">
   <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/media_kit/basic_logo.png" alt="Hash-CAD in action" style="width: 50%; margin: 0%;">
 </p>
 <p align="center">
-  <em>Unified CAD and scripting packages for megastructure design, handle library generation and visualization.</em>
+  <em>Unified CAD and scripting packages for megastructure design, orthogonal handle library generation and visualization.</em>
 </p>
 
 <p align="center">
@@ -86,7 +86,7 @@ Quick setup tutorial video also available [here](https://youtu.be/UYyZ-ENyqZ4)!
 
 See the full [User Guide](https://hash-cad.readthedocs.io/en/latest/user-guide/) for more details.
 
-## Crisscross Python API & Orthogonal Sequence Generation
+## Crisscross Python API & OrthoSeq
 
   The `crisscross` python API can be used to manipulate megastructures programmatically, and its file format is fully compatible with that of #-CAD. The Python interface provides more flexibility and customizability when compared to #-CAD, at the cost of a steeper learning curve.
 
