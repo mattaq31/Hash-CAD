@@ -146,7 +146,7 @@ def render_load_results_tab(nupack_available=True):
             criteria_lines.append(f"Off-target energy limit: {metadata['search.offtarget_limit']} kcal/mol")
         if metadata.get("search.self_energy_limit") is not None:
             criteria_lines.append(
-                f"Secondary-structure energy limit: {metadata['search.self_energy_limit']} kcal/mol"
+                f"Self-folding energy limit: {metadata['search.self_energy_limit']} kcal/mol"
             )
         if metadata.get("search.random_seed") is not None:
             criteria_lines.append(f"Random seed: {metadata['search.random_seed']}")
@@ -168,7 +168,7 @@ def render_load_results_tab(nupack_available=True):
                     f"Report file: {st.session_state.loaded_report_name}",
                     f"Found sequence pairs: {st.session_state.loaded_report_pair_count}",
                     f"Saved on/off-target PDF: {st.session_state.loaded_report_on_off_pdf_path}",
-                    f"Saved self-energy PDF: {st.session_state.loaded_report_self_pdf_path}",
+                    f"Saved self-folding PDF: {st.session_state.loaded_report_self_pdf_path}",
                 ]
             )
         )

@@ -10,7 +10,7 @@ This script plots up to three independently generated/workbook-backed datasets:
 
 For each available dataset it writes two publication-style SVG plots:
 - on-target vs. off-target association energies
-- secondary-structure energies
+- self-folding energies
 
 The visual style is intentionally matched to the Figure 1 plotting script.
 """
@@ -209,7 +209,7 @@ def plot_energy_distributions(
     range_color,
     limit_color,
     onoff_title: str = "On and off-target energies",
-    self_title: str = "Secondary structure energies",
+    self_title: str = "Self-folding energies",
 ) -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -250,7 +250,7 @@ def plot_energy_distributions(
     worst_secondary = find_worst_secondary_structure(data_path)
     if worst_secondary is not None:
         print(
-            f"{output_prefix}: worst secondary-structure former = "
+            f"{output_prefix}: worst self-folding strand = "
             f"pair {worst_secondary['pair_id']} "
             f"({worst_secondary['energy']:.3f} kcal/mol)"
         )
@@ -344,7 +344,7 @@ def plot_energy_distributions(
         color=self_color,
         edgecolor="black",
         linewidth=hist_edge_linewidth,
-        label="Secondary structure",
+        label="Self-folding",
         zorder=2,
     )
     ax.axvline(
@@ -352,11 +352,11 @@ def plot_energy_distributions(
         color=limit_color,
         linestyle="--",
         linewidth=reference_linewidth,
-        label="Secondary structure limit",
+        label="Self-folding limit",
         zorder=reference_zorder,
     )
 
-    ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{sec}}$ (kcal/mol)", fontsize=axis_label_font_size)
+    ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{self}}$ (kcal/mol)", fontsize=axis_label_font_size)
     ax.set_ylabel("Density", fontsize=axis_label_font_size)
     ax.set_title(self_title, fontsize=title_font_size, pad=4)
     ax.set_xlim(secondary_x_min, secondary_x_max)

@@ -86,7 +86,7 @@ def render_refinement_tab(registry_factory, nupack_params):
     st.info(
         f"On-target energy range set in pilot analysis: "
         f"[{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
-        f"Minimum secondary-structure energy set in pilot analysis: {st.session_state.self_energy_limit:.2f} kcal/mol"
+        f"Minimum self-folding energy set in pilot analysis: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
     refine_size = st.number_input(
@@ -163,7 +163,7 @@ def render_refinement_tab(registry_factory, nupack_params):
 
         if st.session_state.self_e_range is not None:
             st.markdown("---")
-            st.subheader("Secondary-Structure Energy Distribution")
+            st.subheader("Self-Folding Energy Distribution")
 
             self_fig = pu.create_self_energy_histogram(
                 st.session_state.self_e_range,

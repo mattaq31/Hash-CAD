@@ -34,7 +34,7 @@ This is not a disagreement with the paper. It is the same graph problem written 
 
 - bind within a chosen on-target energy range
 - do not bind too strongly to unintended partners
-- do not form too much secondary structure on their own
+- do not self-fold too strongly
 
 The package has three main layers:
 
@@ -153,14 +153,14 @@ Main pieces:
   - queue-backed logger wiring so background work can stream status messages into the UI
 
 - `plotly_utils.py`
-  - interactive histogram builders for on/off-target and self-energy plots
+  - interactive histogram builders for on/off-target and self-folding plots
 
 - `tabs/tab_selection_helper.py`
   - thermodynamic helper plots for fraction bound and fraction unpaired
 
 - `tabs/tab_exploratory.py`
   - pilot analysis tab
-  - samples a subset, computes on-target, off-target, and self energies, and shows the first set of histograms
+  - samples a subset, computes on-target, off-target, and self-folding energies, and shows the first set of histograms
 
 - `tabs/tab_refinement.py`
   - off-target limit selection tab
@@ -206,7 +206,7 @@ The main filtering function is `select_subset_in_energy_range()` in `energy_comp
 For each sampled sequence pair, it can apply:
 
 - on-target energy range filtering
-- secondary-structure filtering on both strands
+- self-folding filtering on both strands
 - same-strand homodimer rejection against the off-target limit
 - optional cross-reference checks against an already retained pool
 
@@ -246,7 +246,7 @@ This is the main scaling trick in the package. The second graph search only reso
 
 It does not build a conflict graph. It just accepts sequence pairs one by one if they pass:
 
-- on-target and self-energy filters
+- on-target and self-folding filters
 - homodimer checks
 - direct cross-reference against already accepted pairs
 
@@ -433,7 +433,7 @@ Main current scripts:
 
 - `scripts/pre_analize_sequences.py`
   - rough pilot analysis
-  - samples a subset and plots on-target, off-target, and self-energy distributions
+  - samples a subset and plots on-target, off-target, and self-folding distributions
 
 - `scripts/pre_analize_sequences_in_range.py`
   - second analysis step after choosing an on-target window

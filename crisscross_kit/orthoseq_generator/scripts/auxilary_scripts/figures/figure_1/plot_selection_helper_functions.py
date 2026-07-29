@@ -4,7 +4,7 @@
 Plot the two analytical selection-helper curves used in the Streamlit app.
 
 - fraction bound vs. association Gibbs free energy
-- fraction unpaired vs. secondary-structure Gibbs free energy
+- fraction unpaired vs. self-folding Gibbs free energy
 """
 
 from pathlib import Path
@@ -155,12 +155,12 @@ if __name__ == "__main__":
         color=LIMIT_COLOR,
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
-        label="Secondary structure limit",
+        label="Self-folding limit",
         zorder=REFERENCE_ZORDER,
     )
-    ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{sec}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{self}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)
     ax.set_ylabel("Fraction unpaired", fontsize=AXIS_LABEL_FONT_SIZE)
-    ax.set_title("Secondary structure formation", fontsize=TITLE_FONT_SIZE, pad=4)
+    ax.set_title("Self-folding", fontsize=TITLE_FONT_SIZE, pad=4)
     ax.set_xlim(SECONDARY_X_MIN, SECONDARY_X_MAX)
     ax.set_ylim(0.0, 1.05)
     ax.tick_params(axis="both", labelsize=TICK_LABEL_FONT_SIZE, width=AXIS_LINEWIDTH, length=2)

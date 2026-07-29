@@ -62,7 +62,7 @@ def render_search_tab(registry_factory, nupack_params):
     st.info(
         f"On-target energy range: [{st.session_state.min_ontarget:.2f}, {st.session_state.max_ontarget:.2f}] kcal/mol\n\n"
         f"Off-target energy limit: {st.session_state.offtarget_limit:.2f} kcal/mol\n\n"
-        f"Secondary-structure energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
+        f"Self-folding energy limit: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
     # Inputs (locked while running)

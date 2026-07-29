@@ -125,7 +125,7 @@ The runner writes:
 
 - one XLSX workbook
 - one on/off-target PDF
-- one self-energy PDF
+- one self-folding PDF
 
 into the batch data directory selected by `output.dir` in the generated TOML.
 

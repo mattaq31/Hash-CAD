@@ -81,9 +81,9 @@ The printed worst-off-target summary is organized as:
    - `identity = barcode | revcombarcode | n.a.`
    - `slot = handle | antihandle`
 
-The script also prints the worst secondary-structure former as:
+The script also prints the worst self-folding strand as:
 
-1. pair ID and self-energy
+1. pair ID and self-folding energy
 2. `pair = (handle, antihandle)`
 3. one compact participant line with:
    - `sequence = ...`

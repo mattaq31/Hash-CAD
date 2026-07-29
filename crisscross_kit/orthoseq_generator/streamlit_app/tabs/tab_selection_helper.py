@@ -60,7 +60,7 @@ def _make_line_plot(x_vals, y_vals, title, x_label, y_label, x_range=None):
 
 def render_selection_helper_tab(nupack_params):
     st.header("Selection Helper")
-    st.write("Reference plots relating energy values to strand binding and secondary-structure formation.")
+    st.write("Reference plots relating energy values to strand binding and self-folding.")
 
     temp_c = float(nupack_params["celsius"])
     st.caption(f"Using temperature: T= 273.15K + {temp_c:.1f}K")
@@ -138,11 +138,11 @@ def render_selection_helper_tab(nupack_params):
     if st.session_state.get("selection_helper_assoc_fig") is not None:
         st.plotly_chart(st.session_state.selection_helper_assoc_fig, width="stretch")
 
-    st.subheader("Secondary Structure Formation")
+    st.subheader("Self-Folding")
     st.markdown(
         r"""
     Transition of a strand between the fully unpaired state $U$ and any folded
-    secondary-structure state $S$:
+    self-folded state $S$:
 
     $$
     U \rightleftharpoons S
@@ -163,7 +163,7 @@ def render_selection_helper_tab(nupack_params):
 
     st.caption(
         r"$G_p$ corresponds to $G_A$ and $G_B$ above and is related to the partition function "
-        r"$Q$ over the secondary-structure ensemble (including the unpaired state) via "
+        r"$Q$ over the self-folding ensemble (including the unpaired state) via "
         r"$Q=\exp(-\frac{G_p}{RT})$. "
         r"$G_0=0$ is the unpaired-state reference used by NUPACK."
     )
@@ -175,7 +175,7 @@ def render_selection_helper_tab(nupack_params):
         st.session_state.selection_helper_secondary_fig = _make_line_plot(
             gp_vals,
             p_unpaired,
-            "Secondary Structure Formation",
+            "Self-Folding",
             "Standard Gibbs free energy",
             "Fraction in the fully unpaired state",
             x_range=[-5.0, 0.0],

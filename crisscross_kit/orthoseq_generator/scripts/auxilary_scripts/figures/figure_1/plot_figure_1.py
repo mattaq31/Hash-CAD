@@ -6,7 +6,7 @@ Plot the Figure 1 energy distributions from the saved selection-free workbook.
 This script reads the workbook produced by `prepare_data_f1.py` and writes two
 publication-style SVG plots:
 - on-target vs. off-target association energies
-- secondary-structure energies
+- self-folding energies
 
 The vertical reference lines reuse the long-sequence benchmark thresholds so
 the random sampled dataset can be compared visually to the search regime.
@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-PACKAGE_DIR = Path(__file__).resolve().parents[4]
+PACKAGE_DIR = Path(__file__).resolve().parents[5]
 if str(PACKAGE_DIR) not in sys.path:
     sys.path.insert(0, str(PACKAGE_DIR))
 
@@ -113,7 +113,7 @@ def plot_energy_distributions(
     out_dir: Path,
     output_prefix: str,
     onoff_title: str = "On and off-target energies",
-    self_title: str = "Secondary structure energies",
+    self_title: str = "Self-folding energies",
 ) -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -193,7 +193,7 @@ def plot_energy_distributions(
         color=SELF_COLOR,
         edgecolor="black",
         linewidth=HIST_EDGE_LINEWIDTH,
-        label="Secondary structure",
+        label="Self-folding",
         zorder=2,
     )
     ax.axvline(
@@ -201,11 +201,11 @@ def plot_energy_distributions(
         color=LIMIT_COLOR,
         linestyle="--",
         linewidth=REFERENCE_LINEWIDTH,
-        label="Secondary structure limit",
+        label="Self-folding limit",
         zorder=REFERENCE_ZORDER,
     )
 
-    ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{sec}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.set_xlabel(r"Gibbs free energy, $\Delta G_{\mathrm{self}}$ (kcal/mol)", fontsize=AXIS_LABEL_FONT_SIZE)
     ax.set_ylabel("Density", fontsize=AXIS_LABEL_FONT_SIZE)
     ax.set_title(self_title, fontsize=TITLE_FONT_SIZE, pad=4)
     ax.set_xlim(SECONDARY_X_MIN, SECONDARY_X_MAX)
@@ -227,13 +227,9 @@ if __name__ == "__main__":
         / "figure1_len12_noflank_random_1000pairs_seed41.xlsx"
     )
     hybrid_data_path = (
-        figure_dir.parent.parent
-        / "benchmarking"
-        / "long_seq"
-        / "data"
-        / "batch_x______sigma1p0_seed41"
-        / "len12"
-        / "5p_none"
+        PACKAGE_DIR
+        / "orthoseq_generator/scripts/benchmarking/long_seq/data/"
+        / "batch_x______sigma1p0_seed41/len12/5p_none/"
         / "hybrid_len12_5p_none_limitm8p16_budget10000000_init900_seed41.xlsx"
     )
 

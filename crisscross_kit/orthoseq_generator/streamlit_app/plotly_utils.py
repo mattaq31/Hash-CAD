@@ -124,7 +124,7 @@ def create_self_energy_histogram(self_energies, self_limit=None, bins=60):
     if combined.size == 0:
         fig = go.Figure()
         fig.update_layout(
-            title="Secondary-Structure Energy Distribution",
+            title="Self-Folding Energy Distribution",
             xaxis_title="Gibbs free energy (kcal/mol)",
             yaxis_title="Normalized frequency",
             template="plotly_white",
@@ -141,7 +141,7 @@ def create_self_energy_histogram(self_energies, self_limit=None, bins=60):
     fig.add_trace(go.Histogram(
         x=combined,
         xbins=dict(start=combined_min, end=combined_max, size=(combined_max - combined_min) / bins),
-        name='Self-energy',
+        name='Self-folding',
         marker_color='#1f77b4',
         opacity=0.75,
         histnorm='probability density'
@@ -175,7 +175,7 @@ def create_self_energy_histogram(self_energies, self_limit=None, bins=60):
     fig.update_layout(
         shapes=shapes,
         barmode="overlay",
-        title="Secondary-Structure Energy Distribution",
+        title="Self-Folding Energy Distribution",
         xaxis_title="Gibbs free energy (kcal/mol)",
         yaxis_title="Normalized frequency",
         template="plotly_white",

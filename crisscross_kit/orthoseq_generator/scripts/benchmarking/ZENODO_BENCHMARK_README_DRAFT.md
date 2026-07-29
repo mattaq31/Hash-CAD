@@ -3,10 +3,17 @@
 This archive contains the benchmark data associated with the OrthoSeq
 manuscript, "OrthoSeq: A Design Workflow for Thermodynamically Orthogonal DNA Sequence-Pair Libraries."
 
-It contains the full benchmark outputs and the reduced sequence libraries used
-for the Supporting Information.
+The most directly reusable files are in `extracted_libraries/`. These are
+ready-to-use Excel workbooks containing the largest orthogonal sequence-pair
+libraries found for each reported benchmark condition. The archive also
+contains the full benchmark outputs used to derive those libraries and the
+workbooks used for the seqwalk comparison.
 
 ## Archive Scope
+
+If you want sequences to copy into a design workflow, start with
+`extracted_libraries/`. The full benchmark outputs are included for provenance
+and detailed analysis.
 
 The benchmark data are organized into two benchmark regimes.
 
@@ -32,6 +39,18 @@ The archive is organized as follows:
 ```text
 benchmark_data/
   README.md
+  extracted_libraries/
+    short_seq/
+      37C/
+        TTTT_flank/
+        no_flank/
+    long_seq/
+      25C/
+        TTTT_flank/
+        no_flank/
+      37C/
+        TTTT_flank/
+        no_flank/
   full_benchmark_results/
     short_seq/
       data/
@@ -57,18 +76,6 @@ benchmark_data/
         batch_x______sigma1p0_seed41/
         batch_x25TTTT_sigma1p0_seed41/
         batch_x25_____sigma1p0_seed41/
-  extracted_libraries/
-    short_seq/
-      37C/
-        TTTT_flank/
-        no_flank/
-    long_seq/
-      25C/
-        TTTT_flank/
-        no_flank/
-      37C/
-        TTTT_flank/
-        no_flank/
   seqwalk_comparison/
     figure5_seqwalk_max_orthogonality_len16_n72_seed42.xlsx
     figure5_hybrid_len16_noflank_seqwalk_k6_seed42.xlsx
@@ -102,9 +109,9 @@ Each `dataset.npz` file contains:
 - `all_rc_seqs`: intended binding partner for each full-pool candidate
 - `all_on_target_energies`: on-target association free energy for each full
   candidate pair
-- `all_self_energy_seqs`: secondary-structure free energy of the forward strand for
+- `all_self_energy_seqs`: self-folding free energy of the forward strand for
   each full candidate pair
-- `all_self_energy_rc_seqs`: secondary-structure free energy of the reverse-complement
+- `all_self_energy_rc_seqs`: self-folding free energy of the reverse-complement
   strand for each full candidate pair
 - `all_is_in_ontarget_window`: Boolean mask indicating whether the candidate
   passed the on-target energy window used to define the matrix subset
@@ -186,19 +193,20 @@ length and flank condition. Each run writes:
 
 - one full XLSX workbook
 - one on-target/off-target PDF
-- one secondary-structure PDF
+- one self-folding PDF
 
 The XLSX workbook is the primary machine-readable result artifact.
 
 
-## Extracted Sequence Libraries
+## Ready-to-Use Extracted Sequence Libraries
 
-The `extracted_libraries/` portion of the archive contains reduced workbooks
-selected from the full benchmark outputs.
+The `extracted_libraries/` portion of the archive contains ready-to-use Excel
+workbooks. These are the reduced sequence libraries intended for direct
+inspection and copying.
 
-For each reported condition, the reduced workbook was taken from the benchmark
-run with the largest number of final orthogonal sequence pairs
-(`found_pairs`). Each reduced workbook contains only:
+For each reported condition, the workbook was selected from the benchmark run
+that produced the largest final orthogonal sequence-pair library, measured by
+the number of rows in `found_pairs`. Each reduced workbook contains only:
 
 - `run_metadata`
 - `found_pairs`
@@ -289,7 +297,7 @@ The workbook metadata keys are grouped by prefix:
   3' flanks, motif exclusions, and whether the run started from a frozen
   benchmark dataset or a live on-the-fly registry
 - `search.*`: search thresholds and algorithm settings, including the
-  off-target cutoff, on-target window, secondary-structure cutoff, random seed,
+  off-target cutoff, on-target window, self-folding cutoff, random seed,
   executed NUPACK calls, NUPACK-call budget, graph-search parameters, and
   search duration
 - `nupack.*`: thermodynamic model parameters used for energy computation,
@@ -313,7 +321,7 @@ The most useful metadata fields for reading the benchmark outputs are:
 - `search.offtarget_limit`: off-target energy cutoff used to define conflicts
 - `search.min_ontarget` and `search.max_ontarget`: accepted on-target energy
   window
-- `search.self_energy_limit`: minimum allowed secondary-structure free energy
+- `search.self_energy_limit`: minimum allowed self-folding free energy
 - `search.total_nupack_calls`: number of NUPACK calls actually consumed during
   the reported run
 - `search.total_nupack_budget`: NUPACK-call budget assigned to the run
@@ -412,7 +420,7 @@ libraries in the manuscript and Supporting Information.
 - The extracted libraries are reduced convenience files for direct use in the
   Supporting Information and for quick inspection of the final selected
   sequence pairs.
-- 
+
 ## Funding and Compute Resources
 
 This dataset is associated with work supported in part by:

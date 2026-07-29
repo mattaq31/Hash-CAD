@@ -130,13 +130,13 @@ def render_exploratory_tab(registry_factory, nupack_params):
 
         if st.session_state.self_e_pilot is not None:
             st.markdown("---")
-            st.subheader("Select Minimum Secondary-Structure Energy")
+            st.subheader("Select Minimum Self-Folding Energy")
             st.write("Set minimum and hit \"Use This Value\" to transfer the value to the next tabs")
 
             col_s1, col_s2 = st.columns([1, 1])
             with col_s1:
                 st.number_input(
-                    "Min Secondary-Structure Energy (kcal/mol)",
+                    "Min Self-Folding Energy (kcal/mol)",
                     step=None,
                     key="self_energy_limit_input",
                     value=float(st.session_state.self_energy_limit),

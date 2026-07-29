@@ -129,28 +129,28 @@ The **Selection Helper** tab is optional, but useful for interpreting thermodyna
 
 It provides reference plots for:
 - fraction bound of two strands vs. binding energy
-- fraction of strands that remain fully unpaired vs. secondary-structure energy
+- fraction of strands that remain fully unpaired vs. self-folding energy
 
 You can set the strand concentration for the first plot. The plots depend on the temperature selected in the left panel.
 
-### 2. Run a pilot analysis to choose the on-target range and secondary-structure limit
+### 2. Run a pilot analysis to choose the on-target range and self-folding limit
 
 Start by getting an overview of the binding energies for the selected sequence layout.
 
 In the **Pilot Analysis** tab, choose a sample size and click **Run Pilot Analysis**. The app selects a random set of sequence pairs according to the layout and thermodynamic settings from the left panel. It then computes:
 - on-target binding energies
 - off-target binding energies
-- secondary-structure energies
+- self-folding energies
 
 The results are shown in two plots.
 
 The first plot shows on-target and off-target energy histograms. You can enter minimum and maximum on-target energies in the input fields. The selected range is displayed as vertical lines on the plot. If you are happy with the range, transfer it to the next tab using **Use This Range**.
 
-The second plot shows the secondary-structure energy distribution. You can enter a minimum secondary-structure energy limit, which is also shown as a vertical line. If you are happy with the value, transfer it using **Use This Value**.
+The second plot shows the self-folding energy distribution. You can enter a minimum self-folding energy limit, which is also shown as a vertical line. If you are happy with the value, transfer it using **Use This Value**.
 
 ### 3. Choose the off-target binding limit
 
-In the **Off-Target Limit** tab, the on-target range and secondary-structure limit transferred from the pilot analysis are shown again. You can choose a sample size and click **Run Off-Target Binding Analysis**.
+In the **Off-Target Limit** tab, the on-target range and self-folding limit transferred from the pilot analysis are shown again. You can choose a sample size and click **Run Off-Target Binding Analysis**.
 
 The app then selects a random set of sequence pairs that satisfy the previously chosen conditions and computes the on-target and off-target energies again with NUPACK.
 
@@ -188,13 +188,13 @@ The tab reads the sequence pairs and recorded metadata from the workbook, includ
 - NUPACK/OrthoSeq energy type
 - on-target energy range
 - off-target energy limit
-- secondary-structure energy limit
+- self-folding energy limit
 - random seed
 - graph-search parameters when present
 
-The app then recomputes the on-target, off-target, and secondary-structure energies using the recorded NUPACK parameters and shows the resulting plots directly in the interface. It also writes two timestamped PDF artifacts into the local `results/` folder:
+The app then recomputes the on-target, off-target, and self-folding energies using the recorded NUPACK parameters and shows the resulting plots directly in the interface. It also writes two timestamped PDF artifacts into the local `results/` folder:
 - on-target vs. off-target energy histogram
-- secondary-structure energy histogram
+- self-folding energy histogram
 
 
 
@@ -216,8 +216,8 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 #### `pre_analize_sequences.py`
 - Editable example corresponding to **Pilot Analysis**.
 - Samples sequence pairs for the current layout and thermodynamic model.
-- Computes on-target, off-target, and secondary-structure energies.
-- Use it to choose a reasonable on-target energy range and secondary-structure limit.
+- Computes on-target, off-target, and self-folding energies.
+- Use it to choose a reasonable on-target energy range and self-folding limit.
 - The current example defaults to unrestricted registry sampling. An optional SeqWalk initialization example is included as a commented block that you can enable manually, or you can replace it with your own pre-generated sequence pool.
 
 #### `pre_analize_sequences_in_range.py`
@@ -244,14 +244,14 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 #### `load_sequences_from_txt_and_plot.py`
 - Loads sequence pairs from a plain-text file.
 - In the current example, the input file is read from the standard `results/` folder unless the script is edited.
-- Recomputes on-target, off-target, and secondary-structure energies.
-- Writes on/off-target and self-energy histogram PDFs.
+- Recomputes on-target, off-target, and self-folding energies.
+- Writes on/off-target and self-folding histogram PDFs.
 
 #### `load_sequences_from_xlsx_and_plot.py`
 - Loads sequence pairs from a verified XLSX search report.
 - Uses the recorded NUPACK parameters from the workbook metadata.
-- Recomputes on-target, off-target, and secondary-structure energies.
-- Writes on/off-target and self-energy histogram PDFs.
+- Recomputes on-target, off-target, and self-folding energies.
+- Writes on/off-target and self-folding histogram PDFs.
 
 ### Auxiliary and legacy material
 
@@ -312,7 +312,7 @@ Older reports and benchmark datasets that do not contain `nupack.energy_type` sh
 OrthoSeq formulates orthogonal sequence-pair selection as a graph problem.
 
 1. **Prefilter the pool**  
-   Sequence pairs are first filtered by on-target energy and secondary-structure energy.
+   Sequence pairs are first filtered by on-target energy and self-folding energy.
 
 2. **Define conflicts by off-target binding**  
    Two sequence pairs are considered incompatible if any of their off-target interactions exceeds the chosen off-target limit.
@@ -350,7 +350,7 @@ The search has entered the initial graph-search phase.
 ```text
 Selecting 450 sequence pairs for the initial graph search...
 ```
-The search is drawing sequence pairs for the initial graph-search pool. Each pair must satisfy the on-target and secondary-structure filters before it is accepted.
+The search is drawing sequence pairs for the initial graph-search pool. Each pair must satisfy the on-target and self-folding filters before it is accepted.
 
 ---
 
@@ -435,7 +435,7 @@ This sheet stores the run configuration as key-value pairs. Important keys inclu
 - `input.seqwalk_core_count`: the raw number of SeqWalk cores generated for the recorded settings
 - `search.min_ontarget` and `search.max_ontarget`: requested on-target energy range
 - `search.offtarget_limit`: requested off-target energy limit
-- `search.self_energy_limit`: requested secondary-structure energy limit
+- `search.self_energy_limit`: requested self-folding energy limit
 - `search.initial_fresh_pair_count`: internal metadata key for the initial graph-search subset size
 - `search.prune_fraction`: internal metadata key for the perturbation fraction used by the graph search
 - `search.vc_max_iterations`: internal metadata key for the graph-search iteration count
@@ -459,8 +459,8 @@ This is the final orthogonal sequence-pair set. Each row corresponds to one fina
 - `seq`: the handle strand
 - `rc_seq`: the antihandle strand, which is the intended binding partner derived from the reverse complement of the core binding domain
 - verified on-target energy
-- verified secondary-structure energy for `seq`
-- verified secondary-structure energy for `rc_seq`
+- verified self-folding energy for `seq`
+- verified self-folding energy for `rc_seq`
 
 When SeqWalk mode was used, the sheet can also include:
 
@@ -494,7 +494,7 @@ This sheet records the main generation stages of the search. For hybrid search r
 - `nupack_calls_executed`: NUPACK calls charged to that stage
 - `stopped_early`: whether the stage ended by stop request, interrupt, budget, or another non-default termination condition
 - `attempts`: number of sequence-pair draws attempted in that stage
-- `passed_ontarget_and_self`: number of sequence pairs that passed the on-target and secondary-structure filters
+- `passed_ontarget_and_self`: number of sequence pairs that passed the on-target and self-folding filters
 - `passed_homodimer`: number of sequence pairs that also passed the same-strand off-target screen
 - `accepted_into_pool`: number of sequence pairs that entered the stage pool
 - `notes`: termination reason or other short stage note
@@ -506,7 +506,7 @@ This sheet stores simple pass/fail checks on the final selected set, including:
 
 - whether the selected set is nonempty
 - whether all on-target energies lie within the requested range
-- whether all self energies lie above the requested limit
+- whether all self-folding energies lie above the requested limit
 - how many verified off-target violations remain
 
 ### Optional sheets
