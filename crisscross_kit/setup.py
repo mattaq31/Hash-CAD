@@ -116,10 +116,18 @@ if sys.platform == "darwin" and platform.machine() == "arm64":
     extra_link_args = ["-arch", "arm64", "-Wl,-rpath,@loader_path"]
 # Windows (MSVC)
 elif platform.system() == "Windows" and ("msvc" in (os.environ.get("CC", "") + os.environ.get("CXX", "")).lower() or "MSC" in sys.version):
-    extra_compile_args = ["/O2", "/GL", "/fp:fast", "/arch:AVX2"]
+    # /arch:AVX (not AVX2): these wheels are distributed via PyPI and must not
+    # emit instructions the user's CPU lacks. AVX is present on essentially all
+    # x86-64 CPUs from ~2011+; AVX2 would SIGILL on older/low-power hardware.
+    extra_compile_args = ["/O2", "/GL", "/fp:fast", "/arch:AVX"]
 else:
-    # Assume Linux-like
-    extra_compile_args = ["-O3", "-march=native", "-funroll-loops", "-ffast-math"]
+    # Assume Linux-like.
+    # NOTE: no -march=native here. These wheels are distributed via PyPI, so the
+    # binary must run on any CPU of the target arch, not just the build machine's.
+    # -march=native also breaks under QEMU emulation (used for the aarch64 wheels),
+    # where GCC cannot reliably probe the emulated CPU. -mtune=generic optimizes for
+    # a broad CPU baseline without emitting instructions older CPUs lack.
+    extra_compile_args = ["-O3", "-mtune=generic", "-funroll-loops", "-ffast-math"]
     extra_link_args = []
 
 
