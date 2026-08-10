@@ -33,8 +33,16 @@ mixin GridControlHoverEventsMixin<T extends StatefulWidget> on State<T>, GridCon
   }
 
   void handleHoverExit(PointerExitEvent event) {
+    clearHoverPreview(); // Hide the hovering preview when cursor leaves the grid area
+  }
+
+  /// Clears the current hover preview (slat/cargo/seed ghost) from both the local state and the
+  /// shared state used by the 2D/3D painters. Called on hover exit and when the edit lock engages,
+  /// so a stale Add-mode preview doesn't linger on screen while locked.
+  @override
+  void clearHoverPreview() {
     setState(() {
-      hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
+      hoverPosition = null;
       hoverSlatMap = {};
       context.read<DesignState>().setHoverPreview(null);
     });

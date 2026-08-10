@@ -11,12 +11,16 @@ class DesignDropTarget extends StatefulWidget {
     required this.onDrop,
     this.acceptExtensions,
     this.highlightBuilder,
+    this.enabled = true,
   });
 
   final Widget child;
   final OnDesignDrop onDrop;
   final List<String>? acceptExtensions;
   final Widget Function(BuildContext context)? highlightBuilder;
+  // When false, drag-and-drop import is inactive (e.g. while edits are locked): dropped files are
+  // ignored and no drop highlight is shown. The child is returned untouched.
+  final bool enabled;
 
   @override
   State<DesignDropTarget> createState() => _DesignDropTargetState();
@@ -34,6 +38,9 @@ class _DesignDropTargetState extends State<DesignDropTarget> {
 
   @override
   Widget build(BuildContext context) {
+    // The widget tree is kept identical whether or not import is enabled, so the descendant canvas
+    // State is preserved — swapping the tree would rebuild it and reset the zoom/pan. When disabled
+    // (e.g. locked edits), dropped files are ignored and no drop highlight is shown.
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -48,6 +55,7 @@ class _DesignDropTargetState extends State<DesignDropTarget> {
             onLeave: () => setState(() => _hover = false),
             onDropFile: (ev) async {
               setState(() => _hover = false);
+              if (!widget.enabled) return; // import disabled: ignore dropped files
               final name = await _dz.getFilename(ev);
               if (!_accepts(name)) return;
               final bytes = await _dz.getFileData(ev);
@@ -56,7 +64,7 @@ class _DesignDropTargetState extends State<DesignDropTarget> {
           ),
         ),
         widget.child,
-        if (_hover)
+        if (_hover && widget.enabled)
           IgnorePointer(
             child: widget.highlightBuilder?.call(context) ?? _DefaultHighlight(),
           ),

@@ -54,7 +54,8 @@ class _SideBarToolsState extends State<SideBarTools> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       FilledButton.icon(
-                        onPressed: () {
+                        // Import replaces the whole design, so it is disabled while edits are locked.
+                        onPressed: actionState.lockEdits ? null : () {
                           appState.importNewDesign(context);
                         },
                         icon: Icon(Icons.upload, size: 18),

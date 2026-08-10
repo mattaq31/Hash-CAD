@@ -266,7 +266,7 @@ class DesignState extends ChangeNotifier
 
   @override
   Map<String, Cargo> cargoPalette = {
-    'SEED': Cargo(name: 'SEED', shortName: 'S', color: Color.fromARGB(255, 255, 0, 0)),
+    'SEED': Cargo(name: 'SEED', shortName: 'S', color: Color.fromARGB(255, 255, 0, 0), category: 'SEED'),
   };
 
   @override

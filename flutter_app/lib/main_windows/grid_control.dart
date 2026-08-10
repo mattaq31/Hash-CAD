@@ -227,31 +227,77 @@ class _GridAndCanvasState extends State<GridAndCanvas>
             ),
         ),
       ),
+      // Bottom-left stack: the "Lock Edits" pill sits directly above the status view with a fixed
+      // gap. They share one bottom-anchored Column so the pill can never overlap the status panel,
+      // whatever its height (the Assembly-Move panel with its colour legend is the tallest).
       AnimatedPositioned(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
         bottom: 90,
         left: actionState.isSideBarCollapsed ? 72 + 25 : 72 + 330 + 20,
-        child: AnimatedSwitcher(
-          switchInCurve: Curves.easeInOut,
-          switchOutCurve: Curves.easeInOut,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: animation,
-                alignment: Alignment.topCenter,
-                child: child,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // "Lock Edits" pill — scaled to 80% (20% shorter), anchored bottom-left so it keeps its
+            // position while shrinking. Disabled while the evolution window is open (evolveMode) so
+            // the design cannot be locked/unlocked mid-evolution. Plain toggle otherwise: a mouse
+            // click releases the pointer first (resetting any drag via handlePointerUp), so no
+            // cancelActiveDrag() is needed here — only the L key can be pressed mid-drag.
+            Transform.scale(
+              scale: 0.8,
+              alignment: Alignment.bottomLeft,
+              child: FloatingActionButton.extended(
+                heroTag: 'lockEditsButton',
+                // While evolveMode disables the button, force greyed-out colours: the explicit
+                // background/foreground colours below otherwise override the FAB's automatic
+                // disabled styling, leaving it looking active.
+                backgroundColor: actionState.evolveMode
+                    ? Theme.of(context).disabledColor
+                    : actionState.lockEdits
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.primary,
+                foregroundColor: actionState.evolveMode
+                    ? Theme.of(context).colorScheme.surface
+                    : actionState.lockEdits
+                        ? Theme.of(context).colorScheme.onError
+                        : Theme.of(context).colorScheme.onPrimary,
+                icon: Icon(actionState.lockEdits ? Icons.lock_open : Icons.lock_outline),
+                label: Text(actionState.lockEdits ? 'Unlock' : 'Lock Edits'),
+                onPressed: actionState.evolveMode
+                    ? null
+                    : () {
+                        // On locking, clear any Add-mode hover ghost so it doesn't linger on screen.
+                        if (!actionState.lockEdits) clearHoverPreview();
+                        actionState.setLockEdits(!actionState.lockEdits);
+                      },
               ),
-            );
-          },
-          duration: const Duration(milliseconds: 400),
-          child: statusText.isEmpty
-              ? const SizedBox.shrink()
-              : StatusIndicator(
-                  lines: statusText,
-                  additionalContent: getActionMode(actionState) == 'Assembly-Move' ? AssemblyColorLegend(appState: appState) : null,
-                ),
+            ),
+            // Small gap between the pill and the status view below it.
+            const SizedBox(height: 8),
+            // Status view — only shows in Move modes (empty text collapses it to nothing).
+            AnimatedSwitcher(
+              switchInCurve: Curves.easeInOut,
+              switchOutCurve: Curves.easeInOut,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: animation,
+                    alignment: Alignment.topCenter,
+                    child: child,
+                  ),
+                );
+              },
+              duration: const Duration(milliseconds: 400),
+              child: statusText.isEmpty
+                  ? const SizedBox.shrink()
+                  : StatusIndicator(
+                      lines: statusText,
+                      additionalContent: getActionMode(actionState) == 'Assembly-Move' ? AssemblyColorLegend(appState: appState) : null,
+                    ),
+            ),
+          ],
         ),
       ),
 

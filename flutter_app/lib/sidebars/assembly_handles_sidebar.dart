@@ -234,7 +234,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FilledButton.icon(
-            onPressed: () {
+            onPressed: actionState.lockEdits ? null : () {
               int uniqueHandleCount = int.tryParse(handleAddTextController.text) ?? 64;
               appState.generateRandomAssemblyHandles(
                 uniqueHandleCount,
@@ -252,7 +252,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           ),
           SizedBox(width: 10),
           FilledButton.icon(
-            onPressed: appState.currentlyComputingHamming ? null : () {
+            onPressed: (actionState.lockEdits || appState.currentlyComputingHamming) ? null : () {
               if (!kIsWeb) {
                 actionState.activateEvolveMode();
               } else {
@@ -406,7 +406,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
                 children: [
                   IconButton(
                     tooltip: 'Link selected handles',
-                    onPressed: appState.selectedAssemblyPositions.length >= 2 ? () {
+                    onPressed: (!actionState.lockEdits && appState.selectedAssemblyPositions.length >= 2) ? () {
                       List<HandleKey> keys = [];
                       int intSide = getSlatSideFromLayer(appState.layerMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
                       for (var coord in appState.selectedAssemblyPositions) {
@@ -419,7 +419,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
                       }
                       if (keys.length >= 2) {
                         appState.linkHandlesAndPropagate(keys);
-                        appState.clearAssemblySelection();
+                        // Selection is intentionally preserved so operations can be chained.
                       }
                     } : null,
                     icon: const Icon(Icons.link, size: 20),
@@ -434,7 +434,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
                   SizedBox(width: 8),
                   IconButton(
                     tooltip: 'Remove links from selected handles',
-                    onPressed: appState.selectedAssemblyPositions.isNotEmpty ? () {
+                    onPressed: (!actionState.lockEdits && appState.selectedAssemblyPositions.isNotEmpty) ? () {
                       int intSide = getSlatSideFromLayer(appState.layerMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
                       for (var coord in appState.selectedAssemblyPositions) {
                         var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
@@ -444,7 +444,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
                           appState.unlinkHandle((slatID, position, intSide));
                         }
                       }
-                      appState.clearAssemblySelection();
+                      // Selection is intentionally preserved so operations can be chained.
                     } : null,
                     icon: const Icon(Icons.link_off, size: 20),
                     style: IconButton.styleFrom(
@@ -458,7 +458,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
                   SizedBox(width: 8),
                   IconButton(
                     tooltip: 'Block/unblock selected handle positions',
-                    onPressed: appState.selectedAssemblyPositions.isNotEmpty ? () {
+                    onPressed: (!actionState.lockEdits && appState.selectedAssemblyPositions.isNotEmpty) ? () {
                       int intSide = getSlatSideFromLayer(appState.layerMap, appState.selectedLayerKey, actionState.assemblyAttachMode);
                       for (var coord in appState.selectedAssemblyPositions) {
                         var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coord];
@@ -468,7 +468,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
                           appState.toggleHandleBlockAndApply((slatID, position, intSide));
                         }
                       }
-                      appState.clearAssemblySelection();
+                      // Selection is intentionally preserved so operations can be chained.
                     } : null,
                     icon: const Icon(Icons.block, size: 20),
                     style: IconButton.styleFrom(
@@ -660,7 +660,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           Column(
             children: [
               FilledButton.icon(
-                onPressed: () async {
+                onPressed: actionState.lockEdits ? null : () async {
                   bool readStatus = await appState.updateAssemblyHandlesFromFile(context);
                   if (!readStatus && context.mounted) {
                     showWarning(
@@ -683,7 +683,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
               ),
               SizedBox(height: 10),
               FilledButton.icon(
-                onPressed: () {
+                onPressed: actionState.lockEdits ? null : () {
                   appState.clearAssemblyHandles();
                 },
                 icon: Icon(Icons.delete_sweep, size: 18),
@@ -700,7 +700,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           Column(
             children: [
               FilledButton.icon(
-                onPressed: () {
+                onPressed: actionState.lockEdits ? null : () {
                   appState.syncAllAssemblyHandles();
                   appState.updateDesignHammingValue();
                 },
@@ -713,7 +713,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
               ),
               SizedBox(height: 10),
               FilledButton.icon(
-                onPressed: () {
+                onPressed: actionState.lockEdits ? null : () {
                   appState.clearAllHandleLinks();
                 },
                 icon: Icon(Icons.link_off, size: 18),
@@ -847,7 +847,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FilledButton.icon(
-              onPressed: () async {
+              onPressed: actionState.lockEdits ? null : () async {
                 final result = await showFluorophoreLibraryDialog(context, palette);
                 if (result != null) {
                   _applyLibraryChanges(appState, actionState, result);
@@ -862,7 +862,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
-              onPressed: () async {
+              onPressed: actionState.lockEdits ? null : () async {
                 final result = await showMassFluorophoreDialog(
                   context,
                   slats: appState.slats,
@@ -999,7 +999,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FilledButton.icon(
-              onPressed: (selected != null && appState.selectedAssemblyPositions.isNotEmpty) ? () {
+              onPressed: (!actionState.lockEdits && selected != null && appState.selectedAssemblyPositions.isNotEmpty) ? () {
                 _applyFluorophoreToSelection(appState, actionState);
               } : null,
               icon: const Icon(Icons.check, size: 16),
@@ -1011,7 +1011,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
-              onPressed: appState.selectedAssemblyPositions.isNotEmpty ? () {
+              onPressed: (!actionState.lockEdits && appState.selectedAssemblyPositions.isNotEmpty) ? () {
                 _clearFluorophoreFromSelection(appState, actionState);
               } : null,
               icon: const Icon(Icons.clear, size: 16),
@@ -1030,7 +1030,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FilledButton.icon(
-              onPressed: palette.isNotEmpty ? () {
+              onPressed: (!actionState.lockEdits && palette.isNotEmpty) ? () {
                 appState.clearAllFluorophoreAssignments();
               } : null,
               icon: const Icon(Icons.delete_sweep, size: 16),

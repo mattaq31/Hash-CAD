@@ -319,7 +319,7 @@ class ThreeDisplayState extends State<ThreeDisplay> {
   bool cargoHandleView = true;
   bool seedHandleView = true;
   bool slatTipExtendView = true;
-  bool hoverView = false;
+  bool hoverView = true;
 
   bool gridView = true;
   GridHelper gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
@@ -394,6 +394,8 @@ class ThreeDisplayState extends State<ThreeDisplay> {
     instanceManager['honeyCombAssHandle'] = InstanceMetrics(geometry: CylinderGeometry(0.8, 0.8, 1.5, 8), threeJs: threeJs, maxIndex: 1000, indexMultiplier: 1000);
     instanceManager['assHandle'] = InstanceMetrics(geometry: CylinderGeometry(2, 2, 1.5, 8), threeJs: threeJs, maxIndex: 1000, indexMultiplier: 1000);
     instanceManager['cargoHandle'] = InstanceMetrics(geometry: three.BoxGeometry(4, 6, 4), threeJs: threeJs, maxIndex: 1000, indexMultiplier: 1000);
+    // Antibody cargo renders as a stylised Y-shaped IgG antibody instead of the default box.
+    instanceManager['cargoHandleAntibody'] = InstanceMetrics(geometry: createAntibody(scale: 0.8), threeJs: threeJs, maxIndex: 1000, indexMultiplier: 1000);
 
     slatInstanceNames.addAll([
       'tube',
@@ -606,19 +608,11 @@ class ThreeDisplayState extends State<ThreeDisplay> {
   }
 
   /// Creates or updates a handle graphic in the 3D scene.
-  void positionHandleInstance(String slatName, String name, Offset position, Color color, double zOrder, String topSide, String handleSide, String handleType, bool updateOnly){
-    double verticalOffset = (topSide == handleSide) ? 2.5 : -2.5;
-
-    if (handleType == 'CARGO'){
-      verticalOffset += (topSide == handleSide) ? 2 : -2;
-    }
-
-    var vecPosition = tmath.Vector3(position.dx, (zOrder * 6.5) + verticalOffset, position.dy);
-    var euRotation = tmath.Euler(0, 0, math.pi);
-
+  void positionHandleInstance(String slatName, String name, Offset position, Color color, double zOrder, String topSide, String handleSide, String handleType, bool updateOnly, {String cargoCategory = 'default', double slatAngle = 0}){
     String instanceType;
     if (handleType == 'CARGO') {
-      instanceType = 'cargoHandle';
+      // Antibody cargo uses the Y-shaped antibody geometry; all other cargo uses the default box.
+      instanceType = (cargoCategory == 'antibody') ? 'cargoHandleAntibody' : 'cargoHandle';
     }
     else{
       if (helixBundleView){
@@ -627,6 +621,27 @@ class ThreeDisplayState extends State<ThreeDisplay> {
       else{
         instanceType = 'assHandle';
       }
+    }
+
+    // Distance the handle sits off the slat surface. Cargo sits further out than assembly
+    // handles, and the Y-shaped antibody further still so its centred geometry (~half its
+    // height sits below origin) clears the slat rather than sinking into it.
+    double offsetMagnitude = 2.5;
+    if (handleType == 'CARGO') offsetMagnitude += 2;
+    if (instanceType == 'cargoHandleAntibody') offsetMagnitude += 2;
+    // Offset points outward from whichever slat face the handle is on.
+    final double verticalOffset = (topSide == handleSide) ? offsetMagnitude : -offsetMagnitude;
+
+    var vecPosition = tmath.Vector3(position.dx, (zOrder * 6.5) + verticalOffset, position.dy);
+
+    // The default box/assembly handle is symmetric, so a fixed 180° roll suffices.
+    // The Y-shaped antibody is asymmetric: keep it upright (arms up along +Y), yaw it
+    // about the vertical axis so it faces the same direction as its slat, and flip it to
+    // point away from the slat when attached on the underside.
+    var euRotation = tmath.Euler(0, 0, math.pi);
+    if (instanceType == 'cargoHandleAntibody') {
+      final bool pointsDown = verticalOffset < 0;
+      euRotation = tmath.Euler(pointsDown ? math.pi : 0, -slatAngle, 0);
     }
 
     if (updateOnly) {
@@ -657,7 +672,7 @@ class ThreeDisplayState extends State<ThreeDisplay> {
   }
 
   /// Adds, deletes or updates all handles for a slat (both H2 and H5)
-  void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette, {Color? slatResolvedColor}) {
+  void handleAssembly(Slat slat, int handlePosition, Offset position, int color, double order, String topSide, String handleSide, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette, {Color? slatResolvedColor, double slatAngle = 0}) {
     final handleName = '${slat.id}-handle-$handlePosition-$handleSide';
 
     if (!handleIDs.containsKey(slat.id)) {
@@ -688,7 +703,9 @@ class ThreeDisplayState extends State<ThreeDisplay> {
     bool isBlocked = handleType.contains('ASSEMBLY') && cargoName == '0';
     if (existingHandle && !isBlocked && (assemblyHandleView && handleType.contains('ASSEMBLY') || cargoHandleView && handleType == 'CARGO' || seedHandleView && handleType == 'SEED')) {
       Color color = handleType.contains('ASSEMBLY') ? (slatResolvedColor ?? layerMap[slat.layer]!['color']): handleType == 'CARGO' ? cargoPalette[cargoName]!.color: cargoPalette['SEED']!.color;
-      positionHandleInstance(slat.id, handleName, position, color, order, topSide, handleSide, handleType, handleInstanceExists);
+      // Resolve the cargo category so antibody cargo can be routed to the sphere geometry.
+      String cargoCategory = handleType == 'CARGO' ? (cargoPalette[cargoName]?.category ?? 'default') : 'default';
+      positionHandleInstance(slat.id, handleName, position, color, order, topSide, handleSide, handleType, handleInstanceExists, cargoCategory: cargoCategory, slatAngle: slatAngle);
     } else if (handleInstanceExists){
       // Remove handle if it was deleted from the slat but still lingering in the scene (or if the assembly handle view has been turned off)
       instanceManager[handleIDs[slat.id]![handleName]]!.hideAndRecycle(handleName);
@@ -703,6 +720,10 @@ class ThreeDisplayState extends State<ThreeDisplay> {
     final topSide = (layerMap[baseSlat.layer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
     final color = layerMap[baseSlat.layer]?['color'].value & 0x00FFFFFF;
     final order = layerMap[baseSlat.layer]?['order'].toDouble();
+    // Directional angle of the slat, so oriented cargo (e.g. antibodies) can face along it.
+    final p1 = convertCoordinateSpacetoRealSpace(baseSlat.slatPositionToCoordinate[1]!, gridMode, gridSize, x60Jump, y60Jump);
+    final p2 = convertCoordinateSpacetoRealSpace(baseSlat.slatPositionToCoordinate[baseSlat.slatPositionToCoordinate.length]!, gridMode, gridSize, x60Jump, y60Jump);
+    final double slatAngle = calculateSlatAngle(p1, p2);
     for (var i = 1; i <= baseSlat.maxLength; i++) {
       handleAssembly(
         baseSlat,
@@ -715,6 +736,7 @@ class ThreeDisplayState extends State<ThreeDisplay> {
         layerMap,
         cargoPalette,
         slatResolvedColor: slatResolvedColor,
+        slatAngle: slatAngle,
       );
       handleAssembly(
         baseSlat,
@@ -727,6 +749,7 @@ class ThreeDisplayState extends State<ThreeDisplay> {
         layerMap,
         cargoPalette,
         slatResolvedColor: slatResolvedColor,
+        slatAngle: slatAngle,
       );
     }
   }

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import  '../crisscross_core/cargo.dart';
 import '../2d_painters/seed_painter.dart';
+import '../2d_painters/slat_painter.dart' show isColorDark;
 import '../crisscross_core/seed.dart';
 import 'layer_manager.dart';
 import '../app_management/action_state.dart';
@@ -69,6 +70,8 @@ Widget _buildSeedItem(DesignState appState, TextEditingController cargoAddTextCo
 
 Widget _buildCargoSquare(Cargo cargo, DesignState appState) {
   bool isSelected = appState.cargoAdditionType == cargo.name;
+  // Use white text on dark colours and black text on light colours for legibility.
+  final Color textColor = isColorDark(cargo.color) ? Colors.white : Colors.black;
   return GestureDetector(
     onTap: () {
       appState.selectCargoType(cargo.name);
@@ -93,16 +96,34 @@ Widget _buildCargoSquare(Cargo cargo, DesignState appState) {
         ]
             : [],
       ),
-      child: Center(
-        child: Text(
-          cargo.shortName,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              cargo.shortName,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-        ),
+          // Antibody cargo is marked with a small 'AB' label at the bottom of the swatch.
+          if (cargo.category == 'antibody')
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Text(
+                'AB',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 7,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
       ),
     ),
   );
@@ -135,6 +156,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
     Color selectedColor = Colors.blue;
     bool shortNameEditedManually = false;
     String? originalName;
+    String selectedCategory = 'default'; // Cargo visual category (default/antibody)
 
     nameController.addListener(() {
       if (!shortNameEditedManually) {
@@ -149,6 +171,16 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
       nameController.text = originalName;
       shortNameController.text = appState.cargoPalette[appState.cargoAdditionType!]!.shortName;
       selectedColor = appState.cargoPalette[appState.cargoAdditionType!]!.color;
+      // Only user-selectable categories are shown in the dropdown; anything else falls back to 'default'.
+      final existingCategory = appState.cargoPalette[appState.cargoAdditionType!]!.category;
+      selectedCategory = selectableCargoCategories.contains(existingCategory) ? existingCategory : 'default';
+    }
+
+    // Restricted cargo (e.g. SEED) is reserved: its name and category must not be changed by the user.
+    // Identify it by name rather than stored category so it is locked even if the category value is stale.
+    final bool isRestricted = editMode && restrictedCargo.contains(originalName);
+    if (isRestricted) {
+      selectedCategory = 'SEED';
     }
 
     showDialog(
@@ -173,16 +205,46 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
                 children: [
                   TextField(
                     controller: nameController,
+                    enabled: !isRestricted, // Restricted cargo (e.g. SEED) cannot be renamed
                     decoration: const InputDecoration(labelText: 'Cargo Name'),
                     onChanged: (_) => setState(() {}),
                   ),
                   TextField(
                     controller: shortNameController,
+                    enabled: !isRestricted,
                     decoration: const InputDecoration(labelText: 'Short Name'),
                     onChanged: (_) {
                       shortNameEditedManually = true;
                     },
                 ),
+                const SizedBox(height: 8),
+                // Category selector: determines the cargo's visual (e.g. sphere for antibody in 3D).
+                // The reserved SEED category is fixed and shown as a disabled field.
+                if (isRestricted)
+                  TextFormField(
+                    enabled: false,
+                    initialValue: selectedCategory,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedCategory,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    items: [
+                      for (final category in selectableCargoCategories)
+                        DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedCategory = value;
+                        });
+                      }
+                    },
+                  ),
                 const SizedBox(height: 16),
                 ColorPicker(
                   pickerColor: selectedColor,
@@ -204,9 +266,9 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
                   onPressed: saveDisabled ? null : () {
                     final shortName = shortNameController.text.trim();
                     if (editMode) {
-                      appState.renameCargoType(originalName!, name, newShortName: shortName, newColor: selectedColor);
+                      appState.renameCargoType(originalName!, name, newShortName: shortName, newColor: selectedColor, newCategory: selectedCategory);
                     } else {
-                      appState.addCargoType(Cargo(name: name, shortName: shortName, color: selectedColor));
+                      appState.addCargoType(Cargo(name: name, shortName: shortName, color: selectedColor, category: selectedCategory));
                     }
                     Navigator.of(context).pop();
                   },
@@ -291,7 +353,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FilledButton.icon(
-            onPressed: (){_showAddDialog(appState, false);},
+            onPressed: actionState.lockEdits ? null : (){_showAddDialog(appState, false);},
             icon: Icon(Icons.add, size: 18),
             label: Text("Add"),
             style: ElevatedButton.styleFrom(
@@ -304,7 +366,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           ),
           SizedBox(width: 5),
           FilledButton.icon(
-            onPressed: appState.cargoAdditionType == null || appState.cargoAdditionType == 'SEED'
+            onPressed: actionState.lockEdits || appState.cargoAdditionType == null || appState.cargoAdditionType == 'SEED'
                 ? null
                 : () {
                     appState.deleteCargoType(appState.cargoAdditionType!);
@@ -321,7 +383,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           ),
           SizedBox(width: 5),
           FilledButton.icon(
-            onPressed: appState.cargoAdditionType == null
+            onPressed: actionState.lockEdits || appState.cargoAdditionType == null
                 ? null
                 : () {
               _showAddDialog(appState, true);
@@ -451,7 +513,8 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
       ),
       SizedBox(height: 10),
       FilledButton.icon(
-        onPressed: () {
+        // Deletes all placed cargo — a direct design mutation, so disabled while edits are locked.
+        onPressed: actionState.lockEdits ? null : () {
           appState.deleteAllCargo();
         },
         icon: Icon(Icons.delete_sweep, size: 18),

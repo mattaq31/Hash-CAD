@@ -20,6 +20,12 @@ String generateShortName(String name) {
   }
 }
 
+/// User-selectable cargo categories shown in the add/edit dialog.
+/// 'default' renders as the standard block; 'antibody' renders as a sphere in 3D.
+/// Extend this list to add further categories (also add matching 3D/palette handling).
+/// Note: 'SEED' is a reserved category applied only to the seed entry and is never listed here.
+const List<String> selectableCargoCategories = ['default', 'antibody'];
+
 final List<Color> qualitativeCargoColors = [
   Color(0xFF1B9E77), // Teal
   Color(0xFFD95F02), // Orange/
@@ -36,5 +42,9 @@ class Cargo {
   final String shortName;
   final Color color;
 
-  Cargo({required this.name, required this.shortName, required this.color});
+  /// Visual category of the cargo (e.g. 'default', 'antibody', or the reserved 'SEED').
+  /// Controls how the cargo is rendered (e.g. sphere vs block in the 3D view).
+  final String category;
+
+  Cargo({required this.name, required this.shortName, required this.color, this.category = 'default'});
 }

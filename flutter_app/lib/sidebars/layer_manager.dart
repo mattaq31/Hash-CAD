@@ -24,6 +24,9 @@ class LayerManagerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // When edits are locked, direct-mutation controls (reorder, recolor, flip, delete, add) are
+    // disabled, but view controls (isolate, per-layer visibility, active-layer select) stay live.
+    final bool locked = actionState.lockEdits;
     return Column(
       children: [
         Text("Layer Manager",
@@ -49,6 +52,7 @@ class LayerManagerWidget extends StatelessWidget {
             shrinkWrap: false,
             buildDefaultDragHandles: false,
             onReorder: (int oldIndex, int newIndex) {
+              if (locked) return; // no layer reordering while locked
               if (newIndex > oldIndex) {
                 newIndex--; // Adjust index when moving down
               }
@@ -111,6 +115,7 @@ class LayerManagerWidget extends StatelessWidget {
                             // Popup color picker
                             SizedBox(width: 8),
                             PopupMenuButton(
+                              enabled: !locked, // no layer recolouring while locked
                               constraints: BoxConstraints(
                                 minWidth: 200,
                                 // Set min width to prevent overflow
@@ -146,8 +151,8 @@ class LayerManagerWidget extends StatelessWidget {
                             ),
                             SizedBox(width: 8),
                             IconButton(
-                              icon: Icon(Icons.autorenew, color: Colors.blue),
-                              onPressed: () {
+                              icon: Icon(Icons.autorenew, color: locked ? Colors.grey : Colors.blue),
+                              onPressed: locked ? null : () {
                                   appState.flipLayer(key, context);
                               },
                               constraints: BoxConstraints(minWidth: 35, minHeight: 35), // Adjust width/height
@@ -162,8 +167,8 @@ class LayerManagerWidget extends StatelessWidget {
                               padding: EdgeInsets.zero, // Remove default padding
                             ),
                             IconButton(
-                              icon: Icon(Icons.close, color: appState.layerMap.length == 1 ? Colors.grey : Colors.red),
-                              onPressed: appState.layerMap.length == 1 ? null : () {
+                              icon: Icon(Icons.close, color: (locked || appState.layerMap.length == 1) ? Colors.grey : Colors.red),
+                              onPressed: (locked || appState.layerMap.length == 1) ? null : () {
                                   appState.deleteLayer(key);
                               },
                               constraints: BoxConstraints(minWidth: 35, minHeight: 35), // Adjust width/height
@@ -191,7 +196,7 @@ class LayerManagerWidget extends StatelessWidget {
         ),
         SizedBox(height: 10),
         FilledButton.icon(
-          onPressed: () {
+          onPressed: locked ? null : () {
               appState.addLayer();
           },
           label: Text("Add Layer"),
