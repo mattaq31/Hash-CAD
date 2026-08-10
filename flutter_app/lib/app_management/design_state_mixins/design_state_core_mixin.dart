@@ -69,7 +69,7 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
     uniqueSlatColorsByLayer = {};
     slatAdditionType = 'tube';
     cargoPalette = {
-        'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0)),
+        'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0), category: 'SEED'),
       };
     fluorophorePalette = {};
     occupiedCargoPoints = {};

@@ -17,7 +17,7 @@ const double defaultPrintScaleMmPerUnit = 0.47;
 
 const List<String> _assemblyHandleInstanceNames = ['assHandle', 'honeyCombAssHandle'];
 const List<String> _seedInstanceNames = ['seed', 'tiltSeed', 'tiltSeedInvert'];
-const List<String> _cargoInstanceNames = ['cargoHandle'];
+const List<String> _cargoInstanceNames = ['cargoHandle', 'cargoHandleAntibody'];
 
 /// Amount to shrink each cylinder toward its centroid. A 0.1% reduction creates
 /// a sub-micron gap between adjacent end-caps, eliminating non-manifold edges

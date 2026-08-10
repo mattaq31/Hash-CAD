@@ -24,18 +24,19 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
 
   /// Renames a cargo type, updating the palette key, all slat handle references, and occupiedCargoPoints.
   @override
-  void renameCargoType(String oldName, String newName, {String? newShortName, Color? newColor}) {
-    if (!cargoPalette.containsKey(oldName) || oldName == newName && newShortName == null && newColor == null) return;
+  void renameCargoType(String oldName, String newName, {String? newShortName, Color? newColor, String? newCategory}) {
+    if (!cargoPalette.containsKey(oldName) || oldName == newName && newShortName == null && newColor == null && newCategory == null) return;
 
     Cargo oldCargo = cargoPalette[oldName]!;
     Cargo updatedCargo = Cargo(
       name: newName,
       shortName: newShortName ?? oldCargo.shortName,
       color: newColor ?? oldCargo.color,
+      category: newCategory ?? oldCargo.category,
     );
 
-    // Update slat handle dictionaries that reference the old name
     if (oldName != newName) {
+      // Update slat handle dictionaries that reference the old name
       for (var slat in slats.values) {
         for (var handleDict in [slat.h2Handles, slat.h5Handles]) {
           for (var position in handleDict.keys) {
@@ -55,18 +56,27 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
         }
       }
 
-      // Update palette key
-      cargoPalette.remove(oldName);
-
       // Update cargoAdditionType if it pointed to the old name
       if (cargoAdditionType == oldName) {
         cargoAdditionType = newName;
       }
+
+      // Rebuild the palette preserving insertion order, swapping only the renamed key
+      // (a plain remove + re-insert would move the entry to the end of the palette).
+      final rebuilt = <String, Cargo>{};
+      for (final entry in cargoPalette.entries) {
+        if (entry.key == oldName) {
+          rebuilt[newName] = updatedCargo;
+        } else {
+          rebuilt[entry.key] = entry.value;
+        }
+      }
+      cargoPalette = rebuilt;
     } else {
-      cargoPalette.remove(oldName);
+      // Name unchanged: update in place so the palette ordering is preserved.
+      cargoPalette[oldName] = updatedCargo;
     }
 
-    cargoPalette[newName] = updatedCargo;
     saveUndoState();
     notifyListeners();
   }

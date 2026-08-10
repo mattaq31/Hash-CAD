@@ -408,12 +408,17 @@ Excel buildDesignWorkbook(Map<String, Slat> slats, Map<String, Map<String, dynam
   metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint + 1}')).value = TextCellValue('ID');
   metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint + 1}')).value = TextCellValue('Short Name');
   metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint + 1}')).value = TextCellValue('Colour');
+  metadataSheet.cell(CellIndex.indexByString('D${cargoStartPoint + 1}')).value = TextCellValue('Category');
   int cIndex = 2;
   for (var c in cargoPalette.entries) {
     metadataSheet.cell(CellIndex.indexByString('A${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.name);
     metadataSheet.cell(CellIndex.indexByString('B${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.shortName);
     metadataSheet.cell(CellIndex.indexByString('C${cargoStartPoint + cIndex}')).value =
         TextCellValue('#${c.value.color.value.toRadixString(16).substring(2).toUpperCase()}');
+    // Category is left blank for the 'default' category to keep backward compatibility with older files.
+    if (c.value.category != 'default') {
+      metadataSheet.cell(CellIndex.indexByString('D${cargoStartPoint + cIndex}')).value = TextCellValue(c.value.category);
+    }
     cIndex += 1;
   }
 

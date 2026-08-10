@@ -109,7 +109,10 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
     if (cargoName.isEmpty || cargoName == metaSectionSlatColorInfo) break;
     String cargoShortName = readExcelString(metadataSheet, 'B${cargoReadStart + cargoCount}');
     Color cargoColor = Color(int.parse('0xFF${readExcelString(metadataSheet, 'C${cargoReadStart + cargoCount}').substring(1)}'));
-    cargoPalette[cargoName] = Cargo(name: cargoName, shortName: cargoShortName, color: cargoColor);
+    // Category column is optional; empty (e.g. older files) maps to the 'default' category.
+    String cargoCategory = readExcelString(metadataSheet, 'D${cargoReadStart + cargoCount}').trim();
+    if (cargoCategory.isEmpty) cargoCategory = 'default';
+    cargoPalette[cargoName] = Cargo(name: cargoName, shortName: cargoShortName, color: cargoColor, category: cargoCategory);
   }
 
   // ── Per-slat unique colours (optional overrides) ──
@@ -394,7 +397,7 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
   }
 
   if (!cargoPalette.containsKey('SEED')) {
-    cargoPalette['SEED'] = Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0));
+    cargoPalette['SEED'] = Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0), category: 'SEED');
   }
 
   // ── Seed positions: collect per-seed coordinate maps across seed sheets ──

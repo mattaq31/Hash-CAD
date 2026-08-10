@@ -197,7 +197,7 @@ mixin DesignStateContract on ChangeNotifier {
 
   // === Methods from DesignStateCargoMixin ===
   void addCargoType(Cargo cargo);
-  void renameCargoType(String oldName, String newName, {String? newShortName, Color? newColor});
+  void renameCargoType(String oldName, String newName, {String? newShortName, Color? newColor, String? newCategory});
   void deleteCargoType(String cargoName);
   Cargo getCargoFromCoordinate(Offset coordinate, String layerID, String slatSide);
   void deleteAllCargo();
