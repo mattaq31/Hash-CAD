@@ -353,7 +353,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FilledButton.icon(
-            onPressed: (){_showAddDialog(appState, false);},
+            onPressed: actionState.lockEdits ? null : (){_showAddDialog(appState, false);},
             icon: Icon(Icons.add, size: 18),
             label: Text("Add"),
             style: ElevatedButton.styleFrom(
@@ -366,7 +366,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           ),
           SizedBox(width: 5),
           FilledButton.icon(
-            onPressed: appState.cargoAdditionType == null || appState.cargoAdditionType == 'SEED'
+            onPressed: actionState.lockEdits || appState.cargoAdditionType == null || appState.cargoAdditionType == 'SEED'
                 ? null
                 : () {
                     appState.deleteCargoType(appState.cargoAdditionType!);
@@ -383,7 +383,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
           ),
           SizedBox(width: 5),
           FilledButton.icon(
-            onPressed: appState.cargoAdditionType == null
+            onPressed: actionState.lockEdits || appState.cargoAdditionType == null
                 ? null
                 : () {
               _showAddDialog(appState, true);
@@ -513,7 +513,8 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
       ),
       SizedBox(height: 10),
       FilledButton.icon(
-        onPressed: () {
+        // Deletes all placed cargo — a direct design mutation, so disabled while edits are locked.
+        onPressed: actionState.lockEdits ? null : () {
           appState.deleteAllCargo();
         },
         icon: Icon(Icons.delete_sweep, size: 18),

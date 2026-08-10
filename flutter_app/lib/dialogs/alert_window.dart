@@ -118,6 +118,7 @@ void showKeyboardShortcutsDialog(BuildContext context) {
               _shortcutItem("'2'", "Switch to 'Delete' mode"),
               _shortcutItem("'3'", "Switch to 'Edit' mode"),
               _shortcutItem("'E'", "Edit selected handles while in the Assembly Handles panel"),
+              _shortcutItem("'L'", "Lock / unlock all edits"),
               _shortcutItem("'CMD/Ctrl-Z'", "Undo last action"),
               _shortcutItem("'CMD-Shift-Z/Ctrl-Y'", "Redo last action"),
             ],

@@ -319,7 +319,7 @@ class ThreeDisplayState extends State<ThreeDisplay> {
   bool cargoHandleView = true;
   bool seedHandleView = true;
   bool slatTipExtendView = true;
-  bool hoverView = false;
+  bool hoverView = true;
 
   bool gridView = true;
   GridHelper gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions

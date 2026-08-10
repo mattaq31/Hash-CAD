@@ -39,6 +39,10 @@ class ActionState extends ChangeNotifier {
   bool fluorophoreEditMode; // When true, sidebar shows fluorophore editing UI
   String? selectedFluorophore; // Currently active fluorophore for assignment
   SlatColorMode slatColorMode;
+  // When true, the design is fully locked: all edits are blocked while view/navigation
+  // controls (pan/zoom, layer change, layer visibility) remain active. Any new destructive
+  // sidebar control should also be gated on this flag (see setLockEdits below).
+  bool lockEdits;
 
   Map<int, String> panelMap = {
     0: 'slats',
@@ -84,6 +88,7 @@ class ActionState extends ChangeNotifier {
     this.fluorophoreEditMode = false,
     this.selectedFluorophore,
     this.slatColorMode = SlatColorMode.natural,
+    this.lockEdits = false,
   });
 
   void updateEchoSetting(String setting, dynamic value){
@@ -269,6 +274,13 @@ class ActionState extends ChangeNotifier {
   /// Sets the currently active fluorophore for assignment operations.
   void setSelectedFluorophore(String? name) {
     selectedFluorophore = name;
+    notifyListeners();
+  }
+
+  /// Toggles the global edit lock. When true, all design edits are blocked
+  /// while view/navigation controls remain active.
+  void setLockEdits(bool value) {
+    lockEdits = value;
     notifyListeners();
   }
 }

@@ -42,7 +42,7 @@ class _SlatDesignTools extends State<SlatDesignTools> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FilledButton.icon(
-            onPressed: () async {
+            onPressed: actionState.lockEdits ? null : () async {
               if (appState.gridMode != '90') {
                 final result = await showDialog<bool>(
                     context: context,
@@ -81,7 +81,7 @@ class _SlatDesignTools extends State<SlatDesignTools> {
           ),
           SizedBox(width: 10),
           FilledButton.icon(
-            onPressed: () async {
+            onPressed: actionState.lockEdits ? null : () async {
               if (appState.gridMode != '60') {
                 final result = await showDialog<bool>(
                     context: context,
@@ -122,7 +122,7 @@ class _SlatDesignTools extends State<SlatDesignTools> {
       ),
       SizedBox(height: 10),
       FilledButton.icon(
-        onPressed: () {
+        onPressed: actionState.lockEdits ? null : () {
           appState.clearAll();
         },
         icon: Icon(Icons.cleaning_services, size: 18),

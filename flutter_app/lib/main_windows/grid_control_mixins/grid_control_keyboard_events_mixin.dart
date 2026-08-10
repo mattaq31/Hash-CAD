@@ -11,8 +11,21 @@ import 'grid_control_contract.dart';
 mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, GridControlContract<T> {
   Map<ShortcutActivator, VoidCallback> getKeyboardBindings(DesignState appState, ActionState actionState, BuildContext context) {
     return {
+      // Lock/unlock all edits. Always active (even when locked, so the user can unlock).
+      // On the transition into the locked state, abandon any in-progress drag so the design
+      // reverts and the cursor resets to the default pointer.
+      SingleActivator(LogicalKeyboardKey.keyL): () {
+        if (actionState.evolveMode) return; // no lock toggling while the evolution window is open
+        final willLock = !actionState.lockEdits;
+        if (willLock) {
+          cancelActiveDrag(); // abandon any in-progress move before freezing
+          clearHoverPreview(); // clear any Add-mode hover ghost so it doesn't linger while locked
+        }
+        actionState.setLockEdits(willLock);
+      },
       // Rotation shortcut
       SingleActivator(LogicalKeyboardKey.keyR): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
           setState(() {
             moveRotationSteps += 1;
@@ -28,6 +41,7 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       },
       // flip shortcut (F key flips the multi-slat generator direction for slat-add and seed modes)
       SingleActivator(LogicalKeyboardKey.keyF): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (getActionMode(actionState) == 'Slat-Add' || (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED')) {
           appState.flipMultiSlatGenerator();
           if (hoverPosition != null) {
@@ -37,6 +51,7 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       },
       // flip shortcut (T key works in move mode for slats, and in cargo-add mode for seed transpose)
       SingleActivator(LogicalKeyboardKey.keyT): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
           moveFlipRequested = !moveFlipRequested;
         } else if (getActionMode(actionState) == 'Cargo-Add' && appState.cargoAdditionType == 'SEED') {
@@ -47,11 +62,13 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       },
       // delete shortcut (when in move mode)
       SingleActivator(LogicalKeyboardKey.delete): () {
+        if (actionState.lockEdits) return; // no edits while locked
         appState.removeSlats(appState.selectedSlats);
         appState.removeSelectedCargo(actionState.cargoAttachMode);
         appState.deleteSelectedHandles(actionState.assemblyAttachMode);
       },
       SingleActivator(LogicalKeyboardKey.backspace): () {
+        if (actionState.lockEdits) return; // no edits while locked
         appState.removeSlats(appState.selectedSlats);
         appState.removeSelectedCargo(actionState.cargoAttachMode);
         appState.deleteSelectedHandles(actionState.assemblyAttachMode);
@@ -67,9 +84,11 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       },
       // Action shortcuts
       SingleActivator(LogicalKeyboardKey.keyA): () {
+        if (actionState.lockEdits) return; // no edits while locked
         appState.addLayer();
       },
       SingleActivator(LogicalKeyboardKey.digit1): () {
+        if (actionState.lockEdits) return; // no mode changes while locked
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Add');
         }
@@ -81,6 +100,7 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
         }
       },
       SingleActivator(LogicalKeyboardKey.digit2): () {
+        if (actionState.lockEdits) return; // no mode changes while locked
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Delete');
         }
@@ -92,6 +112,7 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
         }
       },
       SingleActivator(LogicalKeyboardKey.digit3): () {
+        if (actionState.lockEdits) return; // no mode changes while locked
         if (actionState.panelMode == 0) {
           actionState.updateSlatMode('Move');
         }
@@ -105,25 +126,31 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
 
       // Undo shortcuts (platform-specific) — skip when echo plate window owns undo
       SingleActivator(LogicalKeyboardKey.keyZ, control: true, includeRepeats: false): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (!actionState.echoPlateUndoActive) appState.undo2DAction();
       },
       SingleActivator(LogicalKeyboardKey.keyZ, meta: true, includeRepeats: false): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (!actionState.echoPlateUndoActive) appState.undo2DAction();
       },
 
       // Redo shortcuts — skip when echo plate window owns undo
       SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true, includeRepeats: false): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
       SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true, includeRepeats: false): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
       SingleActivator(LogicalKeyboardKey.keyY, control: true, includeRepeats: false): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (!actionState.echoPlateUndoActive) appState.undo2DAction(redo: true);
       },
 
       // Edit assembly handle shortcut - opens dialog when handles are selected
       SingleActivator(LogicalKeyboardKey.keyE): () {
+        if (actionState.lockEdits) return; // no edits while locked
         if (getActionMode(actionState) == 'Assembly-Move' && appState.selectedAssemblyPositions.isNotEmpty) {
           // Get the first selected handle to populate the dialog
           var firstCoord = appState.selectedAssemblyPositions.first;
@@ -200,5 +227,26 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
     });
     // Return false to allow the event to continue to be processed
     return KeyEventResult.ignored;
+  }
+
+  /// Abandons any in-progress drag/drag-box without committing it, restoring hidden originals
+  /// and clearing transient move state. Used when the edit lock engages mid-drag (via the L key)
+  /// so nothing is left half-moved. Mirrors the reset performed in handlePointerUp, but without
+  /// applying the pending move.
+  void cancelActiveDrag() {
+    if (!dragActive && !dragBoxActive) return;
+    setState(() {
+      dragActive = false;
+      dragBoxActive = false;
+      dragBoxStart = null;
+      dragBoxEnd = null;
+      hiddenSlats = [];
+      hiddenCargo = [];
+      hiddenAssembly = [];
+      hoverPosition = null;
+      slatMoveAnchor = Offset.zero;
+      moveFlipRequested = false;
+      moveRotationSteps = 0;
+    });
   }
 }

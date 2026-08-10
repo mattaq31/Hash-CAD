@@ -398,6 +398,10 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
 
   @override
   String getActionMode(ActionState actionState) {
+    // When edits are locked, report no active tool: this single choke point neutralises all
+    // canvas tap/drag edits, hides the status view, and yields the default arrow cursor via
+    // getCursorForSlatMode("Neutral"). View/navigation (pan/zoom, layer change) don't use this.
+    if (actionState.lockEdits) return "Neutral";
     if (actionState.panelMode == 1) {
       return "Slat-Move";
     } else if (actionState.panelMode == 0) {

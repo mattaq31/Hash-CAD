@@ -152,6 +152,8 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                     width: actionState.threeJSViewerActive ? leftPaneWidth: width,
                     child:
                     DesignDropTarget(
+                      // Drag-and-drop import replaces the whole design, so it is disabled while edits are locked.
+                      enabled: !actionState.lockEdits,
                       acceptExtensions: const ['xlsx'],
                       onDrop: (bytes, name) async {
                         appState.importNewDesign(context, fileName: name, fileBytes: bytes);

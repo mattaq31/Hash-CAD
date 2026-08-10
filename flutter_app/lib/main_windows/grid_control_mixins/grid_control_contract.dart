@@ -80,6 +80,9 @@ mixin GridControlContract<T extends StatefulWidget> on State<T> {
   Map<int, Offset> generateSeedPositions(Offset cursorPoint, bool realSpaceFormat, DesignState appState);
   void centerOnSlats();
 
+  // === Methods from GridControlHoverEventsMixin ===
+  void clearHoverPreview();
+
   // === Methods from _GridAndCanvasState ===
   void setHoverCoordinates(DesignState appState);
 }
