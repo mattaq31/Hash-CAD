@@ -99,13 +99,13 @@ Simply install via pip (requires Python 3.11+):
 pip install crisscross_kit
 ```
 
-Please check our [docs](https://hash-cad.readthedocs.io/en/latest/) for more details on installation and usage of our joint python libraries for crisscross design and handle library orthogonal sequence generation.
+Please check our [docs](https://hash-cad.readthedocs.io/en/latest/) for more details on installation and usage of our joint python libraries for crisscross design and OrthoSeq.
 
 ## Development & Support
-\#-CAD was developed in the [William Shih Lab](https://www.shih.hms.harvard.edu) at the Dana-Farber Cancer Institute and the Wyss Institute at Harvard University.  The following contributed to the codebase:
+\#-CAD and OrthoSeq were developed in the [William Shih Lab](https://www.shih.hms.harvard.edu) at the Dana-Farber Cancer Institute and the Wyss Institute at Harvard University.  The following contributed to the codebase:
 
 - [Matthew Aquilina](https://www.linkedin.com/in/matthewaq/) - Lead developer for the project.
-- [Florian Katzmeier](mailto:florian_katzmeier@dfci.harvard.edu) - Developed handle assignment and handle library orthogonal sequence selection algorithms.
+- [Florian Katzmeier](mailto:florian_katzmeier@dfci.harvard.edu) - Developed handle assignment algorithm and OrthoSeq.
 - [Stella (Siyuan) Wang](https://www.linkedin.com/in/siyuan-stella-wang-311936247/) - Developed initial megastructure assembly and hamming distance calculation protocols, and implemented various custom megastructure design systems in the final codebase.
 - [Corey Becker](https://www.linkedin.com/in/corey-becker-b75656204/) - Developed initial prototype GUI using a combined javascript-python server and laid the foundation for the final #-CAD interface.
 
@@ -118,7 +118,7 @@ Experimental validation of #-CAD was carried out by the entire crisscross origam
 
 All the above team members contributed to beta-testing and test-trialling the app during its development!
 
-Development of the evolutionary algorithm was accelerated by the use of Harvard Medical School's O2 High Performance Compute Cluster.
+Development of the evolutionary algorithm and OrthoSeq were accelerated by the use of Harvard Medical School's O2 High Performance Compute Cluster.
 
 This project was supported by various funding sources:
 
@@ -136,23 +136,42 @@ This project was supported by various funding sources:
 
 For more details of everyone's coding contributions, please check the graphs [here](https://github.com/mattaq31/Hash-CAD/graphs/contributors). Contributions from the open-source community are welcome! 
 
-## Literature Citation
+## Literature Citations
 
-#-CAD is currently a preprint - please see details below (link [here](http://biorxiv.org/content/early/2026/01/24/2026.01.23.701435.abstract)):
+#-CAD is currently in early-access at Nature Communications (link [here](https://doi.org/10.1038/s41467-026-75175-6)):
 
 ```bibtex
-@article{aquilinaComputationalFrameworkDesigning2026,
-	title = {A computational framework for designing micron-scale crisscross {DNA} megastructures},
-	url = {http://biorxiv.org/content/early/2026/01/24/2026.01.23.701435.abstract},
-	doi = {10.64898/2026.01.23.701435},
-	abstract = {Crisscross polymerization enables the assembly of hundreds of unique DNA origami 'slats' into micron-sized structures with nanoscale precision. To design these megastructures, thousands of handle sequences from a fixed library must be assigned to individual slats to encode the desired binding architecture. This complexity presents two major challenges: handles must be selected to minimize parasitic interactions that compete with desired assembly, and the fabrication of hundreds of unique slats creates a substantial logistical burden. Here, we develop a unified framework that standardizes the design and fabrication of crisscross megastructures. We use an evolutionary algorithm to optimize handle assignment and minimize parasitic binding between slats, paired with a graph-based algorithm that expands the handle library. Together, these algorithms enable the assembly of large, multi-layered megastructures that otherwise would be produced at negligible yields. We have released this framework as \#-CAD, an open-source graphical application that integrates these algorithms, streamlines laboratory workflows, and makes crisscross DNA origami more broadly accessible.Competing Interest StatementWilliam M. Shih is an inventor on a patent (PCT/US2017/045013) entitled 'Crisscross Cooperative Self-assembly', which is related to the basic principle of crisscross assembly.UK Medical Research Council, MR/N013166/1German Research Foundation (Deutsche Forschungsgemeinschaft, DFG), 553862611U.S. Department of Energy, DE-SC0024136Carlsberg Foundation, CF23-1125Alfred P. Sloan Foundation, https://ror.org/052csg198, G-2021-16495Ministry of Science and ICT and Ministry of Health \&amp; Welfare, Republic of Korea, RS-2024-00468463Novo Nordisk Foundation, https://ror.org/04txyc737, NNF23OC0084494},
-	journal = {bioRxiv},
-	author = {Aquilina, Matthew and Katzmeier, Florian and Nijenhuis, Minke and Wang, Siyuan and Becker, Corey and Zhao, Yichen and Seok, Su Hyun and Finkel, Julie and Cui, Huangchen and Lee, Jaewon and Lee, Seungwoo and Shih, William},
-	month = jan,
-	year = {2026},
-	pages = {2026.01.23.701435},
+@article{Aquilina2026Crisscross,
+  author    = {Aquilina, Matthew and Katzmeier, Florian and Nijenhuis, Minke A. D. and Wang, Siyuan Stella and Becker, Corey and Zhao, Yichen and Seok, Su Hyun and Finkel, Julie and Cui, Huangchen and Lee, Jaewon and Lee, Seungwoo and Shih, William M.},
+  title     = {A computational framework for designing micron-scale crisscross {DNA} megastructures},
+  journal   = {Nature Communications},
+  year      = {2026},
+  month     = jul,
+  date      = {2026-07-17},
+  publisher = {Springer Science and Business Media LLC},
+  issn      = {2041-1723},
+  doi       = {10.1038/s41467-026-75175-6},
+  url       = {https://doi.org/10.1038/s41467-026-75175-6}
 }
 ```
 
-Accompanying data and a large set of examples is available at our Zenodo deposition [here](https://zenodo.org/records/17914052).
+OrthoSeq is currently a preprint, available [here](https://doi.org/10.64898/2026.08.01.742265) and below:
 
+```bibtex
+@article {Katzmeier2026OrthoSeq,
+	author = {Katzmeier, Florian and Aquilina, Matthew and Shih, William M.},
+	title = {OrthoSeq: A Design Workflow for Thermodynamically Orthogonal DNA Sequence-Pair Libraries},
+	elocation-id = {2026.08.01.742265},
+	year = {2026},
+	doi = {10.64898/2026.08.01.742265},
+	publisher = {Cold Spring Harbor Laboratory},
+	abstract = {Programmable DNA hybridization underlies many technologies in DNA nanotechnology, fluorescence imaging, and synthetic DNA sequence assembly. A common design challenge is to generate large sequence libraries in which each strand binds strongly to its intended partner while avoiding cross-hybridization and self-folding. Here, we introduce OrthoSeq, a workflow for designing thermodynamically orthogonal DNA sequence-pair libraries under user-defined experimental conditions. OrthoSeq uses NUPACK to evaluate intended binding, cross-hybridization, and self-folding. Within OrthoSeq, candidate sequence pairs form vertices in a conflict graph, while pairwise cross-hybridization conflicts define the edges. Library selection is then formulated as an independent-set problem and addressed using search strategies tailored to the computational regime considered here, in which thermodynamic evaluations dominate the computational cost. In benchmark comparisons, these strategies identify larger sequence-pair libraries than the commonly employed sequential candidate-addition strategy under the same thermodynamic constraints and computational budget. We further show that sequence-level barcode libraries can serve as candidate pools for thermodynamic refinement with OrthoSeq. To support practical use, OrthoSeq provides a graphical user interface that implements the complete workflow. Altogether, OrthoSeq provides an application-agnostic framework for designing DNA sequence-pair libraries under explicit thermodynamic constraints.Competing Interest StatementThe authors have declared no competing interest.},
+	URL = {https://www.biorxiv.org/content/early/2026/08/06/2026.08.01.742265},
+	eprint = {https://www.biorxiv.org/content/early/2026/08/06/2026.08.01.742265.full.pdf},
+	journal = {bioRxiv}
+}
+```
+
+Accompanying data for #-CAD and a large set of examples is available at our Zenodo deposition [here](https://zenodo.org/records/17914052).
+
+Accompanying data for OrthoSeq is also available on Zenodo [here](https://doi.org/10.5281/zenodo.21654724).
