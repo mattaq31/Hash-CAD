@@ -300,25 +300,30 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
       Divider(thickness: 1, color: Colors.grey.shade200),
 
       // Section 2: Manual Editing (with fluorophore toggle)
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      // Stack keeps the heading centered like the other section titles while
+      // the fluorophore toggle stays pinned to the right edge.
+      Stack(
+        alignment: Alignment.center,
         children: [
-          Text("Manual Editing", style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
-          IconButton(
-            tooltip: actionState.fluorophoreEditMode ? 'Return to manual handles' : 'Fluorophore editing',
-            onPressed: () => actionState.setFluorophoreEditMode(!actionState.fluorophoreEditMode),
-            icon: Icon(Icons.highlight, size: 20),
-            style: IconButton.styleFrom(
-              backgroundColor: actionState.fluorophoreEditMode
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.primaryContainer,
-              foregroundColor: actionState.fluorophoreEditMode
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : null,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.all(6),
-              minimumSize: const Size(32, 32),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          Text("Manual Editing", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              tooltip: actionState.fluorophoreEditMode ? 'Return to manual handles' : 'Fluorophore editing',
+              onPressed: () => actionState.setFluorophoreEditMode(!actionState.fluorophoreEditMode),
+              icon: Icon(Icons.highlight, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: actionState.fluorophoreEditMode
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: actionState.fluorophoreEditMode
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : null,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.all(6),
+                minimumSize: const Size(32, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
           ),
         ],
