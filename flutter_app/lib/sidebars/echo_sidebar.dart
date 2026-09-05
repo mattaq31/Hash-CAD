@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import '../app_management/shared_app_state.dart';
 import '../app_management/app_preferences.dart';
 import '../crisscross_core/handle_plates.dart';
-import '../dialogs/alert_window.dart' show displayPlateInfo;
+import '../dialogs/input_plate_view.dart' show displayPlateInfo;
 import '../app_management/action_state.dart';
 import '../echo_and_experimental_helpers/echo_plate_constants.dart' show slatDisplayName;
 
