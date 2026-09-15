@@ -29,7 +29,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     }
     exportDesign(slats, layerMap, cargoPalette, occupiedCargoPoints, seedRoster, assemblyLinkManager, gridSize, gridMode, designName,
         echoPlateLayoutState: echoPlateLayoutState, plateLibrary: plateStack, groupConfigurations: groupConfigurations,
-        fluorophorePalette: fluorophorePalette);
+        fluorophorePalette: fluorophorePalette, assemblyHandlePatterns: assemblyHandlePatterns);
   }
 
   @override
@@ -103,6 +103,7 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     slats = newSlats;
     cargoPalette = newCargoPalette;
     fluorophorePalette = result.fluorophorePalette;
+    assemblyHandlePatterns = Map.from(result.assemblyHandlePatterns);
     designName = newDesignName;
     phantomMap = newPhantomMap;
     assemblyLinkManager = newLinkManager;

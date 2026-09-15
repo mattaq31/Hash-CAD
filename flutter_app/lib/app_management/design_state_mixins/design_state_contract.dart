@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/fluorophore.dart';
+import '../../crisscross_core/assembly_handle_pattern.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/common_utilities.dart';
@@ -92,6 +93,8 @@ mixin DesignStateContract on ChangeNotifier {
   set cargoPalette(Map<String, Cargo> value);
   Map<String, Fluorophore> get fluorophorePalette;
   set fluorophorePalette(Map<String, Fluorophore> value);
+  Map<String, AssemblyHandlePattern> get assemblyHandlePatterns;
+  set assemblyHandlePatterns(Map<String, AssemblyHandlePattern> value);
   PlateLibrary get plateStack;
   String? get plateCompatibilityWarning;
   set plateCompatibilityWarning(String? value);
@@ -234,6 +237,7 @@ mixin DesignStateContract on ChangeNotifier {
   void setHandleEnforcedValue(HandleKey key, int value, {bool requestStateUpdate = true});
   void linkHandlesAndPropagate(List<HandleKey> keys, {bool requestStateUpdate = true});
   void toggleHandleBlockAndApply(HandleKey key);
+  void applyHandleBlock(HandleKey key, {String? category, bool requestStateUpdate = true});
   void setHandleEnforcedValueAndApply(HandleKey key, int value);
 
   // === Methods from DesignStateGroupingMixin ===
@@ -278,4 +282,17 @@ mixin DesignStateContract on ChangeNotifier {
   void clearAllFluorophoreAssignments();
   /// Returns the effective compatibility token (fluorophore name or standard compatibility).
   String? getEffectiveCompatibility(String slatType, int position, int side, String slatId);
+
+  // === Methods from DesignStateAssemblyPatternMixin ===
+
+  /// Records the selected assembly handles as a new pattern, returning its id (null if nothing recordable).
+  /// [includeHandles] / [includeBlocks] restrict recording to valued handles or blocks.
+  String? recordAssemblyHandlePattern(String layerKey, String attachMode,
+      {bool includeHandles = true, bool includeBlocks = true});
+  /// Renames a pattern; returns false if the name is empty or already used.
+  bool renameAssemblyHandlePattern(String id, String newName);
+  /// Deletes a pattern.
+  void deleteAssemblyHandlePattern(String id);
+  /// Stamps a pattern onto the design with its top-left handle at [anchorCoord].
+  void placeAssemblyHandlePattern(String id, String layerKey, String attachMode, Offset anchorCoord, {bool enforce = false});
 }

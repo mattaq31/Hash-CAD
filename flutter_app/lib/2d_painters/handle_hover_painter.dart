@@ -74,10 +74,19 @@ class HandleHoverPainter extends CustomPainter {
         // Assembly handle hover drawing
         String attachMode = actionState.assemblyAttachMode;
 
-        for (var coord in cargoArrayPoints.values) {
+        // When placing a pattern, point keys are entry indices so each ghost can show its own value
+        final patternEntries = actionState.assemblyPatternMode
+            ? appState.assemblyHandlePatterns[actionState.selectedAssemblyPatternId]?.entries
+            : null;
+
+        for (var point in cargoArrayPoints.entries) {
+          var coord = point.value;
           double squareSide = appState.gridSize * 0.85;
           Offset centerCoord;
           Color paintColor;
+          final patternEntry = (patternEntries != null && point.key < patternEntries.length)
+              ? patternEntries[point.key]
+              : null;
 
           if (moveAnchor != Offset.zero) {
             // Moving mode - offset from anchor
@@ -87,7 +96,9 @@ class HandleHoverPainter extends CustomPainter {
           } else {
             // Add mode - direct position
             centerCoord = coord;
-            paintColor = attachMode == 'top' ? Colors.blue : Colors.orange;
+            paintColor = (patternEntry?.blocked ?? false)
+                ? appState.assemblyHandleBlockedColor
+                : (attachMode == 'top' ? Colors.blue : Colors.orange);
           }
 
           final Paint hoverRodPaint = Paint()
@@ -114,9 +125,12 @@ class HandleHoverPainter extends CustomPainter {
           canvas.drawRect(rect, hoverRodPaint);
 
           // Draw handle value text for Add mode
-          String displayText = moveAnchor == Offset.zero
-              ? actionState.assemblyHandleValue
-              : (attachMode == 'top' ? '↑' : '↓');
+          // blocked pattern entries are shown by colour only, matching how the slat painter draws blocks
+          String displayText = moveAnchor != Offset.zero
+              ? (attachMode == 'top' ? '↑' : '↓')
+              : patternEntry != null
+                  ? (patternEntry.blocked ? '' : patternEntry.value)
+                  : actionState.assemblyHandleValue;
           drawText(displayText, centerCoord, Colors.white, squareSide * 0.4);
 
           // Outline with thin black border

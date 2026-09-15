@@ -857,12 +857,15 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
     return slatTypes;
   }
 
-  /// Removes all handles from the slats
+  /// Removes all assembly handles from the slats, along with all handle links, enforced values and blocks.
   @override
   void clearAssemblyHandles() {
     for (var slat in slats.values) {
       slat.clearAssemblyHandles();
     }
+    // links, enforced values and blocks all refer to handle positions, so they must go too - otherwise the
+    // painter keeps drawing link/block markers and later placements are still constrained by them
+    assemblyLinkManager.clearAll();
     hammingValueValid = false;
     saveUndoState();
     notifyListeners();

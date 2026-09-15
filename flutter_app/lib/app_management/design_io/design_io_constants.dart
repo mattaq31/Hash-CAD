@@ -22,6 +22,7 @@ const String inputPlateTitlePrefix = '=== PLATE: ';
 const String inputPlateTitleSuffix = ' ===';
 const String labMetadataSheetName = 'lab_metadata';
 const String fluorophoreAssignmentsSheetName = 'assembly_handle_fluorophores';
+const String assemblyHandlePatternsSheetName = 'assembly_handle_patterns';
 
 // --- Sheet name builders ---
 String slatLayerSheetName(int layerOrder) => '$slatLayerPrefix${layerOrder + 1}';

@@ -193,6 +193,17 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
 
       appState.hammingValueValid = false;
 
+    } else if (getActionMode(actionState) == 'Assembly-Pattern-Add') {
+      // hoverValid already covers every pattern position (same checks as moving a handle selection)
+      if (!hoverValid) return;
+      appState.clearAssemblySelection();
+      appState.placeAssemblyHandlePattern(
+        actionState.selectedAssemblyPatternId!,
+        appState.selectedLayerKey,
+        actionState.assemblyAttachMode,
+        appState.convertRealSpacetoCoordinateSpace(snappedPosition),
+        enforce: actionState.assemblyPatternEnforce,
+      );
     } else if (getActionMode(actionState) == 'Assembly-Delete') {
       var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);
       var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[coordConvertedPosition];

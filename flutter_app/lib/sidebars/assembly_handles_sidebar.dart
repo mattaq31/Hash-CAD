@@ -9,6 +9,7 @@ import '../app_management/shared_app_state.dart';
 import '../app_management/action_state.dart';
 import '../app_management/server_state.dart';
 import '../crisscross_core/common_utilities.dart';
+import '../crisscross_core/assembly_handle_pattern.dart';
 import '../graphics/honeycomb_pictogram.dart';
 import 'layer_manager.dart';
 import '../dialogs/alert_window.dart';
@@ -41,6 +42,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
   String _updateScope = 'all'; // 'all' or 'interfaces'
   final TextEditingController _defaultHandleController = TextEditingController();
   final ScrollController _fluorophoreScrollController = ScrollController();
+  final ScrollController _patternScrollController = ScrollController();
 
   @override
   void initState() {
@@ -70,6 +72,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
     defaultHandleFocusNode.dispose();
     _defaultHandleController.dispose();
     _fluorophoreScrollController.dispose();
+    _patternScrollController.dispose();
     super.dispose();
   }
 
@@ -308,31 +311,36 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           Text("Manual Editing", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
           Align(
             alignment: Alignment.centerRight,
-            child: IconButton(
-              tooltip: actionState.fluorophoreEditMode ? 'Return to manual handles' : 'Fluorophore editing',
-              onPressed: () => actionState.setFluorophoreEditMode(!actionState.fluorophoreEditMode),
-              icon: Icon(Icons.highlight, size: 20),
-              style: IconButton.styleFrom(
-                backgroundColor: actionState.fluorophoreEditMode
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.primaryContainer,
-                foregroundColor: actionState.fluorophoreEditMode
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : null,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.all(6),
-                minimumSize: const Size(32, 32),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPanelToggleButton(
+                  context,
+                  icon: Icons.pattern,
+                  tooltip: 'Assembly handle patterns',
+                  active: actionState.assemblyPatternMode,
+                  onPressed: () => actionState.setAssemblyPatternMode(!actionState.assemblyPatternMode),
+                ),
+                SizedBox(width: 4),
+                _buildPanelToggleButton(
+                  context,
+                  icon: Icons.highlight,
+                  tooltip: 'Fluorophore editing',
+                  active: actionState.fluorophoreEditMode,
+                  onPressed: () => actionState.setFluorophoreEditMode(!actionState.fluorophoreEditMode),
+                ),
+              ],
             ),
           ),
         ],
       ),
       SizedBox(height: 10),
 
-      // Fluorophore editing panel (shown when toggle is active)
+      // Fluorophore editing panel / assembly handle pattern panel (shown when the corresponding toggle is active)
       if (actionState.fluorophoreEditMode) ...[
         _buildFluorophoreEditPanel(context, appState, actionState),
+      ] else if (actionState.assemblyPatternMode) ...[
+        _buildAssemblyPatternPanel(context, appState, actionState),
       ] else ...[
 
 
@@ -598,60 +606,8 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
             ],
           ),
           SizedBox(width: 8),
-          // Honeycomb pictogram showing handle attachment position
-          HoneycombCustomPainterWidget(
-            color: Colors.grey.shade400,
-            size: 8,
-            highlightColor: Theme.of(context).colorScheme.primary,
-            highlightTop: actionState.assemblyAttachMode == 'top',
-            highlightBottom: actionState.assemblyAttachMode == 'bottom',
-          ),
-          SizedBox(width: 4),
-          // Vertical top/bottom toggles
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: 'Attach to top of slat',
-                onPressed: () {
-                  actionState.updateAssemblyAttachMode('top');
-                },
-                icon: Icon(Icons.arrow_upward, size: 16),
-                style: IconButton.styleFrom(
-                  backgroundColor: actionState.assemblyAttachMode == 'top'
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.primaryContainer,
-                  foregroundColor: actionState.assemblyAttachMode == 'top'
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : null,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                  padding: const EdgeInsets.all(4),
-                  minimumSize: const Size(28, 28),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-              SizedBox(height: 4),
-              IconButton(
-                tooltip: 'Attach to bottom of slat',
-                onPressed: () {
-                  actionState.updateAssemblyAttachMode('bottom');
-                },
-                icon: Icon(Icons.arrow_downward, size: 16),
-                style: IconButton.styleFrom(
-                  backgroundColor: actionState.assemblyAttachMode == 'bottom'
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.primaryContainer,
-                  foregroundColor: actionState.assemblyAttachMode == 'bottom'
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : null,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                  padding: const EdgeInsets.all(4),
-                  minimumSize: const Size(28, 28),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ),
+          // Honeycomb pictogram + vertical top/bottom toggles
+          _buildAttachSideSelector(context, actionState),
           SizedBox(width: 10),
 
         ],
@@ -936,63 +892,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
                 ),
                 const SizedBox(width: 12),
                 // Helix side selector
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    HoneycombCustomPainterWidget(
-                      color: Colors.grey.shade400,
-                      size: 8,
-                      highlightColor: Theme.of(context).colorScheme.primary,
-                      highlightTop: actionState.assemblyAttachMode == 'top',
-                      highlightBottom: actionState.assemblyAttachMode == 'bottom',
-                    ),
-                    const SizedBox(width: 4),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Attach to top of slat',
-                          onPressed: () {
-                            actionState.updateAssemblyAttachMode('top');
-                          },
-                          icon: const Icon(Icons.arrow_upward, size: 16),
-                          style: IconButton.styleFrom(
-                            backgroundColor: actionState.assemblyAttachMode == 'top'
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.primaryContainer,
-                            foregroundColor: actionState.assemblyAttachMode == 'top'
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : null,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            padding: const EdgeInsets.all(4),
-                            minimumSize: const Size(28, 28),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        IconButton(
-                          tooltip: 'Attach to bottom of slat',
-                          onPressed: () {
-                            actionState.updateAssemblyAttachMode('bottom');
-                          },
-                          icon: const Icon(Icons.arrow_downward, size: 16),
-                          style: IconButton.styleFrom(
-                            backgroundColor: actionState.assemblyAttachMode == 'bottom'
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.primaryContainer,
-                            foregroundColor: actionState.assemblyAttachMode == 'bottom'
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : null,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            padding: const EdgeInsets.all(4),
-                            minimumSize: const Size(28, 28),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                _buildAttachSideSelector(context, actionState),
               ],
             ),
           ),
@@ -1052,6 +952,314 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
         ),
         const SizedBox(height: 8),
       ],
+    );
+  }
+
+  /// Builds a header toggle that swaps the manual editing area for an alternate panel.
+  /// Highlighted while [active]; the tooltip switches to a 'return' hint when the panel is open.
+  Widget _buildPanelToggleButton(BuildContext context,
+      {required IconData icon, required String tooltip, required bool active, required VoidCallback onPressed}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return IconButton(
+      tooltip: active ? 'Return to manual handles' : tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: active ? colorScheme.primary : colorScheme.primaryContainer,
+        foregroundColor: active ? colorScheme.onPrimary : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.all(6),
+        minimumSize: const Size(32, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
+  /// Builds the honeycomb pictogram with vertical top/bottom toggles used to pick the slat side for handle placement.
+  Widget _buildAttachSideSelector(BuildContext context, ActionState actionState) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        HoneycombCustomPainterWidget(
+          color: Colors.grey.shade400,
+          size: 8,
+          highlightColor: Theme.of(context).colorScheme.primary,
+          highlightTop: actionState.assemblyAttachMode == 'top',
+          highlightBottom: actionState.assemblyAttachMode == 'bottom',
+        ),
+        const SizedBox(width: 4),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Attach to top of slat',
+              onPressed: () {
+                actionState.updateAssemblyAttachMode('top');
+              },
+              icon: const Icon(Icons.arrow_upward, size: 16),
+              style: IconButton.styleFrom(
+                backgroundColor: actionState.assemblyAttachMode == 'top'
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: actionState.assemblyAttachMode == 'top'
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : null,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                padding: const EdgeInsets.all(4),
+                minimumSize: const Size(28, 28),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(height: 4),
+            IconButton(
+              tooltip: 'Attach to bottom of slat',
+              onPressed: () {
+                actionState.updateAssemblyAttachMode('bottom');
+              },
+              icon: const Icon(Icons.arrow_downward, size: 16),
+              style: IconButton.styleFrom(
+                backgroundColor: actionState.assemblyAttachMode == 'bottom'
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: actionState.assemblyAttachMode == 'bottom'
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : null,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                padding: const EdgeInsets.all(4),
+                minimumSize: const Size(28, 28),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Builds the assembly handle pattern panel shown when assemblyPatternMode is active.
+  /// Users record the current handle selection as a pattern, then pick a pattern to stamp it onto the canvas.
+  Widget _buildAssemblyPatternPanel(BuildContext context, DesignState appState, ActionState actionState) {
+    final patterns = appState.assemblyHandlePatterns;
+    final selectedId = actionState.selectedAssemblyPatternId;
+
+    // The selected pattern can disappear through undo or import - drop the stale selection after this frame
+    if (selectedId != null && !patterns.containsKey(selectedId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (actionState.selectedAssemblyPatternId == selectedId) {
+          actionState.setSelectedAssemblyPattern(null);
+        }
+      });
+    }
+    final bool isPlacing = selectedId != null && patterns.containsKey(selectedId);
+    final bool canRecord = !actionState.lockEdits && !isPlacing && appState.selectedAssemblyPositions.isNotEmpty;
+    // matches the FilledButton colours (enabled and disabled) so all three record buttons look alike
+    final recordIconStyle = IconButton.styleFrom(
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      disabledBackgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+      disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.all(8),
+      minimumSize: const Size(36, 36),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Record buttons (all / handles only / blocks only) - disabled while placing, as the canvas is no longer
+        // in selection mode
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.icon(
+              onPressed: canRecord ? () => _recordPattern(context, appState, actionState) : null,
+              icon: const Icon(Icons.fiber_manual_record, size: 16),
+              label: const Text('Record Pattern', style: TextStyle(fontSize: 14)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 36),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Record handles only (ignore blocks)',
+              onPressed: canRecord ? () => _recordPattern(context, appState, actionState, includeBlocks: false) : null,
+              icon: const Icon(Icons.tag, size: 18),
+              style: recordIconStyle,
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'Record blocks only (ignore handles)',
+              onPressed: canRecord ? () => _recordPattern(context, appState, actionState, includeHandles: false) : null,
+              icon: const Icon(Icons.block, size: 18),
+              style: recordIconStyle,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          isPlacing
+              ? 'Click on the canvas to place the pattern.\nClick the pattern again to return to selection.'
+              : 'Select handles on the canvas, then record them.\nClick a pattern to start placing it.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 8),
+
+        // Pattern list
+        SizedBox(
+          height: 150,
+          width: 300,
+          child: patterns.isEmpty
+              ? Center(
+                  child: Text('No patterns recorded yet.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                )
+              : Scrollbar(
+                  controller: _patternScrollController,
+                  thumbVisibility: patterns.length > 3,
+                  child: ListView(
+                    controller: _patternScrollController,
+                    children: patterns.values
+                        .map((pattern) => _buildPatternCard(context, appState, actionState, pattern))
+                        .toList(),
+                  ),
+                ),
+        ),
+        const SizedBox(height: 8),
+
+        // Placement options: slat side + enforcement of placed values
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildAttachSideSelector(context, actionState),
+            const SizedBox(width: 16),
+            Tooltip(
+              message: 'Mark values placed from a pattern as enforced',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                    value: actionState.assemblyPatternEnforce,
+                    onChanged: (value) => actionState.setAssemblyPatternEnforce(value ?? false),
+                  ),
+                  const Text('Enforce values', style: TextStyle(fontSize: 14)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  /// Records the current handle selection as a pattern, optionally restricted to valued handles or blocks,
+  /// and warns if nothing in the selection matched.
+  void _recordPattern(BuildContext context, DesignState appState, ActionState actionState,
+      {bool includeHandles = true, bool includeBlocks = true}) {
+    final id = appState.recordAssemblyHandlePattern(appState.selectedLayerKey, actionState.assemblyAttachMode,
+        includeHandles: includeHandles, includeBlocks: includeBlocks);
+    if (id != null) return;
+
+    final String what = !includeBlocks ? 'assembly handles' : !includeHandles ? 'blocked handles' : 'assembly handles or blocks';
+    showWarning(context, 'Nothing Recorded', 'The current selection does not contain any $what on this side of the layer.');
+  }
+
+  /// Single pattern entry: name, handle count, rename and delete actions. Tapping toggles placement of the pattern.
+  Widget _buildPatternCard(BuildContext context, DesignState appState, ActionState actionState, AssemblyHandlePattern pattern) {
+    final bool isSelected = actionState.selectedAssemblyPatternId == pattern.id;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 2),
+      color: isSelected ? colorScheme.primaryContainer : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: isSelected ? BorderSide(color: colorScheme.primary, width: 1.5) : BorderSide.none,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: actionState.lockEdits
+            ? null
+            : () => actionState.setSelectedAssemblyPattern(isSelected ? null : pattern.id),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+          child: Row(
+            children: [
+              Icon(Icons.pattern, size: 18, color: isSelected ? colorScheme.primary : Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(pattern.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                    Text('${pattern.entries.length} handles', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit, size: 16),
+                tooltip: 'Rename pattern',
+                onPressed: actionState.lockEdits ? null : () => _showPatternRenameDialog(context, appState, pattern),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, size: 18, color: Colors.red.shade400),
+                tooltip: 'Delete pattern',
+                onPressed: actionState.lockEdits ? null : () {
+                  if (isSelected) actionState.setSelectedAssemblyPattern(null);
+                  appState.deleteAssemblyHandlePattern(pattern.id);
+                },
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Rename dialog for patterns; shows an inline error if the name is empty or already used by another pattern.
+  void _showPatternRenameDialog(BuildContext context, DesignState appState, AssemblyHandlePattern pattern) {
+    final controller = TextEditingController(text: pattern.name);
+    String? errorText;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          void submit() {
+            if (appState.renameAssemblyHandlePattern(pattern.id, controller.text)) {
+              Navigator.pop(dialogContext);
+            } else {
+              setDialogState(() {
+                errorText = controller.text.trim().isEmpty
+                    ? 'Name cannot be empty'
+                    : 'A pattern with this name already exists';
+              });
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Rename Pattern'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(border: const OutlineInputBorder(), errorText: errorText),
+              onSubmitted: (_) => submit(),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              FilledButton(onPressed: submit, child: const Text('Rename')),
+            ],
+          );
+        },
+      ),
     );
   }
 

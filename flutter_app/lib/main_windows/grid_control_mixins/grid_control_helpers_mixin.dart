@@ -271,7 +271,13 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       if(appState.layerMap[appState.selectedLayerKey]!['order'] == appState.layerMap.length - 1 && actionState.assemblyAttachMode == 'top') {
         return (snapPosition, false);
       }
-      if (preSelectedPositions) {
+      if (getActionMode(actionState) == 'Assembly-Pattern-Add') {
+        // a pattern is a pre-configured handle group, so its positions go through the same validity checks
+        // as moving a multi-handle selection (cargo occupancy + every position must sit on a slat)
+        var pattern = appState.assemblyHandlePatterns[actionState.selectedAssemblyPatternId];
+        if (pattern == null) return (snapPosition, false);
+        queryCoordinates = pattern.coordinatesAt(appState.convertRealSpacetoCoordinateSpace(snapPosition));
+      } else if (preSelectedPositions) {
         for (var coord in appState.selectedAssemblyPositions) {
           queryCoordinates.add(appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor) + coord);
         }
@@ -330,6 +336,12 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     } else if (hoverPosition != null && getActionMode(actionState) == 'Assembly-Add') {
       // Single point for assembly handle placement
       return {0: hoverPosition!};
+    } else if (hoverPosition != null && getActionMode(actionState) == 'Assembly-Pattern-Add') {
+      // one real-space point per pattern entry (keys match entry indices so the painter can label them)
+      var pattern = appState.assemblyHandlePatterns[actionState.selectedAssemblyPatternId];
+      if (pattern == null) return {};
+      final coords = pattern.coordinatesAt(appState.convertRealSpacetoCoordinateSpace(hoverPosition!));
+      return {for (int i = 0; i < coords.length; i++) i: appState.convertCoordinateSpacetoRealSpace(coords[i])};
     } else if (hoverPosition != null && getActionMode(actionState) == 'Assembly-Move') {
       return appState.selectedAssemblyPositions.asMap();
     } else {
@@ -415,7 +427,10 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
         return "Neutral";
       }
     } else if (actionState.panelMode == 2) {
-      if (actionState.assemblyMode == 'Add') {
+      // pattern placement takes priority whenever a pattern is picked in the pattern panel
+      if (actionState.assemblyPatternMode && actionState.selectedAssemblyPatternId != null) {
+        return "Assembly-Pattern-Add";
+      } else if (actionState.assemblyMode == 'Add') {
         return "Assembly-Add";
       } else if (actionState.assemblyMode == 'Delete') {
         return "Assembly-Delete";
@@ -447,6 +462,9 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     } else if (actionMode == 'Cargo-Move') {
       return ['Handles Selected: ${appState.selectedHandlePositions.length}',
       'Cargo Site: ${actionState.cargoAttachMode.toUpperCase()}'];
+    } else if (actionMode == 'Assembly-Pattern-Add') {
+      return ['Pattern: ${appState.assemblyHandlePatterns[actionState.selectedAssemblyPatternId]?.name ?? '-'}',
+      'Handle Site: ${actionState.assemblyAttachMode.toUpperCase()}'];
     } else if (actionMode == 'Assembly-Move') {
       return ['Handles Selected: ${appState.selectedAssemblyPositions.length}',
       'Handle Site: ${actionState.assemblyAttachMode.toUpperCase()}'];

@@ -7,6 +7,7 @@ import 'package:hash_cad/app_management/design_io/design_io_constants.dart';
 import 'package:hash_cad/app_management/design_io/design_export.dart';
 import 'package:hash_cad/app_management/design_io/design_import.dart';
 import 'package:hash_cad/crisscross_core/fluorophore.dart';
+import 'package:hash_cad/crisscross_core/assembly_handle_pattern.dart';
 
 import '../../helpers/design_state_test_factory.dart';
 
@@ -294,6 +295,45 @@ void main() {
 
       final importedPhantom = result.slats.values.firstWhere((slat) => slat.phantomParent == 'A-I1');
       expect(importedPhantom.h5Handles[5]!['fluorophore'], 'Cy3');
+    });
+
+    test('round-trips assembly handle patterns', () async {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      state.assemblyHandlePatterns['P1'] = AssemblyHandlePattern(id: 'P1', name: 'Motif A', entries: const [
+        AssemblyHandlePatternEntry(offset: Offset.zero, value: '12'),
+        AssemblyHandlePatternEntry(offset: Offset(1, 1), value: '0', blocked: true),
+      ]);
+      state.assemblyHandlePatterns['P2'] = AssemblyHandlePattern(id: 'P2', name: 'Motif B', entries: const [
+        AssemblyHandlePatternEntry(offset: Offset(0, 2), value: '5'),
+      ]);
+
+      final workbook = buildDesignWorkbook(
+        state.slats,
+        state.layerMap,
+        state.cargoPalette,
+        state.occupiedCargoPoints,
+        state.seedRoster,
+        state.assemblyLinkManager,
+        state.gridSize,
+        state.gridMode,
+        state.designName,
+        assemblyHandlePatterns: state.assemblyHandlePatterns,
+      );
+
+      final bytes = Uint8List.fromList(workbook.encode()!);
+      final result = await parseDesignInIsolate(bytes);
+
+      expect(result.errorCode, isEmpty);
+      final patterns = result.assemblyHandlePatterns.values.toList();
+      expect(patterns.map((p) => p.name).toList(), ['Motif A', 'Motif B']);
+      expect(patterns[0].entries.length, 2);
+      expect(patterns[0].entries[0].offset, Offset.zero);
+      expect(patterns[0].entries[0].value, '12');
+      expect(patterns[0].entries[0].blocked, isFalse);
+      expect(patterns[0].entries[1].offset, const Offset(1, 1));
+      expect(patterns[0].entries[1].blocked, isTrue);
+      expect(patterns[1].entries.single.offset, const Offset(0, 2));
+      expect(patterns[1].entries.single.value, '5');
     });
 
     test('returns ERR_GENERAL for missing metadata sheet', () async {

@@ -2,6 +2,7 @@ import '../crisscross_core/slats.dart';
 import 'package:flutter/material.dart';
 import '../crisscross_core/cargo.dart';
 import '../crisscross_core/fluorophore.dart';
+import '../crisscross_core/assembly_handle_pattern.dart';
 import '../crisscross_core/seed.dart';
 import 'design_state_mixins/design_state_handle_link_mixin.dart';
 import 'design_state_mixins/design_state_grouping_mixin.dart';
@@ -20,6 +21,7 @@ class DesignSaveState {
   final String gridMode;
   final Map<String, GroupConfiguration> groupConfigurations;
   final String? activeGroupConfigId;
+  final Map<String, AssemblyHandlePattern> assemblyHandlePatterns;
 
   DesignSaveState({
     required this.slats,
@@ -35,6 +37,7 @@ class DesignSaveState {
     required this.gridMode,
     required this.groupConfigurations,
     required this.activeGroupConfigId,
+    required this.assemblyHandlePatterns,
   });
 
   /// Deep copy constructor
@@ -69,6 +72,8 @@ class DesignSaveState {
       gridMode: gridMode,
       groupConfigurations: _copyGroupConfigurations(groupConfigurations),
       activeGroupConfigId: activeGroupConfigId,
+      // patterns are immutable, so a shallow map copy is sufficient
+      assemblyHandlePatterns: Map.from(assemblyHandlePatterns),
     );
   }
 

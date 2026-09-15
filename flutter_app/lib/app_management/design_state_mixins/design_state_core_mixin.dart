@@ -72,6 +72,7 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
         'SEED': Cargo(name: 'SEED', shortName: 'S1', color: Color.fromARGB(255, 255, 0, 0), category: 'SEED'),
       };
     fluorophorePalette = {};
+    assemblyHandlePatterns = {};
     occupiedCargoPoints = {};
     selectedHandlePositions = [];
     plateCompatibilityWarning = null;
@@ -115,7 +116,8 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
         assemblyLinkManager: assemblyLinkManager,
         gridMode: gridMode,
         groupConfigurations: groupConfigurations,
-        activeGroupConfigId: activeGroupConfigId));
+        activeGroupConfigId: activeGroupConfigId,
+        assemblyHandlePatterns: assemblyHandlePatterns));
   }
 
   @override
@@ -146,6 +148,7 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
       phantomMap = newState.phantomMap;
       groupConfigurations = newState.groupConfigurations;
       activeGroupConfigId = newState.activeGroupConfigId;
+      assemblyHandlePatterns = newState.assemblyHandlePatterns;
       groupVersion++;
       if (!cargoPalette.containsKey(cargoAdditionType)) {
         cargoAdditionType = null;
