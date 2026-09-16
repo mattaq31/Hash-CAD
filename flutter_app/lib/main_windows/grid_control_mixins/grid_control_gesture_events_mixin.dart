@@ -203,6 +203,7 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
         actionState.assemblyAttachMode,
         appState.convertRealSpacetoCoordinateSpace(snappedPosition),
         enforce: actionState.assemblyPatternEnforce,
+        rotationSteps: actionState.assemblyPatternRotationSteps,
       );
     } else if (getActionMode(actionState) == 'Assembly-Delete') {
       var coordConvertedPosition = appState.convertRealSpacetoCoordinateSpace(snappedPosition);

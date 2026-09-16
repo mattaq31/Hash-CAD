@@ -41,6 +41,7 @@ class ActionState extends ChangeNotifier {
   bool assemblyPatternMode; // When true, sidebar shows the assembly handle pattern UI
   String? selectedAssemblyPatternId; // Pattern currently being placed on the canvas (null = selection mode)
   bool assemblyPatternEnforce; // When true, placed pattern values are marked as enforced
+  int assemblyPatternRotationSteps = 0; // 90° rotation steps applied to the pattern being placed (square grid only)
   SlatColorMode slatColorMode;
   // When true, the design is fully locked: all edits are blocked while view/navigation
   // controls (pan/zoom, layer change, layer visibility) remain active. Any new destructive
@@ -287,6 +288,7 @@ class ActionState extends ChangeNotifier {
   void setAssemblyPatternMode(bool value) {
     assemblyPatternMode = value;
     selectedAssemblyPatternId = null;
+    assemblyPatternRotationSteps = 0;
     if (value) {
       fluorophoreEditMode = false;
       assemblyMode = 'Move';
@@ -296,7 +298,17 @@ class ActionState extends ChangeNotifier {
 
   /// Sets the pattern being placed on the canvas; null returns the canvas to handle selection.
   void setSelectedAssemblyPattern(String? patternId) {
+    // a different pattern starts unrotated; re-selecting the same pattern keeps its rotation
+    if (patternId != selectedAssemblyPatternId) {
+      assemblyPatternRotationSteps = 0;
+    }
     selectedAssemblyPatternId = patternId;
+    notifyListeners();
+  }
+
+  /// Rotates the pattern being placed by a further 90° (wraps around after a full turn).
+  void rotateAssemblyPattern() {
+    assemblyPatternRotationSteps = (assemblyPatternRotationSteps + 1) % 4;
     notifyListeners();
   }
 

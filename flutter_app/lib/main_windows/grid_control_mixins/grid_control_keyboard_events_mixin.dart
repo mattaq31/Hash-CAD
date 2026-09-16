@@ -26,6 +26,20 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       // Rotation shortcut
       SingleActivator(LogicalKeyboardKey.keyR): () {
         if (actionState.lockEdits) return; // no edits while locked
+        if (getActionMode(actionState) == 'Assembly-Pattern-Add') {
+          // patterns only rotate on the square grid; R has no other effect while placing a pattern
+          if (appState.gridMode != '90') return;
+          actionState.rotateAssemblyPattern();
+          if (hoverPosition != null) {
+            setState(() {
+              // re-check validity without a mouse move: hoverPosition is the snapped canvas position, so converting
+              // it back to screen space makes gridSnap return the same grid point
+              var (_, newHoverValid) = hoverCalculator(hoverPosition! * scale + offset, appState, actionState, false);
+              hoverValid = newHoverValid;
+            });
+          }
+          return;
+        }
         if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
           setState(() {
             moveRotationSteps += 1;

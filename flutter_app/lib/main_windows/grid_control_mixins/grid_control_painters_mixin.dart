@@ -79,6 +79,7 @@ mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridContro
                   slatMoveAnchor,
                   appState,
                   actionState,
+                  patternRotationSteps: actionState.assemblyPatternRotationSteps,
                 ),
           child: Container(),
         ),

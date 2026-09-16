@@ -1100,7 +1100,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
         const SizedBox(height: 6),
         Text(
           isPlacing
-              ? 'Click on the canvas to place the pattern.\nClick the pattern again to return to selection.'
+              ? 'Click on the canvas to place the pattern${appState.gridMode == '90' ? ' (R to rotate)' : ''}.\nClick the pattern again to return to selection.'
               : 'Select handles on the canvas, then record them.\nClick a pattern to start placing it.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),

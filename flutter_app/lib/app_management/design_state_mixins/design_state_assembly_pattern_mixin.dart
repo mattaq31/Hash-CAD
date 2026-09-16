@@ -100,10 +100,11 @@ mixin DesignStateAssemblyPatternMixin on ChangeNotifier, DesignStateContract {
   /// Stamps pattern [id] onto [layerKey]/[attachMode] with its anchor at grid coordinate [anchorCoord].
   ///
   /// Existing blocks/enforced values at target positions are cleared so the pattern fully overrides them.
-  /// When [enforce] is true, every placed non-blocked value is also enforced. A single undo snapshot is saved.
+  /// When [enforce] is true, every placed non-blocked value is also enforced. The pattern is rotated about its anchor
+  /// by [rotationSteps] 90° steps (square grid only). A single undo snapshot is saved.
   @override
   void placeAssemblyHandlePattern(String id, String layerKey, String attachMode, Offset anchorCoord,
-      {bool enforce = false}) {
+      {bool enforce = false, int rotationSteps = 0}) {
     final pattern = assemblyHandlePatterns[id];
     final occupiedPoints = occupiedGridPoints[layerKey];
     if (pattern == null || occupiedPoints == null) return;
@@ -111,8 +112,10 @@ mixin DesignStateAssemblyPatternMixin on ChangeNotifier, DesignStateContract {
     final side = getSlatSideFromLayer(layerMap, layerKey, attachMode);
     final category = attachMode == 'top' ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE';
 
-    for (var entry in pattern.entries) {
-      final coord = anchorCoord + entry.offset;
+    final coords = pattern.coordinatesAt(anchorCoord, rotationSteps: rotationSteps, gridMode: gridMode);
+    for (int i = 0; i < pattern.entries.length; i++) {
+      final entry = pattern.entries[i];
+      final coord = coords[i];
       final slatId = occupiedPoints[coord];
       if (slatId == null) continue; // defensive - the canvas only calls this when all positions are valid
       final slat = slats[slatId]!;

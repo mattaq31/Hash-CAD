@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'slats.dart';
+
 /// A single handle within an [AssemblyHandlePattern].
 ///
 /// [offset] is in grid coordinate space, relative to the pattern anchor (the top-left handle, which sits at
@@ -42,9 +44,13 @@ class AssemblyHandlePattern {
     return AssemblyHandlePattern(id: id, name: name ?? this.name, entries: entries);
   }
 
-  /// Returns the absolute grid coordinates of every entry when the anchor is placed at [anchorCoord].
-  List<Offset> coordinatesAt(Offset anchorCoord) {
-    return entries.map((e) => anchorCoord + e.offset).toList();
+  /// Returns the absolute grid coordinates of every entry (in entry order) when the anchor is placed at [anchorCoord].
+  ///
+  /// The pattern is rotated about its anchor by [rotationSteps] 90° steps using [rotateCoordinateSpace]. Rotation is
+  /// only supported on the square ('90') grid, so [rotationSteps] is ignored for other grid modes.
+  List<Offset> coordinatesAt(Offset anchorCoord, {int rotationSteps = 0, String gridMode = '90'}) {
+    final steps = gridMode == '90' ? rotationSteps : 0;
+    return entries.map((e) => rotateCoordinateSpace(anchorCoord + e.offset, anchorCoord, steps, gridMode)).toList();
   }
 }
 

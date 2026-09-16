@@ -293,6 +293,7 @@ mixin DesignStateContract on ChangeNotifier {
   bool renameAssemblyHandlePattern(String id, String newName);
   /// Deletes a pattern.
   void deleteAssemblyHandlePattern(String id);
-  /// Stamps a pattern onto the design with its top-left handle at [anchorCoord].
-  void placeAssemblyHandlePattern(String id, String layerKey, String attachMode, Offset anchorCoord, {bool enforce = false});
+  /// Stamps a pattern onto the design with its top-left handle at [anchorCoord], rotated by [rotationSteps] 90° steps.
+  void placeAssemblyHandlePattern(String id, String layerKey, String attachMode, Offset anchorCoord,
+      {bool enforce = false, int rotationSteps = 0});
 }

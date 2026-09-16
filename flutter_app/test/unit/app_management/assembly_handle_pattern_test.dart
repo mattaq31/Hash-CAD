@@ -187,6 +187,21 @@ void main() {
       expect(handle['category'], 'ASSEMBLY_ANTIHANDLE');
     });
 
+    test('places a rotated pattern', () {
+      state.assemblyHandlePatterns['X'] = AssemblyHandlePattern(id: 'X', name: 'Line', entries: const [
+        AssemblyHandlePatternEntry(offset: Offset.zero, value: '3'),
+        AssemblyHandlePatternEntry(offset: Offset(20, 0), value: '4'),
+      ]);
+      state.gridMode = '90'; // rotation only applies on the square grid
+      final anchor = slatCoords[5];
+
+      // three 90° steps turn the (20, 0) offset into (0, 20), landing on the slat below
+      state.placeAssemblyHandlePattern('X', 'A', 'top', anchor, rotationSteps: 3);
+
+      expect(_handleAt(state, 'A', 'top', anchor)!['value'], '3');
+      expect(_handleAt(state, 'A', 'top', anchor + const Offset(0, 20))!['value'], '4');
+    });
+
     test('enforce flag enforces placed values but not blocks', () {
       final id = recordSamplePattern();
       final anchor = findPatternAnchor([slatCoords[0], slatCoords[1], slatCoords[3]]);
@@ -232,6 +247,24 @@ void main() {
       expect(_handleAt(state, 'A', 'top', slatCoords[0]), isNull);
       expect(_handleAt(state, 'A', 'top', slatCoords[1]), isNull);
       expect(state.assemblyHandlePatterns.containsKey(id), isTrue);
+    });
+  });
+
+  group('AssemblyHandlePattern.coordinatesAt', () {
+    test('rotates about the anchor in 90° steps on the square grid only', () {
+      final pattern = AssemblyHandlePattern(id: 'X', name: 'Line', entries: const [
+        AssemblyHandlePatternEntry(offset: Offset.zero, value: '1'),
+        AssemblyHandlePatternEntry(offset: Offset(2, 0), value: '2'),
+      ]);
+      const anchor = Offset(10, 10);
+
+      expect(pattern.coordinatesAt(anchor), [anchor, const Offset(12, 10)]);
+      // each step follows rotateCoordinateSpace: (dx, dy) -> (dy, -dx)
+      expect(pattern.coordinatesAt(anchor, rotationSteps: 1), [anchor, const Offset(10, 8)]);
+      expect(pattern.coordinatesAt(anchor, rotationSteps: 2), [anchor, const Offset(8, 10)]);
+      expect(pattern.coordinatesAt(anchor, rotationSteps: 4), [anchor, const Offset(12, 10)]);
+      // rotation is not supported on the 60° grid
+      expect(pattern.coordinatesAt(anchor, rotationSteps: 1, gridMode: '60'), [anchor, const Offset(12, 10)]);
     });
   });
 
