@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/fluorophore.dart';
+import '../../crisscross_core/assembly_handle_pattern.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../design_state_mixins/design_state_handle_link_mixin.dart';
@@ -26,6 +27,7 @@ class ParsedDesignResult {
   final Map<String, String>? labMetadata;
   final Map<String, GroupConfiguration> groupConfigurations;
   final Map<String, Fluorophore> fluorophorePalette;
+  final Map<String, AssemblyHandlePattern> assemblyHandlePatterns;
 
   const ParsedDesignResult({
     required this.slats,
@@ -41,5 +43,6 @@ class ParsedDesignResult {
     this.labMetadata,
     this.groupConfigurations = const {},
     this.fluorophorePalette = const {},
+    this.assemblyHandlePatterns = const {},
   });
 }

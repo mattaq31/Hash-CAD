@@ -135,7 +135,7 @@ Flutter UI (Dart) <--gRPC--> Python Server <--imports--> crisscross_kit
 ### Key Flutter Components (`flutter_app/lib/`)
 
 - `app_management/shared_app_state.dart`: `DesignState` (main state via Provider/ChangeNotifier)
-- `app_management/design_state_mixins/`: 13 mixin files that decompose `DesignState`:
+- `app_management/design_state_mixins/`: 15 mixin files that decompose `DesignState`:
   - `design_state_core_mixin.dart`: Core state operations
   - `design_state_slat_mixin.dart`: Slat placement/removal
   - `design_state_handle_mixin.dart`: Handle assignment
@@ -148,6 +148,8 @@ Flutter UI (Dart) <--gRPC--> Python Server <--imports--> crisscross_kit
   - `design_state_handle_link_mixin.dart`: Handle linking
   - `design_state_file_io_mixin.dart`: File I/O operations
   - `design_state_grouping_mixin.dart`: Slat grouping system
+  - `design_state_fluorophore_mixin.dart`: Fluorophore library and per-handle fluorophore tags
+  - `design_state_assembly_pattern_mixin.dart`: Recording/renaming/placing reusable assembly handle patterns
   - `design_state_contract.dart`: Contract/interface definition
 - `app_management/design_io/`: Design file I/O module (`design_import.dart`, `design_export.dart`, `evolution_export.dart`, `plate_io.dart`, `handle_link_io.dart`, `assembly_handle_io.dart`, `excel_utilities.dart`, `file_picker_helpers.dart`, `save_file_desktop.dart`, `save_file_web.dart`, `design_io_constants.dart`, `parsed_design_result.dart`)
 - `app_management/action_state.dart`: User action tracking
@@ -161,7 +163,7 @@ Flutter UI (Dart) <--gRPC--> Python Server <--imports--> crisscross_kit
   - `grid_control_contract.dart`, `grid_control_gesture_events_mixin.dart`, `grid_control_helpers_mixin.dart`, `grid_control_hover_events_mixin.dart`, `grid_control_keyboard_events_mixin.dart`, `grid_control_mouse_events_mixin.dart`, `grid_control_painters_mixin.dart`, `grid_control_position_generators_mixin.dart`
 - `main_windows/floating_main_title.dart`, `floating_switches.dart`: Floating UI overlays
 - `main_windows/window_manager.dart`, `web_window_manager.dart`, `windows_app_kill_listener.dart`: Window management (platform-specific)
-- `crisscross_core/`: Core DNA/slat domain logic (`slats.dart`, `cargo.dart`, `seed.dart`, `parasitic_valency.dart`, `slat_standardized_mapping.dart`, `handle_plates.dart`, `sparse_to_array_conversion.dart`, `common_utilities.dart`)
+- `crisscross_core/`: Core DNA/slat domain logic (`slats.dart`, `cargo.dart`, `seed.dart`, `fluorophore.dart`, `assembly_handle_pattern.dart`, `parasitic_valency.dart`, `slat_standardized_mapping.dart`, `handle_plates.dart`, `sparse_to_array_conversion.dart`, `common_utilities.dart`)
 - `sidebars/`: Sidebar UI components (`slat_linker_window.dart`, `assembly_handles_sidebar.dart`, `cargo_sidebar.dart`, `echo_sidebar.dart`, `grouping_sidebar.dart`, `layer_manager.dart`, `slat_design_sidebar.dart`, `slat_add_selection_panel.dart`, `slat_edit_selection_panel.dart`, `sidebar_tools.dart`)
 - `echo_and_experimental_helpers/`: Echo plate mapping UI and master mix/PEG export:
   - Echo plates: `echo_plate_window.dart`, `echo_plate_grid.dart`, `echo_plate_painters.dart`, `echo_plate_sidebar.dart`, `echo_plate_bars.dart`, `echo_barcode_painter.dart`, `echo_plate_well.dart`, `echo_plate_constants.dart`, `echo_category_colors.dart`, `echo_export.dart`, `echo_well_config_dialog.dart`
@@ -246,6 +248,7 @@ Key features added since v1.0.0:
 - **Manual handle selection**: Manual handle automation selection for cargo/handle positions (`manual_handle_dialog.dart`, `mass_manual_handle_dialog.dart`)
 - **Echo plate group splitting**: Option to split plates by group in the echo window
 - **3D-2D layer linking**: 3D viewer linked with 2D when hiding/revealing slat layers
+- **Assembly handle patterns**: Record selected assembly handles (values + blocks) as named patterns and stamp them onto the canvas (R rotates them in 90° grid mode); placement validity reuses the multi-handle move checks. Saved in the `assembly_handle_patterns` sheet (`design_state_assembly_pattern_mixin.dart`, `crisscross_core/assembly_handle_pattern.dart`, pattern panel in `assembly_handles_sidebar.dart`)
 
 ## Documentation
 

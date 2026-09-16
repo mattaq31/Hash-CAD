@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hash_cad/crisscross_core/slats.dart';
 import 'package:hash_cad/app_management/design_state_mixins/design_state_handle_link_mixin.dart';
+import 'package:hash_cad/crisscross_core/common_utilities.dart';
+
+import '../../helpers/design_state_test_factory.dart';
 
 /// Unit tests for blocked handle behavior with the new value='0' implementation.
 void main() {
@@ -165,6 +168,49 @@ void main() {
 
       expect(reimported.handleBlocks, contains(('1-I1', 1, 5)));
       expect(reimported.handleBlocks, contains(('1-I1', 5, 2)));
+    });
+  });
+
+  group('DesignState.clearAllHandleLinks', () {
+    test('removes links and enforced values but keeps blocks', () {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      final slat = state.slats.values.single;
+      final side = getSlatSideFromLayer(state.layerMap, 'A', 'top');
+      state.smartSetHandle(slat, 1, side, '7', 'ASSEMBLY_HANDLE');
+      state.smartSetHandle(slat, 2, side, '7', 'ASSEMBLY_HANDLE');
+      state.linkHandlesAndPropagate([(slat.id, 1, side), (slat.id, 2, side)]);
+      state.setHandleEnforcedValue((slat.id, 1, side), 7);
+      state.toggleHandleBlockAndApply((slat.id, 5, side));
+
+      state.clearAllHandleLinks();
+
+      expect(state.assemblyLinkManager.handleLinkToGroup, isEmpty);
+      expect(state.assemblyLinkManager.handleGroupToValue, isEmpty);
+      // block stays registered and on the slat, so the two representations stay in sync
+      expect(state.assemblyLinkManager.handleBlocks, contains((slat.id, 5, side)));
+      expect(getHandleDict(slat, side)[5]!['value'], '0');
+      // handle values themselves are untouched
+      expect(getHandleDict(slat, side)[1]!['value'], '7');
+    });
+  });
+
+  group('DesignState.clearAssemblyHandles', () {
+    test('also clears handle links, enforced values and blocks', () {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      final slat = state.slats.values.single;
+      final side = getSlatSideFromLayer(state.layerMap, 'A', 'top');
+      state.smartSetHandle(slat, 1, side, '7', 'ASSEMBLY_HANDLE');
+      state.smartSetHandle(slat, 2, side, '7', 'ASSEMBLY_HANDLE');
+      state.linkHandlesAndPropagate([(slat.id, 1, side), (slat.id, 2, side)]);
+      state.setHandleEnforcedValue((slat.id, 1, side), 7);
+      state.toggleHandleBlockAndApply((slat.id, 5, side));
+
+      state.clearAssemblyHandles();
+
+      expect(getHandleDict(slat, side), isEmpty);
+      expect(state.assemblyLinkManager.handleLinkToGroup, isEmpty);
+      expect(state.assemblyLinkManager.handleGroupToValue, isEmpty);
+      expect(state.assemblyLinkManager.handleBlocks, isEmpty);
     });
   });
 }

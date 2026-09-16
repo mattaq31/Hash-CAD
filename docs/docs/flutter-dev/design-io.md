@@ -18,6 +18,8 @@ The module uses a **single consolidated Excel format** where each concern maps t
 | `output_echo_plates` | Consolidated echo plate layouts with well configs |
 | `input_source_plates` | All input DNA source plates in one sheet |
 | `lab_metadata` | Export flags and master mix/PEG config |
+| `assembly_handle_fluorophores` | Per-handle fluorophore tags (optional) |
+| `assembly_handle_patterns` | Reusable assembly handle patterns: one row per handle (`Pattern`, `X Offset`, `Y Offset`, `Value`, `Blocked`), offsets relative to the pattern's top-left handle (optional) |
 
 ## Key Files
 

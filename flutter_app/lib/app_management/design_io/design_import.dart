@@ -15,6 +15,7 @@ import 'package:path/path.dart';
 import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/common_utilities.dart';
 import '../../crisscross_core/fluorophore.dart';
+import '../../crisscross_core/assembly_handle_pattern.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../design_state_mixins/design_state_handle_link_mixin.dart';
@@ -593,12 +594,38 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
     }
   }
 
+  // ── Assembly handle patterns sheet (optional) ──
+  final assemblyHandlePatterns = <String, AssemblyHandlePattern>{};
+  if (excel.sheets.containsKey(assemblyHandlePatternsSheetName)) {
+    final patternSheet = excel[assemblyHandlePatternsSheetName];
+    final entriesByName = <String, List<AssemblyHandlePatternEntry>>{}; // insertion-ordered by first appearance
+    for (int r = 1; r < patternSheet.maxRows; r++) {
+      final name = readExcelCellAsText(patternSheet, 0, r).trim();
+      final dx = double.tryParse(readExcelCellAsText(patternSheet, 1, r));
+      final dy = double.tryParse(readExcelCellAsText(patternSheet, 2, r));
+      if (name.isEmpty || dx == null || dy == null) continue;
+      final blocked = readExcelCellAsText(patternSheet, 4, r).trim().toUpperCase() == 'TRUE';
+      final value = blocked ? '0' : readExcelCellAsText(patternSheet, 3, r).trim();
+      if (value.isEmpty) continue;
+      entriesByName
+          .putIfAbsent(name, () => [])
+          .add(AssemblyHandlePatternEntry(offset: Offset(dx, dy), value: value, blocked: blocked));
+    }
+    int importedPatternIndex = 0;
+    for (var entry in entriesByName.entries) {
+      // 'I' prefix keeps imported ids distinct from the 'P' ids generated during the session
+      final id = 'I${++importedPatternIndex}';
+      assemblyHandlePatterns[id] = AssemblyHandlePattern(id: id, name: entry.key, entries: entry.value);
+    }
+  }
+
   return ParsedDesignResult(
     slats: slats,
     layerMap: layerMap,
     gridMode: gridMode,
     cargoPalette: cargoPalette,
     fluorophorePalette: fluorophorePalette,
+    assemblyHandlePatterns: assemblyHandlePatterns,
     seedRoster: seedRoster,
     phantomMap: phantomMap,
     linkManager: linkManager,

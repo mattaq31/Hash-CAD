@@ -38,6 +38,10 @@ class ActionState extends ChangeNotifier {
   bool assemblyBlockMode; // When true, clicking places/removes blocks instead of handles
   bool fluorophoreEditMode; // When true, sidebar shows fluorophore editing UI
   String? selectedFluorophore; // Currently active fluorophore for assignment
+  bool assemblyPatternMode; // When true, sidebar shows the assembly handle pattern UI
+  String? selectedAssemblyPatternId; // Pattern currently being placed on the canvas (null = selection mode)
+  bool assemblyPatternEnforce; // When true, placed pattern values are marked as enforced
+  int assemblyPatternRotationSteps = 0; // 90° rotation steps applied to the pattern being placed (square grid only)
   SlatColorMode slatColorMode;
   // When true, the design is fully locked: all edits are blocked while view/navigation
   // controls (pan/zoom, layer change, layer visibility) remain active. Any new destructive
@@ -87,6 +91,9 @@ class ActionState extends ChangeNotifier {
     this.assemblyBlockMode = false,
     this.fluorophoreEditMode = false,
     this.selectedFluorophore,
+    this.assemblyPatternMode = false,
+    this.selectedAssemblyPatternId,
+    this.assemblyPatternEnforce = false,
     this.slatColorMode = SlatColorMode.natural,
     this.lockEdits = false,
   });
@@ -268,6 +275,46 @@ class ActionState extends ChangeNotifier {
   /// Toggles the sidebar between normal manual handle editing and fluorophore mode.
   void setFluorophoreEditMode(bool value) {
     fluorophoreEditMode = value;
+    if (value) {
+      // fluorophore and pattern panels are mutually exclusive
+      assemblyPatternMode = false;
+      selectedAssemblyPatternId = null;
+    }
+    notifyListeners();
+  }
+
+  /// Toggles the sidebar between normal manual handle editing and the assembly handle pattern panel.
+  /// Enabling switches the canvas to handle selection (Move) so handles can be selected and recorded.
+  void setAssemblyPatternMode(bool value) {
+    assemblyPatternMode = value;
+    selectedAssemblyPatternId = null;
+    assemblyPatternRotationSteps = 0;
+    if (value) {
+      fluorophoreEditMode = false;
+      assemblyMode = 'Move';
+    }
+    notifyListeners();
+  }
+
+  /// Sets the pattern being placed on the canvas; null returns the canvas to handle selection.
+  void setSelectedAssemblyPattern(String? patternId) {
+    // a different pattern starts unrotated; re-selecting the same pattern keeps its rotation
+    if (patternId != selectedAssemblyPatternId) {
+      assemblyPatternRotationSteps = 0;
+    }
+    selectedAssemblyPatternId = patternId;
+    notifyListeners();
+  }
+
+  /// Rotates the pattern being placed by a further 90° (wraps around after a full turn).
+  void rotateAssemblyPattern() {
+    assemblyPatternRotationSteps = (assemblyPatternRotationSteps + 1) % 4;
+    notifyListeners();
+  }
+
+  /// Sets whether values placed from a pattern should be enforced.
+  void setAssemblyPatternEnforce(bool value) {
+    assemblyPatternEnforce = value;
     notifyListeners();
   }
 

@@ -363,11 +363,12 @@ class ThreeDisplayState extends State<ThreeDisplay> {
   @override
   void dispose() {
     threeJs.dispose();
-    controls.dispose();
+    controls?.dispose();
     super.dispose();
   }
 
-  late OrbitControls controls;
+  // null until setup() runs - the widget can be disposed before the 3D scene has finished initialising
+  OrbitControls? controls;
 
   void prepareSlatInstanceGeometries(){
     // preparing instancing meshes for slats, seeds and handles
@@ -466,7 +467,8 @@ class ThreeDisplayState extends State<ThreeDisplay> {
     HFOV = 2 * math.atan(math.tan(VFOV * math.pi / 180 / 2) * threeJs.width / threeJs.height) * 180 / math.pi;
 
     threeJs.camera.position.setValues(-63.18, 154.58, 328.46);
-    controls = OrbitControls(threeJs.camera, threeJs.globalKey);
+    final controls = OrbitControls(threeJs.camera, threeJs.globalKey);
+    this.controls = controls;
     controls.target.setValues(-21.87, -8, 3.73);
 
     controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
@@ -519,6 +521,8 @@ class ThreeDisplayState extends State<ThreeDisplay> {
 
 
   void logCameraDetails() {
+    final controls = this.controls;
+    if (controls == null) return;
     final pos = threeJs.camera.position;
     final target = controls.target; // OrbitControls has a 'target' property
 
@@ -915,6 +919,8 @@ class ThreeDisplayState extends State<ThreeDisplay> {
   }
 
   void manageHoverPreview(DesignState appState) {
+    // instance meshes only exist once setup() has run (same guard as manageSlats/manageSeeds)
+    if (!isSetupComplete) return;
 
     void clearHover() {
       // Slats (both tube and DB variants + short versions)
@@ -1068,8 +1074,8 @@ class ThreeDisplayState extends State<ThreeDisplay> {
     threeJs.camera.position.setValues(newCameraPosition.x, newCameraPosition.y, newCameraPosition.z);
 
     // updates camera target to the center of all slats
-    controls.target.setValues(center.x, center.y, center.z);
-    controls.update();
+    controls?.target.setValues(center.x, center.y, center.z);
+    controls?.update();
   }
 
 

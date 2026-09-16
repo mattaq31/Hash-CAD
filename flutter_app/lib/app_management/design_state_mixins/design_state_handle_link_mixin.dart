@@ -219,13 +219,19 @@ class HandleLinkManager {
     return handleLinkToGroup[key];
   }
 
-  /// Clears all link and block data.
-  void clearAll() {
+  /// Clears all link groups and enforced values, but keeps blocks.
+  /// Blocks are also stored as '0' placeholders on the slats, so dropping them here alone would leave orphan blocks.
+  void clearLinks() {
     handleLinkToGroup.clear();
     handleGroupToLink.clear();
     handleGroupToValue.clear();
-    handleBlocks.clear();
     maxGroupId = 0;
+  }
+
+  /// Clears all link and block data. Callers must also remove the corresponding '0' placeholders from the slats.
+  void clearAll() {
+    clearLinks();
+    handleBlocks.clear();
   }
 
   /// Creates a deep copy of the link manager.
@@ -478,10 +484,10 @@ class HandleLinkManager {
 
 /// Mixin providing HandleLinkManager access in DesignState
 mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
-  /// Clears all handle links and blocks
+  /// Clears all handle links and enforced values. Blocks are kept, as they are a separate tool.
   @override
   void clearAllHandleLinks() {
-    assemblyLinkManager.clearAll();
+    assemblyLinkManager.clearLinks();
     saveUndoState();
     notifyListeners();
   }
@@ -577,44 +583,57 @@ mixin DesignStateHandleLinkMixin on ChangeNotifier, DesignStateContract {
   }
 
   /// Toggles block status on a handle and applies the change.
-  /// When blocking: Registers the block, then runs smartSetHandle to propagate — the enforcement
-  /// phase will keep this handle at '0' and remove (not block) any adjacent touching handle.
+  /// When blocking: delegates to [applyHandleBlock].
   /// When unblocking: Removes the block and deletes the placeholder handle.
   @override
   void toggleHandleBlockAndApply(HandleKey key) {
     var slat = slats[key.$1];
     if (slat == null) return;
 
-    void clearBlockedFluorophore(HandleKey blockKey) {
-      final baseId = slat!.phantomParent ?? blockKey.$1;
-      final affectedSlatIds = [baseId, ...phantomMap[baseId]?.values ?? const <String>[]];
-      for (var affectedSlatId in affectedSlatIds) {
-        final affectedSlat = slats[affectedSlatId];
-        if (affectedSlat == null) continue;
-        getHandleDict(affectedSlat, blockKey.$3)[blockKey.$2]?.remove('fluorophore');
-      }
-    }
-
     if (assemblyLinkManager.handleBlocks.contains(key)) {
       // Unblock - delete the placeholder and remove from blocks list
       slat.removeHandle(key.$2, key.$3);
       assemblyLinkManager.removeBlock(key);
+      hammingValueValid = false;
+      saveUndoState();
+      notifyListeners();
     } else {
-      // Block - register the block first, then propagate via smartSetHandle
-      var handleDict = getHandleDict(slat, key.$3);
-      String category = handleDict[key.$2]?['category'] ?? (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
+      applyHandleBlock(key);
+    }
+  }
 
-      // Clear fluorophore on block
-      clearBlockedFluorophore(key);
+  /// Blocks the handle at [key] and applies the change.
+  /// Registers the block, then runs smartSetHandle to propagate — the enforcement phase will keep this handle at '0'
+  /// and remove (not block) any adjacent touching handle. [category] is used if no handle exists yet at [key]
+  /// (otherwise the existing handle's category is kept). Set [requestStateUpdate] to false when batching.
+  @override
+  void applyHandleBlock(HandleKey key, {String? category, bool requestStateUpdate = true}) {
+    var slat = slats[key.$1];
+    if (slat == null) return;
 
-      assemblyLinkManager.addBlock(key);
-      // smartSetHandle propagation will set '0' here and remove (not block) the adjacent handle
-      smartSetHandle(slat, key.$2, key.$3, '0', category);
+    // Clear fluorophore on block (including phantom copies)
+    final baseId = slat.phantomParent ?? key.$1;
+    final affectedSlatIds = [baseId, ...phantomMap[baseId]?.values ?? const <String>[]];
+    for (var affectedSlatId in affectedSlatIds) {
+      final affectedSlat = slats[affectedSlatId];
+      if (affectedSlat == null) continue;
+      getHandleDict(affectedSlat, key.$3)[key.$2]?.remove('fluorophore');
     }
 
+    var handleDict = getHandleDict(slat, key.$3);
+    String blockCategory = handleDict[key.$2]?['category'] ??
+        category ??
+        (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
+
+    assemblyLinkManager.addBlock(key);
+    // smartSetHandle propagation will set '0' here and remove (not block) the adjacent handle
+    smartSetHandle(slat, key.$2, key.$3, '0', blockCategory);
+
     hammingValueValid = false;
-    saveUndoState();
-    notifyListeners();
+    if (requestStateUpdate) {
+      saveUndoState();
+      notifyListeners();
+    }
   }
 
   /// Sets enforced value on a handle's group and propagates to all linked handles.

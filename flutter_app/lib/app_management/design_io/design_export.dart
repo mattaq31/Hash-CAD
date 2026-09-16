@@ -13,6 +13,7 @@ import 'package:hash_cad/crisscross_core/handle_plates.dart';
 
 import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/fluorophore.dart';
+import '../../crisscross_core/assembly_handle_pattern.dart';
 import '../../crisscross_core/seed.dart';
 import '../../crisscross_core/slats.dart';
 import '../../crisscross_core/sparse_to_array_conversion.dart';
@@ -58,12 +59,15 @@ String generateLayerString(Map<String, Map<String, dynamic>> layerMap) {
 ///  - `output_echo_plates` — consolidated echo plate layouts and well configs (optional, from [echoPlateLayoutState])
 ///  - `input_source_plates` — all input plates in one sheet (optional, from [plateLibrary])
 ///  - `lab_metadata` — export flags and master mix config (optional)
+///  - `assembly_handle_fluorophores` — per-handle fluorophore tags (optional)
+///  - `assembly_handle_patterns` — reusable assembly handle patterns (optional, from [assemblyHandlePatterns])
 Excel buildDesignWorkbook(Map<String, Slat> slats, Map<String, Map<String, dynamic>> layerMap, Map<String, Cargo> cargoPalette,
     Map<String, Map<Offset, String>> occupiedCargoPoints, Map<(String, String, Offset), Seed> seedRoster, HandleLinkManager linkManager,
     double gridSize, String gridMode, String suggestedDesignName,
     {PlateLayoutState? echoPlateLayoutState, PlateLibrary? plateLibrary,
     Map<String, GroupConfiguration>? groupConfigurations,
-    Map<String, Fluorophore>? fluorophorePalette}) {
+    Map<String, Fluorophore>? fluorophorePalette,
+    Map<String, AssemblyHandlePattern>? assemblyHandlePatterns}) {
   Offset minPos;
   Offset maxPos;
   (minPos, maxPos) = extractGridBoundary(slats);
@@ -529,6 +533,28 @@ Excel buildDesignWorkbook(Map<String, Slat> slats, Map<String, Map<String, dynam
     }
   }
 
+  // ── Assembly handle patterns sheet: one row per pattern handle, grouped by pattern name ──
+  if (assemblyHandlePatterns != null && assemblyHandlePatterns.isNotEmpty) {
+    Sheet patternSheet = excel[assemblyHandlePatternsSheetName];
+    const patternHeaders = ['Pattern', 'X Offset', 'Y Offset', 'Value', 'Blocked'];
+    for (int c = 0; c < patternHeaders.length; c++) {
+      setCellValue(patternSheet, c, 0, patternHeaders[c], style: echoHeaderStyle);
+    }
+    // grid offsets are normally integral, so write them as ints for readability
+    num offsetValue(double v) => v == v.roundToDouble() ? v.round() : v;
+    int patternRow = 1;
+    for (var pattern in assemblyHandlePatterns.values) {
+      for (var entry in pattern.entries) {
+        setCellValue(patternSheet, 0, patternRow, pattern.name);
+        setCellValue(patternSheet, 1, patternRow, offsetValue(entry.offset.dx));
+        setCellValue(patternSheet, 2, patternRow, offsetValue(entry.offset.dy));
+        setCellValue(patternSheet, 3, patternRow, int.tryParse(entry.value) ?? entry.value);
+        setCellValue(patternSheet, 4, patternRow, entry.blocked ? 'TRUE' : 'FALSE');
+        patternRow++;
+      }
+    }
+  }
+
   // ── Clean up default Sheet1 and save ──
   final firstRealSheet = excel.sheets.keys.firstWhere((k) => k != 'Sheet1', orElse: () => 'Sheet1');
   if (firstRealSheet != 'Sheet1') {
@@ -547,7 +573,8 @@ Future<void> exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynam
     double gridSize, String gridMode, String suggestedDesignName,
     {PlateLayoutState? echoPlateLayoutState, PlateLibrary? plateLibrary,
     Map<String, GroupConfiguration>? groupConfigurations,
-    Map<String, Fluorophore>? fluorophorePalette}) async {
+    Map<String, Fluorophore>? fluorophorePalette,
+    Map<String, AssemblyHandlePattern>? assemblyHandlePatterns}) async {
   final excel = buildDesignWorkbook(
     slats,
     layerMap,
@@ -562,6 +589,7 @@ Future<void> exportDesign(Map<String, Slat> slats, Map<String, Map<String, dynam
     plateLibrary: plateLibrary,
     groupConfigurations: groupConfigurations,
     fluorophorePalette: fluorophorePalette,
+    assemblyHandlePatterns: assemblyHandlePatterns,
   );
 
   if (kIsWeb) {

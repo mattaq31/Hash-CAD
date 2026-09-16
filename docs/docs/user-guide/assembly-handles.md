@@ -94,6 +94,18 @@ Handles can also be edited manually if certain designs require more control. The
 
 Other features related to linking handles are available but these are still in beta - details coming soon!
 
+### Handle Patterns
+
+Recurring arrangements of assembly handles can be saved as **patterns** and stamped onto the design in one click:
+
+1. Click the pattern button next to the fluorophore button in the **Manual Editing** header to open the pattern panel.
+2. Select a group of assembly handles on the canvas (click, shift-click or drag-select), then click **Record Pattern** (or the neighbouring icon buttons to record only valued handles or only blocks). The pattern is added to the list as 'Pattern 1', 'Pattern 2', etc. Use the edit icon to rename it.
+3. Click a pattern in the list to start placing it. The whole pattern follows the cursor (anchored at its top-left handle) and is placed on click. The preview turns red if any position would not land on a slat. On the square (90°) grid, press **R** to rotate the pattern by 90° - a thin line with an arrow above the pattern marks its original 'north' so you can track the orientation.
+4. Choose the top or bottom of the slat with the arrow toggles, and tick **Enforce values** to enforce every placed value.
+5. Click the selected pattern again to return to handle selection.
+
+Patterns store handle values and blocked positions (not links), and are saved with the design file.
+
 <p align="center">
   <img src="https://github.com/mattaq31/Hash-CAD/raw/main/graphics_screenshots/tutorial_kit/handle_edit.png" alt="Handle edit window" width="600">
 </p>

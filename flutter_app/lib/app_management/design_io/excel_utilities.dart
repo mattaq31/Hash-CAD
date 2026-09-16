@@ -50,6 +50,21 @@ double readExcelDouble(Sheet workSheet, String cell) {
           : 0.0;
 }
 
+/// Reads any cell type at ([col], [row]) as text (integral doubles are written without a decimal point).
+/// Useful for sheets that users may hand-edit, where Excel can silently convert text to numbers or booleans.
+String readExcelCellAsText(Sheet sheet, int col, int row) {
+  final value = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value;
+  if (value == null) return '';
+  if (value is TextCellValue) return value.value.text ?? '';
+  if (value is IntCellValue) return value.value.toString();
+  if (value is DoubleCellValue) {
+    final d = value.value;
+    return d == d.roundToDouble() ? d.toInt().toString() : d.toString();
+  }
+  if (value is BoolCellValue) return value.value ? 'TRUE' : 'FALSE';
+  return value.toString();
+}
+
 /// Reads a string from [cell], returning '' if the cell is not a [TextCellValue].
 String readExcelString(Sheet workSheet, String cell) {
   var cellValue = workSheet.cell(CellIndex.indexByString(cell)).value;

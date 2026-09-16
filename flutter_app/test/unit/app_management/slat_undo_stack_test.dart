@@ -22,6 +22,7 @@ DesignSaveState _snapshotFromSlats(int slatCount) {
     fluorophorePalette: {},
     groupConfigurations: {},
     activeGroupConfigId: null,
+    assemblyHandlePatterns: {},
   );
 }
 
@@ -41,6 +42,7 @@ DesignSaveState _taggedSnapshot(String tag) {
     fluorophorePalette: {},
     groupConfigurations: {},
     activeGroupConfigId: null,
+    assemblyHandlePatterns: {},
   );
 }
 
