@@ -60,6 +60,9 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
   // Sidebar multi-drag hover preview
   ({int plate, String well, int count})? _sidebarDragHover;
 
+  // Toggled by tapping Alt/Option — switches multi-slat sidebar placement from column-first to row-first fill
+  bool _rowFillMode = false;
+
   // Auto-assign options
   bool _columnsThreeToTenOnly = false;
   bool _overwriteExisting = false;
@@ -114,6 +117,12 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
 
     // Only consume undo/redo/delete when the echo window is active, not collapsed, and no dialog is open
     final active = _layoutState != null && !_isCollapsed && !_dialogOpen;
+
+    // Alt/Option tap toggles multi-slat fill direction; rebuild so a live drag preview flips immediately
+    if (active && event is KeyDownEvent &&
+        (event.logicalKey == LogicalKeyboardKey.altLeft || event.logicalKey == LogicalKeyboardKey.altRight)) {
+      setState(() => _rowFillMode = !_rowFillMode);
+    }
 
     // Delete/Backspace to remove selected wells
     if (event is KeyDownEvent &&
@@ -228,22 +237,46 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     _saveUndoState();
   }
 
-  /// Places multiple slats starting at the given well, filling column-first.
-  void _placeSidebarSlatsSequentially(List<String> slatIds, int startPlate, String startWell) {
+  /// Returns up to [count] consecutive wells starting at [startWell], stopping at the plate's end.
+  ///
+  /// Fills column-first (down each column, then on to the next column) by default, or row-first
+  /// (across each row, then on to the next row) when [_rowFillMode] has been toggled on via Alt/Option.
+  List<String> _sequentialFillWells(String startWell, int count) {
     int row = wellRow(startWell);
     int col = wellCol(startWell);
-    int plate = startPlate;
+    final wells = <String>[];
 
-    for (var id in slatIds) {
-      if (row >= plateRows.length) {
-        // Move to next column
-        row = 0;
-        col++;
+    for (var i = 0; i < count; i++) {
+      if (_rowFillMode) {
+        if (col >= plateCols.length) {
+          // Move to next row
+          col = 0;
+          row++;
+        }
+        if (row >= plateRows.length) break;
+      } else {
+        if (row >= plateRows.length) {
+          // Move to next column
+          row = 0;
+          col++;
+        }
+        if (col >= plateCols.length) break;
       }
-      if (col >= plateCols.length) break;
-      final well = wellName(row, col);
-      _layoutState!.moveSlatFromSidebarToWell(id, plate, well);
-      row++;
+      wells.add(wellName(row, col));
+      if (_rowFillMode) {
+        col++;
+      } else {
+        row++;
+      }
+    }
+    return wells;
+  }
+
+  /// Places multiple slats starting at the given well, filling column-first (or row-first if toggled via Alt/Option).
+  void _placeSidebarSlatsSequentially(List<String> slatIds, int startPlate, String startWell) {
+    final wells = _sequentialFillWells(startWell, slatIds.length);
+    for (var i = 0; i < wells.length; i++) {
+      _layoutState!.moveSlatFromSidebarToWell(slatIds[i], startPlate, wells[i]);
     }
   }
 
@@ -826,25 +859,8 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
     // Sidebar multi-drag hover preview
     if (_sidebarDragHover != null) {
       if (plate != _sidebarDragHover!.plate) return null;
-      final startRow = wellRow(_sidebarDragHover!.well);
-      final startCol = wellCol(_sidebarDragHover!.well);
-      final wellRow_ = wellRow(well);
-      final wellCol_ = wellCol(well);
-
-      int row = startRow;
-      int col = startCol;
-      for (var i = 0; i < _sidebarDragHover!.count; i++) {
-        if (row == wellRow_ && col == wellCol_) {
-          return (isValid: true, ghostSlatId: null);
-        }
-        row++;
-        if (row >= plateRows.length) {
-          row = 0;
-          col++;
-        }
-        if (col >= plateCols.length) break;
-      }
-      return null;
+      final targetWells = _sequentialFillWells(_sidebarDragHover!.well, _sidebarDragHover!.count);
+      return targetWells.contains(well) ? (isValid: true, ghostSlatId: null) : null;
     }
 
     // Group drag ghost preview
