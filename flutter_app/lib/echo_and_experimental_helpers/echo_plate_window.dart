@@ -451,6 +451,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       h2Handles: firstSlat?.h2Handles,
       multipleSlatsSelected: multipleSlatsSelected,
       slatName: firstSlat != null ? slatDisplayName(firstSlat, appState.layerMap, slats: appState.slats) : null,
+      cargoPalette: appState.cargoPalette,
     );
     _dialogOpen = false;
 

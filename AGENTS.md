@@ -175,7 +175,7 @@ Flutter UI (Dart) <--gRPC--> Python Server <--imports--> crisscross_kit
 - `drag_and_drop/`: Platform-specific drag-and-drop handling (`design_drop_target.dart`, `design_drop_target_desktop.dart`, `design_drop_target_web.dart`, `design_drop_target_stub.dart`)
 - `grpc_client_architecture/`: Generated gRPC client code (do not edit manually)
 - `2d_painters/`: 2D canvas rendering (`grid_painter.dart`, `slat_painter.dart`, `seed_painter.dart`, `slat_hover_painter.dart`, `handle_hover_painter.dart`, `delete_painter.dart`, `drag_box_painter.dart`, `helper_functions.dart`, `2d_view_svg_exporter.dart`, `export_svg_desktop.dart`, `export_svg_web.dart`)
-- `graphics/`: 3D visualization and shared graphic widgets (`3d_painter.dart`, `custom_3d_meshes.dart`, `stl_exporter.dart`, `stl_export_validation.dart`, `crosshatch_shader.dart`, `assembly_color_legend.dart`, `honeycomb_pictogram.dart`, `line_chart.dart`, `rating_indicator.dart`, `status_indicator.dart`)
+- `graphics/`: 3D visualization and shared graphic widgets (`3d_painter.dart`, `custom_3d_meshes.dart`, `stl_exporter.dart`, `stl_export_validation.dart`, `crosshatch_shader.dart`, `handle_sequence_text.dart` (shared handle-sequence coloring + click-to-copy text), `assembly_color_legend.dart`, `honeycomb_pictogram.dart`, `line_chart.dart`, `rating_indicator.dart`, `status_indicator.dart`)
 
 ### Data Format
 - Designs are stored as Excel files (.xlsx)
