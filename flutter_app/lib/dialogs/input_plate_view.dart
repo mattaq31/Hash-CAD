@@ -3,63 +3,15 @@
 //    interactive rod whose arms reveal each handle's sequence/concentration.
 //  * the "Plate Layout" window (opened from the detailed view) — a read-only
 //    384-well plate map whose filled wells can be clicked to inspect the oligo.
+// Sequence text formatting/copying is shared via graphics/handle_sequence_text.dart.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../crisscross_core/handle_plates.dart';
-import '../echo_and_experimental_helpers/echo_category_colors.dart';
+import '../graphics/handle_sequence_text.dart';
 
 // Colors used to mark staple availability in the detailed pictograph view.
 const Color _defaultPlateCompatibilityColor = Colors.green;
 const Color _specialPlateCompatibilityColor = Colors.orange;
-
-/// Returns the display color for a plate handle [category].
-///
-/// [categoryColor] maps FLAT to a very light grey that is almost invisible as
-/// text or against empty wells, so FLAT is darkened here for legibility.
-Color _plateCategoryDisplayColor(String category) {
-  if (category.toUpperCase() == 'FLAT') return Colors.grey.shade700;
-  return categoryColor(category);
-}
-
-/// Splits a stored handle sequence (`core + tt + unique`) into colored spans:
-/// the core in black, the `tt` / ` TT ` linker in grey, and the unique tail in
-/// [highlight]. If no linker is present the whole sequence is shown in black.
-List<TextSpan> _buildSequenceSpans(String fullSequence, Color highlight) {
-  // Prefer the last linker occurrence: lowercase 'tt' or an uppercase ' TT '
-  // flanked by spaces.
-  final ttIndex = fullSequence.lastIndexOf('tt');
-  final upperTtIndex = fullSequence.lastIndexOf(' TT ');
-  final int linkerIndex;
-  final int linkerLen;
-  if (upperTtIndex > ttIndex) {
-    linkerIndex = upperTtIndex;
-    linkerLen = 4; // ' TT ' including the flanking spaces
-  } else {
-    linkerIndex = ttIndex;
-    linkerLen = 2; // 'tt'
-  }
-  if (linkerIndex < 0) {
-    // No linker present: show the whole sequence in plain black.
-    return [TextSpan(text: fullSequence, style: const TextStyle(color: Colors.black))];
-  }
-  final core = fullSequence.substring(0, linkerIndex);
-  final linker = fullSequence.substring(linkerIndex, linkerIndex + linkerLen); // preserves 'tt' vs ' TT '
-  final unique = fullSequence.substring(linkerIndex + linkerLen);
-  return [
-    TextSpan(text: core, style: const TextStyle(color: Colors.black)),
-    TextSpan(text: linker, style: TextStyle(color: Colors.grey.shade500)),
-    TextSpan(text: unique, style: TextStyle(color: highlight, fontWeight: FontWeight.bold)),
-  ];
-}
-
-/// Copies [sequence] to the clipboard and confirms with a short SnackBar.
-void _copySequenceToClipboard(BuildContext context, String sequence) {
-  Clipboard.setData(ClipboardData(text: sequence));
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Sequence copied to clipboard'), duration: Duration(seconds: 1)),
-  );
-}
 
 /// Shows the detailed plate view: one interactive slat pictograph per entry,
 /// plus a "Plate Layout" button that opens the 384-well plate map.
@@ -263,7 +215,7 @@ class _SlatPictographState extends State<_SlatPictograph> {
   /// Builds the sequence label shown under the pictograph for the selected arm.
   ///
   /// Nothing is shown until an arm is selected. The full stored sequence is
-  /// colored via [_buildSequenceSpans]. Tapping the label copies the full sequence.
+  /// colored via [buildSequenceSpans]. Tapping the label copies the full sequence.
   Widget _buildSequenceLabel() {
     if (_selectedPos == null || _selectedSide == null) return const SizedBox.shrink();
 
@@ -285,31 +237,17 @@ class _SlatPictographState extends State<_SlatPictograph> {
       compatibility: widget.entry.compatibility,
     );
 
-    final categoryHighlight = _plateCategoryDisplayColor(widget.entry.category);
+    final categoryHighlight = plateCategoryDisplayColor(widget.entry.category);
 
     return Padding(
       padding: const EdgeInsets.only(top: 4),
-      child: Tooltip(
-        message: 'Click to copy',
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => _copySequenceToClipboard(context, fullSequence),
-            child: SizedBox(
-              width: _rodWidth,
-              child: Text.rich(
-                TextSpan(
-                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                  children: [
-                    TextSpan(text: 'Sequence (H$_selectedSide, pos $_selectedPos, conc $concentration µM): ', style: const TextStyle(color: Colors.black)),
-                    ..._buildSequenceSpans(fullSequence, categoryHighlight),
-                  ],
-                ),
-                textAlign: TextAlign.center,
-                softWrap: true,
-              ),
-            ),
-          ),
+      child: SizedBox(
+        width: _rodWidth,
+        child: CopyableHandleSequenceText(
+          sequence: fullSequence,
+          highlight: categoryHighlight,
+          fontSize: 11,
+          prefix: [TextSpan(text: 'Sequence (H$_selectedSide, pos $_selectedPos, conc $concentration µM): ')],
         ),
       ),
     );
@@ -556,36 +494,23 @@ class _PlateLayoutViewState extends State<_PlateLayoutView> {
           style: TextStyle(fontSize: 12, color: Colors.grey.shade600));
     }
     final info = _wellMap[_selectedWell]!;
-    final highlight = _plateCategoryDisplayColor(info.category);
+    final highlight = plateCategoryDisplayColor(info.category);
     // FLAT staples have no meaningful handle name, so it is omitted for them.
     final isFlat = info.category.toUpperCase() == 'FLAT';
-    return Tooltip(
-      message: 'Click to copy',
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => _copySequenceToClipboard(context, info.sequence),
-          child: Text.rich(
-            TextSpan(
-              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.black),
-              children: [
-                const TextSpan(text: 'Selected well: '),
-                TextSpan(text: '$_selectedWell', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const TextSpan(text: '  ('),
-                // Exact handle name (e.g. antiBArt), colored to match its category.
-                if (!isFlat) ...[
-                  TextSpan(text: info.id, style: TextStyle(color: highlight, fontWeight: FontWeight.bold)),
-                  const TextSpan(text: ', '),
-                ],
-                TextSpan(text: 'H${info.side}, pos ${info.position}, conc ${info.concentration} µM, compat: ${info.compatibilityLabel}): '),
-                ..._buildSequenceSpans(info.sequence, highlight),
-              ],
-            ),
-            textAlign: TextAlign.center,
-            softWrap: true,
-          ),
-        ),
-      ),
+    return CopyableHandleSequenceText(
+      sequence: info.sequence,
+      highlight: highlight,
+      prefix: [
+        const TextSpan(text: 'Selected well: '),
+        TextSpan(text: '$_selectedWell', style: const TextStyle(fontWeight: FontWeight.bold)),
+        const TextSpan(text: '  ('),
+        // Exact handle name (e.g. antiBArt), colored to match its category.
+        if (!isFlat) ...[
+          TextSpan(text: info.id, style: TextStyle(color: highlight, fontWeight: FontWeight.bold)),
+          const TextSpan(text: ', '),
+        ],
+        TextSpan(text: 'H${info.side}, pos ${info.position}, conc ${info.concentration} µM, compat: ${info.compatibilityLabel}): '),
+      ],
     );
   }
 
@@ -596,7 +521,7 @@ class _PlateLayoutViewState extends State<_PlateLayoutView> {
     final info = _wellMap[name];
     final present = info != null;
     final selected = name == _selectedWell;
-    final fill = present ? _plateCategoryDisplayColor(info.category) : Colors.grey.shade200;
+    final fill = present ? plateCategoryDisplayColor(info.category) : Colors.grey.shade200;
     // Special-compatibility wells get an orange marker border.
     final special = present && info.isSpecialCompatibility;
 
