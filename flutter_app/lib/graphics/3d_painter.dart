@@ -36,7 +36,7 @@ class InstanceMetrics {
   late int originalMaxIndex;
   int indexMultiplier;
   late three.InstancedMesh mesh;
-  final three.Material material = three.MeshStandardMaterial.fromMap({"color": 0x00FFFFFF, "flatShading": false});
+  final three.Material material = three.MeshStandardMaterial.fromMap({"color": 0x00FFFFFF, "flatShading": false, "roughness": 0.55, "metalness": 0.0});
   final three.BufferGeometry geometry;
   final Queue<int> recycledIndices;
   final Map<String, int> nameIndex;
@@ -322,6 +322,15 @@ class ThreeDisplayState extends State<ThreeDisplay> {
   bool hoverView = true;
 
   bool gridView = true;
+
+  /// When true, the scene switches to even, shadow-free lighting (hemisphere fill + camera-following headlight) so
+  /// that the undersides and lower layers of a design are as visible as the top.
+  bool inspectLighting = false;
+  late three.DirectionalLight topLight;
+  late three.AmbientLight ambientLight;
+  late three.HemisphereLight hemiLight;
+  late three.DirectionalLight headLight;
+
   GridHelper gridHelper = GridHelper(1000, 50); // Grid size: 1000, 50 divisions
   AxesHelper axesHelper = AxesHelper(1000);
 
@@ -487,11 +496,16 @@ class ThreeDisplayState extends State<ThreeDisplay> {
       threeJs.scene.add(axesHelper);
     }
 
-    // main shadow-generating camera
-    final dirLight1 = three.DirectionalLight(0xffffff, 0.8);
-    dirLight1.position.setValues(0, 200, 0);
-    dirLight1.castShadow = true;
-    final shadowCam = dirLight1.shadow?.camera as three.OrthographicCamera;
+    // All light intensities are created at 0 here and set by applyLightingMode() (called below), which is the single
+    // place to tune them for both lighting modes.
+
+    // main shadow-generating light, shining down from above
+    topLight = three.DirectionalLight(0xffffff, 0);
+    topLight.position.setValues(0, 200, 0);
+    topLight.castShadow = true;
+    topLight.shadow!.mapSize.setValues(1024, 1024);
+    topLight.shadow!.bias = -0.0005; // suppresses self-shadowing artifacts (shadow acne) on the slat surfaces
+    final shadowCam = topLight.shadow?.camera as three.OrthographicCamera;
     shadowCam.left = -500;
     shadowCam.right = 500;
     shadowCam.top = 500;
@@ -499,19 +513,34 @@ class ThreeDisplayState extends State<ThreeDisplay> {
     shadowCam.near = 0.5;
     shadowCam.far = 1000;
     shadowCam.updateProjectionMatrix();
-    threeJs.scene.add(dirLight1);
+    threeJs.scene.add(topLight);
 
     // ambient light (to light up underside of design)
-    final ambientLight = three.AmbientLight(0xffffff, 0.3);
-
+    ambientLight = three.AmbientLight(0xffffff, 0);
     threeJs.scene.add(ambientLight);
+
+    // Hemisphere fill (used in both modes) and camera-following headlight (inspect mode only). These always stay in
+    // the scene, even at zero intensity, because changing the number of active lights forces every shader to
+    // recompile, which would cause a stutter on each toggle.
+    hemiLight = three.HemisphereLight(0xffffff, 0xd0d0d0, 0);
+    threeJs.scene.add(hemiLight);
+    headLight = three.DirectionalLight(0xffffff, 0);
+    threeJs.scene.add(headLight);
+    threeJs.scene.add(headLight.target!); // target must be in the scene for its world matrix to update
 
     threeJs.renderer?.shadowMap.type = tmath.PCFSoftShadowMap; // to generate soft shadows
 
     threeJs.renderer?.shadowMap.enabled = true;
 
+    applyLightingMode();
+
     threeJs.addAnimationEvent((dt){
       controls.update();
+      // the headlight follows the camera so that whatever faces the viewer is always lit, from any orbit angle
+      if (inspectLighting) {
+        headLight.position.setFrom(threeJs.camera.position);
+        headLight.target!.position.setFrom(controls.target);
+      }
       // logCameraDetails();
     });
 
@@ -519,6 +548,23 @@ class ThreeDisplayState extends State<ThreeDisplay> {
     prepareSeedInstanceGeometries();
   }
 
+
+  /// Applies the standard or inspect lighting preset by adjusting light intensities only (no lights are added or
+  /// removed, avoiding shader recompilation). In inspect mode the shadow pass is also skipped entirely; the shadow
+  /// light is at zero intensity so its stale shadow map has no visible effect.
+  void applyLightingMode() {
+    // Standard mode also gets some hemisphere fill so shadowed regions aren't too dark (the three_js shaders ignore
+    // shadow.intensity, so shadow strength can only be softened by shifting light from the shadow caster to fill).
+    topLight.intensity = inspectLighting ? 0 : 0.6;
+    ambientLight.intensity = inspectLighting ? 0.15 : 0.25;
+    hemiLight.intensity = inspectLighting ? 0.6 : 0.2;
+    headLight.intensity = inspectLighting ? 0.6 : 0;
+    final shadowMap = threeJs.renderer?.shadowMap;
+    if (shadowMap != null) {
+      shadowMap.autoUpdate = !inspectLighting;
+      if (!inspectLighting) shadowMap.needsUpdate = true;
+    }
+  }
 
   void logCameraDetails() {
     final controls = this.controls;
@@ -1148,6 +1194,29 @@ class ThreeDisplayState extends State<ThreeDisplay> {
               });
               return threeJs.build();
             },
+          ),
+          // "Inspect Lighting" pill above the Center View button — mirrors the 2D "Lock Edits" pill (80% scale,
+          // anchored to its corner) and toggles even, shadow-free lighting for inspecting lower layers.
+          // The label names the lighting currently in use, not the mode it switches to.
+          // bottom: 98 matches the Lock Edits pill's resting height (its bottom: 90 + 8 px gap above the status view).
+          Positioned(
+            bottom: 98.0,
+            right: 15.0,
+            child: Transform.scale(
+              scale: 0.8,
+              alignment: Alignment.bottomRight,
+              child: FloatingActionButton.extended(
+                heroTag: 'inspectLightingButton',
+                backgroundColor: inspectLighting ? Colors.amber[700] : Theme.of(context).colorScheme.primary,
+                foregroundColor: inspectLighting ? Colors.black87 : Theme.of(context).colorScheme.onPrimary,
+                icon: Icon(inspectLighting ? Icons.light_mode : Icons.light_mode_outlined),
+                label: Text(inspectLighting ? 'Inspect Lighting' : 'Standard Lighting'), // shows the active mode
+                onPressed: () => setState(() {
+                  inspectLighting = !inspectLighting;
+                  applyLightingMode();
+                }),
+              ),
+            ),
           ),
           Positioned(
             bottom: 20.0,
