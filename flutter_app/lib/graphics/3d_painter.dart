@@ -1210,7 +1210,7 @@ class ThreeDisplayState extends State<ThreeDisplay> {
                 backgroundColor: inspectLighting ? Colors.amber[700] : Theme.of(context).colorScheme.primary,
                 foregroundColor: inspectLighting ? Colors.black87 : Theme.of(context).colorScheme.onPrimary,
                 icon: Icon(inspectLighting ? Icons.light_mode : Icons.light_mode_outlined),
-                label: Text(inspectLighting ? 'Inspect Lighting' : 'Standard Lighting'), // shows the active mode
+                label: Text(inspectLighting ? 'Standard Lighting' : 'Inspection Lighting'), // adjust to situation
                 onPressed: () => setState(() {
                   inspectLighting = !inspectLighting;
                   applyLightingMode();

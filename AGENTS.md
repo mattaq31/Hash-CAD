@@ -169,7 +169,8 @@ Flutter UI (Dart) <--gRPC--> Python Server <--imports--> crisscross_kit
   - Echo plates: `echo_plate_window.dart`, `echo_plate_grid.dart`, `echo_plate_painters.dart`, `echo_plate_sidebar.dart`, `echo_plate_bars.dart`, `echo_barcode_painter.dart`, `echo_plate_well.dart`, `echo_plate_constants.dart`, `echo_category_colors.dart`, `echo_export.dart`, `echo_well_config_dialog.dart`
   - Master mix: `master_mix_config.dart`, `master_mix_export.dart`
   - PEG purification: `peg_purification_config.dart`, `peg_purification_export.dart`
-  - Manual handles: `manual_handle_dialog.dart`, `mass_manual_handle_dialog.dart`
+  - Manual handles: `manual_handle_dialog.dart` ('Zoom In on Handles' dialog), `mass_manual_handle_dialog.dart`
+  - Handle sequence export: `handle_sequence_export.dart` (per-slat handle sheet in plate 'All Data' format, from the zoom-in dialog)
   - State: `plate_layout_state.dart`, `plate_undo_stack.dart`
 - `dialogs/`: Shared dialog components (`alert_window.dart`, `update_dialog.dart`)
 - `drag_and_drop/`: Platform-specific drag-and-drop handling (`design_drop_target.dart`, `design_drop_target_desktop.dart`, `design_drop_target_web.dart`, `design_drop_target_stub.dart`)
@@ -209,7 +210,7 @@ Protocol definitions are in `flutter_app/python_dart_grpc_protocols/`:
 
 - **Flutter**: Unit tests in `flutter_app/test/unit/` with test helpers/factory:
   - `app_management/`: blocked handle, design I/O round-trip, design state slat, ensure extension, excel utilities, handle link I/O, handle link manager, slat undo stack, STL export validation tests
-  - `echo_plate/`: echo export, echo plate constants, master mix export, PEG purification export, plate duplicate, plate layout state, plate sort, plate sync, plate undo stack tests
+  - `echo_plate/`: echo export, echo plate constants, handle sequence export, master mix export, PEG purification export, plate duplicate, plate layout state, plate sort, plate sync, plate undo stack tests
 - **Python**: Lacks formal test suites; contributions for pytest tests are welcome
 - **After making changes to the Flutter app, always run `flutter test` from `flutter_app/` to verify existing tests still pass**
 - **Important**: Flutter test output can be very large. Always redirect to a file and read the tail:

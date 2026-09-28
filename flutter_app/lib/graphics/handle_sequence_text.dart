@@ -15,12 +15,11 @@ Color plateCategoryDisplayColor(String category) {
   return categoryColor(category);
 }
 
-/// Splits a stored handle sequence (`core + tt + unique`) into colored spans:
-/// the core in black, the `tt` / ` TT ` linker in grey, and the unique tail in
-/// [highlight]. If no linker is present the whole sequence is shown in black.
-List<TextSpan> buildSequenceSpans(String fullSequence, Color highlight) {
-  // Prefer the last linker occurrence: lowercase 'tt' or an uppercase ' TT '
-  // flanked by spaces.
+/// Splits a stored handle sequence into its `core`, `linker` and `unique` parts.
+///
+/// The linker is the last lowercase `tt` or uppercase ` TT ` (including its flanking spaces), whichever
+/// occurs later. Returns null when no linker is present. Shared by the on-screen spans and Excel exports.
+({String core, String linker, String unique})? splitHandleSequence(String fullSequence) {
   final ttIndex = fullSequence.lastIndexOf('tt');
   final upperTtIndex = fullSequence.lastIndexOf(' TT ');
   final int linkerIndex;
@@ -32,17 +31,30 @@ List<TextSpan> buildSequenceSpans(String fullSequence, Color highlight) {
     linkerIndex = ttIndex;
     linkerLen = 2; // 'tt'
   }
-  if (linkerIndex < 0) {
+  if (linkerIndex < 0) return null;
+  return (
+    core: fullSequence.substring(0, linkerIndex),
+    linker: fullSequence.substring(linkerIndex, linkerIndex + linkerLen), // preserves 'tt' vs ' TT '
+    unique: fullSequence.substring(linkerIndex + linkerLen),
+  );
+}
+
+/// Color of the `tt` / ` TT ` linker when displaying a handle sequence.
+final Color handleLinkerColor = Colors.grey.shade500;
+
+/// Splits a stored handle sequence (`core + tt + unique`) into colored spans:
+/// the core in black, the `tt` / ` TT ` linker in grey, and the unique tail in
+/// [highlight]. If no linker is present the whole sequence is shown in black.
+List<TextSpan> buildSequenceSpans(String fullSequence, Color highlight) {
+  final parts = splitHandleSequence(fullSequence);
+  if (parts == null) {
     // No linker present: show the whole sequence in plain black.
     return [TextSpan(text: fullSequence, style: const TextStyle(color: Colors.black))];
   }
-  final core = fullSequence.substring(0, linkerIndex);
-  final linker = fullSequence.substring(linkerIndex, linkerIndex + linkerLen); // preserves 'tt' vs ' TT '
-  final unique = fullSequence.substring(linkerIndex + linkerLen);
   return [
-    TextSpan(text: core, style: const TextStyle(color: Colors.black)),
-    TextSpan(text: linker, style: TextStyle(color: Colors.grey.shade500)),
-    TextSpan(text: unique, style: TextStyle(color: highlight, fontWeight: FontWeight.bold)),
+    TextSpan(text: parts.core, style: const TextStyle(color: Colors.black)),
+    TextSpan(text: parts.linker, style: TextStyle(color: handleLinkerColor)),
+    TextSpan(text: parts.unique, style: TextStyle(color: highlight, fontWeight: FontWeight.bold)),
   ];
 }
 

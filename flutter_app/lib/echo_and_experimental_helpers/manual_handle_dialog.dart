@@ -4,6 +4,7 @@
 // Users toggle positions to mark them as manual. Applied to all currently selected slats.
 // When a single slat is selected, buttons are colored by handle category, cargo positions show
 // the cargo's short name, and hovering a position shows its handle details beneath the view.
+// An 'Export Handle Sequences' button (top right) exports all handles of the selected slats to Excel.
 import 'package:flutter/material.dart';
 import '../crisscross_core/cargo.dart';
 import '../graphics/handle_sequence_text.dart';
@@ -18,6 +19,8 @@ import 'echo_category_colors.dart';
 /// When [h5Handles] and [h2Handles] are provided (single-slat mode), buttons are
 /// colored by their handle category. When [multipleSlatsSelected] is true, coloring
 /// is disabled and a warning is shown. [cargoPalette] supplies the short names shown on cargo positions.
+/// [onExportHandleSequences], if provided, is triggered by the top-right export button (dialog stays open) and
+/// receives the dialog's current (possibly unapplied) manual positions.
 Future<Set<(int, int)>?> showManualHandleDialog(
   BuildContext context, {
   required Set<(int, int)> currentManualPositions,
@@ -28,6 +31,7 @@ Future<Set<(int, int)>?> showManualHandleDialog(
   bool multipleSlatsSelected = false,
   String? slatName,
   Map<String, Cargo>? cargoPalette,
+  void Function(Set<(int, int)> pendingManualPositions)? onExportHandleSequences,
 }) {
   return showDialog<Set<(int, int)>>(
     context: context,
@@ -40,6 +44,7 @@ Future<Set<(int, int)>?> showManualHandleDialog(
       multipleSlatsSelected: multipleSlatsSelected,
       slatName: slatName,
       cargoPalette: cargoPalette,
+      onExportHandleSequences: onExportHandleSequences,
     ),
   );
 }
@@ -53,6 +58,7 @@ class _ManualHandleDialog extends StatefulWidget {
   final bool multipleSlatsSelected;
   final String? slatName;
   final Map<String, Cargo>? cargoPalette;
+  final void Function(Set<(int, int)> pendingManualPositions)? onExportHandleSequences;
 
   const _ManualHandleDialog({
     required this.currentManualPositions,
@@ -63,6 +69,7 @@ class _ManualHandleDialog extends StatefulWidget {
     this.multipleSlatsSelected = false,
     this.slatName,
     this.cargoPalette,
+    this.onExportHandleSequences,
   });
 
   @override
@@ -188,6 +195,18 @@ class _ManualHandleDialogState extends State<_ManualHandleDialog> {
                       : (widget.slatName ?? 'Handle View'),
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
+                const Spacer(),
+                if (widget.onExportHandleSequences != null)
+                  OutlinedButton.icon(
+                    onPressed: () => widget.onExportHandleSequences!(Set.of(_manualPositions)),
+                    icon: const Icon(Icons.download, size: 16),
+                    label: const Text('Export Handle Sequences'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.deepPurple,
+                      side: BorderSide(color: Colors.deepPurple.withValues(alpha: 0.5)),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                  ),
               ],
             ),
 
