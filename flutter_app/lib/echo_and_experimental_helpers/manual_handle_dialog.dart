@@ -197,13 +197,13 @@ class _ManualHandleDialogState extends State<_ManualHandleDialog> {
                 ),
                 const Spacer(),
                 if (widget.onExportHandleSequences != null)
-                  OutlinedButton.icon(
+                  ElevatedButton.icon(
                     onPressed: () => widget.onExportHandleSequences!(Set.of(_manualPositions)),
                     icon: const Icon(Icons.download, size: 16),
                     label: const Text('Export Handle Sequences'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.deepPurple,
-                      side: BorderSide(color: Colors.deepPurple.withValues(alpha: 0.5)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
                       textStyle: const TextStyle(fontSize: 12),
                     ),
                   ),
