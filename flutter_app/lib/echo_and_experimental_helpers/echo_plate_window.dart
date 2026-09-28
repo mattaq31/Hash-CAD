@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ import 'echo_plate_pdf_export.dart';
 import 'echo_plate_sidebar.dart';
 import 'echo_plate_well.dart';
 import 'echo_well_config_dialog.dart';
+import 'handle_sequence_export.dart';
 import 'manual_handle_dialog.dart';
 import 'mass_manual_handle_dialog.dart';
 import 'master_mix_config.dart';
@@ -442,6 +444,20 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       break;
     }
 
+    final selectedSlats = [for (final id in selectedSlatIds) if (appState.slats[id] != null) appState.slats[id]!];
+
+    /// Exports every handle of the selected slats into a single Excel sheet, highlighting manual handles.
+    ///
+    /// If the manual positions were edited in the dialog, they are used for every selected slat (as 'Apply' would do);
+    /// otherwise each slat's saved manual positions are used, which stays correct when selected slats' configs differ.
+    Future<void> exportHandleSequences(Set<(int, int)> pendingManualPositions) async {
+      if (selectedSlats.isEmpty) return;
+      final edited = !setEquals(pendingManualPositions, currentPositions);
+      final manualHandles = {for (final slat in selectedSlats) slat.id: edited ? pendingManualPositions : _layoutState!.getManualHandles(slat.id)};
+      final bytes = generateHandleSequenceExcel(slats: selectedSlats, layerMap: appState.layerMap, allSlats: appState.slats, plateStack: appState.plateStack, manualHandles: manualHandles);
+      await saveFileBytes(bytes, 'selected_slat_handles.xlsx', 'xlsx');
+    }
+
     _dialogOpen = true;
     final result = await showManualHandleDialog(
       context,
@@ -452,6 +468,7 @@ class _EchoPlateWindowState extends State<EchoPlateWindow> {
       multipleSlatsSelected: multipleSlatsSelected,
       slatName: firstSlat != null ? slatDisplayName(firstSlat, appState.layerMap, slats: appState.slats) : null,
       cargoPalette: appState.cargoPalette,
+      onExportHandleSequences: exportHandleSequences,
     );
     _dialogOpen = false;
 

@@ -341,6 +341,21 @@ class HashCadPlate {
     return result;
   }
 
+  /// Returns the raw plate row (header → value) for [well], or null if no row matches.
+  ///
+  /// Accepts the multi-well format produced by [getWell] (e.g. `{A1;B1}`), in which case the first well is used.
+  /// Useful for retrieving columns not stored on slat handles (e.g. name, description, compatibility).
+  Map<String, dynamic>? rawRowForWell(String well) {
+    final target = well.replaceAll(RegExp(r'[{}]'), '').split(';').first.trim().toUpperCase();
+    if (target.isEmpty) return null;
+    for (final row in rawData) {
+      final rowMap = <String, dynamic>{for (var i = 0; i < rawHeaders.length && i < row.length; i++) rawHeaders[i]: row[i]};
+      final rowWell = _readRowValue(rowMap, 'well')?.toString().trim().toUpperCase();
+      if (rowWell == target) return rowMap;
+    }
+    return null;
+  }
+
   void identifyWellsAndSequences(List<Map<String, dynamic>> rawPlateData) {
     String? assemblyHandleStatementMade;
 
