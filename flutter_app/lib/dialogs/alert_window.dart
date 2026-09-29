@@ -108,7 +108,7 @@ void showKeyboardShortcutsDialog(BuildContext context) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _shortcutItem("'R'", "Rotate slat draw direction"),
+              _shortcutItem("'R'", "Rotate slat draw direction, or rotate selected slats/cargo while dragging them (seeds cannot be rotated)"),
               _shortcutItem("'F'", "Flip multi-slat draw direction"),
               _shortcutItem("'T'", "Transpose slat draw direction (only for straight slats in move mode)"),
               _shortcutItem("'Up/Down arrow keys'", "Change layer"),

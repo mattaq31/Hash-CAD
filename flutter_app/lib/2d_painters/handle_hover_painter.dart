@@ -25,10 +25,12 @@ class HandleHoverPainter extends CustomPainter {
   final ActionState actionState;
   /// 90° rotation steps of the pattern being placed - orients the north guide and triggers repaints on rotation.
   final int patternRotationSteps;
+  /// Rotation steps (R key) applied about [moveAnchor] to cargo being moved - rotates the ghost preview.
+  final int moveRotationSteps;
 
   HandleHoverPainter(this.scale, this.canvasOffset,
       this.hoverValid, this.cargoArrayPoints, this.hoverPosition,
-      this.moveAnchor, this.appState, this.actionState, {this.patternRotationSteps = 0});
+      this.moveAnchor, this.appState, this.actionState, {this.patternRotationSteps = 0, this.moveRotationSteps = 0});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -212,7 +214,9 @@ class HandleHoverPainter extends CustomPainter {
           Color paintColor;
 
           if (moveAnchor != Offset.zero) {
-            centerCoord = appState.convertCoordinateSpacetoRealSpace(coord) + hoverPosition! - moveAnchor;
+            // position is rotated about the drag anchor, but the colour is looked up at the cargo's original coordinate
+            Offset rotatedCoord = rotateCoordinateSpace(coord, appState.convertRealSpacetoCoordinateSpace(moveAnchor), moveRotationSteps, appState.gridMode);
+            centerCoord = appState.convertCoordinateSpacetoRealSpace(rotatedCoord) + hoverPosition! - moveAnchor;
             paintColor = appState.getCargoFromCoordinate(coord, appState.selectedLayerKey, actionState.cargoAttachMode).color;
           } else {
             centerCoord = coord;
@@ -262,6 +266,7 @@ class HandleHoverPainter extends CustomPainter {
   bool shouldRepaint(covariant HandleHoverPainter oldDelegate) {
     return hoverPosition != oldDelegate.hoverPosition ||
         hoverValid != oldDelegate.hoverValid ||
-        patternRotationSteps != oldDelegate.patternRotationSteps;
+        patternRotationSteps != oldDelegate.patternRotationSteps ||
+        moveRotationSteps != oldDelegate.moveRotationSteps;
   }
 }

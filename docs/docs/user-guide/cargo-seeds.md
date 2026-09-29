@@ -28,6 +28,8 @@ One of crisscross origami's unique selling points is its ability to attach cargo
 
 Cargo can be edited in the same way as assembly handles - simply click on a cargo tag in edit mode to move it around or delete it entirely.
 
+While dragging a selection of cargo, press **R** to rotate it about the cursor (the preview turns red if any rotated position would not land on a slat). Seeds cannot be rotated this way - delete the seed and place it again in the new orientation.
+
 The cargo color can be adjusted after creation from the cargo palette.
 
 !!! tip "Cargo Priority"

@@ -92,6 +92,7 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
     } else if (getActionMode(actionState) == 'Cargo-Move' && dragActive) {
       // when drag mode is activated, the cargo will again follow the cursor (similar to the mouse hover mode)
       setState(() {
+        lastPointerPosition = event.position; // allows rotation (R) to re-check validity without a mouse move
         if (hiddenCargo.isEmpty) {
           for (var coordinate in appState.selectedHandlePositions) {
             hiddenCargo.add(coordinate);
@@ -252,12 +253,12 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
     } else if (getActionMode(actionState) == 'Cargo-Move') {
       setState(() {
         if (hoverValid && dragActive && hoverPosition != null) {
-          // finalizes slat move and applies flips if requested
+          // finalizes cargo move, rotating the selection about the drag anchor if requested
           var convCoordHoverPosition = appState.convertRealSpacetoCoordinateSpace(hoverPosition!);
           var convCoordAnchor = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
           Map<Offset, Offset> coordinateTransferMap = {};
-          for (int i = 0; i < appState.selectedHandlePositions.length; i++) {
-            coordinateTransferMap[appState.selectedHandlePositions[i]] = appState.selectedHandlePositions[i] + convCoordHoverPosition - convCoordAnchor;
+          for (var pos in appState.selectedHandlePositions) {
+            coordinateTransferMap[pos] = rotateCoordinateSpace(pos, convCoordAnchor, moveRotationSteps, appState.gridMode) + convCoordHoverPosition - convCoordAnchor;
           }
           appState.moveCargo(coordinateTransferMap, appState.selectedLayerKey, actionState.cargoAttachMode);
           appState.clearSelection();
@@ -269,6 +270,7 @@ mixin GridControlMouseEventsMixin<T extends StatefulWidget> on State<T>, GridCon
         hiddenCargo = [];
         hoverPosition = null; // Hide the hovering slat when cursor leaves the grid area
         slatMoveAnchor = Offset.zero;
+        moveRotationSteps = 0; // reset the rotation counter
       });
     } else if (getActionMode(actionState) == 'Assembly-Move') {
       setState(() {

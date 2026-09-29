@@ -80,6 +80,7 @@ mixin GridControlPaintersMixin<T extends StatefulWidget> on State<T>, GridContro
                   appState,
                   actionState,
                   patternRotationSteps: actionState.assemblyPatternRotationSteps,
+                  moveRotationSteps: moveRotationSteps,
                 ),
           child: Container(),
         ),

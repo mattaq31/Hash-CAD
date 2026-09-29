@@ -309,8 +309,11 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       // cargo mode
       Map<int, Offset> allCargoCoordinates;
       if (preSelectedPositions) {
+        // selected cargo is rotated about the drag anchor (R key) before being offset, mirroring slat moves
+        Offset cargoOffset = appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor);
+        Offset anchorCoord = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
         for (var coord in appState.selectedHandlePositions) {
-          queryCoordinates.add(appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor) + coord);
+          queryCoordinates.add(rotateCoordinateSpace(coord, anchorCoord, moveRotationSteps, appState.gridMode) + cargoOffset);
         }
       } else {
         if (appState.cargoAdditionType != 'SEED') {
