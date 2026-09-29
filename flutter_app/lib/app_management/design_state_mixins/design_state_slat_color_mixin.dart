@@ -5,25 +5,28 @@ import 'design_state_contract.dart';
 /// Mixin containing slat color management operations for DesignState
 mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
 
-  /// Assigns a color to all selected slats (only non-phantom slats can be edited directly)
+  /// Assigns a color to all selected slats.  Phantoms always share their parent's colour, so selecting either a
+  /// parent or one of its phantoms recolours the whole family.
   @override
   void assignColorToSelectedSlats(Color color) {
+    Set<String> recolouredLayers = {selectedLayerKey};
     for (var slatID in selectedSlats) {
-      if (slats.containsKey(slatID) && slats[slatID]!.phantomParent == null) {
-        slats[slatID]!.uniqueColor = color;
-        if (phantomMap.containsKey(slatID)) {
-          for (var phantomID in phantomMap[slatID]!.values) {
-            slats[phantomID]?.uniqueColor = color;
-          }
-        }
+      if (!slats.containsKey(slatID)) continue;
+      String rootID = slats[slatID]!.phantomParent ?? slatID;
+      for (var memberID in [rootID, ...?phantomMap[rootID]?.values]) {
+        var member = slats[memberID];
+        if (member == null) continue;
+        member.uniqueColor = color;
+        recolouredLayers.add(member.layer);
       }
     }
 
-    // add to sidebar viewer system
-    uniqueSlatColorsByLayer.putIfAbsent(selectedLayerKey, () => []);
-    // check if the color already exists in the list
-    if (!uniqueSlatColorsByLayer[selectedLayerKey]!.contains(color)) {
-      uniqueSlatColorsByLayer[selectedLayerKey]?.add(color);
+    // add to sidebar viewer system (family members can sit on other layers, so each touched layer gets the colour)
+    for (var layer in recolouredLayers) {
+      uniqueSlatColorsByLayer.putIfAbsent(layer, () => []);
+      if (!uniqueSlatColorsByLayer[layer]!.contains(color)) {
+        uniqueSlatColorsByLayer[layer]!.add(color);
+      }
     }
     saveUndoState();
     notifyListeners();

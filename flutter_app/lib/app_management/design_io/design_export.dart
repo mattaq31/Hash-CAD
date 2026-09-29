@@ -436,7 +436,8 @@ Excel buildDesignWorkbook(Map<String, Slat> slats, Map<String, Map<String, dynam
   metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint + 1}')).value = TextCellValue('ID');
   metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + 1}')).value = TextCellValue('Colour');
   int colorIndex = 2;
-  for (var s in slats.values.where((slat) => slat.uniqueColor != null)) {
+  // phantoms always share their parent's colour (restored from the parent on import), so only parents are written
+  for (var s in slats.values.where((slat) => slat.uniqueColor != null && slat.phantomParent == null)) {
     metadataSheet.cell(CellIndex.indexByString('A${colorStartPoint + colorIndex}')).value = TextCellValue(s.id);
     metadataSheet.cell(CellIndex.indexByString('B${colorStartPoint + colorIndex}')).value =
         TextCellValue('#${s.uniqueColor!.value.toRadixString(16).substring(2).toUpperCase()}');

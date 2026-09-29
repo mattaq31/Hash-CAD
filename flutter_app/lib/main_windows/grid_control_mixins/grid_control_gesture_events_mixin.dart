@@ -298,11 +298,21 @@ mixin GridControlGestureEventsMixin<T extends StatefulWidget> on State<T>, GridC
     }
   }
 
-  /// Handle right-click (secondary tap) to select handle and all linked handles
+  /// Handle right-click (secondary tap):
+  /// - Slat-Move: selects the clicked slat plus its parent/phantoms (shift adds to the current selection)
+  /// - Assembly-Move: selects the clicked handle and all linked handles
   Future<void> handleSecondaryTapUp(TapUpDetails details, DesignState appState, ActionState actionState) async {
-    if (getActionMode(actionState) != 'Assembly-Move') return;
-
     final Offset snappedPosition = appState.convertRealSpacetoCoordinateSpace(gridSnap(details.localPosition, appState));
+
+    if (getActionMode(actionState) == 'Slat-Move') {
+      var clickedSlatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[snappedPosition];
+      if (clickedSlatID != null) {
+        appState.selectPhantomFamily(clickedSlatID, addToSelection: isShiftPressed);
+      }
+      return;
+    }
+
+    if (getActionMode(actionState) != 'Assembly-Move') return;
 
     // Check if there's an assembly handle at this position
     var slatID = appState.occupiedGridPoints[appState.selectedLayerKey]?[snappedPosition];
