@@ -76,6 +76,23 @@ mixin DesignStatePhantomMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Selects a slat together with its whole phantom family (parent + every phantom) in one go.  Only members on the
+  /// current layer are selected, since slat selections/moves operate on a single layer.
+  @override
+  void selectPhantomFamily(String slatID, {bool addToSelection = false}) {
+    final slat = slats[slatID];
+    if (slat == null) return;
+    final rootID = slat.phantomParent ?? slatID;
+
+    if (!addToSelection) clearSelection();
+    for (var memberID in [rootID, ...?phantomMap[rootID]?.values]) {
+      if (slats[memberID]?.layer == selectedLayerKey) {
+        selectSlat(memberID, addOnly: true);
+      }
+    }
+    notifyListeners();
+  }
+
   @override
   bool selectionHasPhantoms() {
     bool hasPhantoms = false;

@@ -346,8 +346,9 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
   }
 
   // ── Apply unique slat colours (propagate to phantoms) ──
+  // Phantom rows (written by older exports) are ignored: a phantom always takes its parent's colour.
   for (var slat in slats.values) {
-    if (slatColors.containsKey(slat.id)) {
+    if (slat.phantomParent == null && slatColors.containsKey(slat.id)) {
       slat.setColor(slatColors[slat.id]!);
 
       if (phantomMap.containsKey(slat.id)) {

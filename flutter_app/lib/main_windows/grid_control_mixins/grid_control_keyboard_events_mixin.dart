@@ -40,7 +40,15 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
           }
           return;
         }
-        if (getActionMode(actionState) == 'Slat-Move' && dragActive) {
+        // seeds must keep their orientation, so a cargo selection containing seed handles cannot be rotated.  The drag
+        // is cancelled before warning, as a modal dialog would swallow the pointer-up and leave the drag hanging.
+        if (getActionMode(actionState) == 'Cargo-Move' && dragActive &&
+            appState.selectedHandlePositions.any((coord) => appState.getCargoFromCoordinate(coord, appState.selectedLayerKey, actionState.cargoAttachMode).name == 'SEED')) {
+          cancelActiveDrag();
+          showWarning(context, 'Seeds cannot be rotated', 'Delete the seed and place it again in the new orientation.');
+          return;
+        }
+        if ((getActionMode(actionState) == 'Slat-Move' || getActionMode(actionState) == 'Cargo-Move') && dragActive) {
           setState(() {
             moveRotationSteps += 1;
             var (_, newHoverValid) = hoverCalculator(lastPointerPosition, appState, actionState, true);

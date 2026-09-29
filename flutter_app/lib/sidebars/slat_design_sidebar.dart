@@ -121,23 +121,50 @@ class _SlatDesignTools extends State<SlatDesignTools> {
         ],
       ),
       SizedBox(height: 10),
-      FilledButton.icon(
-        onPressed: actionState.lockEdits ? null : () {
-          appState.clearAll();
-        },
-        icon: Icon(Icons.cleaning_services, size: 18),
-        label: Text("Clear All"),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red,
-          // Red background
-          foregroundColor: Colors.white,
-          // White text
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: TextStyle(fontSize: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8), // Rounded edges
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 'Clear' removes slats/phantoms only; 'Full Clear' resets the entire design
+          Tooltip(
+            message: 'Remove all slats and phantoms (keeps layers, colours and palettes)',
+            child: FilledButton.icon(
+              onPressed: actionState.lockEdits ? null : () {
+                appState.clearSlats();
+              },
+              icon: Icon(Icons.cleaning_services, size: 18),
+              label: Text("Clear"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                textStyle: TextStyle(fontSize: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8), // Rounded edges
+                ),
+              ),
+            ),
           ),
-        ),
+          SizedBox(width: 10),
+          Tooltip(
+            message: 'Reset the entire design (layers, colours, palettes and slats)',
+            child: FilledButton.icon(
+              onPressed: actionState.lockEdits ? null : () {
+                appState.clearAll();
+              },
+              icon: Icon(Icons.delete_forever, size: 18),
+              label: Text("Full Clear"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                textStyle: TextStyle(fontSize: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8), // Rounded edges
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       Divider(thickness: 1, color: Colors.grey.shade200),
       Text(

@@ -403,8 +403,33 @@ class SlatPainter extends CustomPainter {
     final sortedSlats = List<Slat>.from(slats)
       ..sort((a, b) => layerMap[a.layer]?['order'].compareTo(layerMap[b.layer]?['order']));
 
+    // When slats are selected, the rest of the selected layer is dimmed to make the selection stand out.  The dimmed
+    // slats are drawn as one contiguous block inside a single translucent layer (so their handles/labels dim with them),
+    // which means the selected layer is drawn as: unselected slats first, then the selected ones on top.
+    final Set<String> selectedSet = selectedSlats.toSet();
+    final int selectedOrder = layerMap[selectedLayer]?['order'] ?? 0;
+    final List<Slat> drawOrder = [
+      ...sortedSlats.where((sl) => layerMap[sl.layer]?['order'] < selectedOrder),
+      ...sortedSlats.where((sl) => sl.layer == selectedLayer && !selectedSet.contains(sl.id)),
+      ...sortedSlats.where((sl) => sl.layer == selectedLayer && selectedSet.contains(sl.id)),
+      ...sortedSlats.where((sl) => layerMap[sl.layer]?['order'] > selectedOrder),
+    ];
+    final bool dimUnselected = selectedSet.isNotEmpty;
+    final Paint dimLayerPaint = Paint()..color = Colors.black.withValues(alpha: 0.5);
+    bool dimLayerOpen = false;
+
     String selectedLayerTopside = (layerMap[selectedLayer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
-    for (var slat in sortedSlats) {
+    for (var slat in drawOrder) {
+
+      // open/close the dimming layer at the boundaries of the dimmed block (before any early 'continue')
+      final bool dimThisSlat = dimUnselected && slat.layer == selectedLayer && !selectedSet.contains(slat.id);
+      if (dimThisSlat && !dimLayerOpen) {
+        canvas.saveLayer(visibleRect, dimLayerPaint);
+        dimLayerOpen = true;
+      } else if (!dimThisSlat && dimLayerOpen) {
+        canvas.restore();
+        dimLayerOpen = false;
+      }
 
       // logic on whether slat should be hidden (or otherwise)
       if (hiddenSlats.contains(slat.id)){
@@ -891,6 +916,7 @@ class SlatPainter extends CustomPainter {
         drawBorder(canvas, coords, mainColor, slatExtendFront, (actionState.drawingAids || actionState.extendSlatTips), slat.slatType);
       }
     }
+    if (dimLayerOpen) canvas.restore(); // the dimmed block ran to the end of the draw order
 
     canvas.restore();
   }

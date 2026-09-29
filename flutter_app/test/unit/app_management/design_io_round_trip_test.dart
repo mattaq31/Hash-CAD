@@ -297,6 +297,30 @@ void main() {
       expect(importedPhantom.h5Handles[5]!['fluorophore'], 'Cy3');
     });
 
+    test('exports unique colours for parents only and restores phantom colours from the parent', () async {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      final baseSlat = state.slats.values.single;
+      state.addPhantomSlats(baseSlat.layer, {
+        1: {for (var entry in baseSlat.slatPositionToCoordinate.entries) entry.key: entry.value + const Offset(0, 40)}
+      }, {1: baseSlat});
+      final phantomID = state.phantomMap[baseSlat.id]!.values.single;
+      state.selectSlat(phantomID);
+      state.assignColorToSelectedSlats(const Color(0xFF00AA00));
+
+      final workbook = buildDesignWorkbook(state.slats, state.layerMap, state.cargoPalette, state.occupiedCargoPoints,
+          state.seedRoster, state.assemblyLinkManager, state.gridSize, state.gridMode, state.designName);
+
+      // only the parent gets a row in the unique slat colour section
+      final metadataIDs = workbook[metadataSheetName].rows.map((row) => row.isEmpty ? null : row.first?.value?.toString()).toList();
+      expect(metadataIDs, contains(baseSlat.id));
+      expect(metadataIDs, isNot(contains(phantomID)));
+
+      final result = await parseDesignInIsolate(Uint8List.fromList(workbook.encode()!));
+      expect(result.errorCode, isEmpty);
+      expect(result.slats[baseSlat.id]!.uniqueColor, const Color(0xFF00AA00));
+      expect(result.slats.values.firstWhere((slat) => slat.phantomParent == baseSlat.id).uniqueColor, const Color(0xFF00AA00));
+    });
+
     test('round-trips assembly handle patterns', () async {
       final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
       state.assemblyHandlePatterns['P1'] = AssemblyHandlePattern(id: 'P1', name: 'Motif A', entries: const [

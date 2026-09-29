@@ -163,6 +163,24 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       }
     }
 
+    // Cargo move: two different source handles must not land on the same handle of one phantom family (e.g. one on
+    // the parent and one on its phantom) as they would overwrite each other.  coordinates[i] pairs with hiddenCargo[i].
+    if (getActionMode(actionState) == 'Cargo-Move') {
+      (String, int)? handleKeyAt(Offset coord) {
+        var slat = appState.slats[appState.occupiedGridPoints[appState.selectedLayerKey]?[coord]];
+        int? position = slat?.slatCoordinateToPosition[coord];
+        return (slat == null || position == null) ? null : (slat.phantomParent ?? slat.id, position);
+      }
+      Map<(String, int), (String, int)?> claimed = {};
+      for (int i = 0; i < coordinates.length && i < hiddenCargo.length; i++) {
+        var destination = handleKeyAt(coordinates[i]);
+        if (destination == null) continue;
+        var source = handleKeyAt(hiddenCargo[i]);
+        if (claimed.containsKey(destination) && claimed[destination] != source) return true;
+        claimed[destination] = source;
+      }
+    }
+
     if (occupiedPositions == null && seedLayerChecks.isEmpty) return false;
 
     // Check 1: Regular same-layer collision
@@ -291,8 +309,11 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
       // cargo mode
       Map<int, Offset> allCargoCoordinates;
       if (preSelectedPositions) {
+        // selected cargo is rotated about the drag anchor (R key) before being offset, mirroring slat moves
+        Offset cargoOffset = appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor);
+        Offset anchorCoord = appState.convertRealSpacetoCoordinateSpace(slatMoveAnchor);
         for (var coord in appState.selectedHandlePositions) {
-          queryCoordinates.add(appState.convertRealSpacetoCoordinateSpace(snapPosition - slatMoveAnchor) + coord);
+          queryCoordinates.add(rotateCoordinateSpace(coord, anchorCoord, moveRotationSteps, appState.gridMode) + cargoOffset);
         }
       } else {
         if (appState.cargoAdditionType != 'SEED') {

@@ -130,7 +130,8 @@ mixin DesignStateContract on ChangeNotifier {
   // === Methods from DesignStateFileIOMixin ===
   void exportCurrentDesign(BuildContext context);
   void importNewDesign(BuildContext context, {String? fileName, Uint8List? fileBytes});
-  void clearAll();
+  void clearAll({bool keepCargoPalette = false});
+  void clearSlats();
 
   // === Methods from DesignStateLayerMixin ===
   String? getAdjacentLayer(String layerID, String slatSide);
@@ -195,6 +196,8 @@ mixin DesignStateContract on ChangeNotifier {
   void clearPhantomSlatSelection();
   bool selectionHasPhantoms();
   bool selectionInvolvesPhantoms();
+  /// Selects [slatID]'s parent and all of its phantoms on the current layer (keeps the existing selection if [addToSelection]).
+  void selectPhantomFamily(String slatID, {bool addToSelection = false});
   void spawnAndPlacePhantomSlats();
   void unLinkSelectedPhantoms();
 

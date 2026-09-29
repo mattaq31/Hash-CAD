@@ -153,6 +153,10 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
 
     String layerSideKey = generateLayerSideKey(layerID, slatSide);
 
+    // Destination handle (phantom family root, position) -> source handle that claimed it.  A parent slat and its
+    // phantoms share one set of handles, so two moves landing on different copies would overwrite each other.
+    Map<(String, int), (String, int)> claimedDestinations = {};
+
     for (var fromCoord in coordinateTransferMap.keys) {
 
       if (!occupiedCargoPoints[layerSideKey]!.containsKey(fromCoord)) {
@@ -188,13 +192,20 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
         continue; // no slat at this position
       }
 
-      // no cargo placement can be made on phantom slats
-      if (slats[occupiedGridPoints[layerID]![toCoord]!]!.phantomParent != null) {
+      // seeds cannot sit on phantom slats (regular cargo can - smartSetHandle propagates it to the parent/siblings)
+      if (cargoCategory == 'SEED' && slats[occupiedGridPoints[layerID]![toCoord]!]!.phantomParent != null) {
         continue;
       }
 
       var slatReceiver = slats[occupiedGridPoints[layerID]![toCoord]!]!;
       int receiverPosition = slatReceiver.slatCoordinateToPosition[toCoord]!;
+
+      // copies of the same source handle may share a destination (harmless); a different source cannot - that cargo stays put
+      var sourceHandle = (slatDonor.phantomParent ?? slatDonor.id, donorPosition);
+      var claimant = claimedDestinations.putIfAbsent((slatReceiver.phantomParent ?? slatReceiver.id, receiverPosition), () => sourceHandle);
+      if (claimant != sourceHandle) {
+        continue;
+      }
 
       moveOperations.add((
         fromCoord: fromCoord,
@@ -214,8 +225,8 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
       Set<(String, Offset)> affectedCoordinates = deleteHandleWithPhantomPropagation(op.slatDonor, op.donorPosition, integerSlatSide);
 
       // Batch update occupiedCargoPoints for all affected coordinates
-      for (var (layerID, coord) in affectedCoordinates) {
-        occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]?.remove(coord);
+      for (var (affectedLayer, coord) in affectedCoordinates) {
+        occupiedCargoPoints[generateLayerSideKey(affectedLayer, getOccupancySideFromHelix(layerMap, affectedLayer, integerSlatSide))]?.remove(coord);
       }
 
       // For SEED category handles, also remove from the slat occupancy on the blocked layer
@@ -230,9 +241,13 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
     for (var op in moveOperations) {
       Set<HandleKey> affectedPositions = smartSetHandle(op.slatReceiver, op.receiverPosition, integerSlatSide, op.cargoName, op.cargoCategory);
 
-      // Batch update occupiedCargoPoints for all affected coordinates
+      // Batch update occupiedCargoPoints for all affected coordinates - phantom copies can sit on other layers
+      // (possibly with flipped helices), so each is keyed by its own slat's layer and face (mirroring phase 2)
       for (var (slatID, position, _) in affectedPositions) {
-        occupiedCargoPoints[layerSideKey]![slats[slatID]!.slatPositionToCoordinate[position]!] = op.cargoName;
+        String affectedLayer = slats[slatID]!.layer;
+        String affectedKey = generateLayerSideKey(affectedLayer, getOccupancySideFromHelix(layerMap, affectedLayer, integerSlatSide));
+        occupiedCargoPoints.putIfAbsent(affectedKey, () => {});
+        occupiedCargoPoints[affectedKey]![slats[slatID]!.slatPositionToCoordinate[position]!] = op.cargoName;
       }
 
       // For SEED category handles, also update the slat occupancy on the blocked layer
@@ -318,9 +333,13 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
 
       Set<HandleKey> affectedPositions = smartSetHandle(slat, position, integerSlatSide, cargo.name, 'CARGO');
 
-      // Batch update occupiedCargoPoints for all affected coordinates
+      // Batch update occupiedCargoPoints for all affected coordinates (phantom copies may sit on other layers,
+      // possibly with flipped helices, so the face is re-derived per layer)
       for (var (slatID, position, _) in affectedPositions) {
-        occupiedCargoPoints[layerSideKey]![slats[slatID]!.slatPositionToCoordinate[position]!] = cargo.name;
+        String affectedLayer = slats[slatID]!.layer;
+        String affectedKey = generateLayerSideKey(affectedLayer, getOccupancySideFromHelix(layerMap, affectedLayer, integerSlatSide));
+        occupiedCargoPoints.putIfAbsent(affectedKey, () => {});
+        occupiedCargoPoints[affectedKey]![slats[slatID]!.slatPositionToCoordinate[position]!] = cargo.name;
       }
 
     }
@@ -349,8 +368,8 @@ mixin DesignStateCargoMixin on ChangeNotifier, DesignStateContract {
     Set<(String, Offset)> affectedCoordinates = deleteHandleWithPhantomPropagation(slat, position, integerSlatSide);
 
     // Batch update occupiedCargoPoints for all affected coordinates
-    for (var (layerID, coord) in affectedCoordinates) {
-      occupiedCargoPoints[generateLayerSideKey(layerID, slatSide)]?.remove(coord);
+    for (var (affectedLayer, coord) in affectedCoordinates) {
+      occupiedCargoPoints[generateLayerSideKey(affectedLayer, getOccupancySideFromHelix(layerMap, affectedLayer, integerSlatSide))]?.remove(coord);
     }
 
     if (skipStateUpdate) {

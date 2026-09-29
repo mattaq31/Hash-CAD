@@ -209,7 +209,7 @@ Protocol definitions are in `flutter_app/python_dart_grpc_protocols/`:
 ## Testing
 
 - **Flutter**: Unit tests in `flutter_app/test/unit/` with test helpers/factory:
-  - `app_management/`: blocked handle, design I/O round-trip, design state slat, ensure extension, excel utilities, handle link I/O, handle link manager, slat undo stack, STL export validation tests
+  - `app_management/`: blocked handle, design I/O round-trip, design state slat, ensure extension, excel utilities, handle link I/O, handle link manager, phantom cargo move, phantom slat selection / colour, slat undo stack, STL export validation tests
   - `echo_plate/`: echo export, echo plate constants, handle sequence export, master mix export, PEG purification export, plate duplicate, plate layout state, plate sort, plate sync, plate undo stack tests
 - **Python**: Lacks formal test suites; contributions for pytest tests are welcome
 - **After making changes to the Flutter app, always run `flutter test` from `flutter_app/` to verify existing tests still pass**

@@ -158,7 +158,9 @@ class InstanceMetrics {
   void setPositionRotation(String name, tmath.Vector3 position, tmath.Euler rotation){
     positionIndex[name] = position;
     rotationIndex[name] = rotation;
-    dummy.position = position;
+    // copy (never assign) into the shared dummy - assigning would alias this stored vector, and the next
+    // hideAndRecycle() (which parks the dummy at 99999) would silently corrupt this instance's cached position
+    dummy.position.setFrom(position);
     dummy.rotation.set(rotation.x, rotation.y, rotation.z);
     dummy.updateMatrix();
 
@@ -171,9 +173,9 @@ class InstanceMetrics {
     rotationIndex[name] = rotation;
     scaleIndex[name] = scale;
 
-    dummy.position = position;
+    dummy.position.setFrom(position);
     dummy.rotation.set(rotation.x, rotation.y, rotation.z);
-    dummy.scale = scale;
+    dummy.scale.setFrom(scale);
     dummy.updateMatrix();
 
     dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
@@ -182,7 +184,7 @@ class InstanceMetrics {
 
   void setPosition(String name, tmath.Vector3 position) {
     positionIndex[name] = position;
-    dummy.position = position;
+    dummy.position.setFrom(position);
     dummy.updateMatrix();
     dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
     matrixDirty = true;
@@ -198,7 +200,7 @@ class InstanceMetrics {
 
   void setScale(String name, tmath.Vector3 scale) {
     scaleIndex[name] = scale;
-    dummy.scale = scale;
+    dummy.scale.setFrom(scale);
     dummy.updateMatrix();
     dummy.matrix.copyIntoArray(matrixArray, nameIndex[name]! * 16);
     matrixDirty = true;
@@ -1070,7 +1072,7 @@ class ThreeDisplayState extends State<ThreeDisplay> {
         final position = positions[name]!;
         final rotation = rotations[name] ?? tmath.Euler(0, 0, 0);
 
-        dummy.position = position;
+        dummy.position.setFrom(position);
         dummy.rotation.set(rotation.x, rotation.y, rotation.z);
         dummy.updateMatrix();
 

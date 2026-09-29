@@ -15,6 +15,12 @@ int getSlatSideFromLayer(Map<String, Map<String, dynamic>> layerMap, String laye
   return parseHelixSide(layerMap[layerID]?['${slatSide}_helix']);
 }
 
+/// Inverse of [getSlatSideFromLayer]: returns which face ('top'/'bottom') of [layerID] the integer helix [side] sits on.
+/// Needed when a handle propagates to phantom copies on other layers, whose helix orientation may differ.
+String getOccupancySideFromHelix(Map<String, Map<String, dynamic>> layerMap, String layerID, int side) {
+  return getSlatSideFromLayer(layerMap, layerID, 'top') == side ? 'top' : 'bottom';
+}
+
 /// Calculates adjacent layer order (order +1 for top, -1 for bottom)
 int getAdjacentLayerOrder(Map<String, Map<String, dynamic>> layerMap, String layerID, String slatSide) {
   return layerMap[layerID]?['order'] + (slatSide == 'top' ? 1 : -1);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/seed.dart';
 import '../../echo_and_experimental_helpers/plate_layout_state.dart';
@@ -241,8 +242,43 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     }
   }
 
+  /// Removes every slat and phantom (and everything attached to them: cargo, seeds, handles, links and group
+  /// memberships) while keeping the design's setup - layers (order, helices, colours), per-layer slat colour lists,
+  /// cargo/fluorophore palettes, assembly handle patterns, group definitions, plates and grid mode.
   @override
-  void clearAll() {
+  void clearSlats() {
+    // group definitions (names/colours) survive; only their slat memberships go
+    for (var slatID in slats.keys) {
+      cleanupDeletedSlat(slatID);
+    }
+    slats = {};
+    phantomMap = {};
+    occupiedGridPoints = {};
+    occupiedCargoPoints = {};
+    seedRoster = {};
+    nextSeedID = 'A';
+    assemblyLinkManager = HandleLinkManager();
+    for (var layer in layerMap.values) {
+      layer['next_slat_id'] = 1;
+      layer['slat_count'] = 0;
+    }
+    clearSelection();
+    currentMaxValency = 0;
+    currentEffValency = 0.0;
+    hammingValueValid = true;
+    // the echo plate layout refers to specific slats, so it can't survive their removal
+    echoPlateLayoutState = null;
+    echoPlateLayoutFromImport = false;
+
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Wipes the design back to a blank canvas.  If [keepCargoPalette] is set, the user's cargo palette
+  /// definitions survive the reset (used when switching grid modes, where only the canvas should be cleared).
+  @override
+  void clearAll({bool keepCargoPalette = false}) {
+    final Map<String, Cargo> preservedCargoPalette = cargoPalette;
     slats = {};
     layerMap = {
       'A': {
@@ -268,6 +304,9 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     };
     // state reset
     resetDefaults();
+    if (keepCargoPalette) {
+      cargoPalette = preservedCargoPalette;
+    }
     assemblyLinkManager = HandleLinkManager();
     resetGroupState();
     echoPlateLayoutState = null;
