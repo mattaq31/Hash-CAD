@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../crisscross_core/cargo.dart';
 import '../../crisscross_core/handle_plates.dart';
 import '../../crisscross_core/seed.dart';
 import '../../echo_and_experimental_helpers/plate_layout_state.dart';
@@ -241,8 +242,11 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     }
   }
 
+  /// Wipes the design back to a blank canvas.  If [keepCargoPalette] is set, the user's cargo palette
+  /// definitions survive the reset (used when switching grid modes, where only the canvas should be cleared).
   @override
-  void clearAll() {
+  void clearAll({bool keepCargoPalette = false}) {
+    final Map<String, Cargo> preservedCargoPalette = cargoPalette;
     slats = {};
     layerMap = {
       'A': {
@@ -268,6 +272,9 @@ mixin DesignStateFileIOMixin on ChangeNotifier, DesignStateContract {
     };
     // state reset
     resetDefaults();
+    if (keepCargoPalette) {
+      cargoPalette = preservedCargoPalette;
+    }
     assemblyLinkManager = HandleLinkManager();
     resetGroupState();
     echoPlateLayoutState = null;

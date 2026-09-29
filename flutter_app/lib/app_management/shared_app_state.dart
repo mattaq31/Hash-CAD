@@ -350,11 +350,12 @@ class DesignState extends ChangeNotifier
   }
 
   /// updates the grid type (60 or 90) - this method stays in the main class
-  /// because it needs to call clearAll which is in FileIOMixin
+  /// because it needs to call clearAll which is in FileIOMixin.  The cargo palette is kept intact
+  /// since cargo definitions are independent of the grid system.
   @override
   void setGridMode(String value) {
     gridMode = value;
-    clearAll();
+    clearAll(keepCargoPalette: true);
     undoStack = SlatUndoStack();
     saveUndoState();
     notifyListeners();
