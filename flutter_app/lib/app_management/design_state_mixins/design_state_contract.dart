@@ -131,6 +131,7 @@ mixin DesignStateContract on ChangeNotifier {
   void exportCurrentDesign(BuildContext context);
   void importNewDesign(BuildContext context, {String? fileName, Uint8List? fileBytes});
   void clearAll({bool keepCargoPalette = false});
+  void clearSlats();
 
   // === Methods from DesignStateLayerMixin ===
   String? getAdjacentLayer(String layerID, String slatSide);

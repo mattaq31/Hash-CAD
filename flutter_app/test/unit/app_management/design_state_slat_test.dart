@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:hash_cad/app_management/shared_app_state.dart';
+import 'package:hash_cad/crisscross_core/cargo.dart';
 
 import '../../helpers/test_helpers.dart';
 import '../../helpers/design_state_test_factory.dart';
@@ -427,6 +429,70 @@ void main() {
       expect(slat.h2Handles.isEmpty, isTrue);
       expect(slat.h5Handles.isEmpty, isTrue);
       expect(slat.placeholderList.isEmpty, isTrue);
+    });
+  });
+
+  group('DesignState - clearSlats vs clearAll', () {
+    late DesignState state;
+    const layerColour = Color(0xFF123456);
+    const slatColour = Color(0xFF00AA00);
+
+    setUp(() {
+      // two real slats on A (one with a phantom), one on B, plus cargo, colours, a group and a custom layer colour
+      state = DesignStateTestFactory.createWithSlats(slatCount: 2, spacing: 10);
+      state.addSlats('B', buildSlatCoordinatesMap([const Offset(0, 50)]));
+      final parent = state.slats['A-I1']!;
+      state.addPhantomSlats('A', {0: {for (var e in parent.slatPositionToCoordinate.entries) e.key: e.value + const Offset(0, 5)}}, {0: parent});
+      state.cargoPalette['X'] = Cargo(name: 'X', shortName: 'X', color: Colors.red);
+      state.attachCargo(state.cargoPalette['X']!, 'A', 'top', {1: const Offset(2, 10)});
+      state.layerMap['A']!['color'] = layerColour;
+      state.selectedLayerKey = 'A';
+      state.selectSlat('A-I1');
+      state.assignColorToSelectedSlats(slatColour);
+      state.createGroupConfiguration(name: 'Cfg');
+      state.createGroupFromSelection();
+    });
+
+    test('clearSlats removes all slats, phantoms and attachments', () {
+      state.clearSlats();
+
+      expect(state.slats, isEmpty);
+      expect(state.phantomMap, isEmpty);
+      expect(state.occupiedGridPoints.values.every((m) => m.isEmpty), isTrue);
+      expect(state.occupiedCargoPoints.values.every((m) => m.isEmpty), isTrue);
+      expect(state.selectedSlats, isEmpty);
+      for (var group in state.groupConfigurations.values.single.groups.values) {
+        expect(group.slatIds, isEmpty);
+      }
+    });
+
+    test('clearSlats keeps layers, colours and palettes', () {
+      state.clearSlats();
+
+      expect(state.layerMap.keys, containsAll(['A', 'B']));
+      expect(state.layerMap['A']!['color'], layerColour);
+      expect(state.layerMap['A']!['slat_count'], 0);
+      expect(state.uniqueSlatColorsByLayer['A'], contains(slatColour));
+      expect(state.cargoPalette.containsKey('X'), isTrue);
+      expect(state.groupConfigurations.values.single.name, 'Cfg');
+    });
+
+    test('slat numbering restarts after clearSlats', () {
+      state.clearSlats();
+      state.addSlats('A', buildSlatCoordinatesMap([const Offset(0, 0)]));
+
+      expect(state.slats.keys, ['A-I1']);
+      expect(state.layerMap['A']!['slat_count'], 1);
+    });
+
+    test('clearAll still resets the entire design', () {
+      state.clearAll();
+
+      expect(state.slats, isEmpty);
+      expect(state.layerMap['A']!['color'], isNot(layerColour));
+      expect(state.uniqueSlatColorsByLayer, isEmpty);
+      expect(state.cargoPalette.containsKey('X'), isFalse);
+      expect(state.groupConfigurations, isEmpty);
     });
   });
 }
