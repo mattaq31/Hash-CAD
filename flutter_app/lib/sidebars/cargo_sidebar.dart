@@ -135,6 +135,31 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
 
   TextEditingController cargoAddTextController = TextEditingController(text: '1');
 
+  @override
+  void initState() {
+    super.initState();
+    // commit (and clamp) whatever was typed once the user clicks away, not just on Enter
+    cargoAddFocusNode.addListener(() {
+      if (!cargoAddFocusNode.hasFocus && mounted) {
+        _updateCargoAddCount(context.read<DesignState>());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    cargoAddFocusNode.dispose();
+    cargoAddTextController.dispose();
+    super.dispose();
+  }
+
+  /// Applies a typed value immediately (without rewriting the text mid-edit) so the draw count responds as you type.
+  void _liveUpdateCargoAddCount(DesignState appState, String value) {
+    int? newValue = int.tryParse(value);
+    if (newValue == null) return;
+    appState.updateCargoAddCount(newValue.clamp(1, 32));
+  }
+
   void _updateCargoAddCount(DesignState appState) {
     int? newValue = int.tryParse(cargoAddTextController.text);
     int cargoAddCount;
@@ -287,6 +312,11 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
     var appState = context.watch<DesignState>();
     var actionState = context.watch<ActionState>();
 
+    // keeps the text box in sync with external changes (e.g. selecting the seed or a design reset)
+    if (!cargoAddFocusNode.hasFocus && cargoAddTextController.text != appState.cargoAddCount.toString()) {
+      cargoAddTextController.text = appState.cargoAddCount.toString();
+    }
+
     return Column(children: [
       Text("Cargo and Seed Placement",
           textAlign: TextAlign.center,
@@ -424,6 +454,7 @@ class _CargoDesignTools extends State<CargoDesignTools> with WidgetsBindingObser
               ),
               textInputAction: TextInputAction.done,
               inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+              onChanged: (value) => _liveUpdateCargoAddCount(appState, value),
               onSubmitted: (value) {
                 _updateCargoAddCount(appState);
               },
