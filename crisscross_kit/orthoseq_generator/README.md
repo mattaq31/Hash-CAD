@@ -90,7 +90,7 @@ The important modules are:
 
 - `vertex_cover_algorithms.py`
   - converts off-target matrices into graph edges with `build_edges()`
-  - greedy cover heuristic `greedy_vertex_cover_heuristic()`
+  - greedy cover heuristic `greedy_vertex_cover_gmax()`
   - iterative improvement loop `iterative_vertex_cover_refinement()`
 
 - `search_algorithm.py`
