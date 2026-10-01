@@ -151,6 +151,7 @@ def run_naive_search_to_xlsx(
     offtarget_limit: float,
     self_energy_limit: float,
     random_seed: int = 41,
+    ordering: str = "random",
 ) -> Path:
     """
     Run the benchmark naive search on a precomputed dataset and write a
@@ -159,7 +160,7 @@ def run_naive_search_to_xlsx(
     Purpose
     -------
     This function evaluates the simple greedy baseline that iterates over a
-    shuffled candidate order, applies the cached self-energy filter, and
+    random or weaker-first candidate order, applies the cached self-energy filter, and
     rejects any pair that conflicts with the already accepted set.
 
     :param dataset_dir: Directory containing the saved benchmark dataset.
@@ -181,20 +182,34 @@ def run_naive_search_to_xlsx(
     :param random_seed: Seed used to shuffle the candidate visitation order.
     :type random_seed: int
 
+    :param ordering: 'random' shuffles candidates; 'weaker_first' sorts by descending
+                     on-target free energy, retaining random order among equal energies.
+    :type ordering: str
+
     :returns: Path to the written verified workbook.
     :rtype: pathlib.Path
     """
+    if ordering not in ("random", "weaker_first"):
+        raise ValueError("ordering must be 'random' or 'weaker_first'.")
     dataset = load_dataset(dataset_dir)
     dataset_path = Path(dataset_dir)
     derived = dataset["metadata"]["derived"]
+    algorithm_name = "naive_ordered" if ordering == "weaker_first" else "naive"
     if output_path is None:
         cutoff_label = str(offtarget_limit).replace(".", "p")
-        output_path = dataset_path / "results" / f"naive_limit{cutoff_label}_seed{random_seed}.xlsx"
+        output_path = dataset_path / "results" / f"{algorithm_name}_limit{cutoff_label}_seed{random_seed}.xlsx"
     all_idx_by_global = build_all_global_to_all_idx(dataset["all_global_pair_ids"])
     pair_conflict, self_violation = build_conflict_data(dataset, float(offtarget_limit))
     n = int(len(dataset["matrix_global_pair_ids"]))
     order = list(range(n))
     random.Random(random_seed).shuffle(order)
+    if ordering == "weaker_first":
+        on_target_energies = [
+            dataset["all_on_target_energies"][all_idx_by_global[int(global_id)]]
+            for global_id in dataset["matrix_global_pair_ids"]
+        ]
+        # Less negative energies bind more weakly; stable sorting preserves shuffled ties.
+        order.sort(key=lambda idx: on_target_energies[idx], reverse=True)
     selected_local_indices = []
     selected_mask = np.zeros(n, dtype=bool)
     for idx in order:
@@ -225,7 +240,7 @@ def run_naive_search_to_xlsx(
     ]
     return _write_benchmark_result_xlsx(
         output_path,
-        algorithm_name="naive",
+        algorithm_name=algorithm_name,
         dataset=dataset,
         selected_sequence_data=selected_sequence_data,
         verified=verified,
@@ -252,6 +267,7 @@ def run_vertex_cover_search_to_xlsx(
     prune_fraction: float = 0.2,
     vc_max_iterations: int = 200,
     show_progress: bool = False,
+    heuristics: str = "Gmax",
 ) -> Path:
     """
     Run the standalone vertex-cover benchmark on a precomputed dataset and
@@ -295,15 +311,19 @@ def run_vertex_cover_search_to_xlsx(
                           underlying vertex-cover routine.
     :type show_progress: bool
 
+    :param heuristics: Greedy heuristic used for initialization and refinement: 'Gmax' or 'Gmin'.
+    :type heuristics: str
+
     :returns: Path to the written verified workbook.
     :rtype: pathlib.Path
     """
     dataset = load_dataset(dataset_dir)
     dataset_path = Path(dataset_dir)
     derived = dataset["metadata"]["derived"]
+    algorithm_name = "vertex_cover_GMIN" if heuristics == "Gmin" else "vertex_cover"
     if output_path is None:
         cutoff_label = str(offtarget_limit).replace(".", "p")
-        output_path = dataset_path / "results" / f"vertex_cover_limit{cutoff_label}_seed{random_seed}.xlsx"
+        output_path = dataset_path / "results" / f"{algorithm_name}_limit{cutoff_label}_seed{random_seed}.xlsx"
     if not 0 <= prune_fraction <= 1:
         raise ValueError("prune_fraction must be between 0 and 1.")
     random.seed(random_seed)
@@ -334,6 +354,7 @@ def run_vertex_cover_search_to_xlsx(
         max_iterations=vc_max_iterations,
         limit=+np.inf,
         show_progress=show_progress,
+        heuristics=heuristics,
     )
     selected_sequence_data = get_selected_rows(dataset, sorted(vertices - vertex_cover))
     verified = verify_selected_pairs(selected_sequence_data, nupack_params=dataset["metadata"]["nupack"])
@@ -355,7 +376,7 @@ def run_vertex_cover_search_to_xlsx(
     ]
     return _write_benchmark_result_xlsx(
         output_path,
-        algorithm_name="vertex_cover",
+        algorithm_name=algorithm_name,
         dataset=dataset,
         selected_sequence_data=selected_sequence_data,
         verified=verified,

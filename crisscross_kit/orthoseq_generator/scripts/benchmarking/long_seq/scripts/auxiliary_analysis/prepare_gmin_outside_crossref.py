@@ -90,24 +90,15 @@ if __name__ == "__main__":
             for index, pair in enumerate(missing_pairs):
                 cached_flags[pair] = [row[index] for row in missing_flags]
 
-        gmin_flag_rows = list(map(list, zip(*(cached_flags[pair] for pair in gmin_pairs))))
+        gmin_flag_rows = [
+            [cached_flags[pair][index] for pair in gmin_pairs] for index in range(len(outside_df))
+        ]
         sheets["outside_vs_gmin"] = build_matrix_df(outside_df, gmin_flag_rows, gmin_df)
-        gmin_comparison_df = gmin_df[["global_pair_id", "seq", "rc_seq"]].copy()
-        gmin_comparison_df["set_name"] = "gmin_seed_independent"
-        gmin_comparison_df["set_order"] = range(len(gmin_df))
-        sheets["comparison_sets"] = pd.concat([comparison_sets_df, gmin_comparison_df], ignore_index=True)
-        gmin_inside_df = gmin_comparison_df.copy()
-        gmin_inside_df["outside_violation_count"] = [sum(cached_flags[pair]) for pair in gmin_pairs]
-        gmin_inside_df["outside_conflict_probability"] = gmin_inside_df["outside_violation_count"] / len(outside_df)
-        sheets["inside_to_outside"] = pd.concat([sheets["inside_to_outside"], gmin_inside_df], ignore_index=True)
-        sheets["outside_to_inside"]["gmin_violation_count"] = [sum(row) for row in gmin_flag_rows]
-        sheets["outside_to_inside"]["gmin_conflict_probability"] = (
-            sheets["outside_to_inside"]["gmin_violation_count"] / len(gmin_pairs)
-        )
-        sheets["gmin_selected_pairs"] = gmin_df
-        sheets["seed_conflict_probability"]["is_gmin_seed_independent"] = (
-            sheets["seed_conflict_probability"]["global_pair_id"].isin(gmin_df["global_pair_id"])
-        )
+        gmin_df["set_name"] = "gmin_seed_independent"
+        gmin_df["set_order"] = range(len(gmin_df))
+        gmin_df["outside_violation_count"] = [sum(cached_flags[pair]) for pair in gmin_pairs]
+        gmin_df["outside_conflict_probability"] = gmin_df["outside_violation_count"] / len(outside_df)
+        sheets["inside_to_outside"] = pd.concat([sheets["inside_to_outside"], gmin_df], ignore_index=True)
 
         summary = {
             "gmin_source_workbook": str(analysis_workbook),
@@ -123,26 +114,8 @@ if __name__ == "__main__":
         sheets["summary"] = pd.concat([
             sheets["summary"], pd.DataFrame([{"key": key, "value": value} for key, value in summary.items()]),
         ], ignore_index=True)
-        set_summary_rows = []
-        for set_name, sheet_name in [
-            ("naive_first_m", "outside_vs_naive"),
-            ("hybrid_seed_independent", "outside_vs_graph"),
-            ("gmin_seed_independent", "outside_vs_gmin"),
-        ]:
-            selected_df = sheets["comparison_sets"].loc[sheets["comparison_sets"]["set_name"] == set_name]
-            flags = sheets[sheet_name][build_matrix_column_labels(selected_df.sort_values("set_order"))]
-            set_summary_rows.append({
-                "set_name": set_name,
-                "selected_pair_count": len(selected_df),
-                "outside_pool_size": len(outside_df),
-                "mean_conflict_probability": flags.mean().mean(),
-                "compatible_outside_count": int((flags.sum(axis=1) == 0).sum()),
-                "compatible_outside_fraction": (flags.sum(axis=1) == 0).mean(),
-            })
-        sheets["set_summary"] = pd.DataFrame(set_summary_rows)
-
         with pd.ExcelWriter(output_path) as writer:
             for sheet_name, sheet_df in sheets.items():
                 sheet_df.to_excel(writer, sheet_name=sheet_name, index=False)
-        print(sheets["set_summary"].to_string(index=False), flush=True)
+        print(f"GMIN mean conflict probability: {gmin_df['outside_conflict_probability'].mean():.4f}", flush=True)
         print(f"Saved: {output_path}", flush=True)

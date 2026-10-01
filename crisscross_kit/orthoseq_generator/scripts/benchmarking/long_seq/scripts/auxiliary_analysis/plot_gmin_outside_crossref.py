@@ -1,4 +1,4 @@
-"""Extend the SI conflict-probability figure with GMIN using the saved outside-pool comparisons."""
+"""Plot GMIN/GMAX conflict distributions and the original progress fits as separate two-column SVGs."""
 
 from pathlib import Path
 
@@ -15,13 +15,23 @@ if __name__ == "__main__":
     output_dir.mkdir(parents=True, exist_ok=True)
     conflict_probability_xmax = 0.36
     progress_xmax = 2550.0
+    upscale = 1.25
+    figure_width_mm = 2 * 177.8 * 0.32 * upscale
+    panel_height_mm = 38.0 * upscale
+    hspace = 0.40
+    wspace = 0.25
     targets = [
         ("batch_x_TTTT_sigma1p0_seed41", "5p_TTTT", "5′ TTTT extension"),
         ("batch_x______sigma1p0_seed41", "5p_none", "No extension"),
     ]
     plt.rcParams["font.family"] = "Arial"
+    plt.rcParams["svg.fonttype"] = "none"
     fig, axes = plt.subplots(
-        5, 2, figsize=(7, 12), gridspec_kw={"height_ratios": [1, 1, 1, 1, 1.4]},
+        4, 2, figsize=(figure_width_mm / 25.4, 4 * panel_height_mm / 25.4),
+    )
+    progress_fig, progress_axes = plt.subplots(
+        # Preserve the fit panel height after removing the original three rows and their gaps.
+        1, 2, figsize=(figure_width_mm / 25.4, 1.4 * panel_height_mm * 4 / (4 + 3 * hspace) / 25.4),
     )
 
     for column, (batch_name, condition, condition_title) in enumerate(targets):
@@ -75,21 +85,27 @@ if __name__ == "__main__":
         seed_points = np.array(sorted(seed_points), dtype=float).reshape(-1, 2)
         collection_points = np.array(sorted(collection_points), dtype=float).reshape(-1, 2)
         draw_progress_overlay(
-            axes[4, column],
+            progress_axes[column],
             naive_rows["passed_homodimer"].to_numpy(), naive_rows["accepted_into_pool"].to_numpy(),
             seed_points[:, 0], seed_points[:, 1], collection_points[:, 0], collection_points[:, 1],
             progress_xmax=progress_xmax, fit_eval_points=4000, fit_linewidth=1.2, fit_zorder=4,
             point_zorder=6, point_markersize=3.0, point_edgewidth=0.35, point_edge_color="black",
         )
-        axes[4, column].set_title("Original GMAX / naive progress", fontsize=8)
+        progress_axes[column].set_title(condition_title, fontsize=8, pad=6)
 
     # Shared scales within each row make the two extension conditions directly comparable.
-    for row in range(5):
+    for row in range(4):
         ymax = max(ax.get_ylim()[1] for ax in axes[row])
         for ax in axes[row]:
             ax.set_ylim(0, ymax)
-    fig.subplots_adjust(left=0.10, right=0.98, bottom=0.05, top=0.96, hspace=0.65, wspace=0.35)
-    output_path = output_dir / "conf_prob_analysis_with_gmin_len12.pdf"
-    fig.savefig(output_path)
+    # Two original-width columns: halve the outer margins and retain their combined gap between columns.
+    fig.subplots_adjust(left=0.09, right=0.99, bottom=0.06, top=0.97, hspace=hspace, wspace=wspace)
+    progress_fig.subplots_adjust(left=0.09, right=0.99, bottom=0.06, top=0.97, wspace=wspace)
+    output_path = output_dir / "conf_prob_analysis_with_gmin_len12.svg"
+    fig.savefig(output_path, format="svg")
     print(f"Saved: {output_path}")
+    progress_path = output_dir / "progress_analysis_len12.svg"
+    progress_fig.savefig(progress_path, format="svg", bbox_inches="tight", pad_inches=0.1)
+    print(f"Saved: {progress_path}")
     plt.close(fig)
+    plt.close(progress_fig)
