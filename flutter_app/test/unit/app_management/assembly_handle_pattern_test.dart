@@ -1,6 +1,7 @@
 // Unit tests for recording, naming and placing assembly handle patterns (DesignStateAssemblyPatternMixin).
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hash_cad/app_management/action_state.dart';
 import 'package:hash_cad/app_management/shared_app_state.dart';
 import 'package:hash_cad/crisscross_core/assembly_handle_pattern.dart';
 import 'package:hash_cad/crisscross_core/common_utilities.dart';
@@ -192,7 +193,7 @@ void main() {
         AssemblyHandlePatternEntry(offset: Offset.zero, value: '3'),
         AssemblyHandlePatternEntry(offset: Offset(20, 0), value: '4'),
       ]);
-      state.gridMode = '90'; // rotation only applies on the square grid
+      state.gridMode = '90'; // the expected coordinates below use 90° steps
       final anchor = slatCoords[5];
 
       // three 90° steps turn the (20, 0) offset into (0, 20), landing on the slat below
@@ -251,7 +252,7 @@ void main() {
   });
 
   group('AssemblyHandlePattern.coordinatesAt', () {
-    test('rotates about the anchor in 90° steps on the square grid only', () {
+    test('rotates about the anchor in 90° steps on the square grid', () {
       final pattern = AssemblyHandlePattern(id: 'X', name: 'Line', entries: const [
         AssemblyHandlePatternEntry(offset: Offset.zero, value: '1'),
         AssemblyHandlePatternEntry(offset: Offset(2, 0), value: '2'),
@@ -263,8 +264,46 @@ void main() {
       expect(pattern.coordinatesAt(anchor, rotationSteps: 1), [anchor, const Offset(10, 8)]);
       expect(pattern.coordinatesAt(anchor, rotationSteps: 2), [anchor, const Offset(8, 10)]);
       expect(pattern.coordinatesAt(anchor, rotationSteps: 4), [anchor, const Offset(12, 10)]);
-      // rotation is not supported on the 60° grid
-      expect(pattern.coordinatesAt(anchor, rotationSteps: 1, gridMode: '60'), [anchor, const Offset(12, 10)]);
+    });
+
+    test('rotates about the anchor in 60° steps on the hex grid', () {
+      final pattern = AssemblyHandlePattern(id: 'X', name: 'Line', entries: const [
+        AssemblyHandlePatternEntry(offset: Offset.zero, value: '1'),
+        AssemblyHandlePatternEntry(offset: Offset(2, 0), value: '2'),
+      ]);
+      const anchor = Offset(10, 10);
+
+      // each step follows rotateCoordinateSpace: (dx, dy) -> (0.5dx + 0.5dy, -1.5dx + 0.5dy)
+      expect(pattern.coordinatesAt(anchor, rotationSteps: 1, gridMode: '60'), [anchor, const Offset(11, 7)]);
+      expect(pattern.coordinatesAt(anchor, rotationSteps: 3, gridMode: '60'), [anchor, const Offset(8, 10)]);
+      // a full turn (6 steps) returns the original layout
+      expect(pattern.coordinatesAt(anchor, rotationSteps: 6, gridMode: '60'), [anchor, const Offset(12, 10)]);
+    });
+  });
+
+  group('ActionState pattern rotation and handle view', () {
+    test('rotation wraps after 4 steps on the square grid and 6 on the hex grid', () {
+      final square = ActionState();
+      for (int i = 0; i < 4; i++) {
+        square.rotateAssemblyPattern('90');
+      }
+      expect(square.assemblyPatternRotationSteps, 0);
+
+      final hex = ActionState();
+      for (int i = 0; i < 5; i++) {
+        hex.rotateAssemblyPattern('60');
+      }
+      expect(hex.assemblyPatternRotationSteps, 5);
+      hex.rotateAssemblyPattern('60');
+      expect(hex.assemblyPatternRotationSteps, 0);
+    });
+
+    test('choosing a handle view side also turns the assembly handle display on', () {
+      final state = ActionState();
+      expect(state.displayAssemblyHandles, isFalse);
+      state.setAssemblyHandleViewSide('top');
+      expect(state.assemblyHandleViewSide, 'top');
+      expect(state.displayAssemblyHandles, isTrue);
     });
   });
 

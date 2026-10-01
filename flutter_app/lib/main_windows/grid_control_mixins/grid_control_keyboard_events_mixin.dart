@@ -27,9 +27,8 @@ mixin GridControlKeyboardEventsMixin<T extends StatefulWidget> on State<T>, Grid
       SingleActivator(LogicalKeyboardKey.keyR): () {
         if (actionState.lockEdits) return; // no edits while locked
         if (getActionMode(actionState) == 'Assembly-Pattern-Add') {
-          // patterns only rotate on the square grid; R has no other effect while placing a pattern
-          if (appState.gridMode != '90') return;
-          actionState.rotateAssemblyPattern();
+          // patterns rotate in 90° steps on the square grid and 60° steps on the hex grid; R has no other effect here
+          actionState.rotateAssemblyPattern(appState.gridMode);
           if (hoverPosition != null) {
             setState(() {
               // re-check validity without a mouse move: hoverPosition is the snapped canvas position, so converting

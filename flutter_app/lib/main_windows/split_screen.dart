@@ -217,13 +217,9 @@ class _SplitScreenState extends State<SplitScreen> with WidgetsBindingObserver {
                     actionState.setPanelMode(index);
                     appState.preserveSelectionOnLayerChange = (index == 1);
 
-                    if (index != 1) {
-                      appState.clearSelection();
-                    }
+                    // slat selections persist across tabs (e.g. select a group, then edit its handles or make phantoms)
+                    appState.clearHandleSelections();
 
-                    if(index == 2){
-                      actionState.setAssemblyHandleDisplay(true);
-                    }
                     if (index == 3){
                       actionState.setCargoHandleDisplay(true);
                     }

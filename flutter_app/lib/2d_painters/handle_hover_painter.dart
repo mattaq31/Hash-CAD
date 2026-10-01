@@ -57,7 +57,9 @@ class HandleHoverPainter extends CustomPainter {
     /// [rotateCoordinateSpace] transform as the handles themselves, so the guide always tracks the pattern.
     void drawPatternNorthGuide(List<AssemblyHandlePatternEntry> entries, Offset anchor) {
       final gridSize = appState.gridSize;
-      final steps = appState.gridMode == '90' ? patternRotationSteps : 0;
+      final steps = patternRotationSteps;
+      // a single vertical grid step on the hex grid is 2 coordinate units ((0, -1) is not a lattice point there)
+      final northCoord = appState.gridMode == '90' ? const Offset(0, -1) : const Offset(0, -2);
 
       // entry offsets and the pattern's 'north' direction, both rotated and converted to real space
       final rotatedOffsets = entries
@@ -65,7 +67,7 @@ class HandleHoverPainter extends CustomPainter {
               rotateCoordinateSpace(e.offset, Offset.zero, steps, appState.gridMode)))
           .toList();
       final northOffset = appState.convertCoordinateSpacetoRealSpace(
-          rotateCoordinateSpace(const Offset(0, -1), Offset.zero, steps, appState.gridMode));
+          rotateCoordinateSpace(northCoord, Offset.zero, steps, appState.gridMode));
       final north = northOffset / northOffset.distance; // unit vector pointing to the pattern's recorded top
       final along = Offset(-north.dy, north.dx); // unit vector along the guide line
 

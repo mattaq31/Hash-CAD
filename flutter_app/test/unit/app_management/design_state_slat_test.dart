@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:hash_cad/app_management/shared_app_state.dart';
 import 'package:hash_cad/crisscross_core/cargo.dart';
+import 'package:hash_cad/crisscross_core/common_utilities.dart';
 
 import '../../helpers/test_helpers.dart';
 import '../../helpers/design_state_test_factory.dart';
@@ -493,6 +494,54 @@ void main() {
       expect(state.uniqueSlatColorsByLayer, isEmpty);
       expect(state.cargoPalette.containsKey('X'), isFalse);
       expect(state.groupConfigurations, isEmpty);
+    });
+  });
+
+  group('DesignState - clearHandleSelections', () {
+    test('clears handle selections but keeps the slat selection (used on sidebar tab switches)', () {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      state.selectSlat('A-I1');
+      state.selectedHandlePositions = [const Offset(0, 0)];
+      state.selectedAssemblyPositions = [const Offset(1, 0)];
+
+      state.clearHandleSelections();
+
+      expect(state.selectedSlats, ['A-I1']);
+      expect(state.selectedHandlePositions, isEmpty);
+      expect(state.selectedAssemblyPositions, isEmpty);
+    });
+  });
+
+  group('DesignState - removeAllHandlesFromSlats', () {
+    test('wipes cargo, assembly handles, links and blocks from the given slats only', () {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 2, spacing: 10);
+      final target = state.slats['A-I1']!;
+      final other = state.slats['A-I2']!;
+      final topSide = getSlatSideFromLayer(state.layerMap, 'A', 'top');
+
+      // linked assembly handles + a block on the target, an unrelated handle on the other slat
+      state.smartSetHandle(target, 1, topSide, '7', 'ASSEMBLY_HANDLE');
+      state.smartSetHandle(target, 2, topSide, '7', 'ASSEMBLY_HANDLE');
+      state.linkHandlesAndPropagate([(target.id, 1, topSide), (target.id, 2, topSide)]);
+      state.assemblyLinkManager.addBlock((target.id, 3, topSide));
+      state.smartSetHandle(other, 1, topSide, '4', 'ASSEMBLY_HANDLE');
+
+      // cargo on the target
+      state.cargoPalette['X'] = Cargo(name: 'X', shortName: 'X', color: Colors.red);
+      final cargoCoord = target.slatPositionToCoordinate[5]!;
+      state.attachCargo(state.cargoPalette['X']!, 'A', 'top', {1: cargoCoord});
+      expect(state.occupiedCargoPoints['A-top']?.containsKey(cargoCoord), isTrue);
+
+      state.selectSlat(target.id);
+      state.removeAllHandlesFromSlats(state.selectedSlats);
+
+      expect(target.h5Handles, isEmpty);
+      expect(target.h2Handles, isEmpty);
+      expect(state.occupiedCargoPoints['A-top']?.containsKey(cargoCoord) ?? false, isFalse);
+      expect(state.assemblyLinkManager.handleLinkToGroup.keys.where((k) => k.$1 == target.id), isEmpty);
+      expect(state.assemblyLinkManager.handleBlocks.where((k) => k.$1 == target.id), isEmpty);
+      expect(getHandleDict(other, topSide)[1]?['value'], '4');
+      expect(state.selectedSlats, [target.id]); // slat selection is kept
     });
   });
 }

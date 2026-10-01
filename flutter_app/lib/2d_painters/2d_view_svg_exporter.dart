@@ -148,6 +148,7 @@ Future<Map<String, dynamic>?> showSvgExportDialog(
               'positionNumbers': exportPositionNumbers,
               'cargoHandles': exportCargoHandles,
               'assemblyHandles': exportAssemblyHandles,
+              'assemblyViewSide': actionState.assemblyHandleViewSide,
               'slatIDs': exportSlatIDs,
               'layerMode': layerMode,
               'colorMode': colorMode,
@@ -271,6 +272,7 @@ Future<void> exportSlatsToSvg({
           selectedLayerTopside,
           exportOptions['cargoHandles'] == true,
           exportOptions['assemblyHandles'] == true,
+          exportOptions['assemblyViewSide'] as String? ?? 'all',
         );
       }
 
@@ -373,7 +375,12 @@ void _addHandleMarkers(
   String selectedLayerTopside,
   bool exportCargo,
   bool exportAssembly,
+  String assemblyViewSide,
 ) {
+  // honours the top/bottom-only handle view selected in the assembly handles sidebar
+  final bool exportAssemblyTop = exportAssembly && assemblyViewSide != 'bottom';
+  final bool exportAssemblyBottom = exportAssembly && assemblyViewSide != 'top';
+
   final size = gridSize * 0.85;
   final halfHeight = size / 2;
 
@@ -431,7 +438,7 @@ void _addHandleMarkers(
         shortText = appState.cargoPalette[descriptor]?.shortName ?? descriptor;
         color = appState.cargoPalette[descriptor]?.color ?? Colors.grey;
       } else if (category.contains('ASSEMBLY')) {
-        if (!exportAssembly) return;
+        if (isTop ? !exportAssemblyTop : !exportAssemblyBottom) return;
         if (appState.assemblyLinkManager.handleLinkToGroup.containsKey((slat.id, handleIndex, sideName))) {
           color = appState.assemblyHandleLinkedColor;
         } else if (slat.phantomParent != null) {
@@ -473,12 +480,12 @@ void _addHandleMarkers(
     }
 
     // Handle blocks
-    if (topBlocked && exportAssembly) {
+    if (topBlocked && exportAssemblyTop) {
       topText = 'X';
       topColor = appState.assemblyHandleBlockedColor;
       showTop = true;
     }
-    if (bottomBlocked && exportAssembly) {
+    if (bottomBlocked && exportAssemblyBottom) {
       bottomText = 'X';
       bottomColor = appState.assemblyHandleBlockedColor;
       showBottom = true;

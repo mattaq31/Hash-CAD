@@ -250,7 +250,10 @@ Key features added since v1.0.0:
 - **Manual handle selection**: Manual handle automation selection for cargo/handle positions (`manual_handle_dialog.dart`, `mass_manual_handle_dialog.dart`)
 - **Echo plate group splitting**: Option to split plates by group in the echo window
 - **3D-2D layer linking**: 3D viewer linked with 2D when hiding/revealing slat layers
-- **Assembly handle patterns**: Record selected assembly handles (values + blocks) as named patterns and stamp them onto the canvas (R rotates them in 90° grid mode); placement validity reuses the multi-handle move checks. Saved in the `assembly_handle_patterns` sheet (`design_state_assembly_pattern_mixin.dart`, `crisscross_core/assembly_handle_pattern.dart`, pattern panel in `assembly_handles_sidebar.dart`)
+- **Assembly handle patterns**: Record selected assembly handles (values + blocks) as named patterns and stamp them onto the canvas (R rotates them in 90° steps on the square grid, 60° steps on the hex grid); placement validity reuses the multi-handle move checks. Saved in the `assembly_handle_patterns` sheet (`design_state_assembly_pattern_mixin.dart`, `crisscross_core/assembly_handle_pattern.dart`, pattern panel in `assembly_handles_sidebar.dart`)
+- **Assembly handle view controls**: 'View' section at the top of the assembly handles sidebar has an on/off toggle plus all / top-only / bottom-only assembly handle display (`ActionState.assemblyHandleViewSide`, honoured by `slat_painter.dart` and the SVG exporter); opening the sidebar no longer auto-enables handle display
+- **Delete All Handles**: 'Selected Slat Actions' button that strips cargo, seeds, assembly handles, blocks and links from the selected slats (`removeAllHandlesFromSlats` in `design_state_handle_mixin.dart`)
+- **Slat selection persists across sidebar tabs**: tab switches only clear handle selections (`clearHandleSelections`), so a group selected in the Grouping tab can be used in other tabs
 
 ## Documentation
 

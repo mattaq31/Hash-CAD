@@ -828,6 +828,9 @@ class SlatPainter extends CustomPainter {
 
             bool topHandleHidden = (hiddenCargoSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (hiddenAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top') || topCategory == '';
             bool bottomHandleHidden = (hiddenCargoSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (hiddenAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom') || bottomCategory == '';
+            // top/bottom-only assembly handle view (selected in the assembly handles sidebar) - cargo is unaffected
+            if (actionState.assemblyHandleViewSide == 'top' && bottomCategory.contains('ASSEMBLY')) bottomHandleHidden = true;
+            if (actionState.assemblyHandleViewSide == 'bottom' && topCategory.contains('ASSEMBLY')) topHandleHidden = true;
             // Blocked handles now have ASSEMBLY category with value '0', so they pass the category.contains('ASSEMBLY') check
             bool topHandleSelected = (selectedHandleSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (selectedAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
             bool bottomHandleSelected = (selectedHandleSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (selectedAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom' && bottomCategory.contains('ASSEMBLY'));

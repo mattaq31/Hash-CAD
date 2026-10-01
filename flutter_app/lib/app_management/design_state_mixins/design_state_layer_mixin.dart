@@ -56,6 +56,15 @@ mixin DesignStateLayerMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Clears cargo and assembly handle selections while keeping the slat selection intact
+  /// (used when switching sidebar tabs, so a slat selection made in one tab can be used in another).
+  @override
+  void clearHandleSelections() {
+    selectedHandlePositions = [];
+    selectedAssemblyPositions = [];
+    notifyListeners();
+  }
+
   /// Rotates the direction of a layer through all available directions
   @override
   void rotateLayerDirection(String layerKey) {

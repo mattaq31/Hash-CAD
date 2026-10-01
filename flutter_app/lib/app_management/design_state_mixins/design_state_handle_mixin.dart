@@ -873,6 +873,54 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
     notifyListeners();
   }
 
+  /// Removes every cargo, seed and assembly handle (including blocks) from the given slats, along with their handle
+  /// links and enforced values. Plate-generated 'FLAT' placeholders are left alone.
+  ///
+  /// Each handle goes through the same deletion path as the manual delete tools, so phantom siblings, cargo/seed
+  /// occupancy and assembly layer attachments stay consistent. Any active seed touching these slats is dissolved
+  /// first so that handles on unselected slats are kept. The slat selection is preserved.
+  @override
+  void removeAllHandlesFromSlats(List<String> slatIDs) {
+    if (slatIDs.isEmpty) return;
+
+    for (var slatID in List<String>.from(slatIDs)) {
+      var slat = slats[slatID];
+      if (slat == null) continue;
+
+      for (int side in [5, 2]) {
+        String occupancySide = layerMap[slat.layer]?['top_helix'] == 'H$side' ? 'top' : 'bottom';
+        var handleDict = getHandleDict(slat, side);
+
+        // snapshot positions, since deletions (and their phantom propagation) mutate the handle dict
+        for (int position in handleDict.keys.toList()) {
+          var handle = handleDict[position];
+          if (handle == null) continue; // already removed through phantom propagation
+          String category = handle['category'].toString();
+          Offset coordinate = slat.slatPositionToCoordinate[position]!;
+
+          if (category == 'SEED') {
+            var seedKey = isHandlePartOfActiveSeed(slat.layer, occupancySide, coordinate);
+            if (seedKey != null) dissolveSeed(seedKey, skipStateUpdate: true);
+            removeSingleSeedHandle(slatID, occupancySide, coordinate, skipStateUpdate: true);
+          } else if (category == 'CARGO') {
+            removeCargo(slatID, occupancySide, coordinate, skipStateUpdate: true);
+          } else if (category.contains('ASSEMBLY')) {
+            smartDeleteHandle(slat, position, side);
+          }
+        }
+      }
+
+      // links/blocks are keyed on the parent slat - also catches blocks or links without a handle present
+      assemblyLinkManager.removeAllEntriesForSlat(slat.phantomParent ?? slat.id);
+    }
+
+    selectedHandlePositions = [];
+    selectedAssemblyPositions = [];
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
   /// Syncs all assembly handles by re-propagating each handle through the smart system.
   /// This ensures all phantoms and links are properly synchronized.
   @override
