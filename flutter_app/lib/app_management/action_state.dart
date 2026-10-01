@@ -48,6 +48,15 @@ class ActionState extends ChangeNotifier {
   // sidebar control should also be gated on this flag (see setLockEdits below).
   bool lockEdits;
 
+  /// Incremented on every notification so painters can detect display-setting changes (this object is mutated in place).
+  int version = 0;
+
+  @override
+  void notifyListeners() {
+    version++;
+    super.notifyListeners();
+  }
+
   Map<int, String> panelMap = {
     0: 'slats',
     1: 'grouping',

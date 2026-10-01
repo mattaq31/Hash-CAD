@@ -7,12 +7,103 @@ import '../crisscross_core/fluorophore.dart';
 import '../crisscross_core/slats.dart';
 import '../echo_and_experimental_helpers/echo_plate_constants.dart' show slatDisplayName;
 import 'helper_functions.dart';
+import 'text_painter_cache.dart';
 import '../app_management/shared_app_state.dart';
 import '../app_management/action_state.dart';
 
 import '../crisscross_core/seed.dart';
 
 const double kHandleTextMinScale = 2.14;
+
+/// Shared paint for the white divider line between the top/bottom halves of a handle marker.
+final Paint _handleDividerPaint = Paint()..color = Colors.white..strokeWidth = 0.5;
+
+/// Shared paint for the dotted red border around handles that failed plate validation.
+final Paint _invalidHandlePaint = Paint()..color = Colors.red..style = PaintingStyle.stroke..strokeWidth = 1.0;
+
+/// Shared paint for the dark outline around selected handles.
+final Paint _selectedHandlePaint = Paint()
+  ..color = Colors.black
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 3.0
+  ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.3);
+
+/// Paint for the translucent layer that dims unselected slats in the selected layer while a selection exists.
+final Paint _dimLayerPaint = Paint()..color = Colors.black.withValues(alpha: 0.5);
+
+/// Shared fill paint for the black background behind slat ID labels.
+final Paint _slatIdBackgroundPaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+
+/// Kinds of text label drawn by [SlatPainter] on top of its cached geometry.
+enum _SlatLabelKind { handle, number, slatId }
+
+/// A text label recorded while building the slat scene.  Labels are drawn every frame (culled to the viewport and
+/// subject to level-of-detail rules) rather than baked into the cached geometry pictures.
+class _SlatLabel {
+  final _SlatLabelKind kind;
+  final String text;
+  final Color color;
+  final double fontSize;
+  /// Centre point of the label in world (canvas) coordinates.
+  final Offset position;
+  /// True if the owning slat is dimmed (unselected slat in the selected layer while a selection exists).
+  final bool dimmed;
+  /// Slat ID labels only: rotation (radians) and size of the black background box.
+  final double angle;
+  final Size backgroundSize;
+
+  const _SlatLabel(this.kind, this.text, this.color, this.fontSize, this.position, this.dimmed,
+      {this.angle = 0, this.backgroundSize = Size.zero});
+}
+
+/// Geometry for the whole slat layer recorded in world coordinates, plus the labels to overlay on it.
+///
+/// Rebuilding this is as expensive as one old-style full frame, but it only happens when the design, display settings,
+/// selection or hidden items change.  Pan/zoom frames just replay the pictures under a new transform, so their cost no
+/// longer grows with the number of slats/handles in view.
+class _SlatScene {
+  /// Slats in layers at or below the selected layer (the selected layer carries all handles and labels).
+  final Picture below;
+  /// Slats in layers above the selected layer - drawn after the labels so they still tint them, as before.
+  final Picture above;
+  final List<_SlatLabel> labels;
+
+  _SlatScene(this.below, this.above, this.labels);
+}
+
+/// Inputs that determine the slat scene's contents - when unchanged, the cached scene is reused.
+class _SlatSceneKey {
+  final DesignState appState;
+  final ActionState actionState;
+  final int designVersion;
+  final int actionVersion;
+  final int groupVersion;
+  final String selectedLayer;
+  final List<String> selectedSlats;
+  final List<String> hiddenSlats;
+  final List<Offset> hiddenCargo;
+  final List<Offset> hiddenAssembly;
+
+  _SlatSceneKey(this.appState, this.actionState, this.designVersion, this.actionVersion, this.groupVersion,
+      this.selectedLayer, this.selectedSlats, this.hiddenSlats, this.hiddenCargo, this.hiddenAssembly);
+
+  bool matches(_SlatSceneKey other) =>
+      identical(appState, other.appState) &&
+      identical(actionState, other.actionState) &&
+      designVersion == other.designVersion &&
+      actionVersion == other.actionVersion &&
+      groupVersion == other.groupVersion &&
+      selectedLayer == other.selectedLayer &&
+      listEquals(selectedSlats, other.selectedSlats) &&
+      listEquals(hiddenSlats, other.hiddenSlats) &&
+      listEquals(hiddenCargo, other.hiddenCargo) &&
+      listEquals(hiddenAssembly, other.hiddenAssembly);
+}
+
+// There is a single 2D canvas, so one cached scene suffices.  Old pictures are left to the garbage collector rather
+// than disposed, since a frame already submitted to the raster thread may still reference them.
+_SlatSceneKey? _cachedSceneKey;
+_SlatScene? _cachedScene;
 
 bool isColorDark(Color color) {
   // Convert color brightness to 0-255 scale
@@ -193,40 +284,16 @@ class SlatPainter extends CustomPainter {
   final ActionState actionState;
   final DesignState appState;
   final int groupVersion;
-  late Map<int, TextPainter> labelPainters;
 
+  /// Bumped on every DesignState/ActionState notification - lets [shouldRepaint] skip repaints when neither changed
+  /// (e.g. pure hover moves), since both states are mutated in place and can't be compared by identity.
+  final int designVersion;
+  final int actionVersion;
 
   SlatPainter(this.scale, this.canvasOffset, this.slats,
       this.layerMap, this.selectedLayer, this.selectedSlats, this.hiddenSlats,
-      this.hiddenCargo, this.hiddenAssembly, this.actionState, this.appState, this.groupVersion){
-
-    labelPainters = <int, TextPainter>{};
-    TextStyle textStyle = TextStyle(
-      color: Colors.black,
-      fontFamily: 'Roboto',
-      fontWeight: FontWeight.bold,
-      fontSize: appState.gridSize * 0.4, // small enough for grid point
-    );
-
-    TextStyle textStyleLight = TextStyle(
-      color: Colors.white,
-      fontFamily: 'Roboto',
-      fontWeight: FontWeight.bold,
-      fontSize: appState.gridSize * 0.4, // small enough for grid point
-    );
-
-    // first 64 are light, the other 64 are dark - this should be enough for now
-    for (int i = 1; i <= 128; i++) {
-      TextSpan textSpan = TextSpan(text: i < 65 ? '$i' : '${i-64}', style: i < 65 ? textStyle : textStyleLight);
-      TextPainter textPainter = TextPainter(
-        text: textSpan,
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      labelPainters[i] = textPainter;
-    }
-  }
+      this.hiddenCargo, this.hiddenAssembly, this.actionState, this.appState, this.groupVersion,
+      {this.designVersion = 0, this.actionVersion = 0});
 
 
   Offset getRealCoord(Offset slatCoord){
@@ -398,7 +465,98 @@ class SlatPainter extends CustomPainter {
       size.height / scale,
     );
 
+    final key = _SlatSceneKey(appState, actionState, designVersion, actionVersion, groupVersion, selectedLayer,
+        selectedSlats, hiddenSlats, hiddenCargo, hiddenAssembly);
+    if (_cachedScene == null || !_cachedSceneKey!.matches(key)) {
+      _cachedScene = _buildScene();
+      _cachedSceneKey = key;
+    }
+    final scene = _cachedScene!;
+
+    canvas.drawPicture(scene.below);
+    _drawLabels(canvas, scene.labels, visibleRect);
+    canvas.drawPicture(scene.above);
+
+    canvas.restore();
+  }
+
+  /// Draws the visible text labels on top of the cached geometry, skipping text that would be too small to read.
+  void _drawLabels(Canvas canvas, List<_SlatLabel> labels, Rect visibleRect) {
+    const double minReadableTextPx = 4.0;
+    final bool drawHandleText = scale >= kHandleTextMinScale;
+    final bool drawNumberText = appState.gridSize * 0.4 * scale >= minReadableTextPx;
+    final bool drawSlatIdText = appState.gridSize * 0.6 * scale >= minReadableTextPx;
+    if (!drawHandleText && !drawNumberText && !drawSlatIdText) return;
+
+    // labels never extend further than a long slat ID box (6 grid units wide) from their centre
+    final cullRect = visibleRect.inflate(appState.gridSize * 3.5);
     final isWeb = kIsWeb;
+    bool dimLayerOpen = false;
+
+    for (final label in labels) {
+      switch (label.kind) {
+        case _SlatLabelKind.handle:
+          if (!drawHandleText) continue;
+        case _SlatLabelKind.number:
+          if (!drawNumberText) continue;
+        case _SlatLabelKind.slatId:
+          if (!drawSlatIdText) continue;
+      }
+      if (!cullRect.contains(label.position)) continue;
+
+      // dimmed slats' labels are dimmed as a block, matching how their geometry was recorded
+      if (label.dimmed && !dimLayerOpen) {
+        canvas.saveLayer(visibleRect, _dimLayerPaint);
+        dimLayerOpen = true;
+      } else if (!label.dimmed && dimLayerOpen) {
+        canvas.restore();
+        dimLayerOpen = false;
+      }
+
+      final textPainter = TextPainterCache.get(label.text, label.color, label.fontSize);
+      switch (label.kind) {
+        case _SlatLabelKind.handle:
+          textPainter.paint(canvas, Offset(label.position.dx - textPainter.width / 2 - 0.1,
+              label.position.dy - textPainter.height / 2 + 0.2));
+        case _SlatLabelKind.number:
+          textPainter.paint(canvas, label.position - Offset(textPainter.width / 2, textPainter.height / 2));
+        case _SlatLabelKind.slatId:
+          double baselineOffset;
+          if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
+            baselineOffset = textPainter.height + 0.5;
+          } else {
+            baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic);
+          }
+          canvas.save();
+          canvas.translate(label.position.dx, label.position.dy);
+          canvas.rotate(label.angle);
+          canvas.drawRect(
+              Rect.fromCenter(center: Offset.zero, width: label.backgroundSize.width, height: label.backgroundSize.height),
+              _slatIdBackgroundPaint);
+          textPainter.paint(canvas, Offset(-textPainter.width / 2 - 0.1, -baselineOffset / 2 - 0.9));
+          canvas.restore();
+      }
+    }
+    if (dimLayerOpen) canvas.restore();
+  }
+
+  /// Records every slat (no viewport culling) into world-space pictures and collects the text labels to overlay.
+  _SlatScene _buildScene() {
+    final recorderBelow = PictureRecorder();
+    final recorderAbove = PictureRecorder();
+    final canvasBelow = Canvas(recorderBelow);
+    final canvasAbove = Canvas(recorderAbove);
+    final List<_SlatLabel> labels = [];
+
+    // Sets for the per-handle lookups below (the incoming lists would make each check O(n))
+    final Set<String> hiddenSlatSet = hiddenSlats.toSet();
+    final Set<Offset> hiddenCargoSet = hiddenCargo.toSet();
+    final Set<Offset> hiddenAssemblySet = hiddenAssembly.toSet();
+    final Set<Offset> selectedHandleSet = appState.selectedHandlePositions.toSet();
+    final Set<Offset> selectedAssemblySet = appState.selectedAssemblyPositions.toSet();
+
+    // a single fill paint is recoloured for every handle marker rather than allocating one per marker
+    final Paint markerPaint = Paint()..style = PaintingStyle.fill;
 
     final sortedSlats = List<Slat>.from(slats)
       ..sort((a, b) => layerMap[a.layer]?['order'].compareTo(layerMap[b.layer]?['order']));
@@ -415,7 +573,6 @@ class SlatPainter extends CustomPainter {
       ...sortedSlats.where((sl) => layerMap[sl.layer]?['order'] > selectedOrder),
     ];
     final bool dimUnselected = selectedSet.isNotEmpty;
-    final Paint dimLayerPaint = Paint()..color = Colors.black.withValues(alpha: 0.5);
     bool dimLayerOpen = false;
 
     String selectedLayerTopside = (layerMap[selectedLayer]?['top_helix'] == 'H5') ? 'H5' : 'H2';
@@ -424,15 +581,18 @@ class SlatPainter extends CustomPainter {
       // open/close the dimming layer at the boundaries of the dimmed block (before any early 'continue')
       final bool dimThisSlat = dimUnselected && slat.layer == selectedLayer && !selectedSet.contains(slat.id);
       if (dimThisSlat && !dimLayerOpen) {
-        canvas.saveLayer(visibleRect, dimLayerPaint);
+        canvasBelow.saveLayer(null, _dimLayerPaint);
         dimLayerOpen = true;
       } else if (!dimThisSlat && dimLayerOpen) {
-        canvas.restore();
+        canvasBelow.restore();
         dimLayerOpen = false;
       }
 
+      // slats above the selected layer go into the second picture so they're drawn over the label overlay
+      final Canvas canvas = (layerMap[slat.layer]?['order'] ?? 0) > selectedOrder ? canvasAbove : canvasBelow;
+
       // logic on whether slat should be hidden (or otherwise)
-      if (hiddenSlats.contains(slat.id)){
+      if (hiddenSlatSet.contains(slat.id)){
         continue;
       }
 
@@ -474,15 +634,6 @@ class SlatPainter extends CustomPainter {
 
       List<Offset> coords = sortedCoords.map((e) => getRealCoord(e.value)).toList();
 
-      // if slat out of the visible rectangle, can skip drawing to speed up rendering
-      final slatBounds = Rect.fromPoints(
-        coords.reduce((a, b) => Offset(
-            a.dx < b.dx ? a.dx : b.dx, a.dy < b.dy ? a.dy : b.dy)),
-        coords.reduce((a, b) => Offset(
-            a.dx > b.dx ? a.dx : b.dx, a.dy > b.dy ? a.dy : b.dy)),
-      ).inflate(appState.gridSize * 1.5);
-      if (!slatBounds.overlaps(visibleRect)) continue;
-
       // draw the actual slat here
       drawSlat(coords, canvas, appState, actionState, rodPaint, slat.phantomParent != null);
 
@@ -491,18 +642,10 @@ class SlatPainter extends CustomPainter {
 
       // Draw slat position numbers if activated
       if (slat.layer == selectedLayer && actionState.slatNumbering) {
-        bool isDark = isColorDark(mainColor);
+        final Color numberColor = isColorDark(mainColor) ? Colors.white : Colors.black;
         int i = 1;
         for (Offset coord in coords) {
-          final labelPainter = labelPainters[!isDark ? i : i + 64]; // max 64 characters for now, can increase if necessary....
-          if (labelPainter == null) continue;
-
-          final textOffset = Offset(
-            coord.dx - labelPainter.width / 2,
-            coord.dy - labelPainter.height / 2,
-          );
-
-          labelPainter.paint(canvas, textOffset);
+          labels.add(_SlatLabel(_SlatLabelKind.number, '$i', numberColor, appState.gridSize * 0.4, coord, dimThisSlat));
           i++;
         }
       }
@@ -608,12 +751,6 @@ class SlatPainter extends CustomPainter {
             final size = appState.gridSize * 0.85;
             final halfHeight = size / 2;
 
-            // Check if the handle marker is within the visible rectangle
-            final handleRect = Rect.fromCenter(center: position, width: size, height: size);
-            if (!handleRect.overlaps(visibleRect)) {
-              continue; // Skip drawing this handle marker if not visible
-            }
-
             final rectTop = Rect.fromCenter(
               center: Offset(position.dx, position.dy - halfHeight / 2),
               width: size,
@@ -627,24 +764,13 @@ class SlatPainter extends CustomPainter {
             );
 
             void drawHandleMarker(Rect rect, Color color, String category, bool isTop, bool isSelected) {
-              final paint = Paint()
-                ..color = color
-                ..style = PaintingStyle.fill;
+              final paint = markerPaint..color = color;
 
               if (isSelected) {
-                final glowPaint = Paint()
-                  ..color = Colors.black//color.withValues(alpha: 1.0)
-                  ..style = PaintingStyle.stroke
-                  ..strokeWidth = 3.0
-                  ..maskFilter = const MaskFilter.blur(
-                    BlurStyle.normal,
-                    0.3, // glow radius
-                  );
-
                 final glowRect = rect.inflate(appState.gridSize/30); // push glow outside box
                 canvas.drawRRect(
                   RRect.fromRectAndRadius(glowRect, const Radius.circular(2)),
-                  glowPaint,
+                  _selectedHandlePaint,
                 );
               }
 
@@ -673,43 +799,38 @@ class SlatPainter extends CustomPainter {
 
               // Draw dotted red border if invalid
               if (isInvalid) {
-                final dotPaint = Paint()
-                  ..color = Colors.red
-                  ..style = PaintingStyle.stroke
-                  ..strokeWidth = 1.0;
-
                 const double dotLength = 0.5;
                 const double gapLength = 0.5;
 
-                void drawDottedLine(Offset start, Offset end) {
+                // all dashes are collected as start/end pairs and drawn in one drawPoints call
+                final List<Offset> dashPoints = [];
+                void addDottedLine(Offset start, Offset end) {
                   final totalLength = (end - start).distance;
                   final offset = end - start;
                   final direction = offset / offset.distance;
 
                   double drawn = 0;
                   while (drawn < totalLength) {
-                    final currentStart = start + direction * drawn;
-                    final currentEnd = start + direction * (drawn + dotLength).clamp(0, totalLength);
-
-                    canvas.drawLine(currentStart, currentEnd, dotPaint);
+                    dashPoints.add(start + direction * drawn);
+                    dashPoints.add(start + direction * (drawn + dotLength).clamp(0, totalLength));
                     drawn += dotLength + gapLength;
                   }
                 }
 
-                // Draw all 4 sides with dots
-                drawDottedLine(rect.topLeft, rect.topRight);
-                drawDottedLine(rect.topRight, rect.bottomRight);
-                drawDottedLine(rect.bottomRight, rect.bottomLeft);
-                drawDottedLine(rect.bottomLeft, rect.topLeft);
+                addDottedLine(rect.topLeft, rect.topRight);
+                addDottedLine(rect.topRight, rect.bottomRight);
+                addDottedLine(rect.bottomRight, rect.bottomLeft);
+                addDottedLine(rect.bottomLeft, rect.topLeft);
+                canvas.drawPoints(PointMode.lines, dashPoints, _invalidHandlePaint);
               }
             }
 
 
-            bool topHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top') || topCategory == '';
-            bool bottomHandleHidden = (hiddenCargo.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (hiddenAssembly.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom') || bottomCategory == '';
+            bool topHandleHidden = (hiddenCargoSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (hiddenAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top') || topCategory == '';
+            bool bottomHandleHidden = (hiddenCargoSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (hiddenAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom') || bottomCategory == '';
             // Blocked handles now have ASSEMBLY category with value '0', so they pass the category.contains('ASSEMBLY') check
-            bool topHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
-            bool bottomHandleSelected = (appState.selectedHandlePositions.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (appState.selectedAssemblyPositions.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom' && bottomCategory.contains('ASSEMBLY'));
+            bool topHandleSelected = (selectedHandleSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'top') || (selectedAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'top' && topCategory.contains('ASSEMBLY'));
+            bool bottomHandleSelected = (selectedHandleSet.contains(standardizedPosition) && actionState.cargoAttachMode == 'bottom') || (selectedAssemblySet.contains(standardizedPosition) && actionState.assemblyAttachMode == 'bottom' && bottomCategory.contains('ASSEMBLY'));
 
             // Check for enforced values (enforced value of 0 means blocked, so skip those)
             String slatKeyId = slat.phantomParent ?? slat.id;
@@ -725,34 +846,13 @@ class SlatPainter extends CustomPainter {
             }
 
             void drawText(String text, Offset offset, Color textColor, double fontSize) {
-              final textPainter = TextPainter(
-                text: TextSpan(
-                  text: text,
-                  style: TextStyle(
-                    color: textColor,
-                    fontFamily: 'Roboto',
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                textDirection: TextDirection.ltr,
-                textAlign: TextAlign.center,
-              );
-              textPainter.layout();
-              final baselineOffset = textPainter.height;
-              final actualOffset = Offset(
-                offset.dx - textPainter.width / 2 - 0.1,
-                offset.dy - baselineOffset / 2 + 0.2,
-              );
-              textPainter.paint(canvas, actualOffset);
+              labels.add(_SlatLabel(_SlatLabelKind.handle, text, textColor, fontSize, offset, dimThisSlat));
             }
 
             // Helper to draw enforced value indicator (dot at top-left corner)
             void drawEnforcedIndicator(Rect rect, Color fontColor) {
               final dotRadius = rect.width * 0.05;
-              final paint = Paint()
-                ..color = fontColor
-                ..style = PaintingStyle.fill;
+              final paint = markerPaint..color = fontColor;
               canvas.drawCircle(
                 Offset(rect.left + dotRadius * 1.5, rect.top + dotRadius + 0.5),
                 dotRadius,
@@ -764,7 +864,7 @@ class SlatPainter extends CustomPainter {
             void drawFluorophoreMarker(Rect rect, FluorophoreShape shape, Color fontColor) {
               final size = rect.width * 0.05;
               final center = Offset(rect.left + size * 1.5, rect.bottom - size * 2.5);
-              final paint = Paint()..color = fontColor..style = PaintingStyle.fill;
+              final paint = markerPaint..color = fontColor;
 
               switch (shape) {
                 case FluorophoreShape.square:
@@ -819,10 +919,8 @@ class SlatPainter extends CustomPainter {
               if (topMarker != null) {
                 drawFluorophoreMarker(rectTop, topMarker.shape, topFontColor);
               }
-              if (scale >= kHandleTextMinScale) {
-                drawText(topText, Offset(position.dx, position.dy - halfHeight / 2),
-                    topFontColor, halfHeight * 0.8);
-              }
+              drawText(topText, Offset(position.dx, position.dy - halfHeight / 2),
+                  topFontColor, halfHeight * 0.8);
             }
             if (!bottomHandleHidden) {
               drawHandleMarker(rectBottom, bottomColor, bottomCategory, false, bottomHandleSelected);
@@ -831,16 +929,14 @@ class SlatPainter extends CustomPainter {
               if (bottomMarker != null) {
                 drawFluorophoreMarker(rectBottom, bottomMarker.shape, bottomFontColor);
               }
-              if (scale >= kHandleTextMinScale) {
-                drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2),
-                    bottomFontColor, halfHeight * 0.8);
-              }
+              drawText(bottomText, Offset(position.dx, position.dy + halfHeight / 2),
+                  bottomFontColor, halfHeight * 0.8);
             }
 
             canvas.drawLine(
               Offset(rectTop.left, position.dy),
               Offset(rectTop.right, position.dy),
-              Paint()..color = Colors.white..strokeWidth = 0.5,
+              _handleDividerPaint,
             );
           }
         }
@@ -848,27 +944,6 @@ class SlatPainter extends CustomPainter {
 
       // displays slat IDs as an overlay on top of the slat
       if (actionState.displaySlatIDs && slat.layer == selectedLayer){
-        final textPainter = TextPainter(
-          text: TextSpan(
-            text: slatDisplayName(slat, layerMap, slats: appState.slats) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : ''),
-            style: TextStyle(
-              color: Colors.white,
-              fontFamily: 'Roboto',
-              fontSize: appState.gridSize * 0.6,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-          textAlign: TextAlign.center
-        );
-        textPainter.layout();
-
-        double baselineOffset;
-        if (isWeb || defaultTargetPlatform == TargetPlatform.windows) {
-          baselineOffset = textPainter.height + 0.5;
-        } else {
-          baselineOffset = textPainter.computeDistanceToActualBaseline(TextBaseline.alphabetic);
-        }
 
         // find the center of all coords
         double sumX = 0, sumY = 0;
@@ -882,53 +957,46 @@ class SlatPainter extends CustomPainter {
         // assume angle can be found correctly from middle coords - might need to change if some weird slat types are used
         double angle = calculateSlatAngle(coords[coords.length ~/ 2], coords[(coords.length ~/ 2) + 1]);
 
-        canvas.save();
-        canvas.translate(center.dx, center.dy);
-
         // Flip upside-down labels
         if (angle > pi / 2 || angle < -pi / 2) {
           angle += pi;
         }
-        canvas.rotate(angle);
 
-        final baseRect = Rect.fromCenter(
-          center: Offset.zero,
-          width: slat.slatType == 'tube' ? appState.gridSize * 3 : appState.gridSize * 6,
-          height: appState.gridSize * 0.85,
-        );
-
-        final textOffset = Offset(
-          - textPainter.width / 2 - 0.1,
-          - baselineOffset / 2 - 0.9,
-        );
-
-        canvas.drawRect(
-          baseRect,
-          Paint()
-            ..color = Colors.black
-            ..style = PaintingStyle.fill,
-        );
-        textPainter.paint(canvas, textOffset);
-        canvas.restore();
+        // the ID box and text are both drawn in the label overlay so the box sits above the handle text, as before
+        labels.add(_SlatLabel(
+          _SlatLabelKind.slatId,
+          slatDisplayName(slat, layerMap, slats: appState.slats) + (slat.slatType != 'tube' ? ' (${slat.slatType})' : ''),
+          Colors.white,
+          appState.gridSize * 0.6,
+          center,
+          dimThisSlat,
+          angle: angle,
+          backgroundSize: Size(slat.slatType == 'tube' ? appState.gridSize * 3 : appState.gridSize * 6, appState.gridSize * 0.85),
+        ));
       }
 
       if (selectedSlats.contains(slat.id)) {
         drawBorder(canvas, coords, mainColor, slatExtendFront, (actionState.drawingAids || actionState.extendSlatTips), slat.slatType);
       }
     }
-    if (dimLayerOpen) canvas.restore(); // the dimmed block ran to the end of the draw order
+    if (dimLayerOpen) canvasBelow.restore(); // the dimmed block ran to the end of the draw order
 
-    canvas.restore();
+    return _SlatScene(recorderBelow.endRecording(), recorderAbove.endRecording(), labels);
   }
 
   @override
   bool shouldRepaint(covariant SlatPainter oldDelegate) {
+    // Slats, selections and display settings live inside the mutable DesignState/ActionState objects, so changes to
+    // them are detected via the version counters rather than by comparing the (in-place mutated) collections.
     return oldDelegate.scale != scale ||
         oldDelegate.canvasOffset != canvasOffset ||
-        oldDelegate.slats != slats ||  // Consider using `identical()` or custom equality
+        oldDelegate.designVersion != designVersion ||
+        oldDelegate.actionVersion != actionVersion ||
         oldDelegate.selectedLayer != selectedLayer ||
         !listEquals(oldDelegate.selectedSlats, selectedSlats) ||
         !listEquals(oldDelegate.hiddenSlats, hiddenSlats) ||
+        !listEquals(oldDelegate.hiddenCargo, hiddenCargo) ||
+        !listEquals(oldDelegate.hiddenAssembly, hiddenAssembly) ||
         oldDelegate.actionState != actionState ||
         oldDelegate.groupVersion != groupVersion ||
         oldDelegate.appState != appState;

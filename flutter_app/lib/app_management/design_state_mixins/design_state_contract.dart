@@ -111,6 +111,7 @@ mixin DesignStateContract on ChangeNotifier {
   set preserveSelectionOnLayerChange(bool value);
   int get groupVersion;
   set groupVersion(int value);
+  int get designVersion;
 
   // === Methods from DesignStateCoreMixin ===
   void setHoverPreview(HoverPreview? preview);

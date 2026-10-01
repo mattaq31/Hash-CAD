@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'slat_painter.dart';
+import 'text_painter_cache.dart';
 import '../graphics/crosshatch_shader.dart';
 import '../crisscross_core/slats.dart';
 import '../app_management/shared_app_state.dart';
@@ -25,33 +26,11 @@ class SlatHoverPainter extends CustomPainter {
   final DesignState appState;
   final ActionState actionState;
 
-  late Map<int, TextPainter> labelPainters;
-
   SlatHoverPainter(this.scale, this.canvasOffset, this.slatColor,
       this.hoverValid, this.futureSlatEndPoints, this.hoverPosition,
       this.ignorePreSelectedSlats, this.preSelectedSlats, this.moveAnchor,
       this.moveTranspose, this.moveRotationSteps, this.gridMode,
-      this.appState, this.actionState)
-  {
-    labelPainters = <int, TextPainter>{};
-    TextStyle textStyle = TextStyle(
-      color: Colors.black,
-      fontFamily: 'Roboto',
-      fontWeight: FontWeight.bold,
-      fontSize: appState.gridSize * 0.4, // small enough for grid point
-    );
-
-    for (int i = 1; i <= 32; i++) {
-      TextSpan textSpan = TextSpan(text: '$i', style: textStyle);
-      TextPainter textPainter = TextPainter(
-        text: textSpan,
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      labelPainters[i] = textPainter;
-    }
-  }
+      this.appState, this.actionState);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -80,8 +59,8 @@ class SlatHoverPainter extends CustomPainter {
           drawSlat(slatCoords.values.toList(), canvas, appState, actionState, hoverRodPaint, false);
 
           // Draw numbers at the beginning and end of the new slat
-          final labelBegin = labelPainters[index]!;
-          final labelFin = labelPainters[index]!;
+          final labelBegin = TextPainterCache.get('$index', Colors.black, appState.gridSize * 0.4);
+          final labelFin = labelBegin;
 
           labelBegin.paint(canvas, slatCoords[1]! - Offset(labelBegin.width / 2, labelBegin.height / 2));
           if (appState.slatAdditionType == 'tube') {

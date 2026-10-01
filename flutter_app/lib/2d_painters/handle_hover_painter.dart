@@ -10,6 +10,7 @@ import '../crisscross_core/seed.dart';
 import '../crisscross_core/slats.dart';
 import '../crisscross_core/assembly_handle_pattern.dart';
 import 'slat_painter.dart';
+import 'text_painter_cache.dart';
 
 
 /// Custom painter for the cargo hover display
@@ -41,20 +42,7 @@ class HandleHoverPainter extends CustomPainter {
     canvas.scale(scale);
 
     void drawText(String text, Offset offset, Color textColor, double fontSize) {
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: text,
-          style: TextStyle(
-            color: textColor,
-            fontFamily: 'Roboto',
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center,
-      );
-      textPainter.layout();
+      final textPainter = TextPainterCache.get(text, textColor, fontSize);
       final baselineOffset = textPainter.height;
       final actualOffset = Offset(
         offset.dx - textPainter.width / 2 - 0.1,
