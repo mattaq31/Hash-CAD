@@ -64,6 +64,20 @@ class _SlatEditPanel extends State<SlatEditPanel> {
           ],
         ),
         SizedBox(height: 10),
+        // wipes cargo, seed and assembly handles (plus blocks and links) from the selected slats, keeping the slats
+        FilledButton.icon(
+          onPressed: (actionState.lockEdits || appState.selectedSlats.isEmpty) ? null : () {
+            appState.removeAllHandlesFromSlats(appState.selectedSlats);
+          },
+          label: Text("Delete All Handles"),
+          icon: Icon(Icons.delete_sweep),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            textStyle: TextStyle(fontSize: 14),
+            backgroundColor: Colors.red,
+          ),
+        ),
+        SizedBox(height: 10),
         Divider(thickness: 1, color: Colors.grey.shade200),
         Text("Adjust Slat Colors",
             style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),

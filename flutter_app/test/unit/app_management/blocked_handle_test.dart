@@ -1,4 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hash_cad/app_management/design_io/design_export.dart';
+import 'package:hash_cad/app_management/design_io/design_import.dart';
+import 'package:hash_cad/app_management/shared_app_state.dart';
 import 'package:hash_cad/crisscross_core/slats.dart';
 import 'package:hash_cad/app_management/design_state_mixins/design_state_handle_link_mixin.dart';
 import 'package:hash_cad/crisscross_core/common_utilities.dart';
@@ -211,6 +215,78 @@ void main() {
       expect(state.assemblyLinkManager.handleLinkToGroup, isEmpty);
       expect(state.assemblyLinkManager.handleGroupToValue, isEmpty);
       expect(state.assemblyLinkManager.handleBlocks, isEmpty);
+    });
+  });
+
+  group('Blocked Handles - Phantom import', () {
+    // Regression: the importer used to copy parent handles onto phantoms before applying blocked placeholders,
+    // so phantoms lost their parent's blocks and triggered spurious phantom inconsistency warnings on load.
+    test('phantoms inherit the blocked handles of their parent on import', () async {
+      final state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      final parent = state.slats.values.single;
+      final side = getSlatSideFromLayer(state.layerMap, 'A', 'top');
+      state.addPhantomSlats(parent.layer, {
+        1: {for (var entry in parent.slatPositionToCoordinate.entries) entry.key: entry.value + const Offset(0, 40)}
+      }, {1: parent});
+      state.applyHandleBlock((parent.id, 3, side));
+
+      final workbook = buildDesignWorkbook(state.slats, state.layerMap, state.cargoPalette, state.occupiedCargoPoints,
+          state.seedRoster, state.assemblyLinkManager, state.gridSize, state.gridMode, state.designName);
+      final result = await parseDesignInIsolate(Uint8List.fromList(workbook.encode()!));
+      expect(result.errorCode, isEmpty);
+
+      final importedParent = result.slats[parent.id]!;
+      final importedPhantom = result.slats.values.firstWhere((slat) => slat.phantomParent == parent.id);
+      expect(getHandleDict(importedParent, side)[3]?['value'], '0');
+      expect(getHandleDict(importedPhantom, side)[3]?['value'], '0');
+      expect(getHandleDict(importedPhantom, side)[3]?['category'], getHandleDict(importedParent, side)[3]?['category']);
+    });
+  });
+
+  group('Blocked Handles - Phantom propagation', () {
+    // Regression: smartSetHandle's block enforcement only kept '0' on keys literally in handleBlocks (always the
+    // parent's ID), so it stripped the handle from every phantom copy and the block symbol vanished on phantoms.
+    late DesignState state;
+    late Slat parent;
+    late int side;
+    late List<String> phantomIDs;
+
+    setUp(() {
+      state = DesignStateTestFactory.createWithSlats(slatCount: 1);
+      parent = state.slats.values.single;
+      side = getSlatSideFromLayer(state.layerMap, 'A', 'top');
+      for (var yOffset in [40.0, 60.0]) {
+        state.addPhantomSlats(parent.layer, {
+          1: {for (var entry in parent.slatPositionToCoordinate.entries) entry.key: entry.value + Offset(0, yOffset)}
+        }, {1: parent});
+      }
+      phantomIDs = state.phantomMap[parent.id]!.values.toList();
+    });
+
+    /// Asserts the parent and all its phantoms carry a blocked ('0') handle at [position].
+    void expectFamilyBlockedAt(int position) {
+      for (var slatID in [parent.id, ...phantomIDs]) {
+        expect(getHandleDict(state.slats[slatID]!, side)[position]?['value'], '0', reason: '$slatID pos $position');
+      }
+    }
+
+    test('blocking a parent handle shows the block on every phantom', () {
+      state.applyHandleBlock((parent.id, 3, side));
+      expectFamilyBlockedAt(3);
+    });
+
+    test('moving a block from one phantom to an empty slot on another keeps it on the whole family', () {
+      state.applyHandleBlock((parent.id, 3, side));
+      final donor = state.slats[phantomIDs[0]]!;
+      final receiver = state.slats[phantomIDs[1]]!;
+
+      state.moveAssemblyHandle({donor.slatPositionToCoordinate[3]!: receiver.slatPositionToCoordinate[7]!}, 'A', 'top');
+
+      expect(state.assemblyLinkManager.handleBlocks, equals([(parent.id, 7, side)]));
+      expectFamilyBlockedAt(7);
+      for (var slatID in [parent.id, ...phantomIDs]) {
+        expect(getHandleDict(state.slats[slatID]!, side)[3], isNull, reason: '$slatID pos 3');
+      }
     });
   });
 }

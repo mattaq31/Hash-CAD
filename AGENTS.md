@@ -175,7 +175,7 @@ Flutter UI (Dart) <--gRPC--> Python Server <--imports--> crisscross_kit
 - `dialogs/`: Shared dialog components (`alert_window.dart`, `update_dialog.dart`)
 - `drag_and_drop/`: Platform-specific drag-and-drop handling (`design_drop_target.dart`, `design_drop_target_desktop.dart`, `design_drop_target_web.dart`, `design_drop_target_stub.dart`)
 - `grpc_client_architecture/`: Generated gRPC client code (do not edit manually)
-- `2d_painters/`: 2D canvas rendering (`grid_painter.dart`, `slat_painter.dart`, `seed_painter.dart`, `slat_hover_painter.dart`, `handle_hover_painter.dart`, `delete_painter.dart`, `drag_box_painter.dart`, `helper_functions.dart`, `2d_view_svg_exporter.dart`, `export_svg_desktop.dart`, `export_svg_web.dart`)
+- `2d_painters/`: 2D canvas rendering (`grid_painter.dart`, `slat_painter.dart`, `seed_painter.dart`, `slat_hover_painter.dart`, `handle_hover_painter.dart`, `delete_painter.dart`, `drag_box_painter.dart`, `helper_functions.dart`, `text_painter_cache.dart` (shared LRU cache of laid-out handle/number/ID labels — use it instead of building `TextPainter`s per frame), `2d_view_svg_exporter.dart`, `export_svg_desktop.dart`, `export_svg_web.dart`)
 - `graphics/`: 3D visualization and shared graphic widgets (`3d_painter.dart`, `custom_3d_meshes.dart`, `stl_exporter.dart`, `stl_export_validation.dart`, `crosshatch_shader.dart`, `handle_sequence_text.dart` (shared handle-sequence coloring + click-to-copy text), `assembly_color_legend.dart`, `honeycomb_pictogram.dart`, `line_chart.dart`, `rating_indicator.dart`, `status_indicator.dart`)
 
 ### Data Format
@@ -210,6 +210,7 @@ Protocol definitions are in `flutter_app/python_dart_grpc_protocols/`:
 
 - **Flutter**: Unit tests in `flutter_app/test/unit/` with test helpers/factory:
   - `app_management/`: blocked handle, design I/O round-trip, design state slat, ensure extension, excel utilities, handle link I/O, handle link manager, phantom cargo move, phantom slat selection / colour, slat undo stack, STL export validation tests
+  - `painters/`: text painter cache tests
   - `echo_plate/`: echo export, echo plate constants, handle sequence export, master mix export, PEG purification export, plate duplicate, plate layout state, plate sort, plate sync, plate undo stack tests
 - **Python**: Lacks formal test suites; contributions for pytest tests are welcome
 - **After making changes to the Flutter app, always run `flutter test` from `flutter_app/` to verify existing tests still pass**
@@ -249,7 +250,10 @@ Key features added since v1.0.0:
 - **Manual handle selection**: Manual handle automation selection for cargo/handle positions (`manual_handle_dialog.dart`, `mass_manual_handle_dialog.dart`)
 - **Echo plate group splitting**: Option to split plates by group in the echo window
 - **3D-2D layer linking**: 3D viewer linked with 2D when hiding/revealing slat layers
-- **Assembly handle patterns**: Record selected assembly handles (values + blocks) as named patterns and stamp them onto the canvas (R rotates them in 90° grid mode); placement validity reuses the multi-handle move checks. Saved in the `assembly_handle_patterns` sheet (`design_state_assembly_pattern_mixin.dart`, `crisscross_core/assembly_handle_pattern.dart`, pattern panel in `assembly_handles_sidebar.dart`)
+- **Assembly handle patterns**: Record selected assembly handles (values + blocks) as named patterns and stamp them onto the canvas (R rotates them in 90° steps on the square grid, 60° steps on the hex grid); placement validity reuses the multi-handle move checks. Saved in the `assembly_handle_patterns` sheet (`design_state_assembly_pattern_mixin.dart`, `crisscross_core/assembly_handle_pattern.dart`, pattern panel in `assembly_handles_sidebar.dart`)
+- **Assembly handle view controls**: 'View' section at the top of the assembly handles sidebar has an on/off toggle plus all / top-only / bottom-only assembly handle display (`ActionState.assemblyHandleViewSide`, honoured by `slat_painter.dart` and the SVG exporter); opening the sidebar no longer auto-enables handle display
+- **Delete All Handles**: 'Selected Slat Actions' button that strips cargo, seeds, assembly handles, blocks and links from the selected slats (`removeAllHandlesFromSlats` in `design_state_handle_mixin.dart`)
+- **Slat selection persists across sidebar tabs**: tab switches only clear handle selections (`clearHandleSelections`), so a group selected in the Grouping tab can be used in other tabs
 
 ## Documentation
 

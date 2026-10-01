@@ -46,11 +46,10 @@ class AssemblyHandlePattern {
 
   /// Returns the absolute grid coordinates of every entry (in entry order) when the anchor is placed at [anchorCoord].
   ///
-  /// The pattern is rotated about its anchor by [rotationSteps] 90° steps using [rotateCoordinateSpace]. Rotation is
-  /// only supported on the square ('90') grid, so [rotationSteps] is ignored for other grid modes.
+  /// The pattern is rotated about its anchor by [rotationSteps] steps using [rotateCoordinateSpace] (90° steps on the
+  /// square ('90') grid, 60° steps on the hex ('60') grid).
   List<Offset> coordinatesAt(Offset anchorCoord, {int rotationSteps = 0, String gridMode = '90'}) {
-    final steps = gridMode == '90' ? rotationSteps : 0;
-    return entries.map((e) => rotateCoordinateSpace(anchorCoord + e.offset, anchorCoord, steps, gridMode)).toList();
+    return entries.map((e) => rotateCoordinateSpace(anchorCoord + e.offset, anchorCoord, rotationSteps, gridMode)).toList();
   }
 }
 

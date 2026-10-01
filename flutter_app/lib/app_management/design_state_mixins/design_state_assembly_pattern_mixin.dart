@@ -101,7 +101,7 @@ mixin DesignStateAssemblyPatternMixin on ChangeNotifier, DesignStateContract {
   ///
   /// Existing blocks/enforced values at target positions are cleared so the pattern fully overrides them.
   /// When [enforce] is true, every placed non-blocked value is also enforced. The pattern is rotated about its anchor
-  /// by [rotationSteps] 90° steps (square grid only). A single undo snapshot is saved.
+  /// by [rotationSteps] steps (90° on the square grid, 60° on the hex grid). A single undo snapshot is saved.
   @override
   void placeAssemblyHandlePattern(String id, String layerKey, String attachMode, Offset anchorCoord,
       {bool enforce = false, int rotationSteps = 0}) {

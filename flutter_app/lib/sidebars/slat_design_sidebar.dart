@@ -65,6 +65,8 @@ class _SlatDesignTools extends State<SlatDesignTools> {
                         ));
                 if (result == true) {
                   appState.setGridMode('90');
+                  // the design (and its patterns) is cleared, so drop any pattern being placed along with its rotation
+                  actionState.setSelectedAssemblyPattern(null);
                 }
               }
             },
@@ -104,6 +106,8 @@ class _SlatDesignTools extends State<SlatDesignTools> {
                         ));
                 if (result == true) {
                   appState.setGridMode('60');
+                  // the design (and its patterns) is cleared, so drop any pattern being placed along with its rotation
+                  actionState.setSelectedAssemblyPattern(null);
                 }
               }
             },

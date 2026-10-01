@@ -488,7 +488,7 @@ mixin GridControlHelpersMixin<T extends StatefulWidget> on State<T>, GridControl
     } else if (actionMode == 'Assembly-Pattern-Add') {
       return ['Pattern: ${appState.assemblyHandlePatterns[actionState.selectedAssemblyPatternId]?.name ?? '-'}',
       'Handle Site: ${actionState.assemblyAttachMode.toUpperCase()}',
-      if (appState.gridMode == '90') 'Rotation: ${actionState.assemblyPatternRotationSteps * 90}°'];
+      'Rotation: ${actionState.assemblyPatternRotationSteps * (appState.gridMode == '90' ? 90 : 60)}°'];
     } else if (actionMode == 'Assembly-Move') {
       return ['Handles Selected: ${appState.selectedAssemblyPositions.length}',
       'Handle Site: ${actionState.assemblyAttachMode.toUpperCase()}'];

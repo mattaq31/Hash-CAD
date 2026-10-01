@@ -10,10 +10,28 @@ import 'design_state_contract.dart';
 /// Mixin containing core utility operations for DesignState
 mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
 
+  /// Incremented on every notification except hover-preview updates.  The 2D slat painter compares this to decide
+  /// whether the design changed, since the slat/selection collections are mutated in place and can't be diffed cheaply.
+  @override
+  int designVersion = 0;
+  bool _hoverOnlyNotification = false;
+
+  @override
+  void notifyListeners() {
+    if (!_hoverOnlyNotification) designVersion++;
+    super.notifyListeners();
+  }
+
   @override
   void setHoverPreview(HoverPreview? preview) {
     hoverPreview = preview;
-    notifyListeners();
+    // the hover preview is drawn by the hover painters, so it shouldn't force a full slat repaint
+    _hoverOnlyNotification = true;
+    try {
+      notifyListeners();
+    } finally {
+      _hoverOnlyNotification = false;
+    }
   }
 
   @override

@@ -111,6 +111,7 @@ mixin DesignStateContract on ChangeNotifier {
   set preserveSelectionOnLayerChange(bool value);
   int get groupVersion;
   set groupVersion(int value);
+  int get designVersion;
 
   // === Methods from DesignStateCoreMixin ===
   void setHoverPreview(HoverPreview? preview);
@@ -139,6 +140,7 @@ mixin DesignStateContract on ChangeNotifier {
   void cycleActiveLayer(bool upDirection);
   void updateLayerColor(String layer, Color color);
   void clearSelection();
+  void clearHandleSelections();
   void rotateLayerDirection(String layerKey);
   void flipLayer(String layer, BuildContext context);
   void flipLayerVisibility(String layer);
@@ -180,6 +182,7 @@ mixin DesignStateContract on ChangeNotifier {
   List<List<List<int>>> getHandleArray();
   Map<String, String> getSlatTypes();
   void clearAssemblyHandles();
+  void removeAllHandlesFromSlats(List<String> slatIDs);
   void syncAllAssemblyHandles();
   Map<String, String> getPhantomParentsForGrpc();
 

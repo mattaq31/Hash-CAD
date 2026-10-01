@@ -119,6 +119,28 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.bold)),
       SizedBox(height: 10),
+      // Section 0: View - which slat side's assembly handles are drawn (persists after leaving the sidebar)
+      Text("View", style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+      SizedBox(height: 10),
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // same icon as the 2D view toolbar toggle - switches assembly handle display on/off
+          _buildSquareToggleButton(context, Icons.developer_board, 'Show/hide assembly handles', actionState.displayAssemblyHandles,
+              () => actionState.setAssemblyHandleDisplay(!actionState.displayAssemblyHandles)),
+          SizedBox(width: 16),
+          _buildSquareToggleButton(context, Icons.unfold_more, 'Show all handles', actionState.assemblyHandleViewSide == 'all',
+              () => actionState.setAssemblyHandleViewSide('all')),
+          SizedBox(width: 8),
+          _buildSquareToggleButton(context, Icons.arrow_upward, 'Show top handles only',
+              actionState.assemblyHandleViewSide == 'top', () => actionState.setAssemblyHandleViewSide('top')),
+          SizedBox(width: 8),
+          _buildSquareToggleButton(context, Icons.arrow_downward, 'Show bottom handles only',
+              actionState.assemblyHandleViewSide == 'bottom', () => actionState.setAssemblyHandleViewSide('bottom')),
+        ],
+      ),
+      SizedBox(height: 10),
+      Divider(thickness: 1, color: Colors.grey.shade200),
       // Section 1: Automated Generation
       Text("Automated Generation", style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
       SizedBox(height: 10),
@@ -976,6 +998,24 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
   }
 
   /// Builds the honeycomb pictogram with vertical top/bottom toggles used to pick the slat side for handle placement.
+  /// Builds a small square icon button that is filled with the primary colour when [isActive]
+  /// (same styling as the Add/Delete/Move handle mode buttons).
+  Widget _buildSquareToggleButton(BuildContext context, IconData icon, String tooltip, bool isActive, VoidCallback onPressed) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: isActive ? Theme.of(context).colorScheme.onPrimary : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.all(8),
+        minimumSize: const Size(36, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
   Widget _buildAttachSideSelector(BuildContext context, ActionState actionState) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1100,7 +1140,7 @@ class _AssemblyHandleDesignTools extends State<AssemblyHandleDesignTools> {
         const SizedBox(height: 6),
         Text(
           isPlacing
-              ? 'Click on the canvas to place the pattern${appState.gridMode == '90' ? ' (R to rotate)' : ''}.\nClick the pattern again to return to selection.'
+              ? 'Click on the canvas to place the pattern (R to rotate).\nClick the pattern again to return to selection.'
               : 'Select handles on the canvas, then record them.\nClick a pattern to start placing it.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),

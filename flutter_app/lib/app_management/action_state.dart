@@ -13,6 +13,7 @@ class ActionState extends ChangeNotifier {
   String assemblyHandleValue;
   String assemblyAttachMode;
   bool displayAssemblyHandles;
+  String assemblyHandleViewSide = 'all'; // which slat side's assembly handles are drawn: 'all', 'top' or 'bottom'
   bool displayCargoHandles;
   bool displaySlatIDs;
   bool extendSlatTips;
@@ -41,12 +42,21 @@ class ActionState extends ChangeNotifier {
   bool assemblyPatternMode; // When true, sidebar shows the assembly handle pattern UI
   String? selectedAssemblyPatternId; // Pattern currently being placed on the canvas (null = selection mode)
   bool assemblyPatternEnforce; // When true, placed pattern values are marked as enforced
-  int assemblyPatternRotationSteps = 0; // 90° rotation steps applied to the pattern being placed (square grid only)
+  int assemblyPatternRotationSteps = 0; // rotation steps applied to the pattern being placed (90° steps on the square grid, 60° on the hex grid)
   SlatColorMode slatColorMode;
   // When true, the design is fully locked: all edits are blocked while view/navigation
   // controls (pan/zoom, layer change, layer visibility) remain active. Any new destructive
   // sidebar control should also be gated on this flag (see setLockEdits below).
   bool lockEdits;
+
+  /// Incremented on every notification so painters can detect display-setting changes (this object is mutated in place).
+  int version = 0;
+
+  @override
+  void notifyListeners() {
+    version++;
+    super.notifyListeners();
+  }
 
   Map<int, String> panelMap = {
     0: 'slats',
@@ -145,6 +155,14 @@ class ActionState extends ChangeNotifier {
 
   void setAssemblyHandleDisplay(bool value){
     displayAssemblyHandles = value;
+    notifyListeners();
+  }
+
+  /// Sets which slat side's assembly handles are drawn ('all', 'top' or 'bottom').  Also switches the assembly
+  /// handle display on, since picking a view while handles are hidden would otherwise have no visible effect.
+  void setAssemblyHandleViewSide(String side){
+    assemblyHandleViewSide = side;
+    displayAssemblyHandles = true;
     notifyListeners();
   }
 
@@ -306,9 +324,10 @@ class ActionState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Rotates the pattern being placed by a further 90° (wraps around after a full turn).
-  void rotateAssemblyPattern() {
-    assemblyPatternRotationSteps = (assemblyPatternRotationSteps + 1) % 4;
+  /// Rotates the pattern being placed by one further step - 90° on the square grid, 60° on the hex grid
+  /// (wraps around after a full turn).
+  void rotateAssemblyPattern(String gridMode) {
+    assemblyPatternRotationSteps = (assemblyPatternRotationSteps + 1) % (gridMode == '90' ? 4 : 6);
     notifyListeners();
   }
 

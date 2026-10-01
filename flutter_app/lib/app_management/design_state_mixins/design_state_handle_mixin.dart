@@ -113,7 +113,9 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
         // If any handle is blocked, reject this operation by reverting changes
         for (var key in slatsUpdated) {
           Slat targetSlat = slats[key.$1]!;
-          if (assemblyLinkManager.handleBlocks.contains(key)) {
+          // Blocks are registered under the parent's ID, so phantom copies must check their parent's key
+          HandleKey familyKey = (targetSlat.phantomParent ?? key.$1, key.$2, key.$3);
+          if (assemblyLinkManager.handleBlocks.contains(key) || assemblyLinkManager.handleBlocks.contains(familyKey)) {
             // Restore blocked handle to '0' value
             var handleDict = getHandleDict(targetSlat, key.$3);
             String existingCategory = handleDict[key.$2]?['category'] ?? (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');
@@ -866,6 +868,54 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
     // links, enforced values and blocks all refer to handle positions, so they must go too - otherwise the
     // painter keeps drawing link/block markers and later placements are still constrained by them
     assemblyLinkManager.clearAll();
+    hammingValueValid = false;
+    saveUndoState();
+    notifyListeners();
+  }
+
+  /// Removes every cargo, seed and assembly handle (including blocks) from the given slats, along with their handle
+  /// links and enforced values. Plate-generated 'FLAT' placeholders are left alone.
+  ///
+  /// Each handle goes through the same deletion path as the manual delete tools, so phantom siblings, cargo/seed
+  /// occupancy and assembly layer attachments stay consistent. Any active seed touching these slats is dissolved
+  /// first so that handles on unselected slats are kept. The slat selection is preserved.
+  @override
+  void removeAllHandlesFromSlats(List<String> slatIDs) {
+    if (slatIDs.isEmpty) return;
+
+    for (var slatID in List<String>.from(slatIDs)) {
+      var slat = slats[slatID];
+      if (slat == null) continue;
+
+      for (int side in [5, 2]) {
+        String occupancySide = layerMap[slat.layer]?['top_helix'] == 'H$side' ? 'top' : 'bottom';
+        var handleDict = getHandleDict(slat, side);
+
+        // snapshot positions, since deletions (and their phantom propagation) mutate the handle dict
+        for (int position in handleDict.keys.toList()) {
+          var handle = handleDict[position];
+          if (handle == null) continue; // already removed through phantom propagation
+          String category = handle['category'].toString();
+          Offset coordinate = slat.slatPositionToCoordinate[position]!;
+
+          if (category == 'SEED') {
+            var seedKey = isHandlePartOfActiveSeed(slat.layer, occupancySide, coordinate);
+            if (seedKey != null) dissolveSeed(seedKey, skipStateUpdate: true);
+            removeSingleSeedHandle(slatID, occupancySide, coordinate, skipStateUpdate: true);
+          } else if (category == 'CARGO') {
+            removeCargo(slatID, occupancySide, coordinate, skipStateUpdate: true);
+          } else if (category.contains('ASSEMBLY')) {
+            smartDeleteHandle(slat, position, side);
+          }
+        }
+      }
+
+      // links/blocks are keyed on the parent slat - also catches blocks or links without a handle present
+      assemblyLinkManager.removeAllEntriesForSlat(slat.phantomParent ?? slat.id);
+    }
+
+    selectedHandlePositions = [];
+    selectedAssemblyPositions = [];
     hammingValueValid = false;
     saveUndoState();
     notifyListeners();
