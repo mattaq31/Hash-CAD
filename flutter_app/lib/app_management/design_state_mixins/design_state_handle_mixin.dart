@@ -113,7 +113,9 @@ mixin DesignStateHandleMixin on ChangeNotifier, DesignStateContract {
         // If any handle is blocked, reject this operation by reverting changes
         for (var key in slatsUpdated) {
           Slat targetSlat = slats[key.$1]!;
-          if (assemblyLinkManager.handleBlocks.contains(key)) {
+          // Blocks are registered under the parent's ID, so phantom copies must check their parent's key
+          HandleKey familyKey = (targetSlat.phantomParent ?? key.$1, key.$2, key.$3);
+          if (assemblyLinkManager.handleBlocks.contains(key) || assemblyLinkManager.handleBlocks.contains(familyKey)) {
             // Restore blocked handle to '0' value
             var handleDict = getHandleDict(targetSlat, key.$3);
             String existingCategory = handleDict[key.$2]?['category'] ?? (key.$3 == 5 ? 'ASSEMBLY_HANDLE' : 'ASSEMBLY_ANTIHANDLE');

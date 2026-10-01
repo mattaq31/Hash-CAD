@@ -488,11 +488,6 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
     seedRoster[(layerID, sideString, seedCoordinates[1]!)] = Seed(ID: seedID, coordinates: seedCoordinates);
   }
 
-  // ── Phantom slats inherit handles from their parent ──
-  for (var slat in slats.values.where((slat) => slat.phantomParent != null)) {
-    slat.copyHandlesFromSlat(slats[slat.phantomParent!]!);
-  }
-
   // ── Handle link constraints (linked groups, enforced values) ──
   try {
     String? linkError = extractHandleLinksFromExcel(excel, slats, layerMap, linkManager);
@@ -510,6 +505,12 @@ Future<ParsedDesignResult> parseDesignInIsolate(Uint8List fileBytes) async {
       String category = blockedKey.$3 == 5 ? categoryAssemblyHandle : categoryAssemblyAntihandle;
       slat.setPlaceholderHandle(blockedKey.$2, blockedKey.$3, '0', category);
     }
+  }
+
+  // ── Phantom slats inherit handles from their parent ──
+  // Must run after the blocked placeholders above are set, otherwise phantoms miss their parent's blocks.
+  for (var slat in slats.values.where((slat) => slat.phantomParent != null)) {
+    slat.copyHandlesFromSlat(slats[slat.phantomParent!]!);
   }
 
   // ── Echo plate, input plate, and lab metadata sheets (optional) ──
