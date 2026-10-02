@@ -142,6 +142,8 @@ scratch/*
 # orthoseq results
 results/
 noflank_results/
+# Generated review figures
+/crisscross_kit/orthoseq_generator/scripts/auxilary_scripts/review_comments/plots/
 # Confidential manuscript referee reports
 /crisscross_kit/orthoseq_generator/scripts/auxilary_scripts/review_comments/reviewer_comments.md
 # Generated O2 comparison configs, submission scripts and logs

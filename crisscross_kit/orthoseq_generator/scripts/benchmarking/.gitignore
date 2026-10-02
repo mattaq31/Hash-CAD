@@ -5,4 +5,5 @@ slurm-*.out
 slurm-*.err
 zenodo/
 short_seq/scouting_archive/
+long_seq/scouting_archive/
 short_seq/configs/generated/
