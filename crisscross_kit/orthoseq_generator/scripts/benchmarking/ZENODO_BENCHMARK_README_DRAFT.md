@@ -7,7 +7,7 @@ The most directly reusable files are in `extracted_libraries/`. These are
 ready-to-use Excel workbooks containing the largest orthogonal sequence-pair
 libraries found for each reported benchmark condition. The archive also
 contains the full benchmark outputs used to derive those libraries and the
-workbooks used for the seqwalk comparison.
+workbooks used for the seqwalk, nuad, and polycube comparisons.
 
 ## Archive Scope
 
@@ -56,6 +56,11 @@ benchmark_data/
       data/
         len4_7_tttt5p_noGGGG/
           benchmark_summary_benchmark_x.toml
+          benchmark_summary_benchmark_x_review_seed1.toml
+          benchmark_summary_benchmark_x_review_seed2.toml
+          benchmark_summary_benchmark_x_review_seed3.toml
+          benchmark_summary_benchmark_x_review_seed4.toml
+          benchmark_summary_benchmark_x_review_seed5.toml
           len4/
           len4_tttt5p/
           len5/
@@ -71,15 +76,44 @@ benchmark_data/
           batch_x______sigma1p0_seed41/
           batch_x25TTTT_sigma1p0_seed41/
           batch_x25_____sigma1p0_seed41/
+          batch_x_TTTT_sigma0p5_seed41/
+          batch_x______sigma0p5_seed41/
       data/
         batch_x_TTTT_sigma1p0_seed41/
         batch_x______sigma1p0_seed41/
         batch_x25TTTT_sigma1p0_seed41/
         batch_x25_____sigma1p0_seed41/
+        batch_x_TTTT_sigma0p5_seed41/
+        batch_x______sigma0p5_seed41/
+      gmin_gmax_comparison/
+        input_reports.tsv
+        results/
+          gmin_gmax_37C/
   seqwalk_comparison/
     figure5_seqwalk_max_orthogonality_len16_n72_seed42.xlsx
     figure5_hybrid_len16_noflank_seqwalk_k6_seed42.xlsx
     figure5_search_only_hybrid_len16_noflank_init450.xlsx
+  nuad_comparison/
+    results/
+      6mer/
+        nuad.xlsx
+        orthoseq.xlsx
+        raw_nuad/
+      12mer_wide/
+        nuad.xlsx
+        orthoseq.xlsx
+        raw_nuad/
+      12mer_narrow/
+        nuad.xlsx
+        orthoseq.xlsx
+        raw_nuad/
+  polycube_comparison/
+    data/
+      published_polycube_sequences.xlsx
+      polycube_association_energies.xlsx
+      polycube_complex_energies.xlsx
+      orthoseq_polycube_search.xlsx
+      orthoseq_polycube_complex_energies.xlsx
 ```
 
 
@@ -91,6 +125,10 @@ The short-sequence benchmark covers core binding-domain lengths 4-7 nt, with
 and without a 5' TTTT extension. In this regime the full conflict graph could
 be constructed, so naive search, graph-aware search, and hybrid search were
 all compared on the same frozen candidate pools.
+
+The GMIN and weaker-first naive comparison uses the same datasets. Its new
+reports are saved under `results/benchmark_x_review/` alongside the original
+`results/benchmark_x/` reports. Each candidate dataset is included once.
 
 ### Dataset Bundles
 
@@ -151,6 +189,9 @@ across all short-sequence datasets. It records, for each run, the dataset
 name, algorithm, random seed, target conflict density, selected off-target
 cutoff, and the number of sequence pairs found.
 
+The five `benchmark_summary_benchmark_x_review_seed*.toml` files summarize
+the GMIN and weaker-first naive runs for seeds 1-5.
+
 
 ## Long-Sequence Benchmark Data
 
@@ -163,6 +204,10 @@ hybrid search were compared under a fixed budget of 10 million NUPACK calls.
 
 The main manuscript benchmark uses the 37 C datasets. The 25 C benchmark is a
 lower-temperature repeat reported in the Supporting Information.
+
+The 37 C sigma-0.5 batches cover lengths 8, 12, 16, and 20 nt, with and
+without a 5' TTTT extension. Their on-target window is [mean - 0.5 SD, mean],
+compared with [mean - SD, mean] in the sigma-1.0 batches.
 
 Some 37 C long-sequence runs request `search.initial_fresh_pair_count = 2500`.
 In practice, the fixed 10-million-NUPACK-call budget was exhausted during the
@@ -198,6 +243,22 @@ length and flank condition. Each run writes:
 The XLSX workbook is the primary machine-readable result artifact.
 
 
+## Long-Sequence Heuristic Comparison
+
+`full_benchmark_results/long_seq/gmin_gmax_comparison/` contains 18 workbooks,
+one per length and extension condition. Each contains 360 run records for
+initial pools of 250, 450, and 900 pairs, 12 GMIN/GMAX variants, and 10 seeds.
+The variants combine random, rank, or rule tie-breaking with bare or iterative
+selection on the same saved initial graphs.
+
+`input_reports.tsv` links each comparison workbook and initial pool size to
+its original benchmark report. Both path columns are relative to `benchmark_data/`.
+The retained pair IDs refer to `global_pair_id` in the input report's
+`seed_pass_pairs` sheet; the corresponding energies are saved in `seed_hh`,
+`seed_hah`, and `seed_ahah`. Each comparison workbook also contains summary
+statistics and its configuration.
+
+
 ## Ready-to-Use Extracted Sequence Libraries
 
 The `extracted_libraries/` portion of the archive contains ready-to-use Excel
@@ -218,11 +279,19 @@ For short-sequence benchmarks, extracted libraries are grouped by:
 - conflict probability
 - core binding-domain length
 
+Short-sequence selection compares the original runs with the new GMIN and
+weaker-first naive runs.
+
 For long-sequence benchmarks, extracted libraries are grouped by:
 
 - temperature
 - flank condition
 - core binding-domain length
+
+For each long-sequence temperature, flank condition, and length, selection
+compares all available sigma-1.0 and sigma-0.5 runs. The selected workbook's
+`run_metadata` records its on-target window in `search.min_ontarget` and
+`search.max_ontarget`.
 
 
 ## seqwalk Comparison
@@ -247,6 +316,35 @@ It contains:
 
 The Figure 5B workbook is duplicated here for convenience so that all three
 comparison arms can be inspected from a single folder.
+
+
+## nuad Comparison
+
+`nuad_comparison/results/` contains three cases: 6-mer with 41 pairs,
+12-mer with 120 pairs using the original on-target window, and 12-mer with
+129 pairs using the narrower window. Each case contains `nuad.xlsx`, the
+matching OrthoSeq benchmark report copied as `orthoseq.xlsx`, and native nuad
+designs, sequences, reports, random states, and logs in `raw_nuad/`.
+The nuad workbooks preserve the complete libraries, verified energies,
+validation results, and individual constraint violations.
+
+
+## Polycube Comparison
+
+`polycube_comparison/data/` contains five workbooks:
+
+- `published_polycube_sequences.xlsx`: 96 published sequence pairs and extraction
+  provenance from Diep et al. (DOI: 10.26434/chemrxiv-2025-qbk3f).
+- `polycube_association_energies.xlsx` and `polycube_complex_energies.xlsx`:
+  our energy evaluations of the published library.
+- `orthoseq_polycube_search.xlsx`: the complete 100-pair OrthoSeq search report,
+  including association energies.
+- `orthoseq_polycube_complex_energies.xlsx`: our complex-energy evaluation of
+  the same OrthoSeq library.
+
+Both libraries use 9-nt cores with 5' T12 extensions.
+Association energies (`G_AB - G_A - G_B`) support the binding-energy comparison;
+complex free energies (`G_AB`) are used to calculate specificity gaps.
 
 
 ## Workbook Schema
