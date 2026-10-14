@@ -12,10 +12,14 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator.algorithm_names import build_algorithm_name
-from orthoseq_generator.energy_computations import compute_offtarget_energies, compute_ontarget_energies
+from orthoseq_generator.energy_computations import (
+    compute_crossreference_energies, compute_offtarget_energies, compute_ontarget_energies,
+)
+from orthoseq_generator.sequence_generation import normalize_reference_sequences
 
 NA_VALUE = "N.A."
 RUN_METADATA_KEY_ORDER = [
@@ -80,7 +84,9 @@ def _metadata_display_value(value):
     return NA_VALUE if value is None else str(value)
 
 
-def verify_selected_pairs(selected_sequence_data: list[dict], nupack_params: dict | None = None) -> dict:
+def verify_selected_pairs(
+    selected_sequence_data: list[dict], nupack_params: dict | None = None, *, external_sequences=None,
+) -> dict:
     """
     Recompute on-target, self-structure, and off-target energies for a final
     found-pair set.
@@ -105,6 +111,11 @@ def verify_selected_pairs(selected_sequence_data: list[dict], nupack_params: dic
                           thermodynamic model.
     :type nupack_params: dict or None
 
+    :param external_sequences: Optional explicit reference strands. When nonempty,
+        also recompute every selected-to-reference energy for validation and plots.
+        This report-only work does not consume the search budget.
+    :type external_sequences: list[str] or None
+
     :returns: Verified on-target, self-energy, and off-target data ready for
               report writing.
     :rtype: dict
@@ -112,6 +123,7 @@ def verify_selected_pairs(selected_sequence_data: list[dict], nupack_params: dic
     selected_pairs = [(entry["seq"], entry["rc_seq"]) for entry in selected_sequence_data]
     if not selected_pairs:
         raise ValueError("Selected set is empty; cannot verify with direct NUPACK calls.")
+    external_sequences = normalize_reference_sequences(external_sequences)
 
     if nupack_params:
         hf.set_nupack_params(
@@ -124,12 +136,16 @@ def verify_selected_pairs(selected_sequence_data: list[dict], nupack_params: dic
 
     on_target, self_seq, self_rc = compute_ontarget_energies(selected_pairs)
     off_target = compute_offtarget_energies(selected_pairs)
-    return {
+    verified = {
         "on_target_energies": on_target,
         "self_energy_seqs": self_seq,
         "self_energy_rc_seqs": self_rc,
         "off_target": off_target,
     }
+    if external_sequences:
+        verified["external_sequences"] = external_sequences
+        verified["external_crossref"] = compute_crossreference_energies(selected_pairs, external_sequences)
+    return verified
 
 
 def validate_selected_pairs(
@@ -204,12 +220,37 @@ def validate_selected_pairs(
         for seq_value, rc_value in zip(self_seq, self_rc)
     ]
 
-    return [
+    validation = [
         {"check": "selected_set_nonempty", "passed": bool(selected_sequence_data), "value": len(selected_sequence_data)},
         {"check": "all_on_target_in_range", "passed": all(on_target_ok), "value": sum(on_target_ok)},
         {"check": "all_self_energies_above_limit", "passed": all(self_energy_ok), "value": sum(self_energy_ok)},
         {"check": "off_target_violations", "passed": off_target_violations == 0, "value": off_target_violations},
     ]
+    reference_sequences = verified.get("external_sequences", [])
+    if reference_sequences:
+        crossref = np.asarray(verified.get("external_crossref", []), dtype=float)
+        expected_shape = (2 * pair_count, len(reference_sequences))
+        complete = crossref.shape == expected_shape and bool(np.isfinite(crossref).all())
+        violations = int(np.count_nonzero(crossref < offtarget_limit)) if complete else None
+        validation.append({
+            "check": "external_crossref_complete", "passed": complete,
+            "value": crossref.size, "expected_interactions": 2 * pair_count * len(reference_sequences),
+        })
+        external_check = {
+            "check": "external_off_target_violations", "passed": complete and violations == 0,
+            "value": violations,
+        }
+        if complete and crossref.size:
+            strand_idx, reference_idx = np.unravel_index(np.argmin(crossref), crossref.shape)
+            entry = selected_sequence_data[strand_idx // 2]
+            external_check.update({
+                "min_energy": float(crossref[strand_idx, reference_idx]),
+                "selected_pair_id": entry.get("global_pair_id", entry.get("pair_idx", strand_idx // 2)),
+                "selected_strand": "seq" if strand_idx % 2 == 0 else "rc_seq",
+                "reference_id": int(reference_idx), "reference_sequence": reference_sequences[reference_idx],
+            })
+        validation.append(external_check)
+    return validation
 
 
 def build_selected_sequence_data(
@@ -423,6 +464,12 @@ def write_hybrid_search_result_xlsx(
     }
     if extra_metadata:
         metadata_values.update(extra_metadata)
+    reference_sequences = verified.get("external_sequences", [])
+    if reference_sequences:
+        metadata_values.update({
+            "input.reference_sequence_count": len(reference_sequences),
+            "verification.external_crossref_nupack_calls": np.asarray(verified["external_crossref"]).size,
+        })
     metadata_rows = [
         {"key": key, "value": _metadata_display_value(metadata_values.get(key))}
         for key in RUN_METADATA_KEY_ORDER
@@ -460,6 +507,18 @@ def write_hybrid_search_result_xlsx(
         ).to_excel(writer, sheet_name="selected_ahah")
         pd.DataFrame(generation_data).to_excel(writer, sheet_name="search_progress", index=False)
         pd.DataFrame(validation_data).to_excel(writer, sheet_name="validation", index=False)
+
+        if reference_sequences:
+            pd.DataFrame({
+                "reference_id": range(len(reference_sequences)), "sequence": reference_sequences,
+            }).to_excel(writer, sheet_name="reference_sequences", index=False)
+            # Use the same pair labels as the existing matrices, interleaved to
+            # match the flat strand order used in external verification.
+            strand_labels = [label for pair_labels in zip(handle_labels, antihandle_labels) for label in pair_labels]
+            reference_labels = [f"{i}:R:{sequence}" for i, sequence in enumerate(reference_sequences)]
+            pd.DataFrame(
+                verified["external_crossref"], index=strand_labels, columns=reference_labels,
+            ).to_excel(writer, sheet_name="external_crossref")
 
         if seed_sequence_data is not None and seed_verified is not None:
             seed_sheet = [dict(entry) for entry in seed_sequence_data]

@@ -1,6 +1,10 @@
 import streamlit as st
 import threading
 import queue
+import logging
+from io import BytesIO
+
+from orthoseq_generator.search_report_reader import load_reference_sequences
 
 # Constants for default values
 START_MIN_ON = -13.0
@@ -50,6 +54,14 @@ def init_session_state():
         st.session_state.off_e_range = None
     if "self_e_range" not in st.session_state:
         st.session_state.self_e_range = None
+    if "crossref_e_range" not in st.session_state:
+        st.session_state.crossref_e_range = None
+    if "external_sequences" not in st.session_state:
+        st.session_state.external_sequences = []
+    if "external_reference_name" not in st.session_state:
+        st.session_state.external_reference_name = None
+    if "external_reference_error" not in st.session_state:
+        st.session_state.external_reference_error = None
 
     if "orthogonal_seq_pairs" not in st.session_state:
         st.session_state.orthogonal_seq_pairs = None
@@ -173,3 +185,27 @@ def init_session_state():
         st.session_state.seqwalk_rcfree = False
     if "homodimer_bound_fraction_correction" not in st.session_state:
         st.session_state.homodimer_bound_fraction_correction = False
+
+
+def update_external_library():
+    """Handle upload changes once, clearing only energies tied to a changed external pool."""
+    uploaded = st.session_state.external_library_file
+    sequences = []
+    error = None
+    if uploaded is not None:
+        try:
+            sequences = load_reference_sequences(BytesIO(uploaded.getvalue()))
+        except Exception as exc:
+            error = str(exc)
+    if sequences != st.session_state.external_sequences:
+        st.session_state.crossref_e_range = None
+    st.session_state.external_sequences = sequences
+    st.session_state.external_reference_name = uploaded.name if uploaded is not None else None
+    st.session_state.external_reference_error = error
+    logger = logging.getLogger("orthoseq")
+    if error:
+        logger.info("External Crossreference Library rejected: %s", error)
+    elif uploaded is not None:
+        logger.info("External Crossreference Library: %s (%d strands)", uploaded.name, len(sequences))
+    else:
+        logger.info("External Crossreference Library: disabled (no file uploaded).")

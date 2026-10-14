@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import threading
 import time
+import logging
 from datetime import datetime
 from pathlib import Path
 from orthoseq_generator import helper_functions as hf
@@ -26,9 +27,15 @@ def _search_worker(
     stop_event,
     checkpoint_event,
     out_q,
+    external_sequences=None,
+    reference_name=None,
 ):
+    """Run the backend with a captured external library and return that run's report inputs."""
     start_time = time.time()
     try:
+        logging.getLogger("orthoseq").info(
+            "External Crossreference Library: %s (%d strands)", reference_name or "none", len(external_sequences or []),
+        )
         def _checkpoint_callback(payload):
             out_q.put(("checkpoint", payload, None, None))
 
@@ -45,7 +52,9 @@ def _search_worker(
             checkpoint_event=checkpoint_event,
             checkpoint_callback=_checkpoint_callback,
             return_diagnostics=True,
+            external_sequences=external_sequences,
         )
+        res["reference_sequence_file"] = reference_name
         if not res["final_pairs"]:
             out_q.put(("done", None, time.time() - start_time, "No sequences found before termination."))
         else:
@@ -230,6 +239,8 @@ def render_search_tab(registry_factory, nupack_params):
                 stop_event,
                 checkpoint_event,
                 out_q,
+                list(st.session_state.external_sequences),
+                st.session_state.external_reference_name,
             ),
             daemon=True
         )
@@ -300,6 +311,9 @@ def render_search_tab(registry_factory, nupack_params):
             st.session_state.busy = True
             with st.spinner("Computing final energies for visualization..."):
                 search_run_data = st.session_state.search_run_data
+                # Completed results must retain their own limits and seed even
+                # if Global Settings have changed since the search finished.
+                run_params = search_run_data["search_params"]
                 selected_sequence_data = build_selected_sequence_data(
                     orthogonal_seq_pairs,
                     search_run_data["final_pair_ids"],
@@ -308,14 +322,15 @@ def render_search_tab(registry_factory, nupack_params):
                 verified = verify_selected_pairs(
                     selected_sequence_data,
                     nupack_params=search_run_data["nupack"],
+                    external_sequences=search_run_data["external_sequences"],
                 )
                 validation_data = validate_selected_pairs(
                     selected_sequence_data,
                     verified,
-                    min_ontarget=float(st.session_state.min_ontarget),
-                    max_ontarget=float(st.session_state.max_ontarget),
-                    self_energy_limit=float(st.session_state.self_energy_limit),
-                    offtarget_limit=float(st.session_state.offtarget_limit),
+                    min_ontarget=float(run_params["min_ontarget"]),
+                    max_ontarget=float(run_params["max_ontarget"]),
+                    self_energy_limit=float(run_params["self_energy_limit"]),
+                    offtarget_limit=float(run_params["offtarget_limit"]),
                 )
                 seed_sequence_data = build_selected_sequence_data(
                     search_run_data["seed_pairs"],
@@ -330,8 +345,7 @@ def render_search_tab(registry_factory, nupack_params):
                     selected_sequence_data=selected_sequence_data,
                     verified=verified,
                     search_params={
-                        **search_run_data["search_params"],
-                        "random_seed": nupack_params["random_seed"],
+                        **run_params,
                         "total_nupack_calls": search_run_data["total_nupack_calls"],
                         "search_duration_s": st.session_state.search_duration,
                     },
@@ -352,6 +366,8 @@ def render_search_tab(registry_factory, nupack_params):
                     dataset_info={},
                     extra_metadata={
                         "stopped_reason": search_run_data["stopped_reason"],
+                        **({"input.reference_sequence_file": search_run_data["reference_sequence_file"]}
+                           if search_run_data.get("reference_sequence_file") else {}),
                     },
                 )
                 st.session_state.search_report_path = report_path
@@ -359,13 +375,14 @@ def render_search_tab(registry_factory, nupack_params):
                 st.session_state.final_fig = pu.create_interactive_histogram(
                     verified["on_target_energies"],
                     verified["off_target"],
-                    float(st.session_state.min_ontarget),
-                    float(st.session_state.max_ontarget),
-                    off_limit=float(st.session_state.offtarget_limit)
+                    float(run_params["min_ontarget"]),
+                    float(run_params["max_ontarget"]),
+                    off_limit=float(run_params["offtarget_limit"]),
+                    crossref_energies=verified.get("external_crossref"),
                 )
                 st.session_state.final_self_fig = pu.create_self_energy_histogram(
                     [verified["self_energy_seqs"], verified["self_energy_rc_seqs"]],
-                    self_limit=float(st.session_state.self_energy_limit)
+                    self_limit=float(run_params["self_energy_limit"])
                 )
                 st.session_state.final_cache_ready = True
                 st.session_state.busy = False

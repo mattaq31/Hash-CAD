@@ -13,7 +13,7 @@ Typical use case:
 
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
-from orthoseq_generator.search_report_reader import load_found_pairs, load_metadata
+from orthoseq_generator.search_report_reader import load_found_pairs, load_metadata, load_reference_sequences
 
 
 if __name__ == "__main__":
@@ -36,6 +36,7 @@ if __name__ == "__main__":
 
     # 4) Compute off-target energies.
     off_e = sc.compute_offtarget_energies(sequence_pairs)
+    reference_sequences = load_reference_sequences(report_path, sheet_name="reference_sequences", required=False)
 
     # 5) Plot histograms and save them.
     stats = sc.plot_on_off_target_histograms(
@@ -50,3 +51,9 @@ if __name__ == "__main__":
 
     print(stats)
     print(self_stats)
+    if reference_sequences:
+        crossref = sc.compute_crossreference_energies(sequence_pairs, reference_sequences)
+        sc.plot_crossreference_histogram(
+            crossref, float(metadata["search.offtarget_limit"]),
+            output_path="results/crossref_hist_loaded_sequences_from_xlsx.pdf",
+        )

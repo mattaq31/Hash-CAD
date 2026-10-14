@@ -348,6 +348,68 @@ There is also an important matrix-value contract: a `0` in these matrices means 
 
 Search-time filtering uses direct NUPACK calls and graph heuristics. Final reports are expected to use `verify_selected_pairs()` again on the selected set. The workbook is meant to reflect the verified final energies, not only the search-time bookkeeping.
 
+### Optional external reference strands
+
+`hybrid_search(..., external_sequences=[...])` checks every candidate against explicit external strands under the
+same `offtarget_limit`, in both seed selection and collection. The default empty list adds no energy calculations.
+External strands stay fixed and are excluded from graph pruning and the returned selected set. Fresh candidates
+still receive their usual graph pruning; the base hybrid strategy is unchanged.
+
+The script input accepts an existing OrthoSeq XLSX report (`found_pairs` sheet with `seq` and `rc_seq` columns), or
+an XLSX reference list (`reference_sequences` sheet with a `sequence` column). The reader tries `found_pairs` first;
+if its layout or sequences are invalid, it tries `reference_sequences`. If neither is valid, it explains the error.
+Only the first valid sheet is read, never a combination of found pairs and earlier reference pools.
+For a reference list, each row is one actual DNA strand written 5′ to 3′, including its extensions. Both partners
+must be listed if both should be checked.
+Whitespace and case are normalized, blanks are ignored, duplicates are removed, and invalid bases report their row.
+No complements or extensions are generated for the external pool.
+
+The canonical example input is [`scripts/examples/reference_sequences.xlsx`](scripts/examples/reference_sequences.xlsx).
+It has exactly one sheet, `reference_sequences`, with the `sequence` header in cell A1 and one strand per row below.
+Copy this workbook and replace the example strands with your existing pool. The three supplied strands are only
+test data; they are not a validated sequence library.
+Both search scripts default to an empty external pool. In the manual example script, uncomment the
+`reference_file` assignment to use the example, or set it to your own workbook path. The benchmark runner accepts
+the optional `--reference-sequences` argument instead; its existing command-line interface is unchanged.
+
+```bash
+python scripts/run_sequence_search.py
+python scripts/benchmarking/long_seq/scripts/run_long_seq_hybrid_search.py --config condition.toml \
+  --reference-sequences reference.xlsx
+```
+
+Internally, external strands are grouped into two-strand entries only to reuse `crossreference_sequences()`.
+These entries need not be complementary. Odd-sized lists use an empty second slot, which the checker skips before
+calling NUPACK or counting a call. Verification and reports retain the original flat strand list.
+
+Pass the search result's `external_sequences` snapshot to `verify_selected_pairs(..., external_sequences=...)`.
+For `N` selected pairs and `M` reference strands, it computes the full `2N × M` matrix once. Matrix rows alternate
+the two strands of each selected pair; columns follow reference-list order. External-to-external interactions
+are not part of this compatibility check. Verification calls are outside the search budget, as with existing
+post-run verification. The existing search budget remains a soft cap around candidate evaluation and reserved
+graph work; this feature does not change the stopping logic.
+
+Reports with a nonempty external pool add `reference_sequences` (IDs and strands, reusable as input) and
+`external_crossref` (the complete labelled energy matrix). Validation checks dimensions, finite values and zero
+interactions below the threshold, and identifies the strongest interaction. Metadata records reference count and
+`verification.external_crossref_nupack_calls` separately from search calls.
+
+`plot_crossreference_histogram()` creates a separate distribution with the actual off-target threshold, using
+all matrix values, including zeros. Search scripts save the plots beside the workbook as `<report_stem>_onoff.pdf`,
+`<report_stem>_self.pdf` and, when references are present, `<report_stem>_crossref.pdf`; the XLSX replay script
+recomputes and plots the external energies too. `load_reference_sequences()` and `load_external_crossref()` provide
+reader access; replay uses `load_reference_sequences(..., sheet_name="reference_sequences", required=False)` to
+restore only the recorded external pool, or an empty list for older reports without that sheet.
+
+In the Streamlit app, upload either supported workbook under Global Settings → External Crossreference Library.
+A valid upload automatically enables checks; removing it clears the pool and its cached external energies.
+Replacing it with different strands requires rerunning Off-Target Binding Analysis. The original on/off-target
+plot is unchanged without references; with external energies it gains a lower distribution with linked x-axes
+and the same draft cutoff in both panels. Search and report verification use the reference snapshot captured
+when that run started. Final search results also show the linked external distribution when that run used
+references, reusing verified energies without extra NUPACK calculations. Library filename and strand count
+appear in the existing log window.
+
 ### Global thermodynamic settings
 
 Low-level energy code reads global state from `helper_functions.py`. Callers are expected to call `set_nupack_params()` and `set_energy_type()` before running searches, plots, or report verification.

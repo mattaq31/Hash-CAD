@@ -141,6 +141,7 @@ scratch/*
 
 # Local writing and agent handoff notes
 /handoff/
+/crisscross_kit/orthoseq_generator/scripts/auxilary_scripts/zenode_discusison_handoff.md
 
 # orthoseq results
 results/

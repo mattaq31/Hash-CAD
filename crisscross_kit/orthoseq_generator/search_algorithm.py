@@ -7,13 +7,14 @@ Purpose:
 
     The algorithm works in two passes:
 
-    Pass 1 (Seed): Collect a fixed number of candidate pairs filtered only by
-    on-target energy and self-energy. Compute the full pairwise off-target
-    matrix and run an iterative vertex-cover heuristic to resolve conflicts.
+    Pass 1 (Seed): Collect a fixed number of candidate pairs filtered by
+    on-target energy, self-energy, homodimers and an optional external pool.
+    Compute the full pairwise off-target matrix and run an iterative
+    vertex-cover heuristic to resolve conflicts.
     Survivors become the retained set.
 
     Pass 2 (Collection): Collect additional candidate pairs that are each
-    cross-referenced against the retained set (O(fresh * retained) checks).
+    cross-referenced against the retained set and optional external pool.
     Because cross-referencing uses zero allowed violations, every accepted
     candidate is guaranteed compatible with all retained pairs. This means
     the final vertex cover only needs to resolve conflicts among the fresh
@@ -33,6 +34,7 @@ import numpy as np
 
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
+from orthoseq_generator.sequence_generation import normalize_reference_sequences
 from orthoseq_generator.vertex_cover_algorithms import (
     build_edges,
     iterative_vertex_cover_refinement,
@@ -186,6 +188,7 @@ def _run_seed_pass(
     vc_max_iterations,
     stop_event,
     start_t,
+    external_pairs=None,
 ):
     """
     Run hybrid pass 1 and return only phase-local results.
@@ -222,6 +225,7 @@ def _run_seed_pass(
         energy_min=min_ontarget,
         energy_max=max_ontarget,
         self_energy_min=self_energy_limit,
+        retained_pairs=external_pairs,
         offtarget_limit=offtarget_limit,
         max_size=initial_fresh_pair_count,
         fresh_pair_search_budget=int(total_nupack_budget) if total_nupack_budget != np.inf else None,
@@ -361,6 +365,7 @@ def _run_collection_pass(
     checkpoint_callback,
     start_t,
     base_nupack_calls,
+    external_pairs=None,
 ):
     """
     Run hybrid pass 2 and return only phase-local results.
@@ -402,6 +407,7 @@ def _run_collection_pass(
     }
     pass2_budget = int(remaining_budget) if remaining_budget != np.inf else None
     chunk_reason = None
+    crossref_pool = list(external_pairs or []) + retained_pairs
 
     while True:
         _, _, chunk_reason, _, collection_state = sc.select_subset_in_energy_range(
@@ -409,7 +415,7 @@ def _run_collection_pass(
             energy_min=min_ontarget,
             energy_max=max_ontarget,
             self_energy_min=self_energy_limit,
-            retained_pairs=retained_pairs,
+            retained_pairs=crossref_pool,
             allowed_violations=0,
             offtarget_limit=offtarget_limit,
             fresh_pair_search_budget=pass2_budget,
@@ -528,6 +534,7 @@ def hybrid_search(
     checkpoint_event=None,
     checkpoint_callback=None,
     return_diagnostics=False,
+    external_sequences=None,
 ):
     """
     Search for a large orthogonal DNA sequence set using a two-pass strategy.
@@ -547,14 +554,16 @@ def hybrid_search(
 
     Pass 1 (Seed):
         Collect `initial_fresh_pair_count` candidate pairs filtered by
-        on-target energy and self-energy. Compute the full pairwise off-target
-        matrix and run the iterative vertex-cover heuristic to resolve
+        on-target energy, self-energy, homodimers and any external reference
+        strands. Compute the full pairwise off-target matrix and run the
+        iterative vertex-cover heuristic to resolve
         conflicts. Survivors become the retained set. The seed off-target
         matrix is cached in the diagnostics for reporting without recomputation.
 
     Pass 2 (Collection):
-        Collect candidate pairs cross-referenced against the retained set
-        (zero allowed violations) until `total_nupack_budget` is exhausted or
+        Collect candidate pairs cross-referenced against the retained set and
+        any external reference strands (zero allowed violations) until
+        `total_nupack_budget` is exhausted or
         the pool is empty. Run vertex cover on fresh candidates only. Union
         survivors into the retained set. When `checkpoint_event` is set during
         collection, the current fresh pool is peeked with a diagnostic vertex
@@ -629,6 +638,11 @@ def hybrid_search(
         energies, generation progress, search parameters, and stop reason.
     :type return_diagnostics: bool
 
+    :param external_sequences: Optional explicit DNA strands that every selected
+        pair must avoid under the same off-target limit. These strands stay fixed
+        and are not included in the returned sequence set.
+    :type external_sequences: list[str] or None
+
     :returns: Final sequence pairs as (seq, rc_seq) tuples, or a diagnostics
         dict when `return_diagnostics=True`.
     :rtype: list[tuple[str, str]] or dict
@@ -638,6 +652,14 @@ def hybrid_search(
             "hybrid_search requires a live sequence source with sample_pair() "
             "and get_pair_by_id(pair_id) methods."
         )
+
+    external_sequences = normalize_reference_sequences(external_sequences)
+    # The checker only needs two strand slots, not complementary pairs. Keep the
+    # flat list for reporting; empty padding is skipped by the checker before NUPACK.
+    external_pairs = [
+        (external_sequences[i], external_sequences[i + 1] if i + 1 < len(external_sequences) else "")
+        for i in range(0, len(external_sequences), 2)
+    ]
 
     seq_length = getattr(sequence_pairs, "length", None)
     fivep_ext = getattr(sequence_pairs, "fivep_ext", None)
@@ -675,6 +697,9 @@ def hybrid_search(
     generation_data = []
     stopped_reason = None
     start_t = time.time()
+
+    if external_sequences:
+        _status(f"Checking candidates against {len(external_sequences)} external strands at limit {offtarget_limit}.")
 
     logger.info(
         "Search parameters:\n"
@@ -716,6 +741,7 @@ def hybrid_search(
             vc_max_iterations=vc_max_iterations,
             stop_event=stop_event,
             start_t=start_t,
+            external_pairs=external_pairs,
         )
         total_nupack_calls += seed_outcome["accounted_nupack_calls"]
         seed_pairs = seed_outcome["seed_pairs"]
@@ -745,6 +771,7 @@ def hybrid_search(
                 checkpoint_callback=checkpoint_callback,
                 start_t=start_t,
                 base_nupack_calls=total_nupack_calls,
+                external_pairs=external_pairs,
             )
             total_nupack_calls += collection_outcome["accounted_nupack_calls"]
             retained_pair_ids = collection_outcome["retained_pair_ids"]
@@ -770,6 +797,7 @@ def hybrid_search(
         return {
             "final_pairs": final_pairs,
             "final_pair_ids": final_pair_ids,
+            "external_sequences": list(external_sequences),
             "seed_pairs": seed_pairs,
             "seed_pair_ids": seed_pair_ids,
             "seed_verified": seed_verified,

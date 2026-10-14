@@ -12,6 +12,34 @@ logger.addHandler(logging.NullHandler())
 LEGACY_AVOID_GGGG_SUBSTRINGS = ["AAAA", "CCCC", "GGGG", "TTTT"]
 
 
+def normalize_reference_sequences(sequences, first_row=1):
+    """Normalize explicit DNA strands, dropping blanks and duplicates while preserving order.
+
+    `first_row` lets Excel loaders identify invalid input by its worksheet row.
+    Complements and flanking sequences are never inferred for reference strands.
+    """
+    if sequences is None:
+        return []
+    if isinstance(sequences, str):
+        raise ValueError("Reference sequences must be a collection of strands, not one string.")
+    normalized = []
+    seen = set()
+    for row, sequence in enumerate(sequences, start=first_row):
+        if sequence is None:
+            continue
+        if not isinstance(sequence, str):
+            raise ValueError(f"Reference sequence at row {row} must be text.")
+        sequence = "".join(sequence.split()).upper()
+        if not sequence:
+            continue
+        if set(sequence) - set("ACGT"):
+            raise ValueError(f"Reference sequence at row {row} contains bases other than A, C, G and T.")
+        if sequence not in seen:
+            normalized.append(sequence)
+            seen.add(sequence)
+    return normalized
+
+
 def revcom(sequence):
     """
     Computes the reverse complement of a DNA sequence.
