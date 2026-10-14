@@ -7,7 +7,7 @@ Purpose
 This script is the final reporting step of the saved-dataset benchmark
 workflow. It reads the XLSX outputs produced by `run_batch_benchmark.py` for
 the configured benchmark run name, groups the results by extension condition,
-and writes the summary SVG plots at the dataset-parent level.
+and writes the summary SVG plots with mean ± standard deviation at the dataset-parent level.
 """
 
 from __future__ import annotations
@@ -33,15 +33,16 @@ if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
 from orthoseq_generator.search_report_reader import load_metadata
+from orthoseq_generator.algorithm_names import normalize_algorithm_name
 
 
 DATASET_PARENT_NAME = "len4_7_tttt5p_noGGGG"
 BENCHMARK_NAME = "benchmark_x"
-ALGORITHM_ORDER = ["naive", "vertex_cover", "hybrid_offline"]
+ALGORITHM_ORDER = ["naive_rand_offline", "vertex_cover_GMAX_rule_offline", "hybrid_GMAX_rule_offline"]
 ALGORITHM_COLORS = {
-    "naive": "#808080",
-    "vertex_cover": "#3B6FB6",
-    "hybrid_offline": "#2A9D8F",
+    "naive_rand_offline": "#808080",
+    "vertex_cover_GMAX_rule_offline": "#3B6FB6",
+    "hybrid_GMAX_rule_offline": "#2A9D8F",
 }
 HYBRID_VARIANT_COLORS = [
     "#2A9D8F",
@@ -51,9 +52,9 @@ HYBRID_VARIANT_COLORS = [
     "#D7EFEB",
 ]
 ALGORITHM_LABELS = {
-    "naive": "Naive",
-    "vertex_cover": "Graph-aware",
-    "hybrid_offline": "Hybrid",
+    "naive_rand_offline": "Naive",
+    "vertex_cover_GMAX_rule_offline": "Graph-aware",
+    "hybrid_GMAX_rule_offline": "Hybrid",
 }
 OUTPUT_FILENAME_STEM = "batch_benchmark_found_pair_count"
 SUMMARY_FILENAME_STEM = "batch_benchmark_found_pair_count_summary"
@@ -111,14 +112,15 @@ def find_benchmark_dirs(parent_dir: Path) -> list[Path]:
 def parse_run_filename(report_path: Path) -> dict | None:
     """Parse one benchmark workbook filename into its run parameters."""
     match = re.match(
-        r"density(?P<density>[0-9p]+)_(?P<algorithm>naive|vertex_cover|hybrid_offline)_limit(?P<cutoff>[-0-9p]+)(?:_(?P<variant>.+?))?_seed(?P<seed>\d+)\.xlsx$",
+        r"density(?P<density>[0-9p]+)_(?P<algorithm>.+?)_limit(?P<cutoff>[-0-9p]+)"
+        r"(?:_(?P<variant>.+?))?_seed(?P<seed>\d+)\.xlsx$",
         report_path.name,
     )
     if not match:
         return None
     return {
         "target_conflict_density": float(match.group("density").replace("p", ".")),
-        "algorithm": match.group("algorithm"),
+        "algorithm": normalize_algorithm_name(match.group("algorithm")),
         "selected_offtarget_limit_label": match.group("cutoff"),
         "variant_label": match.group("variant"),
         "seed": int(match.group("seed")),
@@ -127,64 +129,39 @@ def parse_run_filename(report_path: Path) -> dict | None:
 
 def build_plot_series_specs(runs_df: pd.DataFrame) -> list[dict]:
     """Build the ordered bar series shown in each density subgroup."""
-    series_specs = [
-        {
-            "key": "naive",
-            "algorithm": "naive",
-            "initial_fresh_pair_count": None,
-            "label": ALGORITHM_LABELS["naive"],
-            "color": ALGORITHM_COLORS["naive"],
-        },
-        {
-            "key": "vertex_cover",
-            "algorithm": "vertex_cover",
-            "initial_fresh_pair_count": None,
-            "label": ALGORITHM_LABELS["vertex_cover"],
-            "color": ALGORITHM_COLORS["vertex_cover"],
-        },
-    ]
-
-    hybrid_df = runs_df[runs_df["algorithm"] == "hybrid_offline"]
-    if hybrid_df.empty:
-        return series_specs
-
-    hybrid_inits = sorted(
-        {
-            int(value)
-            for value in hybrid_df["initial_fresh_pair_count"].dropna().unique().tolist()
-        },
-        reverse=True,
-    )
-    if hybrid_inits:
-        for idx, init_count in enumerate(hybrid_inits):
+    present = set(runs_df["algorithm"])
+    algorithms = [name for name in ALGORITHM_ORDER if name in present] + sorted(present - set(ALGORITHM_ORDER))
+    series_specs = []
+    for algorithm in algorithms:
+        label = ALGORITHM_LABELS.get(algorithm, algorithm.removesuffix("_offline"))
+        color = ALGORITHM_COLORS.get(algorithm, "#3B6FB6")
+        inits = []
+        if algorithm.startswith("hybrid_"):
+            values = runs_df.loc[runs_df["algorithm"] == algorithm, "initial_fresh_pair_count"]
+            inits = sorted({int(value) for value in values.dropna().unique()}, reverse=True)
+        if not inits:
             series_specs.append(
                 {
-                    "key": f"hybrid_offline_init{init_count}",
-                    "algorithm": "hybrid_offline",
-                    "initial_fresh_pair_count": int(init_count),
-                    "label": f"Hybrid {int(init_count)}",
+                    "key": algorithm, "algorithm": algorithm, "initial_fresh_pair_count": None,
+                    "label": label, "color": color,
+                }
+            )
+        for idx, init_count in enumerate(inits):
+            series_specs.append(
+                {
+                    "key": build_plot_series_key(algorithm, init_count), "algorithm": algorithm,
+                    "initial_fresh_pair_count": init_count, "label": f"{label} {init_count}",
                     "color": HYBRID_VARIANT_COLORS[idx % len(HYBRID_VARIANT_COLORS)],
                 }
             )
-        return series_specs
-
-    series_specs.append(
-        {
-            "key": "hybrid_offline",
-            "algorithm": "hybrid_offline",
-            "initial_fresh_pair_count": None,
-            "label": ALGORITHM_LABELS["hybrid_offline"],
-            "color": ALGORITHM_COLORS["hybrid_offline"],
-        }
-    )
     return series_specs
 
 
 def build_plot_series_key(algorithm: str, initial_fresh_pair_count: int | None) -> str:
     """Build the grouping key used for plot aggregation."""
-    if algorithm != "hybrid_offline" or initial_fresh_pair_count is None:
+    if not algorithm.startswith("hybrid_") or initial_fresh_pair_count is None:
         return algorithm
-    return f"hybrid_offline_init{int(initial_fresh_pair_count)}"
+    return f"{algorithm}_init{int(initial_fresh_pair_count)}"
 
 
 def collect_runs(parent_dir: Path) -> pd.DataFrame:
@@ -258,7 +235,7 @@ def build_summary_table(runs_df: pd.DataFrame) -> pd.DataFrame:
     grouped["sem_found_pair_count"] = grouped["std_found_pair_count"] / np.sqrt(grouped["run_count"].clip(lower=1))
 
     naive_means = grouped.loc[
-        grouped["plot_series_key"] == "naive",
+        grouped["plot_series_key"] == "naive_rand_offline",
         ["has_tttt5p", "length", "target_conflict_density", "mean_found_pair_count"],
     ].rename(columns={"mean_found_pair_count": "naive_mean_found_pair_count"})
     grouped = grouped.merge(
@@ -274,8 +251,8 @@ def build_summary_table(runs_df: pd.DataFrame) -> pd.DataFrame:
         100.0 * grouped["absolute_improvement_vs_naive"] / grouped["naive_mean_found_pair_count"],
         np.nan,
     )
-    grouped.loc[grouped["plot_series_key"] == "naive", "absolute_improvement_vs_naive"] = 0.0
-    grouped.loc[grouped["plot_series_key"] == "naive", "percent_improvement_vs_naive"] = 0.0
+    grouped.loc[grouped["plot_series_key"] == "naive_rand_offline", "absolute_improvement_vs_naive"] = 0.0
+    grouped.loc[grouped["plot_series_key"] == "naive_rand_offline", "percent_improvement_vs_naive"] = 0.0
     return grouped
 
 
@@ -321,11 +298,11 @@ def build_export_table(summary_df: pd.DataFrame, series_specs: list[dict]) -> pd
 
 
 def compute_plot_y_max(summary_df: pd.DataFrame) -> float:
-    """Compute the y-axis maximum for one plotted benchmark subset."""
+    """Compute the y-axis maximum including standard deviation error bars."""
     if summary_df.empty:
         return 1.0
 
-    y_max = float((summary_df["mean_found_pair_count"] + summary_df["sem_found_pair_count"]).max())
+    y_max = float((summary_df["mean_found_pair_count"] + summary_df["std_found_pair_count"]).max())
     return max(1.0, y_max * 1.08 + 2.0)
 
 
@@ -344,7 +321,7 @@ def plot_group(
     shared_y_max: float,
     series_specs: list[dict],
 ) -> tuple[plt.Figure, str] | None:
-    """Plot one extension-condition subset of the benchmark runs."""
+    """Plot one extension-condition subset with mean ± sample standard deviation across runs."""
     if group_summary_df.empty:
         return None
 
@@ -382,14 +359,14 @@ def plot_group(
                 summary = summary_row.iloc[0]
 
                 mean_value = float(summary["mean_found_pair_count"])
-                sem_value = float(summary["sem_found_pair_count"])
-                subgroup_max = max(subgroup_max, mean_value + sem_value)
+                std_value = float(summary["std_found_pair_count"])
+                subgroup_max = max(subgroup_max, mean_value + std_value)
 
                 ax.bar(
                     x,
                     mean_value,
                     width=bar_width,
-                    yerr=sem_value,
+                    yerr=std_value,
                     capsize=1,
                     color=series_spec["color"],
                     edgecolor="black",

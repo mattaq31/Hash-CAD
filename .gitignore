@@ -139,6 +139,9 @@ dmypy.json
 # temp scripts
 scratch/*
 
+# Local writing and agent handoff notes
+/handoff/
+
 # orthoseq results
 results/
 noflank_results/

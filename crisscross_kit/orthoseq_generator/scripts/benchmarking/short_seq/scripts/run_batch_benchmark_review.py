@@ -14,6 +14,7 @@ from benchmark_analysis import find_offtarget_limits_for_target_densities
 from benchmark_dataset_tools import load_dataset, self_energy_limit_from_unpaired_fraction
 from run_batch_benchmark import discover_dataset_dirs, write_summary_toml
 from orthoseq_generator.search_report_reader import load_metadata
+from orthoseq_generator.algorithm_names import LEGACY_ALGORITHM_NAMES, normalize_algorithm_name
 
 
 if __name__ == "__main__":
@@ -30,9 +31,9 @@ if __name__ == "__main__":
     seed = run_cfg["random_seed"]
     target_unpaired_fraction = run_cfg["target_unpaired_fraction"]
     vc_core_params = config["vertex_cover"]
-    algorithms = run_cfg["algorithms"]
-    if any(algorithm not in ("naive_ordered", "vertex_cover_GMIN") for algorithm in algorithms):
-        raise ValueError("Review algorithms must be 'naive_ordered' or 'vertex_cover_GMIN'.")
+    algorithms = [normalize_algorithm_name(name) for name in run_cfg["algorithms"]]
+    if any(algorithm not in ("naive_rank_offline", "vertex_cover_GMIN_rule_offline") for algorithm in algorithms):
+        raise ValueError("Review algorithms must be 'naive_rank_offline' or 'vertex_cover_GMIN_rule_offline'.")
 
     parent_dir = module_dir / "data" / dataset_parent_name
     dataset_dirs = discover_dataset_dirs(parent_dir)
@@ -43,7 +44,8 @@ if __name__ == "__main__":
         saved_summary = tomllib.loads(summary_path.read_text())
         created_at = saved_summary["created_at"]
         summary_runs = {
-            (run["dataset_name"], run["target_conflict_density"], run["algorithm"]): run
+            (run["dataset_name"], run["target_conflict_density"], normalize_algorithm_name(run["algorithm"])):
+                {**run, "algorithm": normalize_algorithm_name(run["algorithm"])}
             for run in saved_summary["runs"]
         }
 
@@ -69,6 +71,14 @@ if __name__ == "__main__":
 
             for algorithm in algorithms:
                 report_path = results_dir / f"density{density_label}_{algorithm}_limit{cutoff_label}_seed{seed}.xlsx"
+                # Existing jobs may already have completed under the historical filenames.
+                if not report_path.exists():
+                    for old_name, canonical_name in LEGACY_ALGORITHM_NAMES.items():
+                        old_filename = f"density{density_label}_{old_name}_limit{cutoff_label}_seed{seed}.xlsx"
+                        old_path = results_dir / old_filename
+                        if canonical_name == algorithm and old_path.exists():
+                            report_path = old_path
+                            break
                 run_key = (dataset_dir.name, target_density, algorithm)
                 duration_s = summary_runs.get(run_key, {}).get("duration_s")
                 if report_path.exists():
@@ -82,8 +92,9 @@ if __name__ == "__main__":
                         "search.min_ontarget": float(derived["min_ontarget_energy"]),
                         "search.max_ontarget": float(derived["max_ontarget_energy"]),
                     }
-                    if algorithm == "vertex_cover_GMIN":
+                    if algorithm == "vertex_cover_GMIN_rule_offline":
                         expected.update({f"search.{key}": value for key, value in vc_core_params.items()})
+                    metadata["algorithm_name"] = normalize_algorithm_name(metadata.get("algorithm_name"))
                     if any(metadata.get(key) != value for key, value in expected.items()):
                         raise ValueError(f"Saved report has different settings: {report_path}")
                     print(f"Skipping completed report: {report_path.name}", flush=True)
@@ -91,7 +102,7 @@ if __name__ == "__main__":
                     print(f"{dataset_dir.name} | density={target_density} | {algorithm} | seed={seed}", flush=True)
                     temporary_report = report_path.with_suffix(".tmp.xlsx")
                     start_t = time.perf_counter()
-                    if algorithm == "naive_ordered":
+                    if algorithm == "naive_rank_offline":
                         run_naive_search_to_xlsx(
                             dataset_dir, output_path=temporary_report, offtarget_limit=offtarget_limit,
                             self_energy_limit=self_energy_limit, random_seed=seed, ordering="weaker_first",
@@ -115,7 +126,7 @@ if __name__ == "__main__":
                     "self_energy_limit": self_energy_limit, "found_pair_count": int(metadata["found_pair_count"]),
                     "report_path": str(report_path),
                 }
-                if algorithm == "vertex_cover_GMIN":
+                if algorithm == "vertex_cover_GMIN_rule_offline":
                     run.update(vc_core_params)
                 if duration_s is not None:
                     run["duration_s"] = duration_s

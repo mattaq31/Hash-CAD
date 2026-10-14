@@ -36,6 +36,7 @@ from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.vertex_cover_algorithms import (
     build_edges,
     iterative_vertex_cover_refinement,
+    rank_vertices,
 )
 
 logger = logging.getLogger("orthoseq")
@@ -93,10 +94,17 @@ def _run_vertex_cover(subset, indices, offtarget_limit, prune_fraction, vc_max_i
     :type prune_fraction: float
     :param vc_max_iterations: Maximum refinement iterations.
     :type vc_max_iterations: int
-    :returns: (independent_set_ids, off_target_nupack_calls)
+    :returns: (independent_set_ids, graph_search_nupack_calls), including on-target
+              recomputation when rank tie-breaking is enabled.
     :rtype: tuple[set[int], int]
     """
-    off_target_nupack_calls = sc.estimate_offtarget_nupack_calls(len(subset))
+    graph_search_nupack_calls = sc.estimate_offtarget_nupack_calls(len(subset))
+    vertex_ranks = None
+    if hf.ALGORITHM_PARAMS["TIEBREAK"] == "rank":
+        on_target, _, _ = sc.compute_ontarget_energies(subset)
+        # Match the review comparisons: higher ranks mean stronger binding.
+        vertex_ranks = rank_vertices(dict(zip(indices, -on_target)))
+        graph_search_nupack_calls += len(subset)
     off_e_subset = sc.compute_offtarget_energies(subset)
     edges = build_edges(off_e_subset, indices, offtarget_limit)
     removed_vertices, _ = iterative_vertex_cover_refinement(
@@ -106,9 +114,10 @@ def _run_vertex_cover(subset, indices, offtarget_limit, prune_fraction, vc_max_i
         max_iterations=vc_max_iterations,
         num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
         show_progress=False,
+        vertex_ranks=vertex_ranks,
     )
     independent_set = set(indices) - removed_vertices
-    return independent_set, off_target_nupack_calls
+    return independent_set, graph_search_nupack_calls
 
 
 def _pairs_from_ids(sequence_pairs, pair_ids):
@@ -186,8 +195,9 @@ def _run_seed_pass(
     Count only search-essential NUPACK work for this phase:
     - subset selection
     - final seed vertex-cover matrix cost
+    - seed on-target energies when required for rank tie-breaking
 
-    Do not count diagnostic/reporting recomputation such as `seed_verified`.
+    Do not count recomputation used only for diagnostics/reporting such as `seed_verified`.
     """
     if stop_event is not None and stop_event.is_set():
         _status("Stop requested before the initial graph search subset was selected.")
@@ -265,6 +275,11 @@ def _run_seed_pass(
     }
     seed_vc_nupack_calls = sc.estimate_offtarget_nupack_calls(len(subset))
     edges = build_edges(seed_off_target, indices, offtarget_limit)
+    vertex_ranks = None
+    if hf.ALGORITHM_PARAMS["TIEBREAK"] == "rank":
+        # Seed verification already computed these energies; reuse them for ranking.
+        vertex_ranks = rank_vertices(dict(zip(indices, -seed_on_target)))
+        seed_vc_nupack_calls += len(subset)
     removed_vertices, _ = iterative_vertex_cover_refinement(
         indices,
         edges,
@@ -272,6 +287,7 @@ def _run_seed_pass(
         max_iterations=vc_max_iterations,
         num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
         show_progress=False,
+        vertex_ranks=vertex_ranks,
     )
     retained_pair_ids = set(indices) - removed_vertices
     retained_pairs = _pairs_from_ids(sequence_pairs, retained_pair_ids)
@@ -638,6 +654,8 @@ def hybrid_search(
     celsius = hf.NUPACK_PARAMS.get("CELSIUS")
     sodium = hf.NUPACK_PARAMS.get("SODIUM")
     magnesium = hf.NUPACK_PARAMS.get("MAGNESIUM")
+    heuristics = hf.ALGORITHM_PARAMS["HEURISTICS"]
+    tiebreak = hf.ALGORITHM_PARAMS["TIEBREAK"]
 
     if not 0 <= prune_fraction <= 1:
         raise ValueError("prune_fraction must be between 0 and 1.")
@@ -680,6 +698,8 @@ def hybrid_search(
         f"Initial graph search subset size: {initial_fresh_pair_count}\n"
         f"Total NUPACK budget: {total_nupack_budget}\n"
         f"Perturbation fraction: {prune_fraction}\n"
+        f"Graph search heuristic: {heuristics}\n"
+        f"Graph search tie-breaking: {tiebreak}\n"
         f"Graph search iterations: {vc_max_iterations}"
     )
 
@@ -765,6 +785,8 @@ def hybrid_search(
                 "total_nupack_budget": float(total_nupack_budget),
                 "prune_fraction": float(prune_fraction),
                 "vc_max_iterations": int(vc_max_iterations),
+                "vc_heuristics": heuristics,
+                "vc_tiebreak": tiebreak,
                 "search_duration_s": float(elapsed_s),
             },
             "sequence_source": {

@@ -453,6 +453,8 @@ This sheet stores the run configuration as key-value pairs. Important keys inclu
 - `search.offtarget_limit`: requested off-target energy limit
 - `search.self_energy_limit`: requested self-folding energy limit
 - `search.initial_fresh_pair_count`: internal metadata key for the initial graph-search subset size
+- `search.vc_heuristics`: vertex-cover heuristic (`Gmax` or `Gmin`)
+- `search.vc_tiebreak`: degree-tie strategy (`rule`, `rank`, or `random`)
 - `search.prune_fraction`: internal metadata key for the perturbation fraction used by the graph search
 - `search.vc_max_iterations`: internal metadata key for the graph-search iteration count
 - `search.random_seed`: random seed used for the run
@@ -464,6 +466,9 @@ This sheet stores the run configuration as key-value pairs. Important keys inclu
 - `nupack.celsius`: temperature
 - `nupack.sodium`: sodium concentration
 - `nupack.magnesium`: magnesium concentration
+
+Algorithm settings are recorded from the search run, so later helper changes do not alter exported metadata.
+Older reports may omit these keys, and callers that do not provide them write `N.A.`. Neither means random ties.
 
 This sheet is the source of truth for replaying the thermodynamic model used during the search.
 

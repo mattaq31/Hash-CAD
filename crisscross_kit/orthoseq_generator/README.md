@@ -354,6 +354,32 @@ Low-level energy code reads global state from `helper_functions.py`. Callers are
 
 ## Global state and sharp edges
 
+### Algorithm names in new reports
+
+New algorithm labels use `workflow_HEURISTIC_ties`, with `_offline` last for searches using cached energies.
+Examples: `vertex_cover_GMAX_rule_offline`, `hybrid_GMIN_rank`, `naive_rand`, and `naive_rank_offline`.
+Naive rank mode means weaker-first candidate ordering. Graph rank mode breaks degree ties using negative on-target energy.
+Vertex-cover names describe iterative refinement by default; `_bare` before `_offline` marks a pure greedy cover.
+`algorithm_names.py` provides the shared name builder and historical aliases used by resume checks and plots.
+
+For manual cleanup of existing files, apply the same name to report metadata, filenames, and summary run labels:
+
+| Existing label | Consistent label |
+| --- | --- |
+| `vertex_cover` | `vertex_cover_GMAX_rule_offline` |
+| `vertex_cover_GMIN` | `vertex_cover_GMIN_rule_offline` |
+| `hybrid_offline` | `hybrid_GMAX_rule_offline` |
+| `hybrid_search` | `hybrid_GMAX_rule` for the historical default |
+| `naive` | `naive_rand_offline` |
+| `naive_ordered` | `naive_rank_offline` |
+| `naive_search` | `naive_rand` |
+| `gmin_random` | `vertex_cover_GMIN_rand_bare_offline` |
+| `gmin_rank_iterative` | `vertex_cover_GMIN_rank_offline` |
+
+The comparison aliases also cover the other GMIN/GMAX and rule/rank/random combinations.
+Already generated comparison and review TOMLs accept their old names. Newly generated comparison jobs use the new names.
+Files with the historical labels remain readable; no automatic data migration is performed.
+
 There are a few implementation details that are worth knowing before changing the code.
 
 ### Global NUPACK state

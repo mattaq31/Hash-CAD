@@ -1,6 +1,7 @@
 """Plot paired GMIN/GMAX comparisons at the final 178 mm supplementary-figure width."""
 
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 from matplotlib.transforms import Bbox
@@ -8,6 +9,9 @@ from matplotlib.legend_handler import HandlerTuple
 from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[7]))
+from orthoseq_generator.algorithm_names import build_algorithm_name, normalize_algorithm_name
 
 
 if __name__ == "__main__":
@@ -18,12 +22,8 @@ if __name__ == "__main__":
     plt.rcParams["pdf.fonttype"] = 42
     plt.rcParams["hatch.linewidth"] = 0.4
     algorithms = {
-        "gmin_random": "rand",
-        "gmin_rank": "rank",
-        "gmin_rule": "rule",
-        "gmax_random": "rand",
-        "gmax_rank": "rank",
-        "gmax_rule": "rule",
+        build_algorithm_name("vertex_cover", heuristic, ties, offline=True): "rand" if ties is None else ties
+        for heuristic in ("Gmin", "Gmax") for ties in (None, "rank", "rule")
     }
     colors = ["#9ECAE1", "#4292C6", "#08519C", "#FDBE85", "#FD8D3C", "#D94701"]
     pair_width = 0.88 / len(algorithms)
@@ -40,6 +40,7 @@ if __name__ == "__main__":
             pd.read_excel(path, sheet_name="results")
             for path in sorted(experiment_dir.glob(f"gmin_gmax_len*_5p_{condition}.xlsx"))
         ], ignore_index=True)
+        results_df["algorithm"] = results_df["algorithm"].map(normalize_algorithm_name)
         lengths = sorted(results_df["length"].unique())
         init_counts = sorted(results_df["init_count"].unique())
         summary = results_df.groupby(["length", "init_count", "algorithm"])["retained_pair_count"].agg(
@@ -47,8 +48,8 @@ if __name__ == "__main__":
         )
         mean_counts = summary["mean"].unstack("algorithm")
         mean_gaps = pd.DataFrame(index=list(algorithms))
-        for mode, suffix in [("Bare", ""), ("Iterative", "_iterative")]:
-            mode_means = mean_counts[[algorithm + suffix for algorithm in algorithms]]
+        for mode, suffix in [("Bare", "_bare"), ("Iterative", "")]:
+            mode_means = mean_counts[[algorithm.replace("_offline", f"{suffix}_offline") for algorithm in algorithms]]
             # Give each graph equal weight and compare within the same refinement mode.
             best_means = mode_means.max(axis=1)
             mean_gaps[mode] = (100 * mode_means.rsub(best_means, axis=0).div(best_means, axis=0)).mean().to_numpy()
@@ -61,8 +62,9 @@ if __name__ == "__main__":
                 for cluster_index, init_count in enumerate(init_counts):
                     for index, (algorithm, label) in enumerate(algorithms.items()):
                         position = cluster_index + (index - (len(algorithms) - 1) / 2) * pair_width
-                        for mode_index, (suffix, hatch) in enumerate([("", "///"), ("_iterative", None)]):
-                            values = summary.loc[(length, init_count, algorithm + suffix)]
+                        for mode_index, (suffix, hatch) in enumerate([("_bare", "///"), ("", None)]):
+                            variant = algorithm.replace("_offline", f"{suffix}_offline")
+                            values = summary.loc[(length, init_count, variant)]
                             offset = (mode_index - 0.5) * bar_width
                             ax.bar(
                                 position + offset, values["mean"], width=bar_width, color=colors[index],
@@ -111,7 +113,7 @@ if __name__ == "__main__":
                     ax.text(left + 0.24, 0.76, mode, transform=ax.transAxes, fontsize=7,
                             ha="center", va="top")
                     table_rows = [
-                        [f"{algorithm.split('_')[0].upper()} {algorithms[algorithm]}", f"{gap:.2f}%"]
+                        [f"{algorithm.split('_')[2]} {algorithms[algorithm]}", f"{gap:.2f}%"]
                         for algorithm, gap in mean_gaps[mode].sort_values(kind="stable").items()
                     ]
                     table = ax.table(cellText=table_rows, colLabels=["Variant", "Gap (%)"],

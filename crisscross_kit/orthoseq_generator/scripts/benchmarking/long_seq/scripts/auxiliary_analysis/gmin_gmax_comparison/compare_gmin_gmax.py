@@ -3,19 +3,31 @@
 import argparse
 from pathlib import Path
 import random
+import re
 import sys
 import time
 import tomllib
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[7]))
 
 from orthoseq_generator.search_report_reader import load_metadata, load_offtarget_matrices, load_seed_pairs
+from orthoseq_generator.algorithm_names import normalize_algorithm_name
 from orthoseq_generator.search_algorithm import _num_vertices_to_remove
 from orthoseq_generator.vertex_cover_algorithms import (
     build_edges, greedy_vertex_cover_gmin, greedy_vertex_cover_gmax, iterative_vertex_cover_refinement, rank_vertices,
 )
+
+
+def _normalize_config(config):
+    """Compare resumed job configurations using canonical algorithm labels, including older TOMLs."""
+    return {
+        **config,
+        "run": {
+            **config["run"], "algorithms": [normalize_algorithm_name(name) for name in config["run"]["algorithms"]],
+        },
+    }
 
 
 if __name__ == "__main__":
@@ -23,9 +35,9 @@ if __name__ == "__main__":
     parser.add_argument("--config", required=True, help="Path to a generated comparison TOML.")
     args = parser.parse_args()
     config_text = Path(args.config).read_text()
-    config = tomllib.loads(config_text)
+    config = _normalize_config(tomllib.loads(config_text))
     run_cfg = config["run"]
-    project_dir = Path(__file__).resolve().parents[5]
+    project_dir = Path(__file__).resolve().parents[8]
     output_path = project_dir / config["output"]["file"]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_suffix(".tmp.xlsx")
@@ -34,9 +46,14 @@ if __name__ == "__main__":
     result_rows = []
     if output_path.exists():
         saved_config = pd.read_excel(output_path, sheet_name="config").iloc[0]["toml"]
-        if tomllib.loads(saved_config) != config:
+        saved_config = _normalize_config(tomllib.loads(saved_config))
+        # Moving results changes their output path, but every calculation setting must still match.
+        saved_config["output"]["file"] = config["output"]["file"]
+        if saved_config != config:
             raise ValueError("The existing workbook uses different settings; choose a new output file.")
         result_rows = pd.read_excel(output_path, sheet_name="results").to_dict("records")
+        for row in result_rows:
+            row["algorithm"] = normalize_algorithm_name(row["algorithm"])
     completed = {(row["init_count"], row["algorithm"], row["random_seed"]) for row in result_rows}
 
     for graph_cfg in config["graphs"]:
@@ -56,8 +73,12 @@ if __name__ == "__main__":
         num_vertices_to_remove = _num_vertices_to_remove(len(pair_ids), run_cfg["prune_fraction"])
 
         for algorithm in run_cfg["algorithms"]:
-            iterative = algorithm.endswith("_iterative")
-            tiebreak = "rank" if "_rank" in algorithm else "rule" if "_rule" in algorithm else None
+            variant = re.fullmatch(r"vertex_cover_(GMIN|GMAX)_(rand|rule|rank)(_bare)?_offline", algorithm)
+            if variant is None:
+                raise ValueError(f"Unsupported comparison algorithm: {algorithm}")
+            heuristic, ties, bare = variant.groups()
+            iterative = bare is None
+            tiebreak = None if ties == "rand" else ties
             ranks = vertex_ranks if tiebreak == "rank" else None
             for random_seed in run_cfg["random_seeds"]:
                 if (init_count, algorithm, random_seed) in completed:
@@ -69,10 +90,10 @@ if __name__ == "__main__":
                     vertex_cover, _ = iterative_vertex_cover_refinement(
                         pair_ids, edges, avoid_V=None, num_vertices_to_remove=num_vertices_to_remove,
                         max_iterations=max_iterations, show_progress=False,
-                        heuristics="Gmin" if algorithm.startswith("gmin_") else "Gmax",
+                        heuristics="Gmin" if heuristic == "GMIN" else "Gmax",
                         tiebreak=tiebreak, vertex_ranks=ranks,
                     )
-                elif algorithm.startswith("gmax_"):
+                elif heuristic == "GMAX":
                     vertex_cover = greedy_vertex_cover_gmax(edges, cleanup=True, tiebreak=tiebreak, vertex_ranks=ranks)
                 else:
                     vertex_cover = greedy_vertex_cover_gmin(pair_ids, edges, tiebreak=tiebreak, vertex_ranks=ranks)

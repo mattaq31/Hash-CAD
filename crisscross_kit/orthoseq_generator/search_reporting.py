@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from orthoseq_generator import helper_functions as hf
+from orthoseq_generator.algorithm_names import build_algorithm_name
 from orthoseq_generator.energy_computations import compute_offtarget_energies, compute_ontarget_energies
 
 NA_VALUE = "N.A."
@@ -45,6 +46,8 @@ RUN_METADATA_KEY_ORDER = [
     "search.total_nupack_budget",
     "search.prune_fraction",
     "search.vc_max_iterations",
+    "search.vc_heuristics",
+    "search.vc_tiebreak",
     "search.initial_fresh_pair_count",
     "search.search_duration_s",
     "stopped_reason",
@@ -310,7 +313,10 @@ def write_hybrid_search_result_xlsx(
     :param verified: Verified energy payload from `verify_selected_pairs`.
     :type verified: dict
 
-    :param search_params: Search parameters to record under `search.*`.
+    :param search_params: Search parameters to record under `search.*`, including the run's
+                          vc_heuristics and vc_tiebreak when available.
+                          An explicitly supplied vc_tiebreak=None is written as "random";
+                          omitted settings remain N.A. rather than using current helper globals.
     :type search_params: dict
 
     :param input_params: Canonical input parameters recorded under
@@ -351,9 +357,22 @@ def write_hybrid_search_result_xlsx(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Existing live callers pass a workflow label; describe their recorded settings in new reports.
+    if algorithm_name == "hybrid_search":
+        algorithm_name = build_algorithm_name(
+            "hybrid", search_params.get("vc_heuristics", "Gmax"), search_params.get("vc_tiebreak", "rule"),
+        )
+    elif algorithm_name == "naive_search":
+        algorithm_name = build_algorithm_name("naive")
+
     found_pair_count = len(selected_sequence_data)
     if found_pair_count != len(verified["on_target_energies"]):
         raise ValueError("selected_sequence_data length must match verified energy array length.")
+
+    # None is a real random-tie choice; distinguish it from an unrecorded setting.
+    recorded_tiebreak = search_params.get("vc_tiebreak")
+    if "vc_tiebreak" in search_params and recorded_tiebreak is None:
+        recorded_tiebreak = "random"
 
     metadata_values = {
         "algorithm_name": algorithm_name,
@@ -381,6 +400,8 @@ def write_hybrid_search_result_xlsx(
         "search.initial_fresh_pair_count": search_params.get("initial_fresh_pair_count"),
         "search.prune_fraction": search_params.get("prune_fraction"),
         "search.vc_max_iterations": search_params.get("vc_max_iterations"),
+        "search.vc_heuristics": search_params.get("vc_heuristics"),
+        "search.vc_tiebreak": recorded_tiebreak,
         "search.random_seed": search_params.get("random_seed"),
         "search.total_nupack_budget": search_params.get("total_nupack_budget"),
         "search.total_nupack_calls": search_params.get("total_nupack_calls"),

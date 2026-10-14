@@ -135,6 +135,10 @@ def init_session_state():
         st.session_state.search_vc_max_iterations = 5000
     if "search_prune_fraction" not in st.session_state:
         st.session_state.search_prune_fraction = 0.2
+    if "search_vc_heuristics" not in st.session_state:
+        st.session_state.search_vc_heuristics = "Gmax"
+    if "search_vc_tiebreak" not in st.session_state:
+        st.session_state.search_vc_tiebreak = "rule"
     if "pilot_size" not in st.session_state:
         st.session_state.pilot_size = 50
     if "refine_size" not in st.session_state:

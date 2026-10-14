@@ -34,6 +34,7 @@ if str(PACKAGE_DIR) not in sys.path:
     sys.path.insert(0, str(PACKAGE_DIR))
 
 from orthoseq_generator.search_report_reader import load_metadata, load_offtarget_matrices
+from orthoseq_generator.algorithm_names import algorithm_workflow
 from orthoseq_generator.vertex_cover_algorithms import compute_pair_conflict_probability
 
 MM_PER_INCH = 25.4
@@ -127,7 +128,7 @@ def collect_runs(data_root: Path) -> list[dict]:
 
         metadata = load_metadata(report_path)
         algorithm_name = str(metadata.get("algorithm_name", "") or "").strip()
-        algorithm = "naive" if algorithm_name == "naive_search" else "hybrid"
+        algorithm = algorithm_workflow(algorithm_name)
         init_count = None if algorithm == "naive" else int(metadata["search.initial_fresh_pair_count"])
 
         runs.append(

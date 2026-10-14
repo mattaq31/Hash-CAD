@@ -35,6 +35,8 @@ from benchmark_dataset_tools import (
     load_dataset,
     self_energy_limit_from_unpaired_fraction,
 )
+from orthoseq_generator import helper_functions as hf
+from orthoseq_generator.algorithm_names import build_algorithm_name
 
 def discover_dataset_dirs(parent_dir: Path) -> list[Path]:
     """
@@ -204,8 +206,16 @@ if __name__ == "__main__":
             cutoff_label = str(offtarget_limit).replace(".", "p")
 
             for seed in seeds:
+                naive_name = build_algorithm_name("naive", offline=True)
+                vc_name = build_algorithm_name(
+                    "vertex_cover", vertex_cover_params.get("heuristics", "Gmax"),
+                    hf.ALGORITHM_PARAMS["TIEBREAK"], offline=True,
+                )
+                hybrid_name = build_algorithm_name(
+                    "hybrid", hf.ALGORITHM_PARAMS["HEURISTICS"], hf.ALGORITHM_PARAMS["TIEBREAK"], offline=True,
+                )
                 print(f"  naive | density={target_density} | cutoff={offtarget_limit} | seed={seed}")
-                naive_path = results_dir / f"density{density_label}_naive_limit{cutoff_label}_seed{seed}.xlsx"
+                naive_path = results_dir / f"density{density_label}_{naive_name}_limit{cutoff_label}_seed{seed}.xlsx"
                 run_naive_search_to_xlsx(
                     dataset_dir,
                     output_path=naive_path,
@@ -220,7 +230,7 @@ if __name__ == "__main__":
                         "fivep_ext": str(inputs["fivep_ext"]),
                         "threep_ext": str(inputs["threep_ext"]),
                         "has_tttt5p": bool(inputs["fivep_ext"] == "TTTT"),
-                        "algorithm": "naive",
+                        "algorithm": naive_name,
                         "seed": int(seed),
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
@@ -232,7 +242,7 @@ if __name__ == "__main__":
                 )
 
                 print(f"  vertex_cover | density={target_density} | cutoff={offtarget_limit} | seed={seed}")
-                vc_path = results_dir / f"density{density_label}_vertex_cover_limit{cutoff_label}_seed{seed}.xlsx"
+                vc_path = results_dir / f"density{density_label}_{vc_name}_limit{cutoff_label}_seed{seed}.xlsx"
                 run_vertex_cover_search_to_xlsx(
                     dataset_dir,
                     output_path=vc_path,
@@ -248,7 +258,7 @@ if __name__ == "__main__":
                         "fivep_ext": str(inputs["fivep_ext"]),
                         "threep_ext": str(inputs["threep_ext"]),
                         "has_tttt5p": bool(inputs["fivep_ext"] == "TTTT"),
-                        "algorithm": "vertex_cover",
+                        "algorithm": vc_name,
                         "seed": int(seed),
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
@@ -269,7 +279,7 @@ if __name__ == "__main__":
                     )
                     hybrid_path = (
                         results_dir
-                        / f"density{density_label}_hybrid_offline_limit{cutoff_label}{variant_suffix}_seed{seed}.xlsx"
+                        / f"density{density_label}_{hybrid_name}_limit{cutoff_label}{variant_suffix}_seed{seed}.xlsx"
                     )
                     run_hybrid_search_offline_to_xlsx(
                         dataset_dir,
@@ -286,7 +296,7 @@ if __name__ == "__main__":
                             "fivep_ext": str(inputs["fivep_ext"]),
                             "threep_ext": str(inputs["threep_ext"]),
                             "has_tttt5p": bool(inputs["fivep_ext"] == "TTTT"),
-                            "algorithm": "hybrid_offline",
+                            "algorithm": hybrid_name,
                             "seed": int(seed),
                             "target_conflict_density": target_density,
                             "selected_offtarget_limit": offtarget_limit,

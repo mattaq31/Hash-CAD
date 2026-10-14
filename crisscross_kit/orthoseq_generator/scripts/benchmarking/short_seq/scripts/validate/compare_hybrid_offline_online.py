@@ -29,6 +29,7 @@ for path in (MODULE_DIR, PACKAGE_DIR):
 from benchmark_algorithms import run_hybrid_search_offline_to_xlsx
 from benchmark_dataset_tools import load_dataset, resolve_dataset_input_params
 from orthoseq_generator import helper_functions as hf
+from orthoseq_generator.algorithm_names import build_algorithm_name
 from orthoseq_generator.search_reporting import (
     build_selected_sequence_data,
     validate_selected_pairs,
@@ -83,9 +84,12 @@ def main():
     results_dir = dataset_dir / "results" / BENCHMARK_NAME
     results_dir.mkdir(parents=True, exist_ok=True)
     cutoff_label = str(offtarget_limit).replace(".", "p")
+    offline_name = build_algorithm_name(
+        "hybrid", hf.ALGORITHM_PARAMS["HEURISTICS"], hf.ALGORITHM_PARAMS["TIEBREAK"], offline=True,
+    )
     offline_path = run_hybrid_search_offline_to_xlsx(
         dataset_dir,
-        output_path=results_dir / f"hybrid_offline_limit{cutoff_label}_seed{random_seed}.xlsx",
+        output_path=results_dir / f"{offline_name}_limit{cutoff_label}_seed{random_seed}.xlsx",
         offtarget_limit=offtarget_limit,
         self_energy_limit=self_energy_limit,
         initial_fresh_pair_count=initial_fresh_pair_count,
@@ -138,7 +142,10 @@ def main():
         self_energy_limit=self_energy_limit,
         offtarget_limit=offtarget_limit,
     )
-    online_path = results_dir / f"hybrid_online_limit{cutoff_label}_seed{random_seed}.xlsx"
+    online_name = build_algorithm_name(
+        "hybrid", online_result["search_params"]["vc_heuristics"], online_result["search_params"]["vc_tiebreak"],
+    )
+    online_path = results_dir / f"{online_name}_limit{cutoff_label}_seed{random_seed}.xlsx"
     write_hybrid_search_result_xlsx(
         online_path,
         algorithm_name="hybrid_search",

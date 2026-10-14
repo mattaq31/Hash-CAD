@@ -94,6 +94,24 @@ def render_search_tab(registry_factory, nupack_params):
             help="Controls how strongly the current graph-search solution is perturbed before refinement."
         )
 
+    with st.expander("Advanced Algorithm Settings", expanded=False):
+        st.selectbox(
+            "Heuristic",
+            options=["Gmax", "Gmin"],
+            format_func=str.upper,
+            key="search_vc_heuristics",
+            disabled=st.session_state.busy or st.session_state.search_running,
+            help="GMAX removes highly connected vertices; GMIN selects weakly connected vertices to retain."
+        )
+        st.selectbox(
+            "Tie-breaking",
+            options=["rule", "random", "rank"],
+            format_func=str.capitalize,
+            key="search_vc_tiebreak",
+            disabled=st.session_state.busy or st.session_state.search_running,
+            help="Resolve equal-degree choices using the graph rule, random selection, or on-target energy ranking."
+        )
+
     if st.session_state.checkpoint_requested and not st.session_state.checkpoint_event.is_set():
         st.session_state.checkpoint_requested = False
 
@@ -160,6 +178,10 @@ def render_search_tab(registry_factory, nupack_params):
 
         random.seed(nupack_params['random_seed'])
         nupack_params['sync_func']()
+        hf.set_algorithm(
+            heuristics=st.session_state.search_vc_heuristics,
+            tiebreak=None if st.session_state.search_vc_tiebreak == "random" else st.session_state.search_vc_tiebreak,
+        )
 
         # Reset run-related state
         st.session_state.stop_requested = False

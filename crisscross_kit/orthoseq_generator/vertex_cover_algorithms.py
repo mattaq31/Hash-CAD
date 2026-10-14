@@ -3,13 +3,14 @@ import random
 import warnings
 from collections import defaultdict
 
+from orthoseq_generator import helper_functions as hf
+
 
 import logging
 
 logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 #logging.getLogger("nupack").setLevel(logging.ERROR)
-
 
 
 def cleanup_vertex_cover(E, vertex_cover):
@@ -488,11 +489,12 @@ def select_vertices_to_remove(vertex_cover, num_vertices_to_remove):
 
 
 def iterative_vertex_cover_refinement(V, E, avoid_V=None, num_vertices_to_remove=150, max_iterations=200,
-                                      limit=+np.inf, show_progress=False, heuristics="Gmax", tiebreak="rule",
-                                      vertex_ranks=None):
+                                      limit=+np.inf, show_progress=False, heuristics="helper_settings",
+                                      tiebreak="helper_settings", vertex_ranks=None):
     """
     Attempts to find a small vertex cover via iterative randomized refinement.
-    Uses GMAX by default, or GMIN for both the initial cover and repairs.
+    Uses the helper's configured heuristic and tie-break unless explicitly overridden.
+    Both settings apply to the initial cover and every repair.
 
     Algorithm Outline
     -----------------
@@ -531,10 +533,12 @@ def iterative_vertex_cover_refinement(V, E, avoid_V=None, num_vertices_to_remove
     :param show_progress: If True, prints status each iteration.
     :type show_progress: bool
 
-    :param heuristics: 'Gmax' or 'Gmin' for initialization and repairs. Defaults to 'Gmax'.
+    :param heuristics: 'Gmax' or 'Gmin' for initialization and repairs. The default 'helper_settings'
+                       uses hf.ALGORITHM_PARAMS['HEURISTICS'], initially 'Gmax'.
     :type heuristics: str
 
     :param tiebreak: 'rule', 'rank', or None for random ties, used for initialization and repairs.
+                     The default 'helper_settings' uses hf.ALGORITHM_PARAMS['TIEBREAK'], initially 'rule'.
                      Missing ranks fall back to 'rule' with a warning.
     :type tiebreak: str or None
 
@@ -548,6 +552,10 @@ def iterative_vertex_cover_refinement(V, E, avoid_V=None, num_vertices_to_remove
     :rtype: tuple[set, list[list[int]]]
     """
 
+    if heuristics == "helper_settings":
+        heuristics = hf.ALGORITHM_PARAMS["HEURISTICS"]
+    if tiebreak == "helper_settings":
+        tiebreak = hf.ALGORITHM_PARAMS["TIEBREAK"]
     if heuristics not in ("Gmax", "Gmin"):
         raise ValueError("heuristics must be 'Gmax' or 'Gmin'.")
     tiebreak = _resolve_tiebreak(tiebreak, vertex_ranks)

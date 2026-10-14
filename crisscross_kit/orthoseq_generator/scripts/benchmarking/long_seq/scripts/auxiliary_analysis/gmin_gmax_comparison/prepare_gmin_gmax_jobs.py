@@ -3,26 +3,26 @@
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[7]))
 
 from orthoseq_generator.scripts.benchmarking.long_seq.scripts.prepare_conditions import (
     build_server_script,
     toml_literal,
 )
+from orthoseq_generator.algorithm_names import build_algorithm_name
 
 
 if __name__ == "__main__":
     script_dir = Path(__file__).resolve().parent
-    project_dir = Path(__file__).resolve().parents[5]
+    project_dir = Path(__file__).resolve().parents[8]
     experiment_name = "gmin_gmax_37C"
     lengths = [8, 9, 10, 12, 14, 16, 18, 20, 25]
     init_counts = [250, 450, 900]
     random_seeds = list(range(10))
     prune_fraction = 0.2
     algorithms = [
-        "gmin_random", "gmin_rule", "gmin_rank", "gmax_random", "gmax_rule", "gmax_rank",
-        "gmin_random_iterative", "gmin_rule_iterative", "gmin_rank_iterative",
-        "gmax_random_iterative", "gmax_rule_iterative", "gmax_rank_iterative",
+        build_algorithm_name("vertex_cover", heuristic, ties, offline=True, bare=bare)
+        for bare in (True, False) for heuristic in ("Gmin", "Gmax") for ties in (None, "rule", "rank")
     ]
     batches = [("batch_x_TTTT_sigma1p0_seed41", "5p_TTTT"), ("batch_x______sigma1p0_seed41", "5p_none")]
     server_cfg = {

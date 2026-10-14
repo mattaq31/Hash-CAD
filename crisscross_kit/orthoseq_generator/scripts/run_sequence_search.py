@@ -63,14 +63,17 @@ if __name__ == "__main__":
 
 
     # 3) Define energy thresholds based on prior analysis
-    hf.set_nupack_params(material="dna", celsius=37.0, sodium=0.05, magnesium=0.025)
-    hf.set_energy_type("total")
     max_ontarget = -19.308503678279084
     min_ontarget = -21.350806979612546
     offtarget_limit = -8.160422784450315
     self_energy_limit = -0.9919471230992267
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
     print(f"Initial graph search requested pairs: {INITIAL_FRESH_PAIR_COUNT}")
+
+    # Configure once before execution; checkpoints and both passes use these settings.
+    hf.set_nupack_params(material="dna", celsius=37.0, sodium=0.05, magnesium=0.025)
+    hf.set_energy_type("total")
+    hf.set_algorithm(heuristics="Gmax", tiebreak="rule")
 
     search_result = hybrid_search(
         sequence_pairs_object,

@@ -1,8 +1,9 @@
-"""Plot GMIN/GMAX conflict distributions and the original progress fits as separate two-column SVGs."""
+"""Plot GMIN/GMAX conflict distributions and the original progress fits as separate SVG/PDF figures."""
 
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -26,6 +27,7 @@ if __name__ == "__main__":
     ]
     plt.rcParams["font.family"] = "Arial"
     plt.rcParams["svg.fonttype"] = "none"
+    plt.rcParams["pdf.fonttype"] = 42
     fig, axes = plt.subplots(
         4, 2, figsize=(figure_width_mm / 25.4, 4 * panel_height_mm / 25.4),
     )
@@ -99,13 +101,30 @@ if __name__ == "__main__":
         for ax in axes[row]:
             ax.set_ylim(0, ymax)
     # Two original-width columns: halve the outer margins and retain their combined gap between columns.
-    fig.subplots_adjust(left=0.09, right=0.99, bottom=0.06, top=0.97, hspace=hspace, wspace=wspace)
+    fig.subplots_adjust(left=0.09, right=0.99, bottom=0.06, top=0.95, hspace=hspace, wspace=wspace)
     progress_fig.subplots_adjust(left=0.09, right=0.99, bottom=0.06, top=0.97, wspace=wspace)
-    output_path = output_dir / "conf_prob_analysis_with_gmin_len12.svg"
-    fig.savefig(output_path, format="svg")
-    print(f"Saved: {output_path}")
-    progress_path = output_dir / "progress_analysis_len12.svg"
-    progress_fig.savefig(progress_path, format="svg", bbox_inches="tight", pad_inches=0.1)
-    print(f"Saved: {progress_path}")
+    for row, label in enumerate("ABCD"):
+        axes[row, 0].text(
+            -0.16, 1.02, label, transform=axes[row, 0].transAxes,
+            fontsize=10, fontfamily="Arial", fontweight="normal", ha="left", va="bottom",
+        )
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    # Use the space between the complete panels so the divider clears the right column's y-labels.
+    left_edge = max(ax.get_tightbbox(renderer).x1 for ax in axes[:, 0])
+    right_edge = min(ax.get_tightbbox(renderer).x0 for ax in axes[:, 1])
+    divider_x = 0.5 * (left_edge + right_edge) / fig.bbox.width
+    fig.add_artist(Line2D(
+        [divider_x, divider_x], [axes[-1, 0].get_position().y0, axes[0, 0].get_position().y1],
+        transform=fig.transFigure, color="black", linewidth=0.6,
+    ))
+    for output_format in ("svg", "pdf"):
+        output_path = output_dir / f"conf_prob_analysis_with_gmin_len12.{output_format}"
+        fig.savefig(output_path, format=output_format)
+        print(f"Saved: {output_path}")
+    for output_format in ("svg", "pdf"):
+        progress_path = output_dir / f"progress_analysis_len12.{output_format}"
+        progress_fig.savefig(progress_path, format=output_format, bbox_inches="tight", pad_inches=0.1)
+        print(f"Saved: {progress_path}")
     plt.close(fig)
     plt.close(progress_fig)
