@@ -52,17 +52,17 @@ if __name__ == "__main__":
     # 1) Set a random seed for reproducibility
     RANDOM_SEED = 41
     random.seed(RANDOM_SEED)
-    TOTAL_NUPACK_BUDGET = 10_000_0
-    INITIAL_FRESH_PAIR_COUNT = 50
+    TOTAL_NUPACK_BUDGET = 10_000_000
+    INITIAL_FRESH_PAIR_COUNT = 900
     res_name = (
-        "my_test.xlsx"
+        "library_len20_Na1M_Mg0M_seed41.xlsx"
     )
     seqwalk_cores = None
     # Optional SeqWalk example:
     # from seqwalk import design
     # seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=16,
+        length=20,
         fivep_ext="",
         threep_ext="",
         unwanted_substrings=["GGGG", "CCCC"],
@@ -73,15 +73,15 @@ if __name__ == "__main__":
 
 
     # 3) Define energy thresholds based on prior analysis
-    max_ontarget = -19.308503678279084
-    min_ontarget = -21.350806979612546
-    offtarget_limit = -8.160422784450315
-    self_energy_limit = -0.9919471230992267
+    max_ontarget = -24.0
+    min_ontarget = -25.25
+    offtarget_limit = -11.4
+    self_energy_limit = -1.4
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
     print(f"Initial graph search requested pairs: {INITIAL_FRESH_PAIR_COUNT}")
 
     # Configure once before execution; checkpoints and both passes use these settings.
-    hf.set_nupack_params(material="dna", celsius=37.0, sodium=0.05, magnesium=0.025)
+    hf.set_nupack_params(material="dna", celsius=37.0, sodium=1.0, magnesium=0.0)
     hf.set_energy_type("total")
     hf.set_algorithm(heuristics="Gmax", tiebreak="rule")
 
@@ -93,8 +93,8 @@ if __name__ == "__main__":
         self_energy_limit,
         initial_fresh_pair_count=INITIAL_FRESH_PAIR_COUNT,
         total_nupack_budget=TOTAL_NUPACK_BUDGET,
-        prune_fraction=0.2,
-        vc_max_iterations=1000,
+        prune_fraction=0.35,
+        vc_max_iterations=5000,
         stop_event=None,
         return_diagnostics=True,
         external_sequences=external_sequences,

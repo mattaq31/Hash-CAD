@@ -1,4 +1,4 @@
-"""Read standard repository XLSX reports and draw the three nuad / OrthoSeq comparison figures."""
+"""Read standard repository XLSX reports and draw nuad / OrthoSeq comparison figures."""
 
 from ast import literal_eval
 from pathlib import Path
