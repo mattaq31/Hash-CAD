@@ -16,6 +16,7 @@ logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 
 R_KCAL_PER_MOL_K = 0.00198720425864083
+_NUPACK_MODEL_CACHE = {}
 
 
 def _rt_kcal_per_mol():
@@ -64,13 +65,28 @@ def _mp_context_from_env():
     return mp.get_context(method)
 
 
+def _get_nupack_model():
+    """Reuse one model per process until the thermodynamic conditions change."""
+    from nupack import Model
+
+    params = hf.NUPACK_PARAMS
+    # A forked worker must replace any model inherited from its parent.
+    key = (os.getpid(), params["MATERIAL"], params["CELSIUS"], params["SODIUM"], params["MAGNESIUM"])
+    if key not in _NUPACK_MODEL_CACHE:
+        model = Model(material=params["MATERIAL"], celsius=params["CELSIUS"],
+                      sodium=params["SODIUM"], magnesium=params["MAGNESIUM"])
+        _NUPACK_MODEL_CACHE.clear()
+        _NUPACK_MODEL_CACHE[key] = model
+    return _NUPACK_MODEL_CACHE[key]
+
+
 def compute_nupack_energy(seq1, seq2, type="total"):
     """
     Computes the Gibbs free energy of hybridization between two DNA sequences
     using NUPACK.
     """
     hf.require_nupack()
-    from nupack import Complex, Model, Strand, complex_analysis
+    from nupack import Complex, Strand, complex_analysis
 
     A = Strand(seq1, name="H1")
     B = Strand(seq2, name="H2")
@@ -86,12 +102,7 @@ def compute_nupack_energy(seq1, seq2, type="total"):
             mono_obj_B = Complex([B], name="(H2)")
             homo = False
 
-        model1 = Model(
-            material=hf.NUPACK_PARAMS["MATERIAL"],
-            celsius=hf.NUPACK_PARAMS["CELSIUS"],
-            sodium=hf.NUPACK_PARAMS["SODIUM"],
-            magnesium=hf.NUPACK_PARAMS["MAGNESIUM"],
-        )
+        model1 = _get_nupack_model()
 
         if type == "minimum":
             results = complex_analysis([complex_obj], model=model1, compute=["mfe"])
