@@ -63,6 +63,7 @@ packages = [
     "orthoseq_generator.streamlit_app",
     "orthoseq_generator.streamlit_app.tabs",
     "eqcorr2d",
+    "sec_struc_pred",
 ]
 include-package-data = true
 
