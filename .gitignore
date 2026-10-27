@@ -139,9 +139,19 @@ dmypy.json
 # temp scripts
 scratch/*
 
+# Local writing and agent handoff notes
+/handoff/
+/crisscross_kit/orthoseq_generator/scripts/auxilary_scripts/zenode_discusison_handoff.md
+
 # orthoseq results
 results/
 noflank_results/
+# Generated review figures
+/crisscross_kit/orthoseq_generator/scripts/auxilary_scripts/review_comments/plots/
+# Confidential manuscript referee reports
+/crisscross_kit/orthoseq_generator/scripts/auxilary_scripts/review_comments/reviewer_comments.md
+# Generated O2 comparison configs, submission scripts and logs
+/crisscross_kit/orthoseq_generator/scripts/auxilary_scripts/review_comments/configs/generated/
 crisscross_kit/orthoseq_generator/tests/hybrid_energy_type_*.xlsx
 crisscross_kit/orthoseq_generator/tests/hybrid_energy_type_summary.toml
 

@@ -11,9 +11,11 @@ Typical use case:
     - plot energies from the canonical XLSX output format
 """
 
+from pathlib import Path
+
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
-from orthoseq_generator.search_report_reader import load_found_pairs, load_metadata
+from orthoseq_generator.search_report_reader import load_found_pairs, load_metadata, load_reference_sequences
 
 
 if __name__ == "__main__":
@@ -30,23 +32,32 @@ if __name__ == "__main__":
         sodium=metadata["nupack.sodium"],
         magnesium=metadata["nupack.magnesium"],
     )
+    hf.set_energy_type(metadata.get("nupack.energy_type", "total"))
 
     # 3) Compute on-target and self energies.
     on_e, self_e_seq, self_e_rc_seq = sc.compute_ontarget_energies(sequence_pairs)
 
     # 4) Compute off-target energies.
     off_e = sc.compute_offtarget_energies(sequence_pairs)
+    reference_sequences = load_reference_sequences(report_path, sheet_name="reference_sequences", required=False)
 
     # 5) Plot histograms and save them.
+    results_dir = Path(hf.get_default_results_folder())
     stats = sc.plot_on_off_target_histograms(
         on_e,
         off_e,
-        output_path="results/energy_hist_loaded_sequences_from_xlsx.pdf",
+        output_path=results_dir / "energy_hist_loaded_sequences_from_xlsx.pdf",
     )
     self_stats = sc.plot_self_energy_histogram(
         (self_e_seq, self_e_rc_seq),
-        output_path="results/self_energy_hist_loaded_sequences_from_xlsx.pdf",
+        output_path=results_dir / "self_energy_hist_loaded_sequences_from_xlsx.pdf",
     )
 
     print(stats)
     print(self_stats)
+    if reference_sequences:
+        crossref = sc.compute_crossreference_energies(sequence_pairs, reference_sequences)
+        sc.plot_crossreference_histogram(
+            crossref, float(metadata["search.offtarget_limit"]),
+            output_path=results_dir / "crossref_hist_loaded_sequences_from_xlsx.pdf",
+        )

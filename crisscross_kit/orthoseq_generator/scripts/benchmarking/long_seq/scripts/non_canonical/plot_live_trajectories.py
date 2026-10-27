@@ -35,6 +35,7 @@ if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
 from orthoseq_generator.search_report_reader import load_metadata, load_search_progress
+from orthoseq_generator.algorithm_names import algorithm_workflow
 
 
 DATA_ROOT = MODULE_DIR / "data" / "non_canonical"
@@ -75,11 +76,7 @@ def parse_limit_label(limit_label: str) -> float:
 
 def normalize_algorithm_name(value: str | None) -> str | None:
     """Map workbook metadata algorithm names onto the plotting labels."""
-    if value == "naive_search":
-        return "naive"
-    if value == "hybrid_search":
-        return "hybrid"
-    return None if value is None else str(value)
+    return algorithm_workflow(value)
 
 
 def parse_run_filename(report_path: Path) -> dict | None:

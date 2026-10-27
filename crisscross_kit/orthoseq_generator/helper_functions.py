@@ -10,6 +10,29 @@ NUPACK_PARAMS = {
     "SODIUM": 0.05,
     "MAGNESIUM": 0.025
 }
+ALGORITHM_PARAMS = {"HEURISTICS": "Gmax", "TIEBREAK": "rule"}
+
+
+def set_algorithm(heuristics="Gmax", tiebreak="rule"):
+    """
+    Set the global defaults used by iterative vertex-cover initialization and repairs.
+
+    Configure these alongside the NUPACK settings immediately before search execution,
+    and leave them unchanged until the run finishes, including checkpoint calculations.
+    Explicit arguments to `iterative_vertex_cover_refinement` override these defaults.
+
+    :param heuristics: Greedy heuristic, either "Gmax" or "Gmin".
+    :type heuristics: str
+    :param tiebreak: "rule", "rank", or None for random ties. Rank mode requires
+                     vertex ranks; hybrid search ranks negative on-target energies.
+    :type tiebreak: str or None
+    :raises ValueError: If either setting is unsupported; existing settings remain unchanged.
+    """
+    if heuristics not in ("Gmax", "Gmin"):
+        raise ValueError("heuristics must be 'Gmax' or 'Gmin'.")
+    if tiebreak not in ("rule", "rank", None):
+        raise ValueError("tiebreak must be 'rule', 'rank', or None.")
+    ALGORITHM_PARAMS.update({"HEURISTICS": heuristics, "TIEBREAK": tiebreak})
 
 
 def get_nupack_install_message():

@@ -1,14 +1,15 @@
 import streamlit as st
 import random
 import threading
+import logging
 from orthoseq_generator import sequence_computations as sc
-from orthoseq_generator import numeric_functions as nf
 from orthoseq_generator import vertex_cover_algorithms as vca
 from orthoseq_generator.streamlit_app import plotly_utils as pu
 
-def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out_q):
+def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out_q, external_sequences=None):
+    """Evaluate the same unpruned sample internally and against any uploaded reference strands."""
     try:
-        subset, indices, _, _, _ = sc.select_subset_in_energy_range(
+        subset, _, _, _, _ = sc.select_subset_in_energy_range(
             registry,
             energy_min=float(min_on),
             energy_max=float(max_on),
@@ -18,14 +19,21 @@ def _refine_worker(registry, min_on, max_on, self_energy_limit, refine_size, out
         )
 
         if not subset:
-            out_q.put(("done", None, None, None, "No sequences found in the specified on-target energy range using the given parameters"))
+            out_q.put(("done", None, None, None, None,
+                       "No sequences found in the specified on-target energy range using the given parameters"))
             return
 
         on_e, self_e_a, self_e_b = sc.compute_ontarget_energies(subset)
         off_e = sc.compute_offtarget_energies(subset)
-        out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), None))
+        crossref = None
+        if external_sequences:
+            logging.getLogger("orthoseq").info(
+                "Cross-referencing %d sampled pairs against %d external strands.", len(subset), len(external_sequences),
+            )
+            crossref = sc.compute_crossreference_energies(subset, external_sequences)
+        out_q.put(("done", on_e, off_e, (self_e_a, self_e_b), crossref, None))
     except Exception as e:
-        out_q.put(("done", None, None, None, str(e)))
+        out_q.put(("done", None, None, None, None, str(e)))
 
 def render_refinement_tab(registry_factory, nupack_params):
     st.header("Step 2: Off-Target Limit Selection")
@@ -35,6 +43,7 @@ def render_refinement_tab(registry_factory, nupack_params):
     if st.session_state.run_compute_2 and not st.session_state.refine_running:
         st.session_state.run_compute_2 = False
         st.session_state.refine_error = None
+        st.session_state.crossref_e_range = None
 
         random.seed(nupack_params['random_seed'])
         nupack_params['sync_func']()
@@ -52,6 +61,7 @@ def render_refinement_tab(registry_factory, nupack_params):
                 float(st.session_state.self_energy_limit),
                 int(st.session_state.refine_size),
                 st.session_state.refine_queue,
+                list(st.session_state.external_sequences),
             ),
             daemon=True
         )
@@ -61,7 +71,7 @@ def render_refinement_tab(registry_factory, nupack_params):
         st.rerun()
 
     if st.session_state.refine_running and (not st.session_state.refine_queue.empty()):
-        msg, on_e, off_e, self_e, err = st.session_state.refine_queue.get()
+        _, on_e, off_e, self_e, crossref, err = st.session_state.refine_queue.get()
 
         st.session_state.refine_running = False
         st.session_state.busy = False
@@ -70,14 +80,14 @@ def render_refinement_tab(registry_factory, nupack_params):
             st.session_state.on_e_range = None
             st.session_state.off_e_range = None
             st.session_state.self_e_range = None
+            st.session_state.crossref_e_range = None
             st.session_state.refine_error = err
         else:
             st.session_state.on_e_range = on_e
             st.session_state.off_e_range = off_e
             st.session_state.self_e_range = self_e
+            st.session_state.crossref_e_range = crossref
             st.session_state.refine_error = None
-            #print(on_e, off_e, self_e)
-            #print(1)
         st.rerun()
 
     st.write("On-target range is fixed from Tab 1. Choose the off-target limit here, then commit for Tab 3.")
@@ -89,7 +99,7 @@ def render_refinement_tab(registry_factory, nupack_params):
         f"Minimum self-folding energy set in pilot analysis: {st.session_state.self_energy_limit:.2f} kcal/mol"
     )
 
-    refine_size = st.number_input(
+    st.number_input(
         "Sample Size",
         min_value=10, 
         max_value=1000, 
@@ -139,27 +149,17 @@ def render_refinement_tab(registry_factory, nupack_params):
         )
         st.info(f"Conflict Probability $P_c$ = {conflict_probability:.3f}")
 
-        # NOTE: Orthogonal pair estimator is currently disabled because it is incorrect.
-        # if pool_estimate is not None and pool_estimate >= 1 and 0.0 < conflict_probability < 1.0:
-        #     estimated_orthogonal_pairs = nf.numeric_independet_set_estimator(
-        #         int(round(pool_estimate)),
-        #         float(conflict_probability)
-        #     )
-        #     st.info(f"Estimated number of orthogonal pairs in the pool = {estimated_orthogonal_pairs}")
-        # else:
-        #     st.info(
-        #         "Estimated number of orthogonal pairs in the pool: unavailable "
-        #         "(requires N >= 1 and 0 < P_c < 1)."
-        #     )
-
         fig = pu.create_interactive_histogram(
             st.session_state.on_e_range,
             st.session_state.off_e_range,
             float(st.session_state.min_ontarget),          # fixed
             float(st.session_state.max_ontarget),          # fixed
-            off_limit=float(st.session_state.draft_offtarget_limit)  # draft, editable field above
+            off_limit=float(st.session_state.draft_offtarget_limit),  # draft, editable field above
+            crossref_energies=st.session_state.crossref_e_range,
         )
         st.plotly_chart(fig, width="stretch", key="refine_chart_static")
+        if st.session_state.external_sequences and st.session_state.crossref_e_range is None:
+            st.info("Run Off-Target Binding Analysis again to plot the uploaded crossreference library.")
 
         if st.session_state.self_e_range is not None:
             st.markdown("---")

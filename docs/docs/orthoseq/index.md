@@ -110,6 +110,16 @@ There is an illustration at the top of the panel showing the resulting binding l
 
 Sequences containing unwanted substrings are excluded from the search. The unwanted-substring filter can be applied either to the core sequence only or to the full sequence including the user-defined extensions. Be careful not to choose unwanted substrings that are already part of your fixed extensions, or no valid sequences may remain.
 
+Optionally, upload an `.xlsx` workbook under **External Crossreference Library** to find new pairs compatible
+with an existing library. Accepted layouts are:
+
+- an OrthoSeq report containing a `found_pairs` sheet with `seq` and `rc_seq` columns
+- a strand list in a `reference_sequences` sheet with a single column. Put `sequence` in cell A1 as the header,
+  then one strand per row below. Include complementary strands in separate rows of that same column.
+
+Supply strands written 5′ to 3′, including their extensions. List both partners if both should be checked.
+A valid upload automatically enables the checks; removing it disables them.
+
 Further down in the panel, you can set the thermodynamic parameters:
 
 - nucleic acid type: DNA or RNA
@@ -161,13 +171,17 @@ The app then selects a random set of sequence pairs that satisfy the previously 
 
 You can then choose the off-target energy limit by entering a value in the input field. The selected value is shown as a vertical red line in the plot. The plot also shows the conflict probability, which is the probability that two sequence pairs from the currently selected pool violate the chosen off-target limit.
 
+With an uploaded reference library, a second distribution shows interactions between the sampled strands and
+the reference strands. Both panels share the energy axis and off-target cutoff. After changing the reference
+library, click **Run Off-Target Binding Analysis** again to update this distribution.
+
 The off-target limit is chosen in a separate step because the selected on-target energy range affects the off-target energy distribution. Sequences with stronger on-target binding also tend to show stronger off-target binding.
 
 You can use the **Selection Helper** tab again to interpret the off-target energies. Once you are happy with the off-target limit, transfer it to the next tab using **Use This Value**.
 
 ### 4. Run the orthogonal sequence-pair search
 
-In the **Orthogonal Sequence-Pair Search** tab, the transferred parameter values are shown again for reference. Start the search with **Run Search**.
+In the **Sequence Search** tab, the transferred parameter values are shown again for reference. Start the search with **Run Search**.
 
 While the search is running, progress messages are shown in the logging window above the workflow tabs.
 
@@ -179,12 +193,25 @@ The **Search Parameters** panel contains the main search controls:
 
 In most cases, the default values are a good starting point.
 
+In **Advanced Algorithm Settings**, choose the **Heuristic** (GMAX or GMIN) and **Tie-breaking** strategy
+(Rule, Random, or Rank).
+
+If a reference library is uploaded, both strands of each new pair are checked against it using the selected
+off-target limit. The reference strands remain fixed and separate from the generated library; interactions
+among the reference strands themselves are not checked.
+
 Two interactive controls are available while the search is running:
 
 - **Checkpoint Now** computes an intermediate estimate from the currently collected sequence-pair pool and then continues the search.
 - **Stop Searching** stops further sequence-pair collection and finalizes the current sequence-pair pool before returning the best orthogonal sequence pairs found so far.
 
+GUI searches have no fixed evaluation budget. To finish a search, click **Stop Searching** and wait for
+finalization and verification to complete.
+
 After the search finishes, the app verifies the final sequence pairs directly with NUPACK, displays the final plots, and writes a timestamped XLSX report into the local `results/` folder. The same report can also be downloaded from the app as `ortho_sequences.xlsx`.
+
+Runs with a reference library also show its verified cross-reference energy distribution and save the reference
+strands and interaction energies in the report's optional sheets described below.
 
 ### 5. Load an existing search report
 
@@ -204,6 +231,9 @@ The app then recomputes the on-target, off-target, and self-folding energies usi
 
 - on-target vs. off-target energy histogram
 - self-folding energy histogram
+
+To recreate external-reference plots from a saved report, use `load_sequences_from_xlsx_and_plot.py`;
+the **Load Results** tab currently recreates only the internal energy plots.
 
 
 
@@ -240,11 +270,13 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 
 #### `run_sequence_search.py`
 
-- Main editable example corresponding to **Orthogonal Sequence-Pair Search**.
+- Main editable example corresponding to **Sequence Search**.
 - Runs the hybrid search with the chosen thermodynamic limits.
 - Writes a verified XLSX run report and related output artifacts into the local `results/` folder.
 - This is the main non-app entry point for generating orthogonal sequence pairs.
 - An optional SeqWalk initialization example is included as a commented block that you can enable manually.
+- To use an external reference library, set `reference_file` to your `.xlsx` workbook using either layout
+  described under **Global Settings** above. Leave it as `None` to run without a reference library.
 
 #### `run_naive_search.py`
 
@@ -267,6 +299,8 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 - Uses the recorded NUPACK parameters from the workbook metadata.
 - Recomputes on-target, off-target, and self-folding energies.
 - Writes on/off-target and self-folding histogram PDFs.
+- When the report contains `reference_sequences`, also recomputes the external interaction energies and writes
+  a cross-reference histogram PDF.
 
 ### Auxiliary and legacy material
 
@@ -309,7 +343,8 @@ OrthoSeq stores the binding-energy convention used for a run as `nupack.energy_t
 
 The default energy type is:
 
-- `total`: the NUPACK association free energy used by legacy OrthoSeq runs. For a two-strand complex this is computed as the free energy of the complex minus the free energies of the two isolated strands. This is the convention used by the Streamlit app by default.
+- `total`: the default NUPACK association free-energy convention used by OrthoSeq. For a two-strand complex,
+  this is computed as the free energy of the complex minus the free energies of the two isolated strands.
 
 An additional energy type is available in the app sidebar and in script-based workflows:
 
@@ -449,21 +484,29 @@ This sheet stores the run configuration as key-value pairs. Important keys inclu
 - `input.seqwalk_k`: the SeqWalk `k` setting when SeqWalk mode was used
 - `input.seqwalk_rcfree`: whether SeqWalk was run with reverse-complement freedom enabled
 - `input.seqwalk_core_count`: the raw number of SeqWalk cores generated for the recorded settings
+- `input.reference_sequence_file`: source workbook filename or path, when recorded
+- `input.reference_sequence_count`: number of external reference strands, when present
 - `search.min_ontarget` and `search.max_ontarget`: requested on-target energy range
 - `search.offtarget_limit`: requested off-target energy limit
 - `search.self_energy_limit`: requested self-folding energy limit
 - `search.initial_fresh_pair_count`: internal metadata key for the initial graph-search subset size
+- `search.vc_heuristics`: vertex-cover heuristic (`Gmax` or `Gmin`)
+- `search.vc_tiebreak`: degree-tie strategy (`rule`, `rank`, or `random`)
 - `search.prune_fraction`: internal metadata key for the perturbation fraction used by the graph search
 - `search.vc_max_iterations`: internal metadata key for the graph-search iteration count
 - `search.random_seed`: random seed used for the run
 - `search.total_nupack_budget`: total NUPACK call budget, when one was used
 - `search.total_nupack_calls`: total NUPACK calls executed by the search
+- `verification.external_crossref_nupack_calls`: final reference-verification calls, outside the search budget
 - `search.search_duration_s`: total search runtime in seconds
 - `nupack.energy_type`: binding-energy convention used for search and verification
 - `nupack.material`: DNA or RNA model
 - `nupack.celsius`: temperature
 - `nupack.sodium`: sodium concentration
 - `nupack.magnesium`: magnesium concentration
+
+Algorithm settings are recorded from the search run, so later helper changes do not alter exported metadata.
+Older reports may omit these keys, and callers that do not provide them write `N.A.`. Neither means random ties.
 
 This sheet is the source of truth for replaying the thermodynamic model used during the search.
 
@@ -491,6 +534,9 @@ These are the verified off-target energy matrices for the final selected set:
 - `selected_hh`: handle-handle interactions, meaning interactions between the `seq` strands
 - `selected_hah`: handle-antihandle interactions, meaning interactions between `seq` and `rc_seq`
 - `selected_ahah`: antihandle-antihandle interactions, meaning interactions between the `rc_seq` strands
+
+The HH and AA matrices store their lower triangles, including homodimers. The HA matrix stores cross-pair
+interactions in both orientations; its intended-pair diagonal is unused. Unused positions contain zeros.
 
 The row and column labels encode:
 
@@ -536,25 +582,29 @@ For hybrid search runs, this sheet stores the sequence pairs selected for the in
 
 For hybrid search runs, these are the verified off-target energy matrices for the initial graph-search input pool stored in `seed_pass_pairs`, using the same handle-handle, handle-antihandle, and antihandle-antihandle convention described above. These matrices are useful for inspecting the structure of the conflict graph before graph search removes conflicting sequence pairs.
 
+#### `reference_sequences`
 
-## Legacy Scripts Basic Use
+For runs with an external library, this sheet stores `reference_id` and `sequence` columns. To reuse these
+reference strands, copy the `sequence` column into the single-column input layout described above.
 
-The `legacy/` directory includes two older self-contained scripts for finding orthogonal 7-mer sequence pairs or smaller without the newer hybrid workflow.
+#### `external_crossref`
 
-1. **`precompute_energies.py`**  
-   - Generates all 7-mer sequence pairs (with a 'TT' 5′ flank), filtering out any with four identical bases in a row.  
-   - Selects all pairs whose on-target energies lie within a specified range.  
-   - Computes off-target interaction energies for the selected subset.  
-   - Saves the subset, their indices, and off-target energies into a pickle file such as `subset_data_7mers96to101.pkl` in the current working directory.
+This sheet stores the complete verified interaction-energy matrix between the generated strands (rows) and
+reference strands (columns). The `validation` sheet records whether these interactions satisfy the off-target limit.
 
-2. **`legacy_sequence_search.py`**  
-   - Loads the pickled subset and off-target energies from for example `subset_data_7mers96to101.pkl`.  
-   - Builds the off-target interaction graph using a user-defined cutoff.  
-   - Runs the iterative vertex-cover refinement heuristic on that graph.  
-   - Derives the independent set (orthogonal sequences) and saves them to for example `independent_sequences.txt` in `results`.
 
-### Output and Folders
+## Algorithm Names in Saved Reports
 
-- The legacy scripts are self-contained examples and use their own direct file outputs rather than the shared XLSX reporting workflow.
-- The pickle file (for example `subset_data_7mers96to101.pkl`) is written in the current working directory.
-- The final selected sequences are written through the standard `results/` helper, so `independent_sequences.txt` ends up in the local `results/` folder relative to the directory from which the script is executed.
+The `algorithm_name` value in `run_metadata` uses implementation labels:
+
+- `vertex_cover`: graph-aware search
+- `hybrid`: hybrid search
+- `naive`: sequential acceptance search
+
+Graph-search labels include the heuristic and tie-breaking strategy, for example `hybrid_GMAX_rule`.
+`GMAX` and `GMIN` identify the heuristic; `rule`, `rand`, and `rank` identify tie-breaking. `_bare` marks a
+greedy graph selection without iterative refinement, and `_offline` marks a run using cached dataset energies.
+For naive search, `naive_rand` means random candidate ordering and `naive_rank` means weaker-first ordering.
+
+Older reports retain shorter names such as `vertex_cover`, `hybrid_search`, and `naive`. Check the recorded
+`search.*` settings when interpreting these files; the original saved labels are preserved.

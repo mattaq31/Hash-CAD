@@ -1,4 +1,6 @@
 configs/generated/
+# Generated review-comparison configs and submission scripts; keep hand-written configs trackable.
+scripts/auxiliary_analysis/gmin_gmax_comparison/configs/generated/
 data/**/*.xlsx
 plots/*.xlsx
 plots/*.xls

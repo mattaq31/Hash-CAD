@@ -22,6 +22,7 @@ Main Steps:
 
 Usage:
     python run_sequence_search.py
+    Configure the settings below; uncomment reference_file to use an external library.
 '''
 
 import random
@@ -29,6 +30,7 @@ from pathlib import Path
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.search_algorithm import hybrid_search
+from orthoseq_generator.search_report_reader import load_reference_sequences
 from orthoseq_generator.search_reporting import (
     build_selected_sequence_data,
     validate_selected_pairs,
@@ -38,21 +40,29 @@ from orthoseq_generator.search_reporting import (
 
 
 if __name__ == "__main__":
+    # External-library checks are disabled by default. To enable them, uncomment
+    # the example path or point reference_file at your own Excel workbook.
+    # Accepted layouts: found_pairs with seq/rc_seq columns, or reference_sequences
+    # with a sequence column. Only the first valid layout is read; pools are not combined.
+    # Include each actual strand's extensions; complements are never inferred.
+    reference_file = None
+    # reference_file = Path(__file__).resolve().parent / "examples" / "reference_sequences.xlsx"
+    external_sequences = load_reference_sequences(reference_file) if reference_file else []
+
     # 1) Set a random seed for reproducibility
     RANDOM_SEED = 41
     random.seed(RANDOM_SEED)
-    TOTAL_NUPACK_BUDGET = 10_000_0
-    INITIAL_FRESH_PAIR_COUNT = 50
+    TOTAL_NUPACK_BUDGET = 10_000_000
+    INITIAL_FRESH_PAIR_COUNT = 900
     res_name = (
-        "hybrid_len16_5p_none_limitm8p16_budget10000000_"
-        "initial_graph_budget_exhaust_seed41.xlsx"
+        "library_len20_Na1M_Mg0M_seed41.xlsx"
     )
     seqwalk_cores = None
     # Optional SeqWalk example:
     # from seqwalk import design
     # seqwalk_cores = design.max_size(16, 8, alphabet="ACGT")
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=16,
+        length=20,
         fivep_ext="",
         threep_ext="",
         unwanted_substrings=["GGGG", "CCCC"],
@@ -63,14 +73,17 @@ if __name__ == "__main__":
 
 
     # 3) Define energy thresholds based on prior analysis
-    hf.set_nupack_params(material="dna", celsius=37.0, sodium=0.05, magnesium=0.025)
-    hf.set_energy_type("total")
-    max_ontarget = -19.308503678279084
-    min_ontarget = -21.350806979612546
-    offtarget_limit = -8.160422784450315
-    self_energy_limit = -0.9919471230992267
+    max_ontarget = -24.0
+    min_ontarget = -25.25
+    offtarget_limit = -11.4
+    self_energy_limit = -1.4
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
     print(f"Initial graph search requested pairs: {INITIAL_FRESH_PAIR_COUNT}")
+
+    # Configure once before execution; checkpoints and both passes use these settings.
+    hf.set_nupack_params(material="dna", celsius=37.0, sodium=1.0, magnesium=0.0)
+    hf.set_energy_type("total")
+    hf.set_algorithm(heuristics="Gmax", tiebreak="rule")
 
     search_result = hybrid_search(
         sequence_pairs_object,
@@ -80,19 +93,26 @@ if __name__ == "__main__":
         self_energy_limit,
         initial_fresh_pair_count=INITIAL_FRESH_PAIR_COUNT,
         total_nupack_budget=TOTAL_NUPACK_BUDGET,
-        prune_fraction=0.2,
-        vc_max_iterations=1000,
+        prune_fraction=0.35,
+        vc_max_iterations=5000,
         stop_event=None,
         return_diagnostics=True,
+        external_sequences=external_sequences,
     )
     orthogonal_seq_pairs = search_result["final_pairs"]
+    if not orthogonal_seq_pairs:
+        print("No sequences found; skipping report and plots.")
+        raise SystemExit(0)
     selected_sequence_data = build_selected_sequence_data(
         orthogonal_seq_pairs,
         search_result["final_pair_ids"],
     )
 
     # 5) Verify and save the selected orthogonal sequences as a run report
-    verified = verify_selected_pairs(selected_sequence_data, nupack_params=search_result["nupack"])
+    verified = verify_selected_pairs(
+        selected_sequence_data, nupack_params=search_result["nupack"],
+        external_sequences=search_result["external_sequences"],
+    )
     validation_data = validate_selected_pairs(
         selected_sequence_data,
         verified,
@@ -128,6 +148,7 @@ if __name__ == "__main__":
         dataset_info={},
         extra_metadata={
             "stopped_reason": search_result["stopped_reason"],
+            **({"input.reference_sequence_file": str(reference_file)} if reference_file else {}),
         },
     )
     print(f"Saved verified run report to: {report_path}")
@@ -141,7 +162,14 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         onef,
         offef,
-        output_path='ortho_10mers.pdf'
+        output_path=report_path.with_name(f"{report_path.stem}_onoff.pdf"),
     )
 
-    self_stats = sc.plot_self_energy_histogram([self_e_A, self_e_B], bins=30, output_path='final_10mer_self_energies.pdf')
+    self_stats = sc.plot_self_energy_histogram(
+        [self_e_A, self_e_B], bins=30, output_path=report_path.with_name(f"{report_path.stem}_self.pdf"),
+    )
+    if "external_crossref" in verified:
+        sc.plot_crossreference_histogram(
+            verified["external_crossref"], offtarget_limit,
+            output_path=report_path.with_name(f"{report_path.stem}_crossref.pdf"),
+        )

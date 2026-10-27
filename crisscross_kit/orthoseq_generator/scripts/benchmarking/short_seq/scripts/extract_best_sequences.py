@@ -3,7 +3,7 @@
 Extract the best sequence libraries from the short-seq benchmark data.
 
 For each sequence length, flank condition, and conflict probability level,
-this script picks the run (across seeds and algorithms) that found the most
+this script picks the run (across original and review seeds and algorithms) that found the most
 orthogonal pairs, then writes a reduced xlsx containing only run_metadata and
 found_pairs into a clean folder structure.
 """
@@ -25,7 +25,7 @@ from orthoseq_generator.search_report_reader import load_found_pairs, load_metad
 
 FILENAME_PATTERN = re.compile(
     r"density(?P<density>\dp\d+)_"
-    r"(?P<algorithm>[a-z_]+)_"
+    r"(?P<algorithm>[A-Za-z_]+)_"
     r"limit(?P<limit>[^_]+)"
     r"(?:_init(?P<init>\d+))?"
     r"(?:_prune[^_]+)?"
@@ -44,11 +44,11 @@ def parse_length_dir(name: str) -> tuple[int, str]:
         return length, "none"
 
 
-def find_best_per_density(results_dir: Path) -> dict[str, Path]:
-    """For each density level, return the xlsx with the most found_pairs."""
+def find_best_per_density(results_dirs: list[Path]) -> dict[str, Path]:
+    """For each density level, return the largest library across the supplied result folders."""
     best: dict[str, tuple[int, Path]] = {}
 
-    for xlsx in results_dir.glob("*.xlsx"):
+    for xlsx in (path for results_dir in results_dirs for path in results_dir.glob("*.xlsx")):
         m = FILENAME_PATTERN.match(xlsx.name)
         if not m:
             continue
@@ -95,9 +95,11 @@ if __name__ == "__main__":
     module_dir = Path(__file__).resolve().parents[1]
     data_dir = module_dir / "data"
     dataset_dir = data_dir / dataset_parent_name
+    review_dataset_dir = data_dir / f"{dataset_parent_name}_review"
     output_root = module_dir / "short_sequences"
 
     print(f"Reading from: {dataset_dir}")
+    print(f"Reading from: {review_dataset_dir}")
     print(f"Writing to:   {output_root}\n")
 
     total_files = 0
@@ -111,12 +113,17 @@ if __name__ == "__main__":
         length, flank_key = parse_length_dir(length_dir.name)
         flank_label, flank_tag = flank_conditions[flank_key]
 
-        results_dir = length_dir / "results" / benchmark_name
-        if not results_dir.is_dir():
-            print(f"  SKIP {length_dir.name} (no results/{benchmark_name})")
+        # Keep original reports first so equally large new runs do not replace existing selections.
+        results_dirs = [
+            length_dir / "results" / benchmark_name,
+            review_dataset_dir / length_dir.name / "results" / "benchmark_x_review",
+        ]
+        results_dirs = [path for path in results_dirs if path.is_dir()]
+        if not results_dirs:
+            print(f"  SKIP {length_dir.name} (no benchmark results)")
             continue
 
-        best_per_density = find_best_per_density(results_dir)
+        best_per_density = find_best_per_density(results_dirs)
         if not best_per_density:
             print(f"  SKIP {length_dir.name} (no valid xlsx)")
             continue

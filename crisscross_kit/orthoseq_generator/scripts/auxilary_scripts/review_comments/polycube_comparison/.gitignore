@@ -1,0 +1,9 @@
+# Downloaded publication assets and external author-code snapshots.
+/sources/
+
+# Generated inputs, reports, and figures, including archived outputs.
+data/
+plots/
+results/
+search_plots/
+/archive/legacy_pipeline/polycubes_vs_orthoseq_100_comparison.toml

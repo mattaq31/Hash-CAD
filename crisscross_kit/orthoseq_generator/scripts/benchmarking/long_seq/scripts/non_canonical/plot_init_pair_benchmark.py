@@ -40,6 +40,8 @@ MODULE_DIR = Path(__file__).resolve().parents[2]
 if str(MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(MODULE_DIR))
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[6]))
+from orthoseq_generator.algorithm_names import algorithm_workflow
 
 DATA_ROOT = MODULE_DIR / "data" / "non_canonical" / "test_init_pairs_sigma1p0_seed41"
 SUMMARY_PATH = (
@@ -102,13 +104,7 @@ def parse_float_token(value: str) -> float:
 
 def normalize_algorithm_name(value: str | None) -> str | None:
     """Map workbook metadata algorithm names onto the plot labels."""
-    if value == "naive_search":
-        return "naive"
-    if value == "hybrid_search":
-        return "hybrid"
-    if value is None:
-        return None
-    return str(value)
+    return algorithm_workflow(value)
 
 
 def normalize_fivep_label(value: str) -> str:

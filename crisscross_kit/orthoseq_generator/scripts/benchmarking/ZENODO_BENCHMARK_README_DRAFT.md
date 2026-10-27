@@ -7,7 +7,7 @@ The most directly reusable files are in `extracted_libraries/`. These are
 ready-to-use Excel workbooks containing the largest orthogonal sequence-pair
 libraries found for each reported benchmark condition. The archive also
 contains the full benchmark outputs used to derive those libraries and the
-workbooks used for the seqwalk comparison.
+workbooks used for the seqwalk, nuad, and polycube comparisons.
 
 ## Archive Scope
 
@@ -56,6 +56,11 @@ benchmark_data/
       data/
         len4_7_tttt5p_noGGGG/
           benchmark_summary_benchmark_x.toml
+          benchmark_summary_benchmark_x_review_seed1.toml
+          benchmark_summary_benchmark_x_review_seed2.toml
+          benchmark_summary_benchmark_x_review_seed3.toml
+          benchmark_summary_benchmark_x_review_seed4.toml
+          benchmark_summary_benchmark_x_review_seed5.toml
           len4/
           len4_tttt5p/
           len5/
@@ -71,15 +76,49 @@ benchmark_data/
           batch_x______sigma1p0_seed41/
           batch_x25TTTT_sigma1p0_seed41/
           batch_x25_____sigma1p0_seed41/
+          batch_x_TTTT_sigma0p5_seed41/
+          batch_x______sigma0p5_seed41/
       data/
         batch_x_TTTT_sigma1p0_seed41/
         batch_x______sigma1p0_seed41/
         batch_x25TTTT_sigma1p0_seed41/
         batch_x25_____sigma1p0_seed41/
+        batch_x_TTTT_sigma0p5_seed41/
+        batch_x______sigma0p5_seed41/
+      gmin_gmax_comparison/
+        input_reports.tsv
+        results/
+          gmin_gmax_37C/
   seqwalk_comparison/
     figure5_seqwalk_max_orthogonality_len16_n72_seed42.xlsx
     figure5_hybrid_len16_noflank_seqwalk_k6_seed42.xlsx
     figure5_search_only_hybrid_len16_noflank_init450.xlsx
+  nuad_comparison/
+    results/
+      6mer/
+        nuad.xlsx
+        orthoseq.xlsx
+        raw_nuad/
+      12mer_wide/
+        nuad.xlsx
+        orthoseq.xlsx
+        raw_nuad/
+      12mer_narrow/
+        nuad.xlsx
+        orthoseq.xlsx
+        raw_nuad/
+      20mer_Na1M_Mg0M/
+        nuad.xlsx
+        orthoseq.xlsx
+        naive.xlsx
+        raw_nuad/
+  polycube_comparison/
+    data/
+      published_polycube_sequences.xlsx
+      polycube_association_energies.xlsx
+      polycube_complex_energies.xlsx
+      orthoseq_polycube_search.xlsx
+      orthoseq_polycube_complex_energies.xlsx
 ```
 
 
@@ -91,6 +130,10 @@ The short-sequence benchmark covers core binding-domain lengths 4-7 nt, with
 and without a 5' TTTT extension. In this regime the full conflict graph could
 be constructed, so naive search, graph-aware search, and hybrid search were
 all compared on the same frozen candidate pools.
+
+The GMIN and weaker-first naive comparison uses the same datasets. Its new
+reports are saved under `results/benchmark_x_review/` alongside the original
+`results/benchmark_x/` reports. Each candidate dataset is included once.
 
 ### Dataset Bundles
 
@@ -151,6 +194,9 @@ across all short-sequence datasets. It records, for each run, the dataset
 name, algorithm, random seed, target conflict density, selected off-target
 cutoff, and the number of sequence pairs found.
 
+The five `benchmark_summary_benchmark_x_review_seed*.toml` files summarize
+the GMIN and weaker-first naive runs for seeds 1-5.
+
 
 ## Long-Sequence Benchmark Data
 
@@ -163,6 +209,10 @@ hybrid search were compared under a fixed budget of 10 million NUPACK calls.
 
 The main manuscript benchmark uses the 37 C datasets. The 25 C benchmark is a
 lower-temperature repeat reported in the Supporting Information.
+
+The 37 C sigma-0.5 batches cover lengths 8, 12, 16, and 20 nt, with and
+without a 5' TTTT extension. Their on-target window is [mean - 0.5 SD, mean],
+compared with [mean - SD, mean] in the sigma-1.0 batches.
 
 Some 37 C long-sequence runs request `search.initial_fresh_pair_count = 2500`.
 In practice, the fixed 10-million-NUPACK-call budget was exhausted during the
@@ -198,6 +248,22 @@ length and flank condition. Each run writes:
 The XLSX workbook is the primary machine-readable result artifact.
 
 
+## Long-Sequence Heuristic Comparison
+
+`full_benchmark_results/long_seq/gmin_gmax_comparison/` contains 18 workbooks,
+one per length and extension condition. Each contains 360 run records for
+initial pools of 250, 450, and 900 pairs, 12 GMIN/GMAX variants, and 10 seeds.
+The variants combine random, rank, or rule tie-breaking with bare or iterative
+selection on the same saved initial graphs.
+
+`input_reports.tsv` links each comparison workbook and initial pool size to
+its original benchmark report. Both path columns are relative to `benchmark_data/`.
+The retained pair IDs refer to `global_pair_id` in the input report's
+`seed_pass_pairs` sheet; the corresponding energies are saved in `seed_hh`,
+`seed_hah`, and `seed_ahah`. Each comparison workbook also contains summary
+statistics and its configuration.
+
+
 ## Ready-to-Use Extracted Sequence Libraries
 
 The `extracted_libraries/` portion of the archive contains ready-to-use Excel
@@ -218,11 +284,19 @@ For short-sequence benchmarks, extracted libraries are grouped by:
 - conflict probability
 - core binding-domain length
 
+Short-sequence selection compares the original runs with the new GMIN and
+weaker-first naive runs.
+
 For long-sequence benchmarks, extracted libraries are grouped by:
 
 - temperature
 - flank condition
 - core binding-domain length
+
+For each long-sequence temperature, flank condition, and length, selection
+compares all available sigma-1.0 and sigma-0.5 runs. The selected workbook's
+`run_metadata` records its on-target window in `search.min_ontarget` and
+`search.max_ontarget`.
 
 
 ## seqwalk Comparison
@@ -247,6 +321,44 @@ It contains:
 
 The Figure 5B workbook is duplicated here for convenience so that all three
 comparison arms can be inspected from a single folder.
+
+
+## nuad Comparison
+
+`nuad_comparison/results/` contains four cases: 6-mer with 41 pairs,
+12-mer with 120 pairs using the original on-target window, and 12-mer with
+129 pairs using the narrower window, plus 20-mer with 897 pairs at 1 M sodium
+and zero magnesium. Each case contains `nuad.xlsx`, the
+matching OrthoSeq benchmark report copied as `orthoseq.xlsx`, and native nuad
+designs, sequences, reports, random states, and logs in `raw_nuad/`.
+The nuad workbooks preserve the complete libraries, verified energies,
+validation results, and individual constraint violations.
+
+The 20-mer case also contains `naive.xlsx`, a verified 876-pair naive-search
+library. Hybrid search produced 897 valid pairs; nuad retained 897 pairs with
+2,203 individual constraint violations. All three use a nominal search budget
+of 10 million association evaluations, 37 °C, no extensions, GGGG/CCCC exclusions,
+an on-target window of [-25.25, -24.00] kcal/mol, an off-target minimum of -11.40
+kcal/mol, and a self-folding minimum of -1.40 kcal/mol. Seed and executed
+evaluation counts are recorded in each workbook.
+
+
+## Polycube Comparison
+
+`polycube_comparison/data/` contains five workbooks:
+
+- `published_polycube_sequences.xlsx`: 96 published sequence pairs and extraction
+  provenance from Diep et al. (DOI: 10.26434/chemrxiv-2025-qbk3f).
+- `polycube_association_energies.xlsx` and `polycube_complex_energies.xlsx`:
+  our energy evaluations of the published library.
+- `orthoseq_polycube_search.xlsx`: the complete 100-pair OrthoSeq search report,
+  including association energies.
+- `orthoseq_polycube_complex_energies.xlsx`: our complex-energy evaluation of
+  the same OrthoSeq library.
+
+Both libraries use 9-nt cores with 5' T12 extensions.
+Association energies (`G_AB - G_A - G_B`) support the binding-energy comparison;
+complex free energies (`G_AB`) are used to calculate specificity gaps.
 
 
 ## Workbook Schema
@@ -280,16 +392,35 @@ Reduced extracted workbooks contain only:
 
 ## Metadata and Terminology
 
-The manuscript and the files do not always use the same language. The most
-important mappings are:
+Earlier versions of OrthoSeq used shorter algorithm labels, such as `vertex_cover` and `hybrid_search`.
+The archive retains these labels in existing reports and also includes more explicit names that identify
+the heuristic and variant. The definitions below explain both naming formats:
 
-- `vertex_cover` -> graph-aware search
-- `naive` or `naive_search` -> naive search
-- `hybrid_offline` -> hybrid search on frozen short-sequence datasets
-- `hybrid_search` -> live hybrid search in the long-sequence benchmark
-- `offtarget_limit` -> off-target free-energy cutoff
-- `initial_fresh_pair_count` -> initial graph-aware search subset size
-- `vc_max_iterations` -> number of graph-aware search iterations
+| Saved label | Meaning in the manuscript |
+| --- | --- |
+| `vertex_cover` | Graph-aware search using GMAX with rule-based tie-breaking and iterative improvement. |
+| `vertex_cover_GMIN` | Graph-aware search using GMIN with rule-based tie-breaking and iterative improvement. |
+| `hybrid_offline`, `hybrid_search` | Hybrid search using precomputed energies and energies calculated during the search, respectively. Both use GMAX with rule-based tie-breaking. |
+| `naive`, `naive_search`, `naive_rand*` | Naive search with random candidate ordering. |
+| `naive_ordered`, `naive_rank*` | Naive search with weaker-first candidate ordering based on on-target binding energy. |
+
+Labels such as `vertex_cover_GMIN_rule_offline` encode the choices explicitly.
+In graph-search labels, `GMAX` and `GMIN` identify maximum-degree deletion and minimum-degree selection, while
+`rand`, `rank`, and `rule` identify random, on-target-energy-based, and rule-based tie-breaking. The `_bare` suffix
+indicates no iterative improvement, and `_offline` indicates use of precomputed energies. In the long-sequence
+heuristic comparison, labels such as `gmax_rule` and `gmax_rule_iterative` distinguish bare and iteratively
+improved variants. Asterisks in the table indicate variable suffixes.
+
+Some long-sequence reports retain a hybrid-workflow label even when the budget was exhausted during the initial
+graph-search stage. The approximately 2235-pair initial-graph conditions are reported as graph-aware search in
+the manuscript.
+
+Parameter names also differ:
+
+- `offtarget_limit`: off-target association free-energy limit
+- `initial_fresh_pair_count`: requested initial graph-aware search subset size
+- `vc_max_iterations`: maximum number of iterative-improvement steps
+- `prune_fraction`: perturbation fraction
 
 The workbook metadata keys are grouped by prefix:
 
@@ -399,18 +530,18 @@ short-sequence libraries, the target conflict-probability level.
 This archive supports the benchmark figures and the reported extracted
 libraries in the manuscript and Supporting Information.
 
-- The short-sequence benchmark corresponds to the regime in which full
-  conflict-graph construction was feasible and covers core binding-domain
-  lengths 4-7 nt.
-- The long-sequence benchmark corresponds to the fixed-budget live-search
-  regime and covers core binding-domain lengths 8, 9, 10, 12, 14, 16, 18, 20,
-  and 25 nt.
-- The 37 C long-sequence data correspond to the main benchmark discussed in
-  the manuscript.
-- The 25 C long-sequence data correspond to the lower-temperature benchmark
-  repeat reported in the Supporting Information.
+- The short-sequence data support the full-conflict-graph benchmark in Figure 4A.
+- The 37 C sigma-1.0 long-sequence data support the fixed-budget benchmark in Figure 4B.
+- The 25 C repeat and 37 C sigma-0.5 batches support the temperature and on-target-window analyses
+  in the Supporting Information.
+- The additional short-sequence runs and long-sequence GMIN/GMAX comparison support the graph-search
+  heuristic and candidate-ranking analyses in the Supporting Information.
 - The `seqwalk_comparison/` folder contains the three workbooks used for the
   Figure 5 comparison with seqwalk.
+- The `nuad_comparison/` files support the 6-mer, 12-mer, and 20-mer comparisons discussed in the main text
+  and detailed in the Supporting Information.
+- The `polycube_comparison/` workbooks support the comparison with the published polycube sticky-end library
+  in the Supporting Information.
 
 
 ## Notes

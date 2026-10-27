@@ -4,7 +4,8 @@ Extract the best sequence libraries from the long-seq benchmark data.
 
 For each of the 4 thermodynamic conditions (2 temperatures x 2 flank modes)
 and each sequence length, this script picks the run that found the most
-orthogonal pairs, then writes a reduced xlsx containing only run_metadata and
+orthogonal pairs across the sigma-1.0 and available sigma-0.5 batches, then
+writes a reduced xlsx containing only run_metadata and
 found_pairs into a clean folder structure.
 """
 
@@ -66,6 +67,8 @@ if __name__ == "__main__":
         "batch_x25_____sigma1p0_seed41": ("25C", "no_flank", "noflank"),
         "batch_x_TTTT_sigma1p0_seed41": ("37C", "TTTT_flank", "TTTT"),
         "batch_x______sigma1p0_seed41": ("37C", "no_flank", "noflank"),
+        "batch_x_TTTT_sigma0p5_seed41": ("37C", "TTTT_flank", "TTTT"),
+        "batch_x______sigma0p5_seed41": ("37C", "no_flank", "noflank"),
     }
 
     module_dir = Path(__file__).resolve().parents[1]
@@ -75,9 +78,10 @@ if __name__ == "__main__":
     print(f"Reading from: {data_dir}")
     print(f"Writing to:   {output_root}\n")
 
-    total_files = 0
+    selected_workbooks = {}
 
-    for batch_name, (temp_label, flank_label, flank_tag) in sorted(batch_conditions.items()):
+    # Visit the original batches first so an equally large narrower-window result does not replace them.
+    for batch_name, (temp_label, flank_label, flank_tag) in batch_conditions.items():
         batch_dir = data_dir / batch_name
         if not batch_dir.is_dir():
             print(f"  SKIP {batch_name} (not found)")
@@ -96,10 +100,16 @@ if __name__ == "__main__":
                 print(f"    {length_dir.name}: no xlsx found")
                 continue
 
-            filename = f"{length_dir.name}_{temp_label}_{flank_tag}.xlsx"
-            dest = output_root / temp_label / flank_label / filename
-            count = write_reduced_workbook(best, dest)
-            total_files += 1
-            print(f"    {length_dir.name}: {count} pairs (from {best.name})")
+            count = len(load_found_pairs(best))
+            condition = (temp_label, flank_label, flank_tag, int(length_dir.name[3:]))
+            if condition not in selected_workbooks or count > selected_workbooks[condition][1]:
+                selected_workbooks[condition] = (best, count)
 
-    print(f"\nDone. Wrote {total_files} reduced workbooks into {output_root}")
+    for (temp_label, flank_label, flank_tag, length), (best, count) in sorted(selected_workbooks.items()):
+        filename = f"len{length}_{temp_label}_{flank_tag}.xlsx"
+        dest = output_root / temp_label / flank_label / filename
+        write_reduced_workbook(best, dest)
+        batch_name = best.parents[2].name
+        print(f"  {temp_label} / {flank_label} / len{length}: {count} pairs (from {batch_name}/{best.name})")
+
+    print(f"\nDone. Wrote {len(selected_workbooks)} reduced workbooks into {output_root}")

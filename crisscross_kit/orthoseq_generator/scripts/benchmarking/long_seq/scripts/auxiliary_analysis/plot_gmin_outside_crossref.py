@@ -1,0 +1,130 @@
+"""Plot GMIN/GMAX conflict distributions and the original progress fits as separate SVG/PDF figures."""
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import numpy as np
+import pandas as pd
+
+from plot_init900_outside_crossref import build_shared_bins, draw_distribution, draw_progress_overlay
+
+
+if __name__ == "__main__":
+    module_dir = Path(__file__).resolve().parents[2]
+    output_dir = module_dir / "plots"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    conflict_probability_xmax = 0.36
+    progress_xmax = 2550.0
+    upscale = 1.25
+    figure_width_mm = 2 * 177.8 * 0.32 * upscale
+    panel_height_mm = 38.0 * upscale
+    hspace = 0.40
+    wspace = 0.25
+    targets = [
+        ("batch_x_TTTT_sigma1p0_seed41", "5p_TTTT", "5′ TTTT extension"),
+        ("batch_x______sigma1p0_seed41", "5p_none", "No extension"),
+    ]
+    plt.rcParams["font.family"] = "Arial"
+    plt.rcParams["svg.fonttype"] = "none"
+    plt.rcParams["pdf.fonttype"] = 42
+    fig, axes = plt.subplots(
+        4, 2, figsize=(figure_width_mm / 25.4, 4 * panel_height_mm / 25.4),
+    )
+    progress_fig, progress_axes = plt.subplots(
+        # Preserve the fit panel height after removing the original three rows and their gaps.
+        1, 2, figsize=(figure_width_mm / 25.4, 1.4 * panel_height_mm * 4 / (4 + 3 * hspace) / 25.4),
+    )
+
+    for column, (batch_name, condition, condition_title) in enumerate(targets):
+        batch_dir = module_dir / "data" / batch_name
+        analysis_path = (
+            batch_dir / "auxiliary_analysis" / "init900_outside_crossref"
+            / f"len12_{condition}" / "compatibility_analysis_gmin.xlsx"
+        )
+        seed_df = pd.read_excel(analysis_path, sheet_name="seed_conflict_probability")
+        inside_df = pd.read_excel(analysis_path, sheet_name="inside_to_outside")
+        distributions = [("Randomly selected", seed_df["conflict_probability"].to_numpy(), "#C76D5E")]
+        for set_name, title, color in [
+            ("naive_first_m", "Naive selected", "#808080"),
+            ("hybrid_seed_independent", "GMAX selected", "#2A9D8F"),
+            ("gmin_seed_independent", "GMIN selected", "#0072B2"),
+        ]:
+            values = inside_df.loc[inside_df["set_name"] == set_name, "outside_conflict_probability"].to_numpy()
+            distributions.append((title, values, color))
+        bins, xmax = build_shared_bins(
+            [values for _, values, _ in distributions], bin_count=21, xmax=conflict_probability_xmax,
+        )
+        for row, (title, values, color) in enumerate(distributions):
+            draw_distribution(
+                axes[row, column], values, bins, xmax, color=color,
+                title=f"{title} (n={len(values)})", xlabel="Conflict probability",
+            )
+        axes[0, column].set_title(f"{condition_title}\nRandomly selected (n={len(seed_df)})", fontsize=8)
+
+        # The progress panel remains the original GMAX/naive benchmark, not a GMIN search trajectory.
+        data_dir = batch_dir / "len12" / condition
+        report_stem = f"len12_{condition}_limitm8p16_budget10000000"
+        naive_progress_df = pd.read_excel(
+            data_dir / f"naive_{report_stem}_seed41.xlsx", sheet_name="search_progress",
+        )
+        naive_rows = naive_progress_df.loc[
+            naive_progress_df["pass"] == "naive", ["passed_homodimer", "accepted_into_pool"],
+        ].apply(pd.to_numeric, errors="coerce").dropna().sort_values("passed_homodimer")
+        seed_points = []
+        collection_points = []
+        for init_count in [250, 450, 900, 2500]:
+            report_path = data_dir / f"hybrid_{report_stem}_init{init_count}_seed41.xlsx"
+            if not report_path.exists():
+                continue
+            progress_df = pd.read_excel(report_path, sheet_name="search_progress")
+            for pass_name, points in [("seed", seed_points), ("collection", collection_points)]:
+                rows = progress_df.loc[
+                    progress_df["pass"] == pass_name, ["pairs_collected", "pairs_after_vc"],
+                ].apply(pd.to_numeric, errors="coerce").dropna()
+                if not rows.empty:
+                    points.append(tuple(rows.iloc[-1]))
+        seed_points = np.array(sorted(seed_points), dtype=float).reshape(-1, 2)
+        collection_points = np.array(sorted(collection_points), dtype=float).reshape(-1, 2)
+        draw_progress_overlay(
+            progress_axes[column],
+            naive_rows["passed_homodimer"].to_numpy(), naive_rows["accepted_into_pool"].to_numpy(),
+            seed_points[:, 0], seed_points[:, 1], collection_points[:, 0], collection_points[:, 1],
+            progress_xmax=progress_xmax, fit_eval_points=4000, fit_linewidth=1.2, fit_zorder=4,
+            point_zorder=6, point_markersize=3.0, point_edgewidth=0.35, point_edge_color="black",
+        )
+        progress_axes[column].set_title(condition_title, fontsize=8, pad=6)
+
+    # Shared scales within each row make the two extension conditions directly comparable.
+    for row in range(4):
+        ymax = max(ax.get_ylim()[1] for ax in axes[row])
+        for ax in axes[row]:
+            ax.set_ylim(0, ymax)
+    # Two original-width columns: halve the outer margins and retain their combined gap between columns.
+    fig.subplots_adjust(left=0.09, right=0.99, bottom=0.06, top=0.95, hspace=hspace, wspace=wspace)
+    progress_fig.subplots_adjust(left=0.09, right=0.99, bottom=0.06, top=0.97, wspace=wspace)
+    for row, label in enumerate("ABCD"):
+        axes[row, 0].text(
+            -0.16, 1.02, label, transform=axes[row, 0].transAxes,
+            fontsize=10, fontfamily="Arial", fontweight="normal", ha="left", va="bottom",
+        )
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    # Use the space between the complete panels so the divider clears the right column's y-labels.
+    left_edge = max(ax.get_tightbbox(renderer).x1 for ax in axes[:, 0])
+    right_edge = min(ax.get_tightbbox(renderer).x0 for ax in axes[:, 1])
+    divider_x = 0.5 * (left_edge + right_edge) / fig.bbox.width
+    fig.add_artist(Line2D(
+        [divider_x, divider_x], [axes[-1, 0].get_position().y0, axes[0, 0].get_position().y1],
+        transform=fig.transFigure, color="black", linewidth=0.6,
+    ))
+    for output_format in ("svg", "pdf"):
+        output_path = output_dir / f"conf_prob_analysis_with_gmin_len12.{output_format}"
+        fig.savefig(output_path, format=output_format)
+        print(f"Saved: {output_path}")
+    for output_format in ("svg", "pdf"):
+        progress_path = output_dir / f"progress_analysis_len12.{output_format}"
+        progress_fig.savefig(progress_path, format=output_format, bbox_inches="tight", pad_inches=0.1)
+        print(f"Saved: {progress_path}")
+    plt.close(fig)
+    plt.close(progress_fig)

@@ -30,6 +30,8 @@ from benchmark_dataset_tools import (
     load_dataset,
     self_energy_limit_from_unpaired_fraction,
 )
+from orthoseq_generator import helper_functions as hf
+from orthoseq_generator.algorithm_names import algorithm_workflow, build_algorithm_name
 
 def read_found_pair_count(report_path: Path) -> int:
     """Read the found-pair count from a benchmark workbook."""
@@ -50,13 +52,17 @@ def make_plot(
     algorithm_flags = {
         "naive": run_naive,
         "vertex_cover": run_vertex_cover,
-        "hybrid_offline": run_hybrid,
+        "hybrid": run_hybrid,
     }
-    algorithms = [algorithm for algorithm, enabled in algorithm_flags.items() if enabled]
+    algorithms = []
+    for algorithm in summary_df["algorithm"].unique():
+        workflow = algorithm_workflow(algorithm)
+        if algorithm_flags.get(workflow, False):
+            algorithms.append(algorithm)
     colors = {
         "naive": "#4C78A8",
         "vertex_cover": "#F58518",
-        "hybrid_offline": "#54A24B",
+        "hybrid": "#54A24B",
     }
 
     density_labels = [f"{density:.1f}" for density in target_conflict_densities]
@@ -65,12 +71,13 @@ def make_plot(
     offsets = {
         "naive": -width,
         "vertex_cover": 0.0,
-        "hybrid_offline": width,
+        "hybrid": width,
     }
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
     for algorithm in algorithms:
+        workflow = algorithm_workflow(algorithm)
         algo_df = summary_df[summary_df["algorithm"] == algorithm]
         if algo_df.empty:
             continue
@@ -85,14 +92,14 @@ def make_plot(
             means.append(float(np.mean(values)))
             stds.append(float(np.std(values, ddof=1)) if len(values) > 1 else 0.0)
 
-        bar_x = x + offsets[algorithm]
+        bar_x = x + offsets[workflow]
         ax.bar(
             bar_x,
             means,
             width=width,
             yerr=stds,
             capsize=4,
-            color=colors[algorithm],
+            color=colors[workflow],
             alpha=0.75,
             label=algorithm,
         )
@@ -118,15 +125,16 @@ def make_plot(
 
 
 if __name__ == "__main__":
+    hf.set_algorithm(heuristics="Gmin", tiebreak="rank")
     dataset_parent_name = "len4_7_tttt5p_noGGGG"
-    dataset_name = "len7"
-    benchmark_name = "benchmark_test3_new_point"
-    target_conflict_densities = [0.2]
+    dataset_name = "len6"
+    benchmark_name = "scouting_gmax_rank"
+    target_conflict_densities = [0.1]
     seeds = [41]
     target_unpaired_fraction = 0.2
     run_naive = False
-    run_vertex_cover = False
-    run_hybrid = True
+    run_vertex_cover = True
+    run_hybrid = False
     vc_core_params = {
         "prune_fraction": 0.2,
         "vc_max_iterations": 1000,
@@ -167,9 +175,17 @@ if __name__ == "__main__":
         cutoff_label = str(offtarget_limit).replace(".", "p")
 
         for seed in seeds:
+            naive_name = build_algorithm_name("naive", offline=True)
+            vc_name = build_algorithm_name(
+                "vertex_cover", vertex_cover_params.get("heuristics", "Gmax"),
+                hf.ALGORITHM_PARAMS["TIEBREAK"], offline=True,
+            )
+            hybrid_name = build_algorithm_name(
+                "hybrid", hf.ALGORITHM_PARAMS["HEURISTICS"], hf.ALGORITHM_PARAMS["TIEBREAK"], offline=True,
+            )
             if run_naive:
                 print(f"running naive | target_density={target_density} | cutoff={offtarget_limit} | seed={seed}")
-                naive_path = results_dir / f"density{density_label}_naive_limit{cutoff_label}_seed{seed}.xlsx"
+                naive_path = results_dir / f"density{density_label}_{naive_name}_limit{cutoff_label}_seed{seed}.xlsx"
                 run_naive_search_to_xlsx(
                     dataset_dir,
                     output_path=naive_path,
@@ -180,7 +196,7 @@ if __name__ == "__main__":
                 summary_rows.append(
                     {
                         "dataset": dataset_name,
-                        "algorithm": "naive",
+                        "algorithm": naive_name,
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
@@ -193,7 +209,7 @@ if __name__ == "__main__":
 
             if run_vertex_cover:
                 print(f"running vertex_cover | target_density={target_density} | cutoff={offtarget_limit} | seed={seed}")
-                vc_path = results_dir / f"density{density_label}_vertex_cover_limit{cutoff_label}_seed{seed}.xlsx"
+                vc_path = results_dir / f"density{density_label}_{vc_name}_limit{cutoff_label}_seed{seed}.xlsx"
                 run_vertex_cover_search_to_xlsx(
                     dataset_dir,
                     output_path=vc_path,
@@ -205,7 +221,7 @@ if __name__ == "__main__":
                 summary_rows.append(
                     {
                         "dataset": dataset_name,
-                        "algorithm": "vertex_cover",
+                        "algorithm": vc_name,
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,
@@ -218,7 +234,7 @@ if __name__ == "__main__":
 
             if run_hybrid:
                 print(f"running hybrid_offline | target_density={target_density} | cutoff={offtarget_limit} | seed={seed}")
-                hybrid_path = results_dir / f"density{density_label}_hybrid_offline_limit{cutoff_label}_seed{seed}.xlsx"
+                hybrid_path = results_dir / f"density{density_label}_{hybrid_name}_limit{cutoff_label}_seed{seed}.xlsx"
                 run_hybrid_search_offline_to_xlsx(
                     dataset_dir,
                     output_path=hybrid_path,
@@ -230,7 +246,7 @@ if __name__ == "__main__":
                 summary_rows.append(
                     {
                         "dataset": dataset_name,
-                        "algorithm": "hybrid_offline",
+                        "algorithm": hybrid_name,
                         "target_conflict_density": target_density,
                         "selected_offtarget_limit": offtarget_limit,
                         "achieved_conflict_density": achieved_density,

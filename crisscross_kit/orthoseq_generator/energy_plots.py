@@ -153,6 +153,49 @@ def plot_on_off_target_histograms(
     }
 
 
+def plot_crossreference_histogram(
+    crossref_energies, offtarget_limit, bins=80, output_path=None, show_plot=True,
+):
+    """Plot the complete selected-to-reference distribution and its actual rejection threshold.
+
+    Every matrix entry is a computed interaction, including any zero energies.
+    Empty input returns empty statistics without creating a plot.
+    """
+    values = np.asarray(crossref_energies, dtype=float).ravel()
+    if not np.isfinite(values).all():
+        raise ValueError("Cross-reference energies must all be finite before plotting.")
+    stats = {
+        "interaction_count": int(values.size),
+        "min_crossref": float(values.min()) if values.size else None,
+        "mean_crossref": float(values.mean()) if values.size else None,
+        "std_crossref": float(values.std()) if values.size else None,
+        "max_crossref": float(values.max()) if values.size else None,
+        "violations": int(np.count_nonzero(values < offtarget_limit)),
+    }
+    if not values.size:
+        return stats
+
+    fig, ax = plt.subplots(figsize=(9.8, 5.5))
+    ax.hist(values, bins=bins, density=True, color="#2ca02c", alpha=0.8, edgecolor="black",
+            label="Selected–external")
+    ax.axvline(offtarget_limit, color="red", linestyle="--", linewidth=3,
+               label=f"Off-target limit = {offtarget_limit:.3f}")
+    ax.set_xlabel("Gibbs free energy (kcal/mol)", fontsize=19)
+    ax.set_ylabel("Normalized frequency", fontsize=19)
+    ax.set_title("Selected-to-Reference Energy Distribution", fontsize=19, pad=10)
+    ax.tick_params(axis="both", labelsize=16)
+    ax.legend(fontsize=14, frameon=False)
+    fig.tight_layout()
+    if output_path:
+        fig.savefig(output_path)
+    if show_plot:
+        plt.show()
+    plt.close(fig)
+    print(f"Cross-reference interactions: {stats['interaction_count']} | "
+          f"Minimum energy: {stats['min_crossref']:.3f} kcal/mol | Violations: {stats['violations']}")
+    return stats
+
+
 def plot_self_energy_histogram(self_energies, bins=30, output_path=None, show_plot=True):
     if isinstance(self_energies, dict):
         values = [np.ravel(v) for v in self_energies.values()]

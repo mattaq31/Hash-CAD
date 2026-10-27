@@ -9,6 +9,8 @@ import random
 
 import numpy as np
 
+from orthoseq_generator import helper_functions as hf
+from orthoseq_generator.algorithm_names import build_algorithm_name
 from benchmark_dataset_tools import (
     build_all_global_to_all_idx,
     build_global_to_matrix_idx,
@@ -26,7 +28,7 @@ from orthoseq_generator.search_reporting import (
     write_hybrid_search_result_xlsx,
 )
 from orthoseq_generator.search_algorithm import _build_progress_row, _num_vertices_to_remove
-from orthoseq_generator.vertex_cover_algorithms import build_edges, iterative_vertex_cover_refinement
+from orthoseq_generator.vertex_cover_algorithms import build_edges, iterative_vertex_cover_refinement, rank_vertices
 
 
 def _estimate_offtarget_nupack_calls(num_sequence_pairs: int) -> int:
@@ -151,6 +153,7 @@ def run_naive_search_to_xlsx(
     offtarget_limit: float,
     self_energy_limit: float,
     random_seed: int = 41,
+    ordering: str = "random",
 ) -> Path:
     """
     Run the benchmark naive search on a precomputed dataset and write a
@@ -159,7 +162,7 @@ def run_naive_search_to_xlsx(
     Purpose
     -------
     This function evaluates the simple greedy baseline that iterates over a
-    shuffled candidate order, applies the cached self-energy filter, and
+    random or weaker-first candidate order, applies the cached self-energy filter, and
     rejects any pair that conflicts with the already accepted set.
 
     :param dataset_dir: Directory containing the saved benchmark dataset.
@@ -181,20 +184,34 @@ def run_naive_search_to_xlsx(
     :param random_seed: Seed used to shuffle the candidate visitation order.
     :type random_seed: int
 
+    :param ordering: 'random' shuffles candidates; 'weaker_first' sorts by descending
+                     on-target free energy, retaining random order among equal energies.
+    :type ordering: str
+
     :returns: Path to the written verified workbook.
     :rtype: pathlib.Path
     """
+    if ordering not in ("random", "weaker_first"):
+        raise ValueError("ordering must be 'random' or 'weaker_first'.")
     dataset = load_dataset(dataset_dir)
     dataset_path = Path(dataset_dir)
     derived = dataset["metadata"]["derived"]
+    algorithm_name = build_algorithm_name("naive", offline=True, ordering=ordering)
     if output_path is None:
         cutoff_label = str(offtarget_limit).replace(".", "p")
-        output_path = dataset_path / "results" / f"naive_limit{cutoff_label}_seed{random_seed}.xlsx"
+        output_path = dataset_path / "results" / f"{algorithm_name}_limit{cutoff_label}_seed{random_seed}.xlsx"
     all_idx_by_global = build_all_global_to_all_idx(dataset["all_global_pair_ids"])
     pair_conflict, self_violation = build_conflict_data(dataset, float(offtarget_limit))
     n = int(len(dataset["matrix_global_pair_ids"]))
     order = list(range(n))
     random.Random(random_seed).shuffle(order)
+    if ordering == "weaker_first":
+        on_target_energies = [
+            dataset["all_on_target_energies"][all_idx_by_global[int(global_id)]]
+            for global_id in dataset["matrix_global_pair_ids"]
+        ]
+        # Less negative energies bind more weakly; stable sorting preserves shuffled ties.
+        order.sort(key=lambda idx: on_target_energies[idx], reverse=True)
     selected_local_indices = []
     selected_mask = np.zeros(n, dtype=bool)
     for idx in order:
@@ -225,7 +242,7 @@ def run_naive_search_to_xlsx(
     ]
     return _write_benchmark_result_xlsx(
         output_path,
-        algorithm_name="naive",
+        algorithm_name=algorithm_name,
         dataset=dataset,
         selected_sequence_data=selected_sequence_data,
         verified=verified,
@@ -252,6 +269,7 @@ def run_vertex_cover_search_to_xlsx(
     prune_fraction: float = 0.2,
     vc_max_iterations: int = 200,
     show_progress: bool = False,
+    heuristics: str = "Gmax",
 ) -> Path:
     """
     Run the standalone vertex-cover benchmark on a precomputed dataset and
@@ -295,15 +313,20 @@ def run_vertex_cover_search_to_xlsx(
                           underlying vertex-cover routine.
     :type show_progress: bool
 
+    :param heuristics: Greedy heuristic used for initialization and refinement: 'Gmax' or 'Gmin'.
+    :type heuristics: str
+
     :returns: Path to the written verified workbook.
     :rtype: pathlib.Path
     """
     dataset = load_dataset(dataset_dir)
     dataset_path = Path(dataset_dir)
     derived = dataset["metadata"]["derived"]
+    tiebreak = hf.ALGORITHM_PARAMS["TIEBREAK"]
+    algorithm_name = build_algorithm_name("vertex_cover", heuristics, tiebreak, offline=True)
     if output_path is None:
         cutoff_label = str(offtarget_limit).replace(".", "p")
-        output_path = dataset_path / "results" / f"vertex_cover_limit{cutoff_label}_seed{random_seed}.xlsx"
+        output_path = dataset_path / "results" / f"{algorithm_name}_limit{cutoff_label}_seed{random_seed}.xlsx"
     if not 0 <= prune_fraction <= 1:
         raise ValueError("prune_fraction must be between 0 and 1.")
     random.seed(random_seed)
@@ -325,6 +348,13 @@ def run_vertex_cover_search_to_xlsx(
     }
     edges = build_edges(offtarget_dict, matrix_global_pair_ids, float(offtarget_limit))
     vertices = set(matrix_global_pair_ids)
+    vertex_ranks = None
+    if tiebreak == "rank":
+        # Use the same negative-energy convention as the live search, from cached values.
+        vertex_ranks = rank_vertices({
+            global_id: -float(dataset["all_on_target_energies"][all_idx_by_global[global_id]])
+            for global_id in vertices
+        })
     n_remove = _num_vertices_to_remove(len(vertices), prune_fraction)
     vertex_cover, trajectories = iterative_vertex_cover_refinement(
         vertices,
@@ -334,6 +364,9 @@ def run_vertex_cover_search_to_xlsx(
         max_iterations=vc_max_iterations,
         limit=+np.inf,
         show_progress=show_progress,
+        heuristics=heuristics,
+        tiebreak=tiebreak,
+        vertex_ranks=vertex_ranks,
     )
     selected_sequence_data = get_selected_rows(dataset, sorted(vertices - vertex_cover))
     verified = verify_selected_pairs(selected_sequence_data, nupack_params=dataset["metadata"]["nupack"])
@@ -355,7 +388,7 @@ def run_vertex_cover_search_to_xlsx(
     ]
     return _write_benchmark_result_xlsx(
         output_path,
-        algorithm_name="vertex_cover",
+        algorithm_name=algorithm_name,
         dataset=dataset,
         selected_sequence_data=selected_sequence_data,
         verified=verified,
@@ -368,6 +401,8 @@ def run_vertex_cover_search_to_xlsx(
             "prune_fraction": float(prune_fraction),
             "vc_max_iterations": int(vc_max_iterations),
             "num_vertices_to_remove_effective": int(n_remove),
+            "vc_heuristics": heuristics,
+            "vc_tiebreak": tiebreak,
         },
         extra_sheets={"search_progress": progress_rows, "vc_trajectory": vc_rows},
     )
@@ -480,6 +515,13 @@ def _run_vertex_cover_offline(
     off_target_nupack_calls = _estimate_offtarget_nupack_calls(len(indices))
     off_e_subset = build_sub_offtarget_dict(dataset, indices)
     edges = build_edges(off_e_subset, indices, offtarget_limit)
+    vertex_ranks = None
+    if hf.ALGORITHM_PARAMS["TIEBREAK"] == "rank":
+        all_idx_by_global = build_all_global_to_all_idx(dataset["all_global_pair_ids"])
+        vertex_ranks = rank_vertices({
+            global_id: -float(dataset["all_on_target_energies"][all_idx_by_global[global_id]])
+            for global_id in indices
+        })
     removed_vertices, _ = iterative_vertex_cover_refinement(
         indices,
         edges,
@@ -487,6 +529,7 @@ def _run_vertex_cover_offline(
         max_iterations=vc_max_iterations,
         num_vertices_to_remove=_num_vertices_to_remove(len(indices), prune_fraction),
         show_progress=False,
+        vertex_ranks=vertex_ranks,
     )
     return set(indices) - removed_vertices, off_target_nupack_calls
 
@@ -644,9 +687,12 @@ def run_hybrid_search_offline_to_xlsx(
     derived = dataset["metadata"]["derived"]
     min_ontarget = float(derived["min_ontarget_energy"])
     max_ontarget = float(derived["max_ontarget_energy"])
+    heuristics = hf.ALGORITHM_PARAMS["HEURISTICS"]
+    tiebreak = hf.ALGORITHM_PARAMS["TIEBREAK"]
+    algorithm_name = build_algorithm_name("hybrid", heuristics, tiebreak, offline=True)
     if output_path is None:
         cutoff_label = str(offtarget_limit).replace(".", "p")
-        output_path = dataset_path / "results" / f"hybrid_offline_limit{cutoff_label}_seed{random_seed}.xlsx"
+        output_path = dataset_path / "results" / f"{algorithm_name}_limit{cutoff_label}_seed{random_seed}.xlsx"
     random.seed(random_seed)
     if not 0 <= prune_fraction <= 1:
         raise ValueError("prune_fraction must be between 0 and 1.")
@@ -794,7 +840,7 @@ def run_hybrid_search_offline_to_xlsx(
     verified = verify_selected_pairs(selected_sequence_data, nupack_params=dataset["metadata"]["nupack"])
     return _write_benchmark_result_xlsx(
         output_path,
-        algorithm_name="hybrid_offline",
+        algorithm_name=algorithm_name,
         dataset=dataset,
         selected_sequence_data=selected_sequence_data,
         verified=verified,
@@ -804,6 +850,8 @@ def run_hybrid_search_offline_to_xlsx(
             "min_ontarget": float(min_ontarget),
             "self_energy_limit": float(self_energy_limit),
             "initial_fresh_pair_count": int(initial_fresh_pair_count),
+            "vc_heuristics": heuristics,
+            "vc_tiebreak": tiebreak,
             "prune_fraction": float(prune_fraction),
             "vc_max_iterations": int(vc_max_iterations),
             "random_seed": int(random_seed),

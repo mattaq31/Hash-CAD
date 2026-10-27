@@ -10,7 +10,7 @@ if __name__ == "__main__":
     import streamlit as st
     from orthoseq_generator import helper_functions as hf
     from orthoseq_generator import sequence_computations as sc
-    from orthoseq_generator.streamlit_app.state_manager import init_session_state
+    from orthoseq_generator.streamlit_app.state_manager import init_session_state, update_external_library
     from streamlit_autorefresh import st_autorefresh
     from orthoseq_generator.streamlit_app.logging_utils import setup_logger, drain_log_queue
     from orthoseq_generator.streamlit_app.tabs import (
@@ -187,6 +187,20 @@ if __name__ == "__main__":
     )
     apply_to = apply_to_label.lower()
 
+    st.sidebar.subheader("External Crossreference Library")
+    st.sidebar.file_uploader(
+        "Library workbook (.xlsx)", type=["xlsx"], key="external_library_file",
+        disabled=st.session_state.busy, on_change=update_external_library,
+        help="Use an OrthoSeq report (found_pairs: seq/rc_seq) or a reference list (reference_sequences: sequence).",
+    )
+    if st.session_state.external_reference_error:
+        st.sidebar.error(st.session_state.external_reference_error)
+    elif st.session_state.external_reference_name:
+        st.sidebar.caption(
+            f"{st.session_state.external_reference_name}: {len(st.session_state.external_sequences)} reference strands. "
+            "External checks are enabled."
+        )
+
     st.sidebar.subheader("Physical Quantities")
     material_label = st.sidebar.selectbox(
         "Material",
@@ -294,6 +308,7 @@ if __name__ == "__main__":
         not (valid_fivep and valid_threep)
         or seqwalk_error is not None
         or not nupack_available
+        or st.session_state.external_reference_error is not None
     )
 
     # Registry Factory helper

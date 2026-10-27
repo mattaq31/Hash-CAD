@@ -25,6 +25,7 @@ Main Steps:
 '''
 
 import random
+from pathlib import Path
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 
@@ -62,15 +63,16 @@ if __name__ == "__main__":
     off_e_subset = sc.compute_offtarget_energies(subset)
 
     # 7) Plot histograms of both energy distributions, save figure, and print stats
+    results_dir = Path(hf.get_default_results_folder())
     stats = sc.plot_on_off_target_histograms(
         on_e_subset,
         off_e_subset,
-        output_path='20mer_random.pdf'
+        output_path=results_dir / '20mer_random.pdf'
     )
 
     # 8) Plot self-energy distribution (G_A + G_B combined)
     self_stats = sc.plot_self_energy_histogram(
         [self_e_a, self_e_b],
         bins=30,
-        output_path='20mer_self_energies.pdf'
+        output_path=results_dir / '20mer_self_energies.pdf'
     )

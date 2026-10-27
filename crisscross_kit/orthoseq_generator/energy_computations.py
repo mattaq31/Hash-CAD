@@ -16,6 +16,7 @@ logger = logging.getLogger("orthoseq")
 logger.addHandler(logging.NullHandler())
 
 R_KCAL_PER_MOL_K = 0.00198720425864083
+_NUPACK_MODEL_CACHE = {}
 
 
 def _rt_kcal_per_mol():
@@ -64,13 +65,28 @@ def _mp_context_from_env():
     return mp.get_context(method)
 
 
+def _get_nupack_model():
+    """Reuse one model per process until the thermodynamic conditions change."""
+    from nupack import Model
+
+    params = hf.NUPACK_PARAMS
+    # A forked worker must replace any model inherited from its parent.
+    key = (os.getpid(), params["MATERIAL"], params["CELSIUS"], params["SODIUM"], params["MAGNESIUM"])
+    if key not in _NUPACK_MODEL_CACHE:
+        model = Model(material=params["MATERIAL"], celsius=params["CELSIUS"],
+                      sodium=params["SODIUM"], magnesium=params["MAGNESIUM"])
+        _NUPACK_MODEL_CACHE.clear()
+        _NUPACK_MODEL_CACHE[key] = model
+    return _NUPACK_MODEL_CACHE[key]
+
+
 def compute_nupack_energy(seq1, seq2, type="total"):
     """
     Computes the Gibbs free energy of hybridization between two DNA sequences
     using NUPACK.
     """
     hf.require_nupack()
-    from nupack import Complex, Model, Strand, complex_analysis
+    from nupack import Complex, Strand, complex_analysis
 
     A = Strand(seq1, name="H1")
     B = Strand(seq2, name="H2")
@@ -86,12 +102,7 @@ def compute_nupack_energy(seq1, seq2, type="total"):
             mono_obj_B = Complex([B], name="(H2)")
             homo = False
 
-        model1 = Model(
-            material=hf.NUPACK_PARAMS["MATERIAL"],
-            celsius=hf.NUPACK_PARAMS["CELSIUS"],
-            sodium=hf.NUPACK_PARAMS["SODIUM"],
-            magnesium=hf.NUPACK_PARAMS["MAGNESIUM"],
-        )
+        model1 = _get_nupack_model()
 
         if type == "minimum":
             results = complex_analysis([complex_obj], model=model1, compute=["mfe"])
@@ -210,6 +221,54 @@ def compute_pair_energy_off(i, j, seq1, seq2):
     return i, j, bind_energy
 
 
+def _fill_energy_matrix(seqs1, seqs2, energy_matrix, condition):
+    """Fill requested matrix entries using the shared serial or multiprocessing NUPACK path."""
+    max_workers = _max_workers()
+    print(f"Calculating with {max_workers} cores...")
+    pool_args = (hf.ENERGY_TYPE, hf.NUPACK_PARAMS)
+
+    if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
+        for i, seq1 in enumerate(seqs1):
+            for j, seq2 in enumerate(seqs2):
+                if condition(i, j):
+                    _, _, energy = compute_pair_energy_off(i, j, seq1, seq2)
+                    energy_matrix[i, j] = energy
+    else:
+        mp_ctx = _mp_context_from_env()
+        with ProcessPoolExecutor(
+            max_workers=max_workers,
+            initializer=_init_worker,
+            initargs=pool_args,
+            mp_context=mp_ctx,
+        ) as executor:
+            futures = []
+            for i, seq1 in enumerate(seqs1):
+                for j, seq2 in enumerate(seqs2):
+                    if condition(i, j):
+                        futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2))
+
+            for future in tqdm(as_completed(futures), total=len(futures)):
+                i, j, energy = future.result()
+                energy_matrix[i, j] = energy
+
+
+def compute_crossreference_energies(sequence_pairs, reference_sequences):
+    """Compute every selected-to-reference interaction without early rejection.
+
+    Rows are the two strands of each input pair in order; columns are explicit
+    reference strands. No reference-to-reference interactions are evaluated.
+    An empty reference list returns a `(2 * pair_count, 0)` matrix without NUPACK.
+    """
+    strands = [strand for pair in sequence_pairs for strand in pair]
+    energies = np.full((len(strands), len(reference_sequences)), np.nan)
+    if not energies.size:
+        return energies
+    hf.require_nupack()
+    print(f"Computing {energies.size} selected-to-reference interactions...")
+    _fill_energy_matrix(strands, reference_sequences, energies, lambda i, j: True)
+    return energies
+
+
 def compute_offtarget_energies(sequence_pairs):
     hf.require_nupack()
     handles = [seq for seq, rc_seq in sequence_pairs]
@@ -219,46 +278,17 @@ def compute_offtarget_energies(sequence_pairs):
     antihandle_antihandle_energies = np.zeros((len(antihandles), len(antihandles)))
     handle_antihandle_energies = np.zeros((len(handles), len(antihandles)))
 
-    def parallel_energy_computation(seqs1, seqs2, energy_matrix, condition):
-        max_workers = _max_workers()
-        print(f"Calculating with {max_workers} cores...")
-        pool_args = (hf.ENERGY_TYPE, hf.NUPACK_PARAMS)
-
-        if os.environ.get("ORTHOSEQ_NO_MP", "").strip().lower() in ("1", "true", "yes"):
-            for i, seq1 in enumerate(seqs1):
-                for j, seq2 in enumerate(seqs2):
-                    if condition(i, j):
-                        _, _, energy = compute_pair_energy_off(i, j, seq1, seq2)
-                        energy_matrix[i, j] = energy
-        else:
-            mp_ctx = _mp_context_from_env()
-            with ProcessPoolExecutor(
-                max_workers=max_workers,
-                initializer=_init_worker,
-                initargs=pool_args,
-                mp_context=mp_ctx,
-            ) as executor:
-                futures = []
-                for i, seq1 in enumerate(seqs1):
-                    for j, seq2 in enumerate(seqs2):
-                        if condition(i, j):
-                            futures.append(executor.submit(compute_pair_energy_off, i, j, seq1, seq2))
-
-                for future in tqdm(as_completed(futures), total=len(futures)):
-                    i, j, energy = future.result()
-                    energy_matrix[i, j] = energy
-
     print("Computing off-target energies for handle-handle interactions...")
     computations = int(len(handles) * (len(handles) + 1) / 2)
     logger.info(f"Computing off-target energies for {computations} handle-handle interactions.")
-    parallel_energy_computation(handles, handles, handle_handle_energies, lambda i, j: j <= i)
+    _fill_energy_matrix(handles, handles, handle_handle_energies, lambda i, j: j <= i)
 
     print("Computing off-target energies for antihandle-antihandle interactions...")
     computations = int(len(antihandles) * (len(antihandles) + 1) / 2)
     logger.info(
         f"Computing off-target energies for {computations} antihandle-antihandle interactions."
     )
-    parallel_energy_computation(
+    _fill_energy_matrix(
         antihandles,
         antihandles,
         antihandle_antihandle_energies,
@@ -268,7 +298,7 @@ def compute_offtarget_energies(sequence_pairs):
     print("Computing off-target energies for handle-antihandle interactions...")
     computations = len(handles) * len(antihandles) - len(handles)
     logger.info(f"Computing off-target energies for {computations} handle-antihandle interactions.")
-    parallel_energy_computation(handles, antihandles, handle_antihandle_energies, lambda i, j: j != i)
+    _fill_energy_matrix(handles, antihandles, handle_antihandle_energies, lambda i, j: j != i)
 
     return {
         "handle_handle_energies": handle_handle_energies,
@@ -296,7 +326,8 @@ def crossreference_sequences(new_pair, pool, offtarget_limit, max_pair_violation
 
     :param new_pair: Candidate pair as (seq, rc_seq).
     :type new_pair: tuple[str, str]
-    :param pool: Retained pairs to check against, each as (seq, rc_seq).
+    :param pool: Two-strand entries to check against. External strands need not
+        be complementary; an empty second slot is allowed and skipped.
     :type pool: list[tuple[str, str]]
     :param offtarget_limit: Energy threshold below which an interaction is a
         conflict.
@@ -320,6 +351,9 @@ def crossreference_sequences(new_pair, pool, offtarget_limit, max_pair_violation
         violated = False
         for a in (seq, rc_seq):
             for b in (pool_seq, pool_rc):
+                # Odd external pools use an empty slot; evaluating it can crash NUPACK.
+                if not b:
+                    continue
                 nupack_calls += 1
                 result = compute_nupack_energy(a, b, type=hf.ENERGY_TYPE)
                 energy = result[0] if isinstance(result, tuple) else result

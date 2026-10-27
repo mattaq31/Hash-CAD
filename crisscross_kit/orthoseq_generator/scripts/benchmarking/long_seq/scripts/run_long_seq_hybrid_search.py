@@ -22,6 +22,7 @@ if str(PACKAGE_DIR) not in sys.path:
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 from orthoseq_generator.search_algorithm import hybrid_search
+from orthoseq_generator.search_report_reader import load_reference_sequences
 from orthoseq_generator.search_reporting import (
     build_selected_sequence_data,
     validate_selected_pairs,
@@ -42,7 +43,10 @@ def main():
         required=True,
         help="Path to one long-seq condition TOML.",
     )
+    parser.add_argument("--reference-sequences", type=Path,
+                        help="XLSX with found_pairs (seq/rc_seq) or reference_sequences (sequence).")
     args = parser.parse_args()
+    external_sequences = load_reference_sequences(args.reference_sequences) if args.reference_sequences else []
 
     config_path = Path(args.config).resolve()
     with config_path.open("rb") as fh:
@@ -124,6 +128,7 @@ def main():
         vc_max_iterations=vc_max_iterations,
         stop_event=None,
         return_diagnostics=True,
+        external_sequences=external_sequences,
     )
     orthogonal_seq_pairs = search_result["final_pairs"]
 
@@ -136,7 +141,10 @@ def main():
         search_result["final_pair_ids"],
     )
 
-    verified = verify_selected_pairs(selected_sequence_data, nupack_params=search_result["nupack"])
+    verified = verify_selected_pairs(
+        selected_sequence_data, nupack_params=search_result["nupack"],
+        external_sequences=search_result["external_sequences"],
+    )
     validation_data = validate_selected_pairs(
         selected_sequence_data,
         verified,
@@ -172,6 +180,7 @@ def main():
         extra_metadata={
             "benchmark_name": "long_seq",
             "stopped_reason": search_result["stopped_reason"],
+            **({"input.reference_sequence_file": str(args.reference_sequences)} if args.reference_sequences else {}),
         },
     )
     print(f"Saved verified run report to: {report_path}")
@@ -186,6 +195,10 @@ def main():
         bins=30,
         output_path=str(output_dir / f"{stem}_self.pdf"),
     )
+    if "external_crossref" in verified:
+        sc.plot_crossreference_histogram(
+            verified["external_crossref"], offtarget_limit, output_path=output_dir / f"{stem}_crossref.pdf",
+        )
 
 
 if __name__ == "__main__":

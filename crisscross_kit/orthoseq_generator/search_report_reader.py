@@ -18,10 +18,13 @@ The functions here deliberately stay simple:
 
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 import re
 
 import pandas as pd
+
+from orthoseq_generator.sequence_generation import normalize_reference_sequences
 
 
 NA_VALUES = {"", "N.A.", "n.a.", "NA", "na", "None", "none"}
@@ -96,6 +99,49 @@ def load_metadata(report_path: str | Path) -> dict:
 def load_found_pairs(report_path: str | Path) -> pd.DataFrame:
     """Load the `found_pairs` sheet."""
     return _load_sheet(report_path, "found_pairs")
+
+
+def load_reference_sequences(report_path: str | Path | BytesIO, *, required=True, sheet_name=None) -> list[str]:
+    """Read the first valid external-library layout, without combining sheets.
+
+    Try `found_pairs` with `seq` and `rc_seq` columns, then `reference_sequences`
+    with a `sequence` column. Normalize explicit strands and deduplicate them.
+    `sheet_name` restricts reading to one layout; report replay uses this to
+    restore only its original external pool. `required=False` allows absent
+    sheets, but malformed input still raises an error identifying the problem.
+    """
+    layouts = {"found_pairs": ["seq", "rc_seq"], "reference_sequences": ["sequence"]}
+    if sheet_name is not None and sheet_name not in layouts:
+        raise ValueError("Reference sheet must be 'found_pairs' or 'reference_sequences'.")
+    candidates = [sheet_name] if sheet_name is not None else list(layouts)
+    errors = []
+    with pd.ExcelFile(report_path) as workbook:
+        for candidate in candidates:
+            if candidate not in workbook.sheet_names:
+                continue
+            columns = layouts[candidate]
+            data = pd.read_excel(workbook, sheet_name=candidate, keep_default_na=False)
+            if not all(column in data.columns for column in columns):
+                errors.append(f"'{candidate}' requires columns {', '.join(columns)}")
+                continue
+            try:
+                strands = []
+                for column in columns:
+                    # Normalize each column first so errors retain Excel row numbers.
+                    strands.extend(normalize_reference_sequences(data[column], first_row=2))
+                return normalize_reference_sequences(strands)
+            except ValueError as exc:
+                errors.append(f"'{candidate}': {exc}")
+    if not errors and not required:
+        return []
+    expected = "'found_pairs' sheet with seq and rc_seq columns or 'reference_sequences' sheet with a sequence column"
+    details = "; ".join(errors) if errors else "No supported sheet found."
+    raise ValueError(f"Expected {expected}. {details}")
+
+
+def load_external_crossref(report_path: str | Path) -> pd.DataFrame | None:
+    """Load the optional complete selected-to-reference matrix with its strand labels."""
+    return _load_sheet_or_none(report_path, "external_crossref", index_col=0)
 
 
 def load_seed_pairs(report_path: str | Path) -> pd.DataFrame | None:
