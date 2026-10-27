@@ -115,7 +115,9 @@ if __name__ == "__main__":
             long_seq_data_dir / "batch_x______sigma0p5_seed41" / "len12" / "5p_none"
             / "hybrid_len12_5p_none_limitm8p16_budget10000000_init450_seed41.xlsx"
         ),
+        "20mer_Na1M_Mg0M": scripts_dir / "results" / "library_len20_Na1M_Mg0M_seed41.xlsx",
     }
+    nuad_result_folders = {"20mer_Na1M_Mg0M": "20mer_Na1M_Mg0M_20261025_115004"}
     polycube_dir = comparison_dir / "polycube_comparison"
     polycube_workbooks = {
         "menger_published_sequences.xlsx": "published_polycube_sequences.xlsx",
@@ -224,12 +226,14 @@ if __name__ == "__main__":
     copy_file(figure5_benchmark_source, seqwalk_dir / figure5_benchmark_dest_name)
 
     for case, reference in nuad_references.items():
-        source_dir = nuad_dir / "results" / case
+        source_dir = nuad_dir / "results" / nuad_result_folders.get(case, case)
         dest_dir = package_root / "nuad_comparison" / "results" / case
         copy_file(source_dir / "nuad.xlsx", dest_dir / "nuad.xlsx")
         copy_tree(source_dir / "raw_nuad", dest_dir / "raw_nuad", ignore=ignore_common_junk)
         # Duplicate the exact benchmark reference so each comparison can be read in one folder.
         copy_file(reference, dest_dir / "orthoseq.xlsx")
+        if case == "20mer_Na1M_Mg0M":
+            copy_file(source_dir / "naive.xlsx", dest_dir / "naive.xlsx")
 
     for source_name, archive_name in polycube_workbooks.items():
         copy_file(polycube_dir / "data" / source_name, package_root / "polycube_comparison" / "data" / archive_name)

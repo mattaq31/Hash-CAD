@@ -39,32 +39,32 @@ from orthoseq_generator.search_reporting import (
 
 if __name__ == "__main__":
     # 1) Set a random seed for reproducibility
-    RANDOM_SEED = 42
+    RANDOM_SEED = 41
     random.seed(RANDOM_SEED)
-    REPORT_NAME = "naive_search_16mers_25C.xlsx"
-    ONOFF_PLOT_NAME = "naive_16mer_ortho_energies_test.pdf"
-    SELF_PLOT_NAME = "naive_16mer_self_energies_test.pdf"
+    REPORT_NAME = "naive_len20_Na1M_Mg0M_seed41.xlsx"
+    ONOFF_PLOT_NAME = "naive_len20_Na1M_Mg0M_seed41_onoff.pdf"
+    SELF_PLOT_NAME = "naive_len20_Na1M_Mg0M_seed41_self.pdf"
 
     # 2) Generate candidate sequence pairs on the fly
     sequence_pairs_object = sc.SequencePairRegistry(
-        length=16,
+        length=20,
         fivep_ext="",
         threep_ext="",
         unwanted_substrings=["GGGG", "CCCC"],
-        apply_unwanted_to="core",
+        apply_unwanted_to="full",
         seed=RANDOM_SEED,
         preselected_cores=None,
     )
 
     # 3) Define energy thresholds based on prior analysis
-    hf.set_nupack_params(material="dna", celsius=37, sodium=0.05, magnesium=0.025)
+    hf.set_nupack_params(material="dna", celsius=37.0, sodium=1.0, magnesium=0.0)
     hf.set_energy_type("total")
-    max_ontarget = -19.2693004082526
-    min_ontarget = -21.3125901333289
-    offtarget_limit = -8.16042278445031
-    self_energy_limit = -0.991947123099227
+    max_ontarget = -24.0
+    min_ontarget = -25.25
+    offtarget_limit = -11.4
+    self_energy_limit = -1.4
     progress_every = 250
-    TOTAL_NUPACK_BUDGET = 10000
+    TOTAL_NUPACK_BUDGET = 10_000_000
     print(f"Total NUPACK budget: {TOTAL_NUPACK_BUDGET}")
 
     # 4) Run the live naive search until the NUPACK budget is reached

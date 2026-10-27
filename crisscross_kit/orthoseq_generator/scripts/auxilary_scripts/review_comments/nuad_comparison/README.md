@@ -1,6 +1,6 @@
 # nuad comparison
 
-Three fixed-size feasibility comparisons with saved OrthoSeq libraries. The completed searches are retained;
+Four fixed-size feasibility comparisons with saved OrthoSeq libraries. The completed searches are retained;
 plotting uses their independently verified, standard repository Excel reports. No further searches are required
 to reproduce the figures.
 
@@ -12,7 +12,8 @@ comparison_functions.py    standard report readers and the comparison figure
 run/run_6mer.py             41 pairs, 6 nt, reconstructed dataset budget
 run/run_12mer_wide.py       120 pairs, 12 nt, sigma-1.0 reference window
 run/run_12mer_narrow.py     129 pairs, 12 nt, sigma-0.5 reference window
-run/plot_comparisons.py     regenerate the three figures with their embedded tables
+run/run_20mer.py            897 pairs, 20 nt, 1 M sodium and zero magnesium
+run/plot_comparisons.py     regenerate the four figures with their embedded tables
 results/<case>/nuad.xlsx    canonical benchmark data and metadata
 results/<case>/raw_nuad/    original nuad reports, designs, RNG checkpoints, and search logs
 plots/<case>_comparison.pdf final PDF figures
@@ -30,7 +31,7 @@ Plotting reads Excel reports and makes no NUPACK calculations. The reference Ort
 To repeat a search, run the corresponding `run/run_*.py` file in PyCharm. Its main block contains the reference
 path, random seed, association budget, and output directory. Length, target pair count, energy limits, salts,
 temperature, and motifs are loaded from that reference report. New searches create timestamped directories
-and never overwrite the three retained cases. To plot a new run, change the report paths in `run/plot_comparisons.py`.
+and never overwrite the retained cases. To plot a new run, change the report paths in `run/plot_comparisons.py`.
 
 ## Environment
 
@@ -48,8 +49,9 @@ No package installation or environment changes are performed by these scripts.
 
 Each pair contains a single variable core domain, X, and its automatically reverse-complementary partner, Y.
 Nuad initializes the sequences from its `DomainPool`; there are no manually assigned starting sequences.
-All three cases are extension-free and exclude `GGGG` and `CCCC` motifs. Both partners are checked during
-final verification. The model is NUPACK `dna04.2`, 37 °C, 50 mM sodium, and 25 mM magnesium.
+All four cases are extension-free and exclude `GGGG` and `CCCC` motifs. Both partners are checked during
+final verification. The model is NUPACK `dna04.2` at 37 °C. The first three cases use 50 mM sodium and 25 mM
+magnesium; the 20-mer case uses 1 M sodium and zero magnesium.
 
 The public nuad API receives three separate constraints, all with the default weight of 1:
 
@@ -74,14 +76,21 @@ an energy nor a violation count. Rounded `0.00` values in its native report do n
 
 ## Cases and retained outcomes
 
-Energy limits below are in kcal/mol. The self-folding limit is `-0.9919471230992267` in every case.
-All three nuad searches used seed 41 and stopped at their association budgets, without an iteration limit.
+Energy limits below are in kcal/mol. The self-folding limit is `-0.9919471230992267` in the first three cases
+and `-1.40` in the 20-mer case. All four nuad searches used seed 41 and stopped at their association budgets,
+without an iteration limit.
 
 | Case | Pairs | On-target window | Off-target minimum | Association budget | Individual self / on / off violations |
 |---|---:|---|---:|---:|---|
 | 6mer | 41 | [-8.891639296600905, -7.784218654119501] | -6.583498094575131 | 788,298 | 0 / 3 / 11 |
 | 12mer_wide | 120 | [-16.631761109666144, -14.926666779533683] | -8.160422784450315 | 10,000,000 | 8 / 15 / 25 |
 | 12mer_narrow | 129 | [-15.779213944599913, -14.926666779533683] | -8.160422784450315 | 10,000,000 | 15 / 19 / 51 |
+| 20mer_Na1M_Mg0M | 897 | [-25.25, -24.00] | -11.40 | 10,000,000 | 652 / 465 / 1086 |
+
+The 20-mer result is retained in `results/20mer_Na1M_Mg0M_20261025_115004/`. Alongside `nuad.xlsx`,
+`naive.xlsx` contains the independently verified 876-pair naive-search control, with zero violations, seed 41,
+and the same conditions and nominal 10-million-evaluation budget as the 897-pair hybrid reference.
+The naive launcher is `../../../run_naive_search.py`. Exact executed counts are saved in the workbooks.
 
 Each saved OrthoSeq reference has zero violations under its respective criteria. The 6-mer reference is the
 density-0.1 vertex-cover result with seed 2. The wide 12-mer reference is the hybrid run with initial pool 250 and
@@ -153,15 +162,18 @@ records, and previous PDFs. Its scripts were captured at cleanup time; it is not
 proving the exact source state at the start of each historical run. Historical settings and final sequences are
 preserved with their original records. Obsolete smoke tests and aborted searches are not retained as reported data.
 
-The completed searches used direct raw NUPACK callbacks before this cleanup. The cleaned association callbacks
-reuse the repository helper. Post-run checks confirm the retained designs have the same constraint outcomes.
+The first three completed searches used direct raw NUPACK callbacks before this cleanup. The cleaned callbacks,
+also used for the 20-mer run, reuse the repository helper. Post-run checks confirm the retained designs have
+the same constraint outcomes.
 The archive allows inspection of the original implementation; a bit-for-bit replay of the historical trajectory
 after refactoring is not claimed.
 
 ## Interpretation
 
-This is a three-case, single-nuad-seed feasibility comparison at prescribed N. The energy distributions are
-similar, with residual nuad threshold violations at the chosen budgets. These runs do not establish general
+This is a four-case, single-nuad-seed feasibility comparison at prescribed N. The first three cases have similar
+energy distributions with residual nuad threshold violations. The 20-mer case retains 2,203 individual nuad
+violations, whereas the 897-pair hybrid and 876-pair naive libraries satisfy all constraints. These runs do not
+establish general
 algorithmic superiority, experimental performance differences, or nuad's inability to meet the constraints with
 other seeds, settings, or budgets. Wall times are saved for provenance but are not a matched runtime benchmark.
-There is no separate summary workbook: the three figures already contain the achieved-value and violation tables.
+There is no separate summary workbook: the four figures already contain the achieved-value and violation tables.

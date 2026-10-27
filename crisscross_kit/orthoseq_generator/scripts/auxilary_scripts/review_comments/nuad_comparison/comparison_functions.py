@@ -124,15 +124,20 @@ def plot_comparison(nuad_report, orthoseq_report, output_path):
                 if isinstance(artist, Line2D):
                     artist.set_markersize(artist.get_markersize() * style_scale)
                     artist.set_markeredgewidth(artist.get_markeredgewidth() * style_scale)
-        ax.tick_params(axis="both", which="major", labelsize=16 * style_scale)
+        # Scale tick geometry and padding with the text when embedding the large histogram helpers.
+        ax.tick_params(axis="both", which="major", labelsize=16 * style_scale,
+                       length=6 * style_scale, width=2.5 * style_scale, pad=3.5 * style_scale)
+        ax.tick_params(axis="both", which="minor", length=4 * style_scale, width=1.2 * style_scale)
         ax.xaxis.labelpad *= style_scale
         ax.yaxis.labelpad *= style_scale
         ax.set_title(ax.get_title(), fontsize=19 * style_scale, pad=10 * style_scale)
         ax.legend(fontsize=16 * style_scale, frameon=False,
                   loc="upper right" if ax in energy_axes else "upper left")
-        self_tick_step = 0.05 if self_x_min >= -0.5 else 0.2
-        ax.set_xticks(np.arange(x_min, visible_max_energy + 0.5, 2) if ax in energy_axes
-                      else np.arange(self_x_min, 0.01, self_tick_step))
+        energy_tick_step = 4 if visible_max_energy - x_min > 18 else 2
+        self_tick_step = 0.05 if self_x_min >= -0.5 else 0.2 if self_x_min >= -1.5 else 0.5
+        self_tick_start = np.ceil(self_x_min / self_tick_step) * self_tick_step
+        ax.set_xticks(np.arange(x_min, visible_max_energy + 0.5, energy_tick_step) if ax in energy_axes
+                      else np.arange(self_tick_start, 0.01, self_tick_step))
 
     allowed_range = f"[{metadata['search.min_ontarget']:.3f}, {metadata['search.max_ontarget']:.3f}]"
     table_rows = [

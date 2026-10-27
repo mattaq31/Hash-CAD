@@ -107,6 +107,11 @@ benchmark_data/
         nuad.xlsx
         orthoseq.xlsx
         raw_nuad/
+      20mer_Na1M_Mg0M/
+        nuad.xlsx
+        orthoseq.xlsx
+        naive.xlsx
+        raw_nuad/
   polycube_comparison/
     data/
       published_polycube_sequences.xlsx
@@ -320,13 +325,22 @@ comparison arms can be inspected from a single folder.
 
 ## nuad Comparison
 
-`nuad_comparison/results/` contains three cases: 6-mer with 41 pairs,
+`nuad_comparison/results/` contains four cases: 6-mer with 41 pairs,
 12-mer with 120 pairs using the original on-target window, and 12-mer with
-129 pairs using the narrower window. Each case contains `nuad.xlsx`, the
+129 pairs using the narrower window, plus 20-mer with 897 pairs at 1 M sodium
+and zero magnesium. Each case contains `nuad.xlsx`, the
 matching OrthoSeq benchmark report copied as `orthoseq.xlsx`, and native nuad
 designs, sequences, reports, random states, and logs in `raw_nuad/`.
 The nuad workbooks preserve the complete libraries, verified energies,
 validation results, and individual constraint violations.
+
+The 20-mer case also contains `naive.xlsx`, a verified 876-pair naive-search
+library. Hybrid search produced 897 valid pairs; nuad retained 897 pairs with
+2,203 individual constraint violations. All three use a nominal search budget
+of 10 million association evaluations, 37 °C, no extensions, GGGG/CCCC exclusions,
+an on-target window of [-25.25, -24.00] kcal/mol, an off-target minimum of -11.40
+kcal/mol, and a self-folding minimum of -1.40 kcal/mol. Seed and executed
+evaluation counts are recorded in each workbook.
 
 
 ## Polycube Comparison
