@@ -392,16 +392,35 @@ Reduced extracted workbooks contain only:
 
 ## Metadata and Terminology
 
-The manuscript and the files do not always use the same language. The most
-important mappings are:
+Earlier versions of OrthoSeq used shorter algorithm labels, such as `vertex_cover` and `hybrid_search`.
+The archive retains these labels in existing reports and also includes more explicit names that identify
+the heuristic and variant. The definitions below explain both naming formats:
 
-- `vertex_cover` -> graph-aware search
-- `naive` or `naive_search` -> naive search
-- `hybrid_offline` -> hybrid search on frozen short-sequence datasets
-- `hybrid_search` -> live hybrid search in the long-sequence benchmark
-- `offtarget_limit` -> off-target free-energy cutoff
-- `initial_fresh_pair_count` -> initial graph-aware search subset size
-- `vc_max_iterations` -> number of graph-aware search iterations
+| Saved label | Meaning in the manuscript |
+| --- | --- |
+| `vertex_cover` | Graph-aware search using GMAX with rule-based tie-breaking and iterative improvement. |
+| `vertex_cover_GMIN` | Graph-aware search using GMIN with rule-based tie-breaking and iterative improvement. |
+| `hybrid_offline`, `hybrid_search` | Hybrid search using precomputed energies and energies calculated during the search, respectively. Both use GMAX with rule-based tie-breaking. |
+| `naive`, `naive_search`, `naive_rand*` | Naive search with random candidate ordering. |
+| `naive_ordered`, `naive_rank*` | Naive search with weaker-first candidate ordering based on on-target binding energy. |
+
+Labels such as `vertex_cover_GMIN_rule_offline` encode the choices explicitly.
+In graph-search labels, `GMAX` and `GMIN` identify maximum-degree deletion and minimum-degree selection, while
+`rand`, `rank`, and `rule` identify random, on-target-energy-based, and rule-based tie-breaking. The `_bare` suffix
+indicates no iterative improvement, and `_offline` indicates use of precomputed energies. In the long-sequence
+heuristic comparison, labels such as `gmax_rule` and `gmax_rule_iterative` distinguish bare and iteratively
+improved variants. Asterisks in the table indicate variable suffixes.
+
+Some long-sequence reports retain a hybrid-workflow label even when the budget was exhausted during the initial
+graph-search stage. The approximately 2235-pair initial-graph conditions are reported as graph-aware search in
+the manuscript.
+
+Parameter names also differ:
+
+- `offtarget_limit`: off-target association free-energy limit
+- `initial_fresh_pair_count`: requested initial graph-aware search subset size
+- `vc_max_iterations`: maximum number of iterative-improvement steps
+- `prune_fraction`: perturbation fraction
 
 The workbook metadata keys are grouped by prefix:
 
@@ -511,18 +530,18 @@ short-sequence libraries, the target conflict-probability level.
 This archive supports the benchmark figures and the reported extracted
 libraries in the manuscript and Supporting Information.
 
-- The short-sequence benchmark corresponds to the regime in which full
-  conflict-graph construction was feasible and covers core binding-domain
-  lengths 4-7 nt.
-- The long-sequence benchmark corresponds to the fixed-budget live-search
-  regime and covers core binding-domain lengths 8, 9, 10, 12, 14, 16, 18, 20,
-  and 25 nt.
-- The 37 C long-sequence data correspond to the main benchmark discussed in
-  the manuscript.
-- The 25 C long-sequence data correspond to the lower-temperature benchmark
-  repeat reported in the Supporting Information.
+- The short-sequence data support the full-conflict-graph benchmark in Figure 4A.
+- The 37 C sigma-1.0 long-sequence data support the fixed-budget benchmark in Figure 4B.
+- The 25 C repeat and 37 C sigma-0.5 batches support the temperature and on-target-window analyses
+  in the Supporting Information.
+- The additional short-sequence runs and long-sequence GMIN/GMAX comparison support the graph-search
+  heuristic and candidate-ranking analyses in the Supporting Information.
 - The `seqwalk_comparison/` folder contains the three workbooks used for the
   Figure 5 comparison with seqwalk.
+- The `nuad_comparison/` files support the 6-mer, 12-mer, and 20-mer comparisons discussed in the main text
+  and detailed in the Supporting Information.
+- The `polycube_comparison/` workbooks support the comparison with the published polycube sticky-end library
+  in the Supporting Information.
 
 
 ## Notes
