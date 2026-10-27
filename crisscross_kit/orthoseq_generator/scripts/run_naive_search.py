@@ -134,11 +134,11 @@ if __name__ == "__main__":
     stats = sc.plot_on_off_target_histograms(
         onef,
         offef,
-        output_path=ONOFF_PLOT_NAME,
+        output_path=results_dir / ONOFF_PLOT_NAME,
     )
 
     self_stats = sc.plot_self_energy_histogram(
         [self_e_A, self_e_B],
         bins=30,
-        output_path=SELF_PLOT_NAME,
+        output_path=results_dir / SELF_PLOT_NAME,
     )

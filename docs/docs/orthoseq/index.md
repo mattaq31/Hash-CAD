@@ -181,7 +181,7 @@ You can use the **Selection Helper** tab again to interpret the off-target energ
 
 ### 4. Run the orthogonal sequence-pair search
 
-In the **Orthogonal Sequence-Pair Search** tab, the transferred parameter values are shown again for reference. Start the search with **Run Search**.
+In the **Sequence Search** tab, the transferred parameter values are shown again for reference. Start the search with **Run Search**.
 
 While the search is running, progress messages are shown in the logging window above the workflow tabs.
 
@@ -204,6 +204,9 @@ Two interactive controls are available while the search is running:
 
 - **Checkpoint Now** computes an intermediate estimate from the currently collected sequence-pair pool and then continues the search.
 - **Stop Searching** stops further sequence-pair collection and finalizes the current sequence-pair pool before returning the best orthogonal sequence pairs found so far.
+
+GUI searches have no fixed evaluation budget. To finish a search, click **Stop Searching** and wait for
+finalization and verification to complete.
 
 After the search finishes, the app verifies the final sequence pairs directly with NUPACK, displays the final plots, and writes a timestamped XLSX report into the local `results/` folder. The same report can also be downloaded from the app as `ortho_sequences.xlsx`.
 
@@ -267,7 +270,7 @@ Unless noted otherwise, these scripts write their output into a local `results/`
 
 #### `run_sequence_search.py`
 
-- Main editable example corresponding to **Orthogonal Sequence-Pair Search**.
+- Main editable example corresponding to **Sequence Search**.
 - Runs the hybrid search with the chosen thermodynamic limits.
 - Writes a verified XLSX run report and related output artifacts into the local `results/` folder.
 - This is the main non-app entry point for generating orthogonal sequence pairs.
@@ -340,7 +343,8 @@ OrthoSeq stores the binding-energy convention used for a run as `nupack.energy_t
 
 The default energy type is:
 
-- `total`: the NUPACK association free energy used by legacy OrthoSeq runs. For a two-strand complex this is computed as the free energy of the complex minus the free energies of the two isolated strands. This is the convention used by the Streamlit app by default.
+- `total`: the default NUPACK association free-energy convention used by OrthoSeq. For a two-strand complex,
+  this is computed as the free energy of the complex minus the free energies of the two isolated strands.
 
 An additional energy type is available in the app sidebar and in script-based workflows:
 
@@ -588,28 +592,6 @@ reference strands, copy the `sequence` column into the single-column input layou
 This sheet stores the complete verified interaction-energy matrix between the generated strands (rows) and
 reference strands (columns). The `validation` sheet records whether these interactions satisfy the off-target limit.
 
-
-## Legacy Scripts Basic Use
-
-The `legacy/` directory includes two older self-contained scripts for finding orthogonal 7-mer sequence pairs or smaller without the newer hybrid workflow.
-
-1. **`precompute_energies.py`**  
-   - Generates all 7-mer sequence pairs (with a 'TT' 5′ flank), filtering out any with four identical bases in a row.  
-   - Selects all pairs whose on-target energies lie within a specified range.  
-   - Computes off-target interaction energies for the selected subset.  
-   - Saves the subset, their indices, and off-target energies into a pickle file such as `subset_data_7mers96to101.pkl` in the current working directory.
-
-2. **`legacy_sequence_search.py`**  
-   - Loads the pickled subset and off-target energies from for example `subset_data_7mers96to101.pkl`.  
-   - Builds the off-target interaction graph using a user-defined cutoff.  
-   - Runs the iterative vertex-cover refinement heuristic on that graph.  
-   - Derives the independent set (orthogonal sequences) and saves them to for example `independent_sequences.txt` in `results`.
-
-### Output and Folders
-
-- The legacy scripts are self-contained examples and use their own direct file outputs rather than the shared XLSX reporting workflow.
-- The pickle file (for example `subset_data_7mers96to101.pkl`) is written in the current working directory.
-- The final selected sequences are written through the standard `results/` helper, so `independent_sequences.txt` ends up in the local `results/` folder relative to the directory from which the script is executed.
 
 ## Algorithm Names in Saved Reports
 

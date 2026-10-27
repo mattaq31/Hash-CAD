@@ -10,6 +10,8 @@ Typical use case:
     - re-check an old `.txt` sequence list with the current thermodynamic model
 """
 
+from pathlib import Path
+
 from orthoseq_generator import helper_functions as hf
 from orthoseq_generator import sequence_computations as sc
 
@@ -29,14 +31,15 @@ if __name__ == "__main__":
     off_e = sc.compute_offtarget_energies(sequence_pairs)
 
     # 5) Plot histograms and save them.
+    results_dir = Path(hf.get_default_results_folder())
     stats = sc.plot_on_off_target_histograms(
         on_e,
         off_e,
-        output_path="energy_hist_loaded_sequences_from_txt.pdf",
+        output_path=results_dir / "energy_hist_loaded_sequences_from_txt.pdf",
     )
     self_stats = sc.plot_self_energy_histogram(
         (self_e_seq, self_e_rc_seq),
-        output_path="self_energy_hist_loaded_sequences_from_txt.pdf",
+        output_path=results_dir / "self_energy_hist_loaded_sequences_from_txt.pdf",
     )
 
     print(stats)

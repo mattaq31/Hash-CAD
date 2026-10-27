@@ -517,6 +517,9 @@ One implementation detail matters here: in the current code, `total`, `total_bou
 
 The `scripts/` directory is mixed. Some files are current entry points, some are benchmark code, and some are old utility material.
 
+The nuad comparison benchmarks require a separate nuad installation. Nuad is not included in the standard
+requirements or package dependencies and is not needed for the OrthoSeq app or searches.
+
 Main current scripts:
 
 - `scripts/pre_analize_sequences.py`
