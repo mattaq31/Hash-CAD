@@ -1,11 +1,13 @@
 """Plot paired GMIN/GMAX comparisons at the final 178 mm supplementary-figure width."""
 
 from pathlib import Path
+from fractions import Fraction
 import sys
 
 import matplotlib.pyplot as plt
 from matplotlib.transforms import Bbox
 from matplotlib.legend_handler import HandlerTuple
+from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
@@ -14,7 +16,30 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[7]))
 from orthoseq_generator.algorithm_names import build_algorithm_name, normalize_algorithm_name
 
 
+def underline_winners(fig, annotations):
+    """Underline shared variant labels on separate tracks for bare and iterative winners, including ties."""
+    renderer = fig.canvas.get_renderer()
+    point = fig.dpi / 72
+    for ax, winners in annotations:
+        for label, modes in zip(ax.get_xticklabels(), winners):
+            bounds = label.get_window_extent(renderer)
+            for mode_index, winner in enumerate(modes):
+                if not winner:
+                    continue
+                # Separate tracks distinguish both modes when the same shared label wins twice.
+                y = bounds.y0 - (0.45 + mode_index * 0.9) * point
+                endpoints = fig.transFigure.inverted().transform([(bounds.x0, y), (bounds.x1, y)])
+                line = Line2D(endpoints[:, 0], endpoints[:, 1], transform=fig.transFigure,
+                              color="black", linewidth=0.5,
+                              linestyle=(0, (1.4, 1.0)) if mode_index == 0 else "-",
+                              solid_capstyle="butt", dash_capstyle="butt", clip_on=False)
+                line.set_gid("winner_bare" if mode_index == 0 else "winner_iterative")
+                fig.add_artist(line)
+
+
 if __name__ == "__main__":
+    # Avoid native-window pixel rounding so publication dimensions remain exact during batch exports.
+    plt.switch_backend("Agg")
     experiment_dir = Path(__file__).resolve().parent / "results" / "gmin_gmax_37C"
     output_dir = Path(__file__).resolve().parent / "plots" / "gmin_gmax_37C"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -46,6 +71,11 @@ if __name__ == "__main__":
         summary = results_df.groupby(["length", "init_count", "algorithm"])["retained_pair_count"].agg(
             ["mean", "std"]
         )
+        counts = results_df.groupby(["length", "init_count", "algorithm"])["retained_pair_count"].agg(
+            ["sum", "count"]
+        )
+        # Exact ratios preserve genuine ties without rounding means or treating near-ties as equal.
+        exact_means = counts.apply(lambda row: Fraction(int(row["sum"]), int(row["count"])), axis=1)
         mean_counts = summary["mean"].unstack("algorithm")
         mean_gaps = pd.DataFrame(index=list(algorithms))
         for mode, suffix in [("Bare", "_bare"), ("Iterative", "")]:
@@ -56,10 +86,17 @@ if __name__ == "__main__":
         for page_start in range(0, len(lengths), 6):
             page_lengths = lengths[page_start:page_start + 6]
             fig, axes = plt.subplots(3, 2, figsize=(178 / 25.4, 162 / 25.4))
+            annotations = []
             for ax, length in zip(axes.flat, page_lengths):
                 bar_positions = []
                 bar_labels = []
+                winners = []
                 for cluster_index, init_count in enumerate(init_counts):
+                    mode_winners = []
+                    for suffix in ("_bare", ""):
+                        variants = [algorithm.replace("_offline", f"{suffix}_offline") for algorithm in algorithms]
+                        means = [exact_means.loc[(length, init_count, variant)] for variant in variants]
+                        mode_winners.append([mean == max(means) for mean in means])
                     for index, (algorithm, label) in enumerate(algorithms.items()):
                         position = cluster_index + (index - (len(algorithms) - 1) / 2) * pair_width
                         for mode_index, (suffix, hatch) in enumerate([("_bare", "///"), ("", None)]):
@@ -73,6 +110,7 @@ if __name__ == "__main__":
                             )
                         bar_positions.append(position)
                         bar_labels.append(label)
+                        winners.append([mode[index] for mode in mode_winners])
                     cluster_summary = summary.loc[(length, init_count)]
                     cluster_top = (cluster_summary["mean"] + cluster_summary["std"]).max()
                     ax.annotate(f"Vertices = {init_count}", xy=(cluster_index, cluster_top),
@@ -99,6 +137,7 @@ if __name__ == "__main__":
                           borderaxespad=0.4, labelspacing=0.3)
                 for spine in ax.spines.values():
                     spine.set_linewidth(0.5)
+                annotations.append((ax, winners))
 
             for ax in list(axes.flat)[len(page_lengths):]:
                 ax.set_visible(False)
@@ -133,6 +172,8 @@ if __name__ == "__main__":
             content_bbox = fig.get_tightbbox(fig.canvas.get_renderer())
             # Crop only vertically so all exports retain the same physical width.
             export_bbox = Bbox.from_extents(0, content_bbox.y0 - 0.04, fig.get_figwidth(), content_bbox.y1 + 0.04)
+            # Add annotations after measuring the original content so PDF dimensions remain unchanged.
+            underline_winners(fig, annotations)
             fig.savefig(output_path, bbox_inches=export_bbox)
             print(f"Saved: {output_path}")
             plt.close(fig)

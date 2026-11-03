@@ -4,11 +4,12 @@ from unittest.mock import patch
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from matplotlib.patches import Patch, Rectangle
+from matplotlib.patches import Patch
 from matplotlib.text import Text
 import numpy as np
 import pandas as pd
 
+from orthoseq_generator.scripts.auxilary_scripts.review_comments.comparison_tables import add_comparison_boxes
 from orthoseq_generator.energy_plots import plot_on_off_target_histograms, plot_self_energy_histogram
 from orthoseq_generator.search_report_reader import load_found_pairs, load_metadata, load_offtarget_matrices
 from orthoseq_generator.search_reporting import (
@@ -101,8 +102,6 @@ def plot_comparison(libraries, output_path, display_names, bins, visible_max_ene
         ["Mean on-target energy"] + [f"{np.mean(data['on']):.3f}" for data in libraries.values()],
         ["Minimum off-target energy"] + [f"{np.min(data['off']):.3f}" for data in libraries.values()],
         ["Minimum self-folding energy"] + [f"{np.min(data['self']):.3f}" for data in libraries.values()],
-        ["Polycube criterion (kcal/mol)", "", ""],
-        ["Minimum gap (complex free energy)"] + [f"{data['gap']:.3f}" for data in libraries.values()],
     ]
     x_min = np.floor(min(np.min(data["on"]) for data in libraries.values()) - 0.5)
     full_x_max = np.ceil(max(np.max(data["off"]) for data in libraries.values()) + 0.2)
@@ -174,61 +173,26 @@ def plot_comparison(libraries, output_path, display_names, bins, visible_max_ene
         else:
             ax.set_xticks(np.arange(self_x_min, 0.01, 0.2))
 
-    table_ax = fig.add_subplot(layout[1])
-    table_ax.axis("off")
-    table = table_ax.table(
-        cellText=table_rows,
-        colLabels=["Achieved values (kcal/mol)", f"Polycubes ({libraries['Menger']['pair_count']} pairs)",
-                   f"OrthoSeq ({libraries['OrthoSeq']['pair_count']} pairs)"],
-        colWidths=[0.44, 0.28, 0.28], cellLoc="left", colLoc="left", bbox=[0, 0, 1, 1],
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(7)
-    for (row, col), cell in table.get_celld().items():
-        cell.visible_edges = ""
-        cell.set_edgecolor("black")
-        cell.set_linewidth(0.5)
-        cell.set_facecolor("white")
-        cell.PAD = 0.045
-        cell.set_height(1 / (len(table_rows) + 1))
-        if row == 0:
-            cell.visible_edges = "BT"
-            cell.get_text().set_fontweight("bold")
-        elif row == len(table_rows) - 1:
-            cell.visible_edges = "BT"
-            cell.get_text().set_fontweight("bold")
-        elif row == len(table_rows):
-            cell.visible_edges = "B"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.subplots_adjust(left=0.08, right=0.985, top=0.90, bottom=0.045)
-    # Use the space below the panels for both tables without changing any histogram's size or position.
-    figure_height_pt = fig.get_figheight() * 72
-    table_height = 7.6 * (len(table_rows) + 1) / figure_height_pt
-    table_ax.set_position([0.08, 0.015, 0.905, table_height])
-    limits_ax = fig.add_axes([0.08, 0.015 + table_height + 4 / figure_height_pt,
-                              0.905, 16 / figure_height_pt])
-    limits_ax.axis("off")
-    # Enclose the title and all three limits together, keeping the existing text and panel positions.
-    limits_ax.add_patch(Rectangle((0, -1 / 16), 1, 27 / 16, transform=limits_ax.transAxes,
-                                  fill=False, edgecolor="black", linewidth=0.5, clip_on=False))
-    limits_ax.text(0.02, 1 + 2 / 16, "OrthoSeq design limits (kcal/mol)",
-                   ha="left", va="bottom", fontsize=7, fontweight="bold")
-    # Read only OrthoSeq's saved design settings; the published library used a different objective.
-    limits = limits_ax.table(
-        cellText=[[f"[{on_min:.3f}, {on_max:.3f}]", f"{libraries['OrthoSeq']['offtarget_limit']:.3f}",
-                   f"{libraries['OrthoSeq']['self_energy_limit']:.3f}"]],
-        colLabels=["Allowed on-target range", "Off-target limit", "Self-folding limit"],
-        colWidths=[0.44, 0.28, 0.28], cellLoc="left", colLoc="left", bbox=[0, 0, 1, 1],
-    )
-    limits.auto_set_font_size(False)
-    limits.set_fontsize(7)
-    for cell in limits.get_celld().values():
-        cell.visible_edges = ""
-        cell.PAD = 0.045
     for ax, name in zip(energy_axes, libraries):
         # Give each library its own row heading above the two distribution titles.
         fig.text((fig.subplotpars.left + fig.subplotpars.right) / 2, ax.get_position().y1 + 0.048,
                  display_names[name], ha="center", va="bottom", fontsize=9, fontweight="bold")
+    method_columns = ["Criterion"] + [f"{display_names[name]} ({data['pair_count']} pairs)"
+                                      for name, data in libraries.items()]
+    limits = [
+        ["Allowed on-target energy range", f"[{on_min:.3f}, {on_max:.3f}]"],
+        ["Off-target energy limit", f"{libraries['OrthoSeq']['offtarget_limit']:.3f}"],
+        ["Self-folding energy limit", f"{libraries['OrthoSeq']['self_energy_limit']:.3f}"],
+    ]
+    # The complex-energy gap is a different measure from the association energies above.
+    gap_rows = [["Minimum gap (complex free energy)"] + [f"{data['gap']:.3f}" for data in libraries.values()]]
+    add_comparison_boxes(fig, energy_axes + self_axes, [
+        ("OrthoSeq design limits (kcal/mol)", None, limits, [0.48, 0.52]),
+        ("Achieved values (kcal/mol)", method_columns, table_rows, [0.48, 0.26, 0.26]),
+        ("Polycube criterion (kcal/mol)", method_columns, gap_rows, [0.48, 0.26, 0.26]),
+    ])
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
     plt.close(fig)
     print(f"Saved {output_path}")
