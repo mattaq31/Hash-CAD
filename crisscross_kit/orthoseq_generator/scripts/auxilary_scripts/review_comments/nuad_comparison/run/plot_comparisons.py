@@ -1,5 +1,6 @@
 """Regenerate comparison figures and their embedded tables from completed standard XLSX reports."""
 
+import argparse
 from pathlib import Path
 import sys
 
@@ -14,7 +15,12 @@ if __name__ == "__main__":
 
     cases = {"6mer": "6mer", "12mer_wide": "12mer_wide", "12mer_narrow": "12mer_narrow",
              "20mer_Na1M_Mg0M": "20mer_Na1M_Mg0M_20261025_115004"}
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--case", choices=list(cases), help="Regenerate only this saved comparison case.")
+    args = parser.parse_args()
     for case, result_folder in cases.items():
+        if args.case is not None and case != args.case:
+            continue
         report = folder / "results" / result_folder / "nuad.xlsx"
         # A pending search has no final workbook; native checkpoints are not verified plot inputs.
         if case == "20mer_Na1M_Mg0M" and not report.is_file():

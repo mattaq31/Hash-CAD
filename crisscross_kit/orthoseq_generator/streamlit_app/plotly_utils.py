@@ -2,6 +2,22 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 
+# Em spaces preserve tab-sized gaps in Streamlit Markdown, which collapses literal tabs.
+SUMMARY_SEPARATOR = "\u2003\u2003"
+
+
+def format_ontarget_summary(on_energies):
+    """Summarize the displayed sample using population SD, without recalculating its energies."""
+    values = np.asarray(on_energies, dtype=float).ravel()
+    if values.size == 0 or not np.isfinite(values).all():
+        return "On-target energy statistics unavailable for this sample."
+    return (
+        f"On-target energies ({values.size} sampled pairs):{SUMMARY_SEPARATOR}"
+        f"mean = {values.mean():.3f} kcal/mol{SUMMARY_SEPARATOR}"
+        f"standard deviation = {values.std(ddof=0):.3f} kcal/mol."
+    )
+
+
 def create_interactive_histogram(
     on_energies, off_energies, min_on, max_on, off_limit=None, bins=80, crossref_energies=None,
 ):

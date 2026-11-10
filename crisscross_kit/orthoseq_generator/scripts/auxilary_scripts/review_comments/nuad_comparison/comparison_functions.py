@@ -6,11 +6,12 @@ from unittest.mock import patch
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from matplotlib.patches import Patch, Rectangle
+from matplotlib.patches import Patch
 from matplotlib.text import Text
 import numpy as np
 
 from orthoseq_generator.search_report_reader import load_found_pairs, load_metadata, load_offtarget_matrices
+from orthoseq_generator.scripts.auxilary_scripts.review_comments.comparison_tables import add_comparison_boxes
 from orthoseq_generator.energy_plots import plot_on_off_target_histograms, plot_self_energy_histogram
 
 
@@ -152,51 +153,20 @@ def plot_comparison(nuad_report, orthoseq_report, output_path):
     if any(data["off_infinite_count"] for data in libraries.values()):
         table_rows.insert(-1, ["Saved +infinity entries (counts)"]
                           + [str(data["off_infinite_count"]) for data in libraries.values()])
-    table_ax = fig.add_subplot(layout[1])
-    table_ax.axis("off")
-    table = table_ax.table(cellText=table_rows,
-                          colLabels=["Achieved values (kcal/mol)"]
-                          + [f"{name} ({data['pair_count']} pairs)" for name, data in libraries.items()],
-                          colWidths=[0.44, 0.28, 0.28], cellLoc="left", colLoc="left", bbox=[0, 0, 1, 1])
-    table.auto_set_font_size(False)
-    table.set_fontsize(7)
-    for (row, col), cell in table.get_celld().items():
-        cell.visible_edges = "BT" if row == 0 else "B" if row == len(table_rows) else ""
-        cell.set_edgecolor("black")
-        cell.set_linewidth(0.5)
-        cell.set_facecolor("white")
-        cell.PAD = 0.045
-        cell.set_height(1 / (len(table_rows) + 1))
-        if row == 0:
-            cell.get_text().set_fontweight("bold")
     fig.subplots_adjust(left=0.08, right=0.985, top=0.90, bottom=0.045)
-    # Use the space below the panels for both tables without changing any histogram's size or position.
-    figure_height_pt = fig.get_figheight() * 72
-    table_height = 7.6 * (len(table_rows) + 1) / figure_height_pt
-    table_ax.set_position([0.08, 0.015, 0.905, table_height])
-    limits_ax = fig.add_axes([0.08, 0.015 + table_height + 4 / figure_height_pt,
-                              0.905, 16 / figure_height_pt])
-    limits_ax.axis("off")
-    # Enclose the title and all three limits together, keeping the existing text and panel positions.
-    limits_ax.add_patch(Rectangle((0, -1 / 16), 1, 27 / 16, transform=limits_ax.transAxes,
-                                  fill=False, edgecolor="black", linewidth=0.5, clip_on=False))
-    limits_ax.text(0.02, 1 + 2 / 16, "Design limits (kcal/mol)",
-                   ha="left", va="bottom", fontsize=7, fontweight="bold")
-    # The two libraries share these prescribed limits, already checked against both saved reports above.
-    limits = limits_ax.table(
-        cellText=[[allowed_range, f"{metadata['search.offtarget_limit']:.3f}",
-                   f"{metadata['search.self_energy_limit']:.3f}"]],
-        colLabels=["Allowed on-target range", "Off-target limit", "Self-folding limit"],
-        colWidths=[0.44, 0.28, 0.28], cellLoc="left", colLoc="left", bbox=[0, 0, 1, 1],
-    )
-    limits.auto_set_font_size(False)
-    limits.set_fontsize(7)
-    for cell in limits.get_celld().values():
-        cell.visible_edges = ""
-        cell.PAD = 0.045
     for ax, name in zip(energy_axes, libraries):
         fig.text((fig.subplotpars.left + fig.subplotpars.right) / 2, ax.get_position().y1 + 0.048,
                  name, ha="center", va="bottom", fontsize=9, fontweight="bold")
+    method_columns = ["Criterion"] + [f"{name} ({data['pair_count']} pairs)" for name, data in libraries.items()]
+    limits = [
+        ["Allowed on-target energy range", allowed_range],
+        ["Off-target energy limit", f"{metadata['search.offtarget_limit']:.3f}"],
+        ["Self-folding energy limit", f"{metadata['search.self_energy_limit']:.3f}"],
+    ]
+    add_comparison_boxes(fig, energy_axes + self_axes, [
+        ("Design limits (kcal/mol)", None, limits, [0.48, 0.52]),
+        ("Achieved values (kcal/mol)", method_columns, table_rows, [0.48, 0.26, 0.26]),
+    ])
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output.with_suffix(".pdf"))

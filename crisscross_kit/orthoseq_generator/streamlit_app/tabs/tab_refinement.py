@@ -147,7 +147,10 @@ def render_refinement_tab(registry_factory, nupack_params):
             st.session_state.off_e_range,
             float(st.session_state.draft_offtarget_limit)
         )
-        st.info(f"Conflict Probability $P_c$ = {conflict_probability:.3f}")
+        st.info(
+            f"Conflict Probability $P_c$ = {conflict_probability:.3f}{pu.SUMMARY_SEPARATOR}"
+            + pu.format_ontarget_summary(st.session_state.on_e_range)
+        )
 
         fig = pu.create_interactive_histogram(
             st.session_state.on_e_range,
