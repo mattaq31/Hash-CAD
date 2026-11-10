@@ -138,20 +138,20 @@ For more details of everyone's coding contributions, please check the graphs [he
 
 ## Literature Citations
 
-#-CAD is currently in early-access at Nature Communications (link [here](https://doi.org/10.1038/s41467-026-75175-6)):
+#-CAD has been published in Nature Communications (link [here](https://doi.org/10.1038/s41467-026-75175-6)):
 
 ```bibtex
-@article{Aquilina2026Crisscross,
-  author    = {Aquilina, Matthew and Katzmeier, Florian and Nijenhuis, Minke A. D. and Wang, Siyuan Stella and Becker, Corey and Zhao, Yichen and Seok, Su Hyun and Finkel, Julie and Cui, Huangchen and Lee, Jaewon and Lee, Seungwoo and Shih, William M.},
-  title     = {A computational framework for designing micron-scale crisscross {DNA} megastructures},
-  journal   = {Nature Communications},
-  year      = {2026},
-  month     = jul,
-  date      = {2026-07-17},
-  publisher = {Springer Science and Business Media LLC},
-  issn      = {2041-1723},
-  doi       = {10.1038/s41467-026-75175-6},
-  url       = {https://doi.org/10.1038/s41467-026-75175-6}
+@article{aquilinaComputationalFrameworkDesigning2026b,
+  title = {A Computational Framework for Designing Micron-Scale Crisscross {{DNA}} Megastructures},
+  author = {Aquilina, Matthew and Katzmeier, Florian and Nijenhuis, Minke A. D. and Wang, Siyuan Stella and Becker, Corey and Zhao, Yichen and Seok, Su Hyun and Finkel, Julie and Cui, Huangchen and Lee, Jaewon and Lee, Seungwoo and Shih, William M.},
+  year = 2026,
+  month = jul,
+  journal = {Nature Communications},
+  volume = {17},
+  number = {1},
+  pages = {8831},
+  issn = {2041-1723},
+  doi = {10.1038/s41467-026-75175-6},
 }
 ```
 
