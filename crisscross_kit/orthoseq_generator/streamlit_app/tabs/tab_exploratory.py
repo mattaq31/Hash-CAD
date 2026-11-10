@@ -119,6 +119,8 @@ def render_exploratory_tab(registry_factory, nupack_params):
 
                 st.success("Range Transferred")
 
+        st.info(pu.format_ontarget_summary(st.session_state.on_e_pilot))
+
         # Plot reflects draft range
         fig = pu.create_interactive_histogram(
             st.session_state.on_e_pilot,

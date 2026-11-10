@@ -1,0 +1,6 @@
+# Keep OrthoSeq's background searches responsive during UI refreshes.
+[runner]
+# Python's automatic garbage collection remains enabled.
+postScriptGC = false
+# Let the existing UI runner yield before handling another rerun.
+fastReruns = false
