@@ -258,6 +258,8 @@ class _SlatEditPanel extends State<SlatEditPanel> {
                                     tooltip: '',
                                     constraints: const BoxConstraints(minWidth: 300, maxWidth: 780),
                                     offset: const Offset(0, 40),
+                                    // record the edit for undo once the picker closes, not on every colour change
+                                    onCanceled: () => appState.finishSlatColorEdit(),
                                     itemBuilder: (_) => [
                                       PopupMenuItem(
                                         enabled: false,

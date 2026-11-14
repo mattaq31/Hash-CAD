@@ -167,6 +167,8 @@ mixin DesignStateCoreMixin on ChangeNotifier, DesignStateContract {
       groupConfigurations = newState.groupConfigurations;
       activeGroupConfigId = newState.activeGroupConfigId;
       assemblyHandlePatterns = newState.assemblyHandlePatterns;
+      // slat colours are not part of the saved state, so the sidebar's colour list is rebuilt from the restored slats
+      refreshUniqueSlatColors();
       groupVersion++;
       if (!cargoPalette.containsKey(cargoAdditionType)) {
         cargoAdditionType = null;

@@ -5,6 +5,9 @@ import 'design_state_contract.dart';
 /// Mixin containing slat color management operations for DesignState
 mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
 
+  /// Set by [editSlatColorSearch] until [finishSlatColorEdit] records the edit as an undo step.
+  bool _slatColorEditPending = false;
+
   /// Assigns a color to all selected slats.  Phantoms always share their parent's colour, so selecting either a
   /// parent or one of its phantoms recolours the whole family.
   @override
@@ -43,7 +46,31 @@ mixin DesignStateSlatColorMixin on ChangeNotifier, DesignStateContract {
     }
     // update the uniqueSlatColorsByLayer map
     uniqueSlatColorsByLayer[layerKey]![oldColorIndex] = newColor;
+    _slatColorEditPending = true;
     notifyListeners();
+  }
+
+  /// Records the colour edits made through [editSlatColorSearch] as one undo step.  The colour picker reports every
+  /// intermediate colour while it is being dragged, so this is called once the picker closes rather than per change.
+  @override
+  void finishSlatColorEdit() {
+    if (!_slatColorEditPending) return;
+    _slatColorEditPending = false;
+    saveUndoState();
+  }
+
+  /// Rebuilds the per-layer list of slat colours shown in the sidebar from the slats themselves.
+  @override
+  void refreshUniqueSlatColors() {
+    uniqueSlatColorsByLayer = {};
+    for (var layer in layerMap.keys) {
+      uniqueSlatColorsByLayer[layer] = [];
+      for (var slat in slats.values) {
+        if (slat.layer == layer && slat.uniqueColor != null && !uniqueSlatColorsByLayer[layer]!.contains(slat.uniqueColor!)) {
+          uniqueSlatColorsByLayer[layer]!.add(slat.uniqueColor!);
+        }
+      }
+    }
   }
 
   /// Removes a specific color from the list of unique slat colors in a layer
