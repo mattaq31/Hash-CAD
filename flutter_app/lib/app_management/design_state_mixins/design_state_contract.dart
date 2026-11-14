@@ -190,6 +190,8 @@ mixin DesignStateContract on ChangeNotifier {
   void assignColorToSelectedSlats(Color color);
   void editSlatColorSearch(String layerKey, int oldColorIndex, Color newColor);
   void removeSlatColorFromLayer(String layerKey, int colorIndex);
+  void finishSlatColorEdit();
+  void refreshUniqueSlatColors();
   void clearAllSlatColors();
   void clearSlatColorsFromLayer(String layer);
 
